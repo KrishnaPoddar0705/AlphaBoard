@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { X, BarChart2, FileText, DollarSign, PieChart, Loader, Maximize2, Minimize2, Layout, Newspaper } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, BarChart2, FileText, DollarSign, PieChart, Loader, Maximize2, Minimize2, Newspaper } from 'lucide-react';
 import { 
     getStockSummary, 
     getStockHistory, 

@@ -11,8 +11,8 @@
  * @component
  */
 
-import React, { useState, useEffect, useRef } from 'react';
-import { Loader, Newspaper, Mic, X } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Loader, Newspaper, Mic } from 'lucide-react';
 import { StockHeader } from './StockHeader';
 import { StockTabs } from './StockTabs';
 import type { TabId } from './StockTabs';
@@ -20,7 +20,7 @@ import { ChartsSection } from './ChartsSection';
 import { SummarySection } from './SummarySection';
 import { FinancialsSection } from './FinancialsSection';
 import { AIInsightsSection } from './AIInsightsSection';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Card } from '../ui/Card';
 import { StockDetailSkeleton } from '../ui/Skeleton';
 import {
     getStockSummary,

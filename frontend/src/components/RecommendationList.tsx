@@ -1,7 +1,5 @@
-<<<<<<< Current (Your changes)
-=======
 import React from 'react';
-import { Clock, TrendingUp, TrendingDown, CheckCircle, Trash2, Plus } from 'lucide-react';
+import { TrendingUp, TrendingDown, CheckCircle, Trash2, Plus } from 'lucide-react';
 
 interface RecommendationListProps {
     recommendations: any[];
@@ -167,4 +165,3 @@ export default function RecommendationList({
         </div>
     );
 }
->>>>>>> Incoming (Background Agent changes)

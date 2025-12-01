@@ -11,7 +11,6 @@
  * @component
  */
 
-import React from 'react';
 import { X, Maximize2, Minimize2, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface StockHeaderProps {

@@ -190,7 +190,8 @@ export default function PodcastPlayer({
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const progress = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0;
+    // Progress calculation (currently unused but kept for future use)
+    // const _progress = durationSeconds > 0 ? (currentTime / durationSeconds) * 100 : 0;
 
     return (
         <Card variant="glass" padding="md" className="w-full max-w-2xl mx-auto">

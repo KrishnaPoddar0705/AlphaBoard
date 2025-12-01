@@ -10,9 +10,9 @@
  * @component
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Calendar, Settings2, Download, Maximize2 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Card } from '../ui/Card';
 import { ChartSubTabs } from './StockTabs';
 import ChartRenderer from '../charts/ChartRenderer';
 import { ChartSkeleton } from '../ui/Skeleton';

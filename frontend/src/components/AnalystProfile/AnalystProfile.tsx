@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { X, TrendingUp, TrendingDown, User, Clock, Award, BarChart2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, User, Clock, Award } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getPrice } from '../../lib/api';
 import { PerformanceMetricsV2 } from '../PerformanceMetricsV2';

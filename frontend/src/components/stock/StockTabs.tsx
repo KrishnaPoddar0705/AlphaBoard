@@ -10,8 +10,7 @@
  * @component
  */
 
-import React from 'react';
-import { BarChart3, FileText, DollarSign, Brain, TrendingUp, Newspaper } from 'lucide-react';
+import { BarChart3, DollarSign, Brain, TrendingUp, Newspaper } from 'lucide-react';
 
 export type TabId = 'chart' | 'summary' | 'financials' | 'ai' | 'news';
 

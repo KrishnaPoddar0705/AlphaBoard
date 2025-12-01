@@ -68,8 +68,9 @@ interface HighchartsChartProps {
     customDateRange?: { start: string; end: string };
 }
 
-export const HighchartsChart: React.FC<HighchartsChartProps> = ({ type, data, options, technicalType = 'line', customDateRange }) => {
-    const isStock = type.includes('Stock') || type.includes('Candlestick') || type.includes('OHLC') || type.includes('Technical');
+export const HighchartsChart: React.FC<HighchartsChartProps> = ({ type: _type, data, options, technicalType = 'line', customDateRange }) => {
+    // Stock chart type detection (currently unused but kept for future use)
+    // const _isStock = type.includes('Stock') || type.includes('Candlestick') || type.includes('OHLC') || type.includes('Technical');
     
     // Transform data for Highcharts Stock (OHLCV)
     // Highcharts Stock expects sorted array of arrays: [timestamp, open, high, low, close, volume]

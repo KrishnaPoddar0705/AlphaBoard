@@ -35,14 +35,19 @@ export const WeightSlider: React.FC<WeightSliderProps> = ({
         handleMove(e);
     }, [disabled]);
 
-    const handleMove = useCallback((e: MouseEvent | React.MouseEvent) => {
+    const handleMove = useCallback((e: MouseEvent | React.MouseEvent | TouchEvent | React.TouchEvent) => {
         if (disabled) return;
         
         const slider = (e.currentTarget as HTMLElement).closest('.weight-slider-container');
         if (!slider) return;
 
         const rect = slider.getBoundingClientRect();
-        const x = 'clientX' in e ? e.clientX : e.touches?.[0]?.clientX || 0;
+        let x = 0;
+        if ('clientX' in e) {
+            x = e.clientX;
+        } else if ('touches' in e && e.touches && e.touches.length > 0) {
+            x = e.touches[0].clientX;
+        }
         const percentage = Math.max(0, Math.min(1, (x - rect.left) / rect.width));
         const newValue = min + (max - min) * percentage;
         const steppedValue = Math.round(newValue / step) * step;

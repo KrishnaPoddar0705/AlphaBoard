@@ -1,4 +1,3 @@
-import React from 'react';
 import { leaderboardData } from '../data/mockData';
 
 const Leaderboard = () => {

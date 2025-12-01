@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { calculatePortfolioReturns, getWeights } from '../lib/edgeFunctions';
 import { PortfolioPerformanceChart } from './charts/PortfolioPerformanceChart';
-import { TrendingUp, TrendingDown, Award, Target, AlertTriangle, BarChart3 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, AlertTriangle, BarChart3 } from 'lucide-react';
 
 interface PerformanceMetricsV2Props {
     userId?: string;
@@ -39,7 +39,7 @@ export const PerformanceMetricsV2: React.FC<PerformanceMetricsV2Props> = ({ user
             setPerformanceData(perfData);
         } catch (err) {
             console.error('Error fetching performance data:', err);
-            setError(err.message || 'Failed to load performance data');
+            setError(err instanceof Error ? err.message : 'Failed to load performance data');
         } finally {
             setLoading(false);
         }

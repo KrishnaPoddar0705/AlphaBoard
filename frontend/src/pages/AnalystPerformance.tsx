@@ -1,11 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getAnalystPerformance, getMonthlyMatrix, getPortfolioAllocation } from '../lib/api';
-import { PerformanceMetricsV2 } from '../components/PerformanceMetricsV2';
 import { YearlyBarChart } from '../components/charts/YearlyBarChart';
 import { MonthlyReturnsHeatmap } from '../components/charts/MonthlyReturnsHeatmap';
 import { PortfolioAllocationPie } from '../components/charts/PortfolioAllocationPie';
-import { RollingSharpeChart } from '../components/charts/RollingSharpeChart';
 import { ArrowLeft, TrendingUp, BarChart2 } from 'lucide-react';
 
 export default function AnalystPerformance() {

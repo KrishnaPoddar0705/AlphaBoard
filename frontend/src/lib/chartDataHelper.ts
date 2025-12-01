@@ -1,8 +1,5 @@
-import { format } from 'd3-format';
-import { timeFormat } from 'd3-time-format';
-
 // Helper to format real data into chart-friendly shapes
-export const generateChartData = (chartId: number, chartType: string, dataShown: string[], realData: any) => {
+export const generateChartData = (chartId: number, chartType: string, _dataShown: string[], realData: any) => {
 
     if (!realData) return [];
 

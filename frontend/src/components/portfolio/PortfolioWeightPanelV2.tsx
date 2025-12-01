@@ -29,7 +29,7 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
     const [isManualMode, setIsManualMode] = useState(false);
     const [manualWeights, setManualWeights] = useState<Record<string, string>>({});
     const [refreshKey, setRefreshKey] = useState(0);
-    const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     const fetchWeights = useCallback(async () => {
         try {
@@ -277,7 +277,7 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
             alert('Weights saved successfully!');
         } catch (error) {
             console.error('Error saving weights:', error);
-            alert(`Failed to save weights: ${error.message}`);
+            alert(`Failed to save weights: ${error instanceof Error ? error.message : 'Unknown error'}`);
         } finally {
             setSaving(false);
         }

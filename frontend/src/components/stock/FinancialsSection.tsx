@@ -14,7 +14,6 @@
  * @component
  */
 
-import React from 'react';
 import { TrendingUp, TrendingDown, FileSpreadsheet, Wallet, Banknote } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Skeleton } from '../ui/Skeleton';

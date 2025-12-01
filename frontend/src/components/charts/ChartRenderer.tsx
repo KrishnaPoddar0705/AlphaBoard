@@ -13,7 +13,7 @@ interface ChartRendererProps {
     customDateRange?: { start: string; end: string };
 }
 
-const ChartRenderer: React.FC<ChartRendererProps> = ({ chartId, stockTicker, height = 400, technicalType = 'line', externalData, customDateRange }) => {
+const ChartRenderer: React.FC<ChartRendererProps> = ({ chartId, stockTicker: _stockTicker, height = 400, technicalType = 'line', externalData, customDateRange }) => {
     const [error, setError] = useState<string | null>(null);
 
     const chartDef = useMemo(() => {

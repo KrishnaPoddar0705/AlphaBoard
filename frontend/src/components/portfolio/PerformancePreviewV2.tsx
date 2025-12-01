@@ -41,7 +41,7 @@ export const PerformancePreviewV2: React.FC<PerformancePreviewV2Props> = ({ user
             setData(performanceData);
         } catch (err) {
             console.error('Error fetching performance:', err);
-            const errorMsg = err.message || 'Failed to calculate performance';
+            const errorMsg = err instanceof Error ? err.message : 'Failed to calculate performance';
 
             // Handle specific "no weights" error gracefully
             if (errorMsg.includes('No portfolio weights found')) {

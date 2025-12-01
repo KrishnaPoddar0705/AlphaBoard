@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Sparkles, Download, RefreshCw, TrendingUp, TrendingDown, Scale, AlertTriangle, Zap, Loader } from 'lucide-react';
 import { generateThesis } from '../lib/api';
 import jsPDF from 'jspdf';

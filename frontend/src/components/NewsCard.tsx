@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { ExternalLink, Sparkles, Loader2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { getELI5Summary } from '../lib/api';
 

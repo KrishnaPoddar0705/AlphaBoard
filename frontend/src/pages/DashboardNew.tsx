@@ -31,7 +31,7 @@ const MOCK_STOCKS = [
 
 export default function DashboardNew() {
     const { session } = useAuth();
-    const { isMobile, isTablet } = usePanelWidth();
+    const { isMobile } = usePanelWidth();
 
     // State
     const [recommendations, setRecommendations] = useState<any[]>([]);
@@ -45,7 +45,7 @@ export default function DashboardNew() {
     const [ticker, setTicker] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [hasSearched, setHasSearched] = useState(false);
+    const [_hasSearched, setHasSearched] = useState(false);
     const [action, setAction] = useState('BUY');
     const [entryPrice, setEntryPrice] = useState<string>('');
     const [thesis, setThesis] = useState('');
@@ -445,8 +445,8 @@ export default function DashboardNew() {
                                         type="button"
                                         onClick={() => setIsWatchlistAdd(false)}
                                         className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${!isWatchlistAdd
-                                                ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                                                : 'text-slate-400 hover:text-white'
+                                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+                                            : 'text-slate-400 hover:text-white'
                                             }`}
                                     >
                                         Recommendation
@@ -455,8 +455,8 @@ export default function DashboardNew() {
                                         type="button"
                                         onClick={() => setIsWatchlistAdd(true)}
                                         className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${isWatchlistAdd
-                                                ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                                                : 'text-slate-400 hover:text-white'
+                                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
+                                            : 'text-slate-400 hover:text-white'
                                             }`}
                                     >
                                         Watchlist

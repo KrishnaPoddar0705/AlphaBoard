@@ -5,7 +5,7 @@
  * regenerate functionality, and export options (PDF/Notion).
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { 
   Sparkles, 
   TrendingUp, 
@@ -25,7 +25,7 @@ import { Accordion, AccordionItem } from '../ui/Accordion';
 import { Skeleton } from '../ui/Skeleton';
 import { useThesis } from '../../hooks/useThesis';
 import { useExport } from '../../hooks/useExport';
-import type { Thesis } from '../../types/thesis';
+// import type { Thesis } from '../../types/thesis'; // Unused but kept for reference
 
 interface InvestmentThesisCardProps {
   ticker: string;
