@@ -31,39 +31,75 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
     const [refreshKey, setRefreshKey] = useState(0);
     const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-    useEffect(() => {
-        if (isOpen) {
-            fetchWeights();
-        }
-    }, [isOpen, userId]);
-
-    const fetchWeights = async () => {
+    const fetchWeights = useCallback(async () => {
         try {
             setLoading(true);
             
             // Fetch weights from Edge Function
             const { weights: fetchedWeights } = await getWeights(userId);
             
-            if (fetchedWeights && fetchedWeights.length > 0) {
-                setWeights(fetchedWeights);
+            // Always fetch current recommendations to check for new stocks
+            const { data: recs } = await supabase
+                .from('recommendations')
+                .select('ticker')
+                .eq('user_id', userId)
+                .eq('status', 'OPEN');
+            
+            if (recs && recs.length > 0) {
+                // Get unique tickers from recommendations
+                const uniqueTickers = Array.from(new Set(recs.map(r => r.ticker)));
                 
-                // Initialize manual weights
-                const manual: Record<string, string> = {};
-                fetchedWeights.forEach(w => {
-                    manual[w.ticker] = w.weight.toFixed(2);
-                });
-                setManualWeights(manual);
-            } else {
-                // No weights saved - fetch from recommendations and initialize
-                const { data: recs } = await supabase
-                    .from('recommendations')
-                    .select('ticker')
-                    .eq('user_id', userId)
-                    .eq('status', 'OPEN');
-                
-                if (recs && recs.length > 0) {
-                    // Get unique tickers
-                    const uniqueTickers = Array.from(new Set(recs.map(r => r.ticker)));
+                if (fetchedWeights && fetchedWeights.length > 0) {
+                    // Weights exist - check for new stocks
+                    const existingTickers = new Set(fetchedWeights.map(w => w.ticker));
+                    const newTickers = uniqueTickers.filter(t => !existingTickers.has(t));
+                    
+                    if (newTickers.length > 0) {
+                        // New stocks found - add them with equal weight distribution
+                        console.log('New stocks detected:', newTickers);
+                        
+                        // Calculate equal weight for all stocks (existing + new)
+                        const allTickers = [...fetchedWeights.map(w => w.ticker), ...newTickers];
+                        const equalWeight = 100 / allTickers.length;
+                        
+                        const updatedWeights = allTickers.map(ticker => ({
+                            ticker,
+                            weight: parseFloat(equalWeight.toFixed(2))
+                        }));
+                        
+                        // Auto-save updated weights
+                        try {
+                            await saveWeights(userId, updatedWeights);
+                            console.log('✓ Added new stocks and auto-saved equal weights');
+                            setWeights(updatedWeights);
+                            
+                            const manual: Record<string, string> = {};
+                            updatedWeights.forEach(w => {
+                                manual[w.ticker] = w.weight.toFixed(2);
+                            });
+                            setManualWeights(manual);
+                        } catch (saveError) {
+                            console.error('Failed to auto-save updated weights:', saveError);
+                            // Still show the updated weights even if save fails
+                            setWeights(updatedWeights);
+                            const manual: Record<string, string> = {};
+                            updatedWeights.forEach(w => {
+                                manual[w.ticker] = w.weight.toFixed(2);
+                            });
+                            setManualWeights(manual);
+                        }
+                    } else {
+                        // No new stocks - use existing weights
+                        setWeights(fetchedWeights);
+                        
+                        const manual: Record<string, string> = {};
+                        fetchedWeights.forEach(w => {
+                            manual[w.ticker] = w.weight.toFixed(2);
+                        });
+                        setManualWeights(manual);
+                    }
+                } else {
+                    // No weights saved - fetch from recommendations and initialize
                     const equalWeight = 100 / uniqueTickers.length;
                     
                     const initialWeights = uniqueTickers.map(ticker => ({
@@ -88,13 +124,51 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                         console.error('Failed to auto-save default weights:', saveError);
                     }
                 }
+            } else {
+                // No recommendations - use fetched weights or empty
+                if (fetchedWeights && fetchedWeights.length > 0) {
+                    setWeights(fetchedWeights);
+                    const manual: Record<string, string> = {};
+                    fetchedWeights.forEach(w => {
+                        manual[w.ticker] = w.weight.toFixed(2);
+                    });
+                    setManualWeights(manual);
+                } else {
+                    setWeights([]);
+                    setManualWeights({});
+                }
             }
         } catch (error) {
             console.error('Error fetching weights:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }, [userId]);
+
+    useEffect(() => {
+        if (isOpen) {
+            fetchWeights();
+        }
+    }, [isOpen, userId, fetchWeights]);
+
+    // Listen for recommendation updates to refresh weights
+    useEffect(() => {
+        const handleRecommendationUpdate = () => {
+            if (isOpen) {
+                // Small delay to ensure database is updated
+                setTimeout(() => {
+                    fetchWeights();
+                }, 500);
+            }
+        };
+
+        // Listen for custom event when recommendations are updated
+        window.addEventListener('recommendations-updated', handleRecommendationUpdate);
+        
+        return () => {
+            window.removeEventListener('recommendations-updated', handleRecommendationUpdate);
+        };
+    }, [isOpen, fetchWeights]);
 
     const toggleManualMode = () => {
         if (!isManualMode) {

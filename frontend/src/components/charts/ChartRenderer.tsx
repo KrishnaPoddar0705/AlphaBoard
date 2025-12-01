@@ -3,7 +3,6 @@ import chartConfig from '../../data/charts.json';
 import { generateChartData } from '../../lib/chartDataHelper';
 import { NivoChart } from './NivoCharts';
 import { HighchartsChart } from './HighchartsWrapper';
-import StockChart from './StockChart';
 
 interface ChartRendererProps {
     chartId: number;

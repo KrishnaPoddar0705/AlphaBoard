@@ -17,6 +17,6 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['react-stockcharts', 'd3-format', 'd3-scale', 'd3-time-format'],
+    include: ['d3-format', 'd3-scale', 'd3-time-format'],
   },
 })

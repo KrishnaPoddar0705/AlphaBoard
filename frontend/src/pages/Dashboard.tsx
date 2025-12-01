@@ -21,15 +21,9 @@ import { Search, AlertCircle, Upload, X, Menu } from 'lucide-react';
 import { StockDetailPanel } from '../components/stock/StockDetailPanel';
 import { IdeaList } from '../components/ideas/IdeaList';
 import { PerformanceMetricsV2 } from '../components/PerformanceMetricsV2';
-import { PortfolioBalance } from '../components/PortfolioBalance';
-import { PortfolioManager } from '../components/PortfolioManager';
 import { PortfolioWeightPanelV2 } from '../components/portfolio/PortfolioWeightPanelV2';
-import { WeightSlider } from '../components/recommendations/WeightSlider';
-import { LiveImpactCard } from '../components/recommendations/LiveImpactCard';
-import { PaperTradingCard } from '../components/recommendations/PaperTradingCard';
 import { usePanelTransition } from '../hooks/useLayout';
 import { Settings } from 'lucide-react';
-import { getPortfolioBalance } from '../lib/api';
 
 // Mock data for fallback
 const MOCK_STOCKS = [
@@ -63,7 +57,6 @@ export default function Dashboard() {
     const [hasSearched, setHasSearched] = useState(false);
     const [action, setAction] = useState('BUY');
     const [entryPrice, setEntryPrice] = useState<string>('');
-    const [weightPct, setWeightPct] = useState<string>('');
     const [thesis, setThesis] = useState('');
     const [loading, setLoading] = useState(false);
     const [currentPrice, setCurrentPrice] = useState<number | null>(null);
@@ -71,9 +64,7 @@ export default function Dashboard() {
     const [isWatchlistAdd, setIsWatchlistAdd] = useState(false);
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [showPortfolioManager, setShowPortfolioManager] = useState(false);
     const [showWeightPanel, setShowWeightPanel] = useState(false);
-    const [portfolioBalance, setPortfolioBalance] = useState<any>(null);
 
     // Ref for polling interval
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -100,7 +91,6 @@ export default function Dashboard() {
         if (session?.user) {
             fetchRecommendations();
             startPricePolling();
-            fetchPortfolioBalance();
         }
 
         return () => {
@@ -109,16 +99,6 @@ export default function Dashboard() {
             }
         };
     }, [session]);
-
-    const fetchPortfolioBalance = async () => {
-        if (!session?.user) return;
-        try {
-            const balance = await getPortfolioBalance(session.user.id);
-            setPortfolioBalance(balance);
-        } catch (error) {
-            console.error('Error fetching portfolio balance:', error);
-        }
-    };
 
     const fetchRecommendations = async () => {
         if (!session?.user) return;
@@ -230,6 +210,7 @@ export default function Dashboard() {
         }
     };
 
+
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             const files = Array.from(e.target.files);
@@ -248,32 +229,6 @@ export default function Dashboard() {
         setError(null);
         try {
             const priceToUse = entryPrice ? parseFloat(entryPrice) : (currentPrice || 0);
-
-            // Validate weights if provided
-            if (!isWatchlistAdd && weightPct) {
-                const weightValue = parseFloat(weightPct);
-                if (isNaN(weightValue) || weightValue < 0 || weightValue > 100) {
-                    setError("Weight must be between 0 and 100");
-                    setLoading(false);
-                    return;
-                }
-
-                // Calculate total weights of all OPEN positions
-                const openPositions = recommendations.filter(r => r.status === 'OPEN');
-                const totalWeight = openPositions.reduce((sum, rec) => {
-                    // Get weight from weight_pct field or calculate from position_size
-                    const recWeight = rec.weight_pct || 0;
-                    return sum + recWeight;
-                }, 0);
-
-                const newTotalWeight = totalWeight + weightValue;
-
-                if (Math.abs(newTotalWeight - 100) > 0.01) {
-                    setError(`Portfolio weights must sum to 100%. Current total: ${newTotalWeight.toFixed(2)}%`);
-                    setLoading(false);
-                    return;
-                }
-            }
 
             // Upload images if any
             const imageUrls: string[] = [];
@@ -315,12 +270,8 @@ export default function Dashboard() {
                 images: imageUrls
             };
 
-            // Add weight if provided
-            if (!isWatchlistAdd && weightPct) {
-                newRec.weight_pct = parseFloat(weightPct);
-            }
 
-            // Use API endpoint to create recommendation (handles weight validation on backend)
+            // Use API endpoint to create recommendation
             try {
                 const { createRecommendation } = await import('../lib/api');
                 await createRecommendation(newRec, session.user.id);
@@ -330,7 +281,12 @@ export default function Dashboard() {
                 const { error: sbError } = await supabase.from('recommendations').insert([newRec]);
                 if (sbError) throw sbError;
             }
+
             await fetchRecommendations();
+
+            // Trigger refresh of weight panel if it's open
+            window.dispatchEvent(new Event('recommendations-updated'));
+
             closeModal();
         } catch (err) {
             console.error("Submission failed", err);
@@ -464,6 +420,9 @@ export default function Dashboard() {
             }));
 
             await fetchRecommendations();
+
+            // Trigger refresh of weight panel if it's open
+            window.dispatchEvent(new Event('recommendations-updated'));
         } catch (err) {
             console.error("Failed to promote watchlist item", err);
             // Optimistic
@@ -481,7 +440,6 @@ export default function Dashboard() {
         setTicker('');
         setThesis('');
         setEntryPrice('');
-        setWeightPct('');
         setCurrentPrice(null);
         setAction('BUY');
         setError(null);
@@ -743,37 +701,6 @@ export default function Dashboard() {
                                                     />
                                                 </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                                                    Portfolio Weight (%) <span className="text-gray-500 text-xs">(Optional - defaults to equal weight)</span>
-                                                </label>
-                                                <WeightSlider
-                                                    value={weightPct ? parseFloat(weightPct) : 0}
-                                                    onChange={(value) => {
-                                                        setWeightPct(value.toFixed(1));
-                                                        setError(null);
-                                                    }}
-                                                    min={0}
-                                                    max={100}
-                                                    step={0.1}
-                                                    label="Weight"
-                                                    showValue={true}
-                                                />
-                                                {weightPct && (() => {
-                                                    const weightValue = parseFloat(weightPct);
-                                                    if (isNaN(weightValue)) return null;
-                                                    const openPositions = recommendations.filter(r => r.status === 'OPEN');
-                                                    const totalWeight = openPositions.reduce((sum, rec) => sum + (rec.weight_pct || 0), 0);
-                                                    const newTotal = totalWeight + weightValue;
-                                                    const diff = Math.abs(newTotal - 100);
-                                                    return diff > 0.01 ? (
-                                                        <div className="mt-2 text-xs text-yellow-400 flex items-center gap-1">
-                                                            <AlertCircle className="w-3 h-3" />
-                                                            Portfolio weights will sum to {newTotal.toFixed(2)}% (should be 100%)
-                                                        </div>
-                                                    ) : null;
-                                                })()}
-                                            </div>
                                         </div>
                                     )}
 
@@ -786,39 +713,6 @@ export default function Dashboard() {
                                                 </span>
                                                 <span className="font-mono font-bold">₹{currentPrice}</span>
                                             </div>
-
-                                            {/* Live Impact Card and Paper Trading Card */}
-                                            {!isWatchlistAdd && weightPct && portfolioBalance && entryPrice && (
-                                                <div className="grid grid-cols-1 gap-3 mt-3">
-                                                    {(() => {
-                                                        const weightValue = parseFloat(weightPct);
-                                                        const capital = portfolioBalance.initial_balance || 1000000;
-                                                        const positionValue = (weightValue / 100) * capital;
-                                                        const units = positionValue / parseFloat(entryPrice);
-                                                        const openPositions = recommendations.filter(r => r.status === 'OPEN');
-                                                        const existingWeight = openPositions.find(r => r.ticker === ticker)?.weight_pct || 0;
-
-                                                        return (
-                                                            <>
-                                                                <LiveImpactCard
-                                                                    newWeight={weightValue}
-                                                                    oldWeight={existingWeight}
-                                                                    positionValue={positionValue}
-                                                                    units={units}
-                                                                    entryPrice={parseFloat(entryPrice)}
-                                                                />
-                                                                <PaperTradingCard
-                                                                    weight={weightValue}
-                                                                    capital={capital}
-                                                                    entryPrice={parseFloat(entryPrice)}
-                                                                    positionValue={positionValue}
-                                                                    units={units}
-                                                                />
-                                                            </>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            )}
                                         </>
                                     ) : (
                                         <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-400 flex items-center justify-between">
@@ -911,7 +805,6 @@ export default function Dashboard() {
                     onClose={() => setShowWeightPanel(false)}
                     onUpdate={() => {
                         fetchRecommendations();
-                        fetchPortfolioBalance();
                     }}
                 />
             )}
