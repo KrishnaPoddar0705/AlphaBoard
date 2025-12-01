@@ -1,0 +1,507 @@
+{
+    "charts": [
+        {
+            "id": 1,
+            "chartType": "Candlestick Chart",
+            "library": "react-stockcharts",
+            "dataShown": [
+                "open",
+                "high",
+                "low",
+                "close",
+                "volume",
+                "sma",
+                "ema"
+            ],
+            "uxNotes": "Classic finance chart; add crosshair + tooltip",
+            "recommendedOptions": {
+                "zoom": true,
+                "pan": true,
+                "edgeIndicator": true,
+                "mouseMoveEvent": true
+            }
+        },
+        {
+            "id": 2,
+            "chartType": "OHLC Bar",
+            "library": "react-stockcharts",
+            "dataShown": [
+                "open",
+                "high",
+                "low",
+                "close"
+            ],
+            "uxNotes": "Cleaner version of candlestick",
+            "recommendedOptions": {
+                "gridLines": true,
+                "theme": "light"
+            }
+        },
+        {
+            "id": 3,
+            "chartType": "Volume Bars",
+            "library": "react-stockcharts",
+            "dataShown": [
+                "volume"
+            ],
+            "uxNotes": "Always below price chart",
+            "recommendedOptions": {
+                "fillUp": "green",
+                "fillDown": "red"
+            }
+        },
+        {
+            "id": 4,
+            "chartType": "Line Price Trend",
+            "library": "nivo/line",
+            "dataShown": [
+                "adjusted_close"
+            ],
+            "uxNotes": "Smooth line, minimal styling",
+            "recommendedOptions": {
+                "area": true,
+                "curve": "monotoneX"
+            }
+        },
+        {
+            "id": 5,
+            "chartType": "Area Price",
+            "library": "nivo/area-bump",
+            "dataShown": [
+                "smoothed_price_trend"
+            ],
+            "uxNotes": "Good for beginners",
+            "recommendedOptions": {
+                "blendMode": "multiply"
+            }
+        },
+        {
+            "id": 6,
+            "chartType": "SMA/EMA",
+            "library": "react-stockcharts",
+            "dataShown": [
+                "sma20",
+                "sma50",
+                "ema200"
+            ],
+            "uxNotes": "Overlay on candlesticks",
+            "recommendedOptions": {
+                "strokeWidth": 2
+            }
+        },
+        {
+            "id": 7,
+            "chartType": "Bollinger Bands",
+            "library": "react-stockcharts",
+            "dataShown": [
+                "bb_upper",
+                "bb_middle",
+                "bb_lower"
+            ],
+            "uxNotes": "Shows volatility",
+            "recommendedOptions": {
+                "opacity": 0.2
+            }
+        },
+        {
+            "id": 8,
+            "chartType": "RSI",
+            "library": "react-stockcharts",
+            "dataShown": [
+                "rsi14"
+            ],
+            "uxNotes": "Show overbought/oversold zones",
+            "recommendedOptions": {
+                "horizontalMarkers": [
+                    30,
+                    70
+                ]
+            }
+        },
+        {
+            "id": 9,
+            "chartType": "MACD",
+            "library": "react-stockcharts",
+            "dataShown": [
+                "macd",
+                "signal",
+                "histogram"
+            ],
+            "uxNotes": "Momentum indicator",
+            "recommendedOptions": {
+                "separateChart": true
+            }
+        },
+        {
+            "id": 10,
+            "chartType": "Volume Profile",
+            "library": "react-stockcharts",
+            "dataShown": [
+                "volume_by_price"
+            ],
+            "uxNotes": "Shows accumulation zones",
+            "recommendedOptions": {
+                "bins": 20
+            }
+        },
+        {
+            "id": 11,
+            "chartType": "Multi-stock Comparison",
+            "library": "nivo/line",
+            "dataShown": [
+                "price_change_percent"
+            ],
+            "uxNotes": "Trend comparison",
+            "recommendedOptions": {
+                "multipleColors": true
+            }
+        },
+        {
+            "id": 12,
+            "chartType": "Revenue Trend",
+            "library": "nivo/line",
+            "dataShown": [
+                "revenue_quarterly"
+            ],
+            "uxNotes": "Simple line chart",
+            "recommendedOptions": {
+                "dotSize": 6
+            }
+        },
+        {
+            "id": 13,
+            "chartType": "Expense Trend",
+            "library": "nivo/line",
+            "dataShown": [
+                "cogs",
+                "rnd",
+                "sga"
+            ],
+            "uxNotes": "Multi-line",
+            "recommendedOptions": {
+                "legends": true
+            }
+        },
+        {
+            "id": 14,
+            "chartType": "Profit Margin Trend",
+            "library": "nivo/bar",
+            "dataShown": [
+                "gross_margin",
+                "operating_margin",
+                "net_margin"
+            ],
+            "uxNotes": "Grouped bars",
+            "recommendedOptions": {
+                "layout": "horizontal"
+            }
+        },
+        {
+            "id": 15,
+            "chartType": "EPS Trend",
+            "library": "nivo/line",
+            "dataShown": [
+                "eps"
+            ],
+            "uxNotes": "Highlight earnings",
+            "recommendedOptions": {
+                "pointBorderWidth": 2
+            }
+        },
+        {
+            "id": 16,
+            "chartType": "Analyst Target vs Price",
+            "library": "nivo/line",
+            "dataShown": [
+                "price",
+                "analyst_target_price"
+            ],
+            "uxNotes": "2 lines",
+            "recommendedOptions": {
+                "targetLineStyle": "dashed"
+            }
+        },
+        {
+            "id": 17,
+            "chartType": "PE Ratio Trend",
+            "library": "nivo/line",
+            "dataShown": [
+                "pe_ratio"
+            ],
+            "uxNotes": "Use min/max bounds",
+            "recommendedOptions": {
+                "yScale": "log"
+            }
+        },
+        {
+            "id": 18,
+            "chartType": "Valuation Multiples",
+            "library": "nivo/radar",
+            "dataShown": [
+                "pe",
+                "pb",
+                "ps",
+                "ev_ebitda"
+            ],
+            "uxNotes": "Perfect for comparisons",
+            "recommendedOptions": {
+                "gridLevels": 5
+            }
+        },
+        {
+            "id": 19,
+            "chartType": "Balance Sheet Allocation",
+            "library": "nivo/treemap",
+            "dataShown": [
+                "assets",
+                "liabilities",
+                "categories"
+            ],
+            "uxNotes": "Great hierarchy",
+            "recommendedOptions": {
+                "borderColor": "white"
+            }
+        },
+        {
+            "id": 20,
+            "chartType": "Segment Revenue Share",
+            "library": "nivo/sunburst",
+            "dataShown": [
+                "business_segments"
+            ],
+            "uxNotes": "Color-coded",
+            "recommendedOptions": {
+                "radialLabelsSkipAngle": true
+            }
+        },
+        {
+            "id": 21,
+            "chartType": "Cash Flow Breakdown",
+            "library": "nivo/sankey",
+            "dataShown": [
+                "cfo",
+                "cfi",
+                "cff"
+            ],
+            "uxNotes": "Great storytelling",
+            "recommendedOptions": {
+                "linkOpacity": 0.5
+            }
+        },
+        {
+            "id": 22,
+            "chartType": "Global Revenue Map",
+            "library": "nivo/choropleth",
+            "dataShown": [
+                "revenue_by_country"
+            ],
+            "uxNotes": "If stock is global",
+            "recommendedOptions": {
+                "domain": "auto",
+                "projection": "mercator"
+            }
+        },
+        {
+            "id": 23,
+            "chartType": "Returns Heatmap",
+            "library": "nivo/calendar",
+            "dataShown": [
+                "daily_returns"
+            ],
+            "uxNotes": "Beautiful for volatility",
+            "recommendedOptions": {
+                "colors": [
+                    "red",
+                    "grey",
+                    "green"
+                ]
+            }
+        },
+        {
+            "id": 24,
+            "chartType": "Volatility Swarm Plot",
+            "library": "nivo/swarmplot",
+            "dataShown": [
+                "daily_price_change"
+            ],
+            "uxNotes": "Shows clustering",
+            "recommendedOptions": {
+                "forceStrength": 4
+            }
+        },
+        {
+            "id": 25,
+            "chartType": "Correlation Matrix",
+            "library": "nivo/heatmap",
+            "dataShown": [
+                "correlation_matrix"
+            ],
+            "uxNotes": "Analyst favorite",
+            "recommendedOptions": {
+                "colorScheme": "reds"
+            }
+        },
+        {
+            "id": 26,
+            "chartType": "Market Share Bump Chart",
+            "library": "nivo/bump",
+            "dataShown": [
+                "market_share_rank"
+            ],
+            "uxNotes": "Shows rank changes",
+            "recommendedOptions": {
+                "lineWidth": 3
+            }
+        },
+        {
+            "id": 27,
+            "chartType": "Analyst Prediction Distribution",
+            "library": "nivo/violin",
+            "dataShown": [
+                "price_targets"
+            ],
+            "uxNotes": "Very insightful",
+            "recommendedOptions": {
+                "smooth": true
+            }
+        },
+        {
+            "id": 28,
+            "chartType": "Insider Trades Timeline",
+            "library": "nivo/stream",
+            "dataShown": [
+                "insider_buys",
+                "insider_sells"
+            ],
+            "uxNotes": "Stream areas",
+            "recommendedOptions": {
+                "offsetType": "expand"
+            }
+        },
+        {
+            "id": 29,
+            "chartType": "Dividend History",
+            "library": "nivo/bar",
+            "dataShown": [
+                "dividend_per_quarter"
+            ],
+            "uxNotes": "Simple bars",
+            "recommendedOptions": {
+                "tooltip": true
+            }
+        },
+        {
+            "id": 30,
+            "chartType": "Free Cash Flow Trend",
+            "library": "nivo/line",
+            "dataShown": [
+                "free_cash_flow"
+            ],
+            "uxNotes": "Clean trend",
+            "recommendedOptions": {
+                "area": true
+            }
+        },
+        {
+            "id": 31,
+            "chartType": "Debt vs Equity",
+            "library": "nivo/bar",
+            "dataShown": [
+                "debt",
+                "equity"
+            ],
+            "uxNotes": "Grouped bar",
+            "recommendedOptions": {
+                "colorBy": "id"
+            }
+        },
+        {
+            "id": 32,
+            "chartType": "R&D Allocation",
+            "library": "nivo/pie",
+            "dataShown": [
+                "rnd_percent"
+            ],
+            "uxNotes": "Circular visualization",
+            "recommendedOptions": {
+                "innerRadius": 0.6
+            }
+        },
+        {
+            "id": 33,
+            "chartType": "Risk Radar",
+            "library": "nivo/radar",
+            "dataShown": [
+                "volatility",
+                "drawdown",
+                "beta",
+                "risk_score"
+            ],
+            "uxNotes": "Analyst ranking metric",
+            "recommendedOptions": {
+                "curve": "linearClosed"
+            }
+        },
+        {
+            "id": 34,
+            "chartType": "Earnings Surprise",
+            "library": "nivo/bar",
+            "dataShown": [
+                "actual_eps",
+                "estimated_eps"
+            ],
+            "uxNotes": "Dual bars",
+            "recommendedOptions": {
+                "barPadding": 0.3
+            }
+        },
+        {
+            "id": 35,
+            "chartType": "Earnings Timeline",
+            "library": "nivo/line",
+            "dataShown": [
+                "earnings_events"
+            ],
+            "uxNotes": "Events timeline",
+            "recommendedOptions": {
+                "pointLabel": "EPS"
+            }
+        },
+        {
+            "id": 36,
+            "chartType": "Short Interest Trend",
+            "library": "nivo/line",
+            "dataShown": [
+                "short_interest_percent"
+            ],
+            "uxNotes": "Use dual y-axis?",
+            "recommendedOptions": {
+                "annotatePeaks": true
+            }
+        },
+        {
+            "id": 37,
+            "chartType": "Borrow Fee Rate",
+            "library": "nivo/line",
+            "dataShown": [
+                "borrow_fee_rate"
+            ],
+            "uxNotes": "Niche but powerful",
+            "recommendedOptions": {
+                "areaColor": true
+            }
+        },
+        {
+            "id": 38,
+            "chartType": "Institutional Holding Trend",
+            "library": "nivo/line",
+            "dataShown": [
+                "institutional_ownership"
+            ],
+            "uxNotes": "Clean + simple",
+            "recommendedOptions": {
+                "smooth": true
+            }
+        }
+    ]
+}

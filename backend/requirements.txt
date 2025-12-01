@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+supabase
+yfinance
+httpx
+pydantic
+python-dotenv
+openai
+feedparser
+beautifulsoup4
+requests
+lxml
+pandas
+numpy
+

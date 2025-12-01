@@ -1,0 +1,825 @@
+/**
+ * Global Styles - Premium Hedge Fund UI
+ * 
+ * Includes:
+ * - Tailwind CSS directives
+ * - Custom animations
+ * - Scrollbar styling
+ * - Typography enhancements
+ */
+
+@import "tailwindcss";
+
+@theme {
+  --color-slate-100: #f1f5f9;
+  --color-slate-200: #e2e8f0;
+  --color-slate-300: #cbd5e1;
+  --color-slate-400: #94a3b8;
+  --color-slate-500: #64748b;
+  --color-slate-600: #475569;
+  --color-slate-700: #334155;
+  --color-slate-800: #1e293b;
+  --color-slate-900: #0f172a;
+}
+
+/* ===========================
+   Base Layer Customizations
+   =========================== */
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-[#0f172a] text-slate-100;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Focus ring styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900;
+  }
+
+  /* Selection styles */
+  ::selection {
+    @apply bg-indigo-500/30 text-white;
+  }
+}
+
+/* ===========================
+   Component Layer Utilities
+   =========================== */
+@layer components {
+
+  /* Glass card effect */
+  .glass {
+    @apply bg-slate-800/30 backdrop-blur-xl border border-white/10;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 bg-clip-text text-transparent;
+  }
+
+  /* Premium button */
+  .btn-premium {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl shadow-lg shadow-indigo-500/25 hover:from-indigo-400 hover:to-purple-400 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-200;
+  }
+
+  /* Metric card */
+  .metric-card {
+    @apply relative overflow-hidden rounded-xl bg-slate-800/50 border border-white/5 p-4 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200;
+  }
+}
+
+/* ===========================
+   Custom Scrollbar Styles
+   =========================== */
+@layer utilities {
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(71 85 105) transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: rgb(71 85 105);
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(100 116 139);
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hidden {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hidden::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ===========================
+   Custom Animations
+   =========================== */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes scaleOut {
+  from {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+
+@keyframes shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pulse-glow {
+
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes float {
+
+  0%,
+  100% {
+    transform: translateY(0px);
+  }
+
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes spin-slow {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Animation utilities */
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.3s ease-out forwards;
+  }
+
+  .animate-fadeOut {
+    animation: fadeOut 0.3s ease-out forwards;
+  }
+
+  .animate-slideInRight {
+    animation: slideInRight 0.3s ease-out forwards;
+  }
+
+  .animate-slideOutRight {
+    animation: slideOutRight 0.3s ease-out forwards;
+  }
+
+  .animate-slideInLeft {
+    animation: slideInLeft 0.3s ease-out forwards;
+  }
+
+  .animate-slideInUp {
+    animation: slideInUp 0.3s ease-out forwards;
+  }
+
+  .animate-slideInDown {
+    animation: slideInDown 0.3s ease-out forwards;
+  }
+
+  .animate-scaleIn {
+    animation: scaleIn 0.2s ease-out forwards;
+  }
+
+  .animate-scaleOut {
+    animation: scaleOut 0.2s ease-out forwards;
+  }
+
+  .animate-shimmer {
+    animation: shimmer 2s infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-spin-slow {
+    animation: spin-slow 3s linear infinite;
+  }
+
+  /* Stagger animation delays */
+  .stagger-1 {
+    animation-delay: 0.1s;
+  }
+
+  .stagger-2 {
+    animation-delay: 0.2s;
+  }
+
+  .stagger-3 {
+    animation-delay: 0.3s;
+  }
+
+  .stagger-4 {
+    animation-delay: 0.4s;
+  }
+
+  .stagger-5 {
+    animation-delay: 0.5s;
+  }
+}
+
+/* ===========================
+   Typography Enhancements
+   =========================== */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* Monospace numbers for better alignment */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ===========================
+   Chart Specific Styles
+   =========================== */
+
+/* Global Highcharts dark theme */
+.highcharts-container,
+.highcharts-root {
+  font-family: inherit !important;
+}
+
+/* Background */
+.highcharts-background {
+  fill: #0f172a !important;
+}
+
+.highcharts-plot-background {
+  fill: #0f172a !important;
+}
+
+/* Grid lines */
+.highcharts-grid-line {
+  stroke: #334155 !important;
+  stroke-width: 1 !important;
+}
+
+/* Axis labels and text */
+.highcharts-axis-labels text,
+.highcharts-axis-title {
+  fill: #94a3b8 !important;
+  font-size: 11px !important;
+}
+
+/* Crosshair labels - TRANSPARENT BACKGROUND */
+.highcharts-crosshair-label {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+.highcharts-crosshair-label text {
+  fill: #e2e8f0 !important;
+  font-weight: 500 !important;
+}
+
+/* Axis labels - TRANSPARENT BACKGROUND */
+.highcharts-axis-labels rect {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+/* Y-axis labels background - TRANSPARENT */
+.highcharts-yaxis-labels rect,
+.highcharts-yaxis .highcharts-axis-labels rect {
+  fill: transparent !important;
+  stroke: none !important;
+  fill-opacity: 0 !important;
+}
+
+/* Remove background from all axis label boxes */
+.highcharts-axis-labels .highcharts-label-box {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+/* Comprehensive fix for all label backgrounds */
+.highcharts-label rect,
+.highcharts-label-box,
+.highcharts-axis-labels rect,
+rect[fill="#ffffff"],
+rect[fill="white"],
+rect[fill="#f7f7f7"],
+rect[fill="#e6e6e6"] {
+  fill: transparent !important;
+  stroke: none !important;
+  fill-opacity: 0 !important;
+}
+
+/* Ensure axis title backgrounds are also transparent */
+.highcharts-axis-title rect {
+  fill: transparent !important;
+  stroke: none !important;
+}
+
+/* Nuclear option - hide ALL rect elements with light backgrounds in Highcharts */
+.highcharts-container rect[fill^="#"],
+.highcharts-container rect[fill*="rgb(247"],
+.highcharts-container rect[fill*="rgb(255"],
+.highcharts-container rect[fill*="rgb(230"] {
+  fill: transparent !important;
+  stroke: none !important;
+  display: none !important;
+}
+
+/* But keep the main chart background and plot areas */
+.highcharts-background,
+.highcharts-plot-background,
+.highcharts-plot-border {
+  display: block !important;
+}
+
+/* Override any inline styles on label boxes */
+g.highcharts-axis-labels rect[x] {
+  fill: transparent !important;
+  fill-opacity: 0 !important;
+  opacity: 0 !important;
+  display: none !important;
+}
+
+/* Aggressive targeting of beige/tan colored boxes */
+rect[fill="#F0E68C"],
+rect[fill="#EEE8AA"],
+rect[fill="#F5DEB3"],
+rect[fill="#FFE4B5"],
+rect[fill="#FFEFD5"],
+rect[fill="#FFDEAD"],
+rect[fill*="rgb(245"],
+rect[fill*="rgb(240"],
+rect[fill*="rgb(238"],
+rect[fill*="rgb(255, 228"],
+rect[fill*="rgb(255, 239"],
+rect[fill*="rgb(255, 222"] {
+  fill: transparent !important;
+  fill-opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+/* Remove ALL beige/cream colored rectangles - comprehensive fix */
+.highcharts-container rect[fill^="#"],
+.highcharts-container rect[fill*="rgb"] {
+  fill-opacity: 0 !important;
+}
+
+/* Specifically target and hide any light colored rectangles */
+.highcharts-container rect[fill="#F5F5DC"],
+.highcharts-container rect[fill="#FAEBD7"],
+.highcharts-container rect[fill="#FFF8DC"],
+.highcharts-container rect[fill="#FFFACD"],
+.highcharts-container rect[fill="#FFFFE0"],
+.highcharts-container rect[fill="#FFFEF0"],
+.highcharts-container rect[fill="#FDF5E6"],
+.highcharts-container rect[fill="#F5DEB3"],
+.highcharts-container rect[fill="#FFE4B5"],
+.highcharts-container rect[fill="#FFEFD5"],
+.highcharts-container rect[fill="#FFDEAD"],
+.highcharts-container rect[fill="#EEE8AA"],
+.highcharts-container rect[fill="#F0E68C"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  fill: transparent !important;
+}
+
+/* Hide any rect elements that might be creating the left sidebar */
+.highcharts-yaxis-labels g rect,
+.highcharts-yaxis g rect,
+.highcharts-axis-labels g rect {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Hide scrollbar arrows if they're visible */
+.highcharts-scrollbar-arrow {
+  display: none !important;
+}
+
+/* Nuclear option - hide ALL beige/cream colored elements */
+.highcharts-container * {
+  fill-opacity: 1 !important;
+}
+
+.highcharts-container rect[fill*="#F"],
+.highcharts-container rect[fill*="#E"],
+.highcharts-container rect[fill*="#f"],
+.highcharts-container rect[fill*="#e"] {
+  fill-opacity: 0 !important;
+}
+
+/* Target specific beige colors by checking fill attribute */
+.highcharts-container rect[fill="#F5F5DC"],
+.highcharts-container rect[fill="#FAEBD7"],
+.highcharts-container rect[fill="#FFF8DC"],
+.highcharts-container rect[fill="#FFFACD"],
+.highcharts-container rect[fill="#FFFFE0"],
+.highcharts-container rect[fill="#FFFEF0"],
+.highcharts-container rect[fill="#FDF5E6"],
+.highcharts-container rect[fill="#F5DEB3"],
+.highcharts-container rect[fill="#FFE4B5"],
+.highcharts-container rect[fill="#FFEFD5"],
+.highcharts-container rect[fill="#FFDEAD"],
+.highcharts-container rect[fill="#EEE8AA"],
+.highcharts-container rect[fill="#F0E68C"],
+.highcharts-container rect[fill="#F0F0F0"],
+.highcharts-container rect[fill="#F5F5F5"],
+.highcharts-container rect[fill="#FAFAFA"],
+.highcharts-container rect[fill="#FCFCFC"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  fill: transparent !important;
+  fill-opacity: 0 !important;
+}
+
+/* Hide any group containing beige rectangles */
+.highcharts-container g:has(rect[fill*="#F"]),
+.highcharts-container g:has(rect[fill*="#E"]),
+.highcharts-container g:has(rect[fill*="#f"]),
+.highcharts-container g:has(rect[fill*="#e"]) {
+  display: none !important;
+}
+
+/* ===========================
+   Remove Left Sidebar/Panel
+   =========================== */
+
+/* Remove any pane backgrounds */
+.highcharts-pane,
+.highcharts-pane-group,
+.highcharts-pane-background {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Remove stockTools sidebar */
+.highcharts-stocktools-wrapper,
+.highcharts-stocktools-gui-wrapper,
+.highcharts-stocktools-gui {
+  display: none !important;
+  visibility: hidden !important;
+}
+
+/* Remove any side containers */
+.highcharts-side-container,
+.highcharts-sidebar,
+.highcharts-left-panel,
+.highcharts-toolbar-container {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure main container has no left margin/padding */
+.highcharts-container {
+  background: transparent !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Remove any floating panes */
+.highcharts-pane-group,
+.highcharts-pane-group rect {
+  display: none !important;
+  fill: transparent !important;
+}
+
+/* Remove axis label backgrounds that might create sidebar */
+.highcharts-axis-labels rect,
+.highcharts-yaxis-labels rect,
+.highcharts-yaxis .highcharts-axis-labels rect {
+  fill: transparent !important;
+  stroke: none !important;
+  display: none !important;
+}
+
+/* Ensure plot area uses full width */
+.highcharts-plot-background {
+  fill: #0f172a !important;
+}
+
+/* Remove any left-side scrollbars or controls */
+.highcharts-scrollbar-left,
+.highcharts-scrollbar-vertical,
+.highcharts-scrollbar-y {
+  display: none !important;
+}
+
+/* Ensure chart uses 100% width */
+.highcharts-root {
+  width: 100% !important;
+}
+
+.highcharts-container {
+  width: 100% !important;
+  margin-left: 0 !important;
+  padding-left: 0 !important;
+}
+
+/* Range selector buttons */
+.highcharts-button-box {
+  fill: #1e293b !important;
+  stroke: #334155 !important;
+  stroke-width: 1 !important;
+}
+
+.highcharts-button text {
+  fill: #94a3b8 !important;
+  font-weight: 600 !important;
+}
+
+.highcharts-button-pressed .highcharts-button-box {
+  fill: #4f46e5 !important;
+  stroke: #6366f1 !important;
+}
+
+.highcharts-button-pressed text {
+  fill: white !important;
+}
+
+.highcharts-button:hover .highcharts-button-box {
+  fill: #334155 !important;
+}
+
+.highcharts-button:hover text {
+  fill: white !important;
+}
+
+/* Tooltip */
+.highcharts-tooltip-box {
+  fill: #1e293b !important;
+  fill-opacity: 0.95 !important;
+  stroke: #475569 !important;
+  stroke-width: 1 !important;
+}
+
+.highcharts-tooltip text {
+  fill: #e2e8f0 !important;
+}
+
+.highcharts-label-box {
+  fill: #1e293b !important;
+  stroke: #475569 !important;
+}
+
+/* Navigator */
+.highcharts-navigator-mask-inside {
+  fill: #0f172a !important;
+  fill-opacity: 0.3 !important;
+}
+
+.highcharts-navigator-mask-outside {
+  fill: #0f172a !important;
+  fill-opacity: 0.7 !important;
+}
+
+.highcharts-navigator-series {
+  fill: #3b82f6 !important;
+  stroke: #3b82f6 !important;
+}
+
+.highcharts-navigator-outline {
+  stroke: #475569 !important;
+}
+
+.highcharts-navigator-handle {
+  fill: #334155 !important;
+  stroke: #94a3b8 !important;
+}
+
+/* Scrollbar */
+.highcharts-scrollbar-track {
+  fill: #1e293b !important;
+  stroke: #334155 !important;
+}
+
+.highcharts-scrollbar-thumb {
+  fill: #475569 !important;
+  stroke: #64748b !important;
+}
+
+.highcharts-scrollbar-button {
+  fill: #334155 !important;
+  stroke: #475569 !important;
+}
+
+.highcharts-scrollbar-arrow {
+  fill: #94a3b8 !important;
+}
+
+/* Stock tools */
+.highcharts-stocktools-wrapper {
+  background: #0f172a !important;
+  border: 1px solid #334155 !important;
+}
+
+.highcharts-stocktools-toolbar {
+  background: #0f172a !important;
+}
+
+.highcharts-stocktools-toolbar li button {
+  background: #1e293b !important;
+  border: 1px solid #334155 !important;
+  color: #94a3b8 !important;
+}
+
+.highcharts-stocktools-toolbar li button:hover {
+  background: #334155 !important;
+  border-color: #475569 !important;
+  color: white !important;
+}
+
+.highcharts-stocktools-toolbar li.highcharts-active button {
+  background: #4f46e5 !important;
+  border-color: #6366f1 !important;
+  color: white !important;
+}
+
+/* Legend */
+.highcharts-legend-box {
+  fill: #1e293b !important;
+  stroke: #334155 !important;
+}
+
+.highcharts-legend-item text {
+  fill: #94a3b8 !important;
+}
+
+.highcharts-legend-item:hover text {
+  fill: white !important;
+}
+
+/* Data labels */
+.highcharts-data-label text {
+  fill: #e2e8f0 !important;
+}
+
+.highcharts-data-label-box {
+  fill: #1e293b !important;
+  stroke: #475569 !important;
+}
+
+/* Credits */
+.highcharts-credits {
+  fill: #64748b !important;
+}
+
+/* ===========================
+   Responsive Utilities
+   =========================== */
+@layer utilities {
+
+  /* Hide on touch devices */
+  @media (hover: none) {
+    .hover-only {
+      display: none;
+    }
+  }
+
+  /* Safe area padding for mobile */
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+}
+
+/* ===========================
+   Print Styles
+   =========================== */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+}

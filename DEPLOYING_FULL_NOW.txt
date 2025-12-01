@@ -1,0 +1,10 @@
+Deploying full Edge Function with complete calculations...
+
+This includes:
+- Yahoo Finance integration  
+- Period-specific calculations (2024-2025)
+- All performance metrics
+- Smart filtering for stocks without data
+- Allocation, diversity, contribution
+
+Stand by...
