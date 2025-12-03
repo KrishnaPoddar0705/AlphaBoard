@@ -11,6 +11,8 @@ import JoinOrganization from './components/organization/JoinOrganization';
 import AdminDashboard from './components/organization/AdminDashboard';
 import OrganizationSettings from './components/organization/OrganizationSettings';
 import PrivacySettings from './components/settings/PrivacySettings';
+import ResearchLibrary from './pages/ResearchLibrary';
+import ReportDetail from './pages/ReportDetail';
 import { useAuth } from './hooks/useAuth';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -66,6 +68,16 @@ function App() {
           <Route path="/settings/privacy" element={
             <PrivateRoute>
               <PrivacySettings />
+            </PrivateRoute>
+          } />
+          <Route path="/research" element={
+            <PrivateRoute>
+              <ResearchLibrary />
+            </PrivateRoute>
+          } />
+          <Route path="/research/:id" element={
+            <PrivateRoute>
+              <ReportDetail />
             </PrivateRoute>
           } />
         </Route>

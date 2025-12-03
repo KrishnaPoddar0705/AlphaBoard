@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Debug Auth - Research Upload</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: monospace;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 10px 5px;
+            background: #00ff00;
+            border: none;
+            color: #000;
+            cursor: pointer;
+            font-family: monospace;
+            font-weight: bold;
+        }
+
+        .result {
+            background: #000;
+            padding: 15px;
+            margin: 10px 0;
+            border: 1px solid #00ff00;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .error {
+            color: #ff0000;
+        }
+
+        .success {
+            color: #00ff00;
+        }
+
+        .warning {
+            color: #ffff00;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Research Upload Debug Tool</h1>
+    <p>Run these tests to diagnose auth issues:</p>
+
+    <button onclick="test1()">1. Check Session</button>
+    <button onclick="test2()">2. Check Env Vars</button>
+    <button onclick="test3()">3. Check Organization</button>
+    <button onclick="test4()">4. Test CORS</button>
+    <button onclick="test5()">5. Test Upload Auth</button>
+
+    <div id="output"></div>
+
+    <script>
+        // REPLACE THESE WITH YOUR ACTUAL VALUES
+        const SUPABASE_URL = 'https://odfavebjfcwsovumrefx.supabase.co';
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        function log(message, className = '') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `result ${className}`;
+            div.textContent = message;
+            output.appendChild(div);
+        }
+
+        async function test1() {
+            log('=== TEST 1: Check Session ===');
+            try {
+                const { data, error } = await supabase.auth.getSession();
+
+                if (error) {
+                    log(`❌ Error: ${error.message}`, 'error');
+                    return;
+                }
+
+                if (!data.session) {
+                    log('❌ No active session - You need to log in!', 'error');
+                    log('Go to your app and log in first', 'warning');
+                    return;
+                }
+
+                log('✅ Session found!', 'success');
+                log(`User ID: ${data.session.user.id}`);
+                log(`Email: ${data.session.user.email}`);
+                log(`Token (first 50 chars): ${data.session.access_token.substring(0, 50)}...`);
+                log(`Expires: ${new Date(data.session.expires_at * 1000).toLocaleString()}`);
+            } catch (e) {
+                log(`❌ Exception: ${e.message}`, 'error');
+            }
+        }
+
+        async function test2() {
+            log('=== TEST 2: Check Environment Variables ===');
+            log(`SUPABASE_URL: ${SUPABASE_URL}`);
+            log(`ANON_KEY (first 50): ${SUPABASE_ANON_KEY.substring(0, 50)}...`);
+
+            if (SUPABASE_ANON_KEY === 'YOUR_ANON_KEY_HERE') {
+                log('❌ You need to replace the ANON_KEY in this file!', 'error');
+                log('Copy it from your .env file', 'warning');
+            } else {
+                log('✅ Environment variables look good', 'success');
+            }
+        }
+
+        async function test3() {
+            log('=== TEST 3: Check Organization Membership ===');
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (!session) {
+                    log('❌ Not logged in', 'error');
+                    return;
+                }
+
+                const { data, error } = await supabase
+                    .from('user_organization_membership')
+                    .select('*, organizations(name)')
+                    .eq('user_id', session.user.id);
+
+                if (error) {
+                    log(`❌ Error: ${error.message}`, 'error');
+                    return;
+                }
+
+                if (!data || data.length === 0) {
+                    log('❌ User is NOT in any organization!', 'error');
+                    log('You need to create or join an organization', 'warning');
+                    return;
+                }
+
+                log('✅ Organization membership found!', 'success');
+                log(`Organization: ${data[0].organizations.name}`);
+                log(`Role: ${data[0].role}`);
+                log(`Org ID: ${data[0].organization_id}`);
+            } catch (e) {
+                log(`❌ Exception: ${e.message}`, 'error');
+            }
+        }
+
+        async function test4() {
+            log('=== TEST 4: Test CORS Preflight ===');
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (!session) {
+                    log('❌ Not logged in', 'error');
+                    return;
+                }
+
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/upload-research-report`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                    }
+                });
+
+                log(`Status: ${response.status}`);
+
+                if (response.status === 204) {
+                    log('✅ CORS preflight passed!', 'success');
+                } else {
+                    log(`❌ CORS failed with status ${response.status}`, 'error');
+                    log('Function might not be deployed', 'warning');
+                }
+            } catch (e) {
+                log(`❌ Exception: ${e.message}`, 'error');
+            }
+        }
+
+        async function test5() {
+            log('=== TEST 5: Test Upload Authentication ===');
+            try {
+                const { data: { session } } = await supabase.auth.getSession();
+
+                if (!session) {
+                    log('❌ Not logged in', 'error');
+                    return;
+                }
+
+                // Try to hit the endpoint without a file (will fail but show auth is working)
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/upload-research-report`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${session.access_token}`,
+                        'apikey': SUPABASE_ANON_KEY,
+                    },
+                    body: new FormData(), // Empty form
+                });
+
+                const text = await response.text();
+                let json;
+                try {
+                    json = JSON.parse(text);
+                } catch {
+                    json = { error: text };
+                }
+
+                log(`Status: ${response.status}`);
+                log(`Response: ${JSON.stringify(json, null, 2)}`);
+
+                if (json.error === 'User must belong to an organization to upload reports') {
+                    log('✅ Auth working, but need organization!', 'warning');
+                } else if (json.error === 'No file uploaded') {
+                    log('✅ Auth working! (Expected file error)', 'success');
+                } else if (json.error === 'Unauthorized' || json.error === 'Auth session missing') {
+                    log('❌ Auth is NOT working', 'error');
+                    log('Check that apikey header is being sent', 'warning');
+                } else {
+                    log('Response received, check details above', 'warning');
+                }
+            } catch (e) {
+                log(`❌ Exception: ${e.message}`, 'error');
+            }
+        }
+
+        // Auto-run test 1 on load
+        window.onload = () => {
+            log('👋 Ready! Click buttons above to run tests');
+            log('Make sure to update SUPABASE_ANON_KEY in this file first!', 'warning');
+        };
+    </script>
+</body>
+
+</html>

@@ -1,7 +1,7 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, Trophy, LogOut, User, BarChart2, Building2, Settings, Users } from 'lucide-react';
+import { LayoutDashboard, Trophy, LogOut, User, BarChart2, Building2, Settings, Users, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Layout() {
@@ -68,6 +68,12 @@ export default function Layout() {
                                     <Link to={`/analyst/${session.user.id}/performance`} className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                         <BarChart2 className="w-4 h-4 mr-2" />
                                         Performance
+                                    </Link>
+                                )}
+                                {session?.user?.id && organization && (
+                                    <Link to="/research" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <FileText className="w-4 h-4 mr-2" />
+                                        Institutional Memory
                                     </Link>
                                 )}
                                 {organization && organization.role === 'admin' && (
