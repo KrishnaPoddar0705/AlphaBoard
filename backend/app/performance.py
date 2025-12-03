@@ -432,13 +432,9 @@ def compute_profitable_weeks(user_id: str) -> float:
 
 
 def get_cached_performance_summary(user_id: str) -> Optional[Dict]:
-    """Get cached performance summary from database"""
-    try:
-        res = supabase.table("performance_summary_cache").select("*").eq("user_id", user_id).execute()
-        if res.data and len(res.data) > 0:
-            return res.data[0]
-    except Exception as e:
-        print(f"Error fetching cached summary: {e}")
+    """Get cached performance summary from database - currently disabled"""
+    # The performance_summary_cache table doesn't exist yet
+    # Using direct performance table queries instead
     return None
 
 
@@ -727,37 +723,12 @@ def calculate_comprehensive_performance(user_id: str) -> Dict:
         'median_holding_period_days': median_holding_period
     }
     
-    # Cache the results
-    try:
-        # Cache summary
-        supabase.table("performance_summary_cache").upsert({
-            "user_id": user_id,
-            **summary_metrics,
-            "last_updated": datetime.now().isoformat()
-        }).execute()
-        
-        # Cache monthly returns
-        for entry in monthly_returns:
-            supabase.table("monthly_returns_matrix").upsert({
-                "user_id": user_id,
-                "year": entry['year'],
-                "month": entry['month'],
-                "return_pct": entry['return_pct']
-            }).execute()
-        
-        # Cache daily metrics (sample - cache last 30 days)
-        recent_returns = returns_df.tail(30)
-        for _, row in recent_returns.iterrows():
-            supabase.table("performance_metrics_cache").upsert({
-                "user_id": user_id,
-                "date": row['date'].isoformat(),
-                "daily_return": float(row['daily_return']),
-                "portfolio_value": float(row['portfolio_value']),
-                "benchmark_return": float(row['benchmark_return']),
-                "benchmark_value": float(row['benchmark_value'])
-            }).execute()
-    except Exception as e:
-        print(f"Error caching performance data: {e}")
+    # Cache the results - Disabled as cache tables don't exist yet
+    # TODO: Create cache tables for better performance when querying historical data
+    # - performance_summary_cache
+    # - monthly_returns_matrix  
+    # - performance_metrics_cache
+    pass
     
     return {
         'summary_metrics': summary_metrics,

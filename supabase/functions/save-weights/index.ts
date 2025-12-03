@@ -86,11 +86,28 @@ serve(async (req) => {
       )
     }
 
+    // Get user's organization_id
+    let organizationId: string | null = null
+    try {
+      const { data: membership } = await supabaseClient
+        .from('user_organization_membership')
+        .select('organization_id')
+        .eq('user_id', userId)
+        .single()
+      
+      if (membership) {
+        organizationId = membership.organization_id
+      }
+    } catch (e) {
+      // User might not be in an organization, continue with null
+    }
+
     // Insert new weights
     const weightsToInsert = weights.map(w => ({
       user_id: userId,
       ticker: w.ticker,
-      weight_pct: w.weight
+      weight_pct: w.weight,
+      organization_id: organizationId
     }))
 
     const { data, error: insertError } = await supabaseClient

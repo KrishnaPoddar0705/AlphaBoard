@@ -144,6 +144,9 @@ def create_rec_endpoint(rec: RecommendationCreate, user_id: str, background_task
     
     data['user_id'] = user_id
     
+    # DON'T set organization_id on recommendations - they follow the user's profile.organization_id
+    # This allows recommendations to be portable when users move between organizations
+    
     # Force entry price check
     if data['entry_price'] == 0:
          price = get_current_price(data['ticker'])
@@ -215,6 +218,7 @@ def create_rec_endpoint(rec: RecommendationCreate, user_id: str, background_task
                 "target_price": float(price_target),
                 "target_date": target_date_str
             }
+            # DON'T set organization_id - price targets follow user's current profile
             supabase.table("price_targets").insert(price_target_data).execute()
         except Exception as e:
             # Log error but don't fail the recommendation creation
@@ -254,20 +258,47 @@ def create_price_target(price_target: PriceTargetCreate, user_id: str = Query(..
     Price targets are immutable once created.
     """
     try:
+        print(f"Creating price target for user_id={user_id}, ticker={price_target.ticker}, target_price={price_target.target_price}")
+        
+        # DON'T fetch organization_id - price targets follow user's current profile
         data = {
             "user_id": user_id,
             "ticker": price_target.ticker,
-            "target_price": price_target.target_price,
+            "target_price": float(price_target.target_price),
             "target_date": price_target.target_date.isoformat() if price_target.target_date else None
         }
+        # organization_id is NOT set - follows user's profile.organization_id
         
-        res = supabase.table("price_targets").insert(data).execute()
+        print(f"Inserting price target data: {data}")
         
-        if not res.data:
-            raise HTTPException(status_code=500, detail="Failed to create price target")
+        try:
+            res = supabase.table("price_targets").insert(data).execute()
+            print(f"Insert response: {res}")
+        except Exception as insert_error:
+            print(f"Supabase insert exception: {type(insert_error).__name__}: {str(insert_error)}")
+            import traceback
+            traceback.print_exc()
+            raise HTTPException(status_code=500, detail=f"Database insert error: {str(insert_error)}")
         
+        # Check for errors in the response (Supabase Python client may raise exceptions instead)
+        if hasattr(res, 'error') and res.error:
+            print(f"Supabase error in response: {res.error}")
+            error_msg = str(res.error) if isinstance(res.error, dict) else res.error
+            raise HTTPException(status_code=500, detail=f"Database error: {error_msg}")
+        
+        if not res.data or len(res.data) == 0:
+            print(f"No data returned from insert. Response object: {res}, type: {type(res)}")
+            raise HTTPException(status_code=500, detail="Failed to create price target - no data returned")
+        
+        print(f"Successfully created price target: {res.data[0]}")
         return res.data[0]
+    except HTTPException:
+        # Re-raise HTTP exceptions as-is
+        raise
     except Exception as e:
+        print(f"Unexpected exception creating price target: {type(e).__name__}: {str(e)}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error creating price target: {str(e)}")
 
 @app.get("/price-targets/{ticker}")
@@ -852,13 +883,11 @@ def get_leaderboard_performance():
     Returns sorted list by alpha or sharpe ratio.
     """
     try:
-        # Fetch all users with performance data
-        res = supabase.table("performance_summary_cache").select("*, profiles(username)").execute()
+        # Use the basic performance table (no cache needed)
+        res = supabase.table("performance").select("*, profiles(username)").execute()
         
         if not res.data:
-            # Fallback to basic performance table
-            res = supabase.table("performance").select("*, profiles(username)").execute()
-            return res.data or []
+            return []
         
         # Sort by alpha_pct descending
         sorted_data = sorted(res.data, key=lambda x: x.get('alpha_pct', 0) or 0, reverse=True)
@@ -866,7 +895,9 @@ def get_leaderboard_performance():
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Error fetching leaderboard performance: {str(e)}")
+        print(f"Error fetching leaderboard performance: {str(e)}")
+        # Return empty list instead of raising exception to prevent UI errors
+        return []
 
 @app.post("/api/performance/recompute")
 def recompute_performance(user_id: str, background_tasks: BackgroundTasks):

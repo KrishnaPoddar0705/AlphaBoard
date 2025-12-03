@@ -163,3 +163,207 @@ export async function calculatePortfolioReturns(
   return data as PortfolioReturnsResponse;
 }
 
+// ============================================================================
+// Organization Edge Functions
+// ============================================================================
+
+interface CreateOrganizationRequest {
+  name: string;
+  adminUserId?: string;
+}
+
+interface CreateOrganizationResponse {
+  organizationId: string;
+  joinCode: string;
+  name: string;
+}
+
+interface JoinOrganizationRequest {
+  userId?: string;
+  joinCode: string;
+}
+
+interface JoinOrganizationResponse {
+  success: boolean;
+  organizationId: string;
+  organizationName: string;
+}
+
+interface OrganizationUser {
+  userId: string;
+  username: string | null;
+  email: string | null;
+  role: 'admin' | 'analyst';
+  joinedAt: string;
+}
+
+interface OrganizationUsersResponse {
+  analysts: OrganizationUser[];
+  admins: OrganizationUser[];
+  totalMembers: number;
+}
+
+interface AnalystPerformance {
+  userId: string;
+  username: string | null;
+  returns: {
+    '1M': number;
+    '3M': number;
+    '6M': number;
+    '12M': number;
+  };
+  sharpe: number;
+  volatility: number;
+  drawdown: number;
+  totalRecommendations: number;
+  openPositions: number;
+  closedPositions: number;
+  winRate: number;
+}
+
+interface OrganizationPerformanceResponse {
+  analysts: AnalystPerformance[];
+  totalAnalysts: number;
+}
+
+/**
+ * Create a new organization
+ */
+export async function createOrganization(
+  name: string,
+  adminUserId?: string
+): Promise<CreateOrganizationResponse> {
+  const headers = await getAuthHeaders();
+  
+  const response = await fetch(`${EDGE_FUNCTION_URL}/create-organization`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ name, adminUserId } as CreateOrganizationRequest),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to create organization');
+  }
+
+  return response.json();
+}
+
+/**
+ * Join an organization using a join code
+ */
+export async function joinOrganization(
+  joinCode: string,
+  userId?: string
+): Promise<JoinOrganizationResponse> {
+  const headers = await getAuthHeaders();
+  
+  const response = await fetch(`${EDGE_FUNCTION_URL}/join-organization`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ userId, joinCode } as JoinOrganizationRequest),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to join organization');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get all users in an organization (admin-only)
+ */
+export async function getOrganizationUsers(
+  organizationId: string
+): Promise<OrganizationUsersResponse> {
+  const headers = await getAuthHeaders();
+  
+  const response = await fetch(
+    `${EDGE_FUNCTION_URL}/get-organization-users?organizationId=${organizationId}`,
+    {
+      method: 'GET',
+      headers,
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get organization users');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get performance metrics for all analysts in an organization (admin-only)
+ */
+export async function getOrganizationPerformance(
+  organizationId: string
+): Promise<OrganizationPerformanceResponse> {
+  const headers = await getAuthHeaders();
+  
+  const response = await fetch(
+    `${EDGE_FUNCTION_URL}/get-organization-performance?organizationId=${organizationId}`,
+    {
+      method: 'GET',
+      headers,
+    }
+  );
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to get organization performance');
+  }
+
+  return response.json();
+}
+
+/**
+ * Remove an analyst from an organization (admin-only)
+ */
+export async function removeAnalyst(
+  organizationId: string,
+  analystUserId: string
+): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeaders();
+  
+  const response = await fetch(`${EDGE_FUNCTION_URL}/remove-analyst`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ organizationId, analystUserId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to remove analyst');
+  }
+
+  return response.json();
+}
+
+/**
+ * Update organization settings (admin-only)
+ */
+export async function updateOrganizationSettings(
+  organizationId: string,
+  name?: string,
+  settings?: Record<string, any>
+): Promise<{ success: boolean; organization: any }> {
+  const headers = await getAuthHeaders();
+  
+  const response = await fetch(`${EDGE_FUNCTION_URL}/update-organization-settings`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ organizationId, name, settings }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update organization settings');
+  }
+
+  return response.json();
+}
+

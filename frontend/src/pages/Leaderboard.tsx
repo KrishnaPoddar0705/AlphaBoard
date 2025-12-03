@@ -1,155 +1,218 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Award, TrendingUp, TrendingDown } from 'lucide-react';
+import { Award, TrendingUp, TrendingDown, Users, Globe, Building2 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
+import { useOrganization } from '../hooks/useOrganization';
 import { getPrice, getLeaderboardPerformance } from '../lib/api';
 import AnalystProfile from '../components/AnalystProfile/AnalystProfile';
 
-// Mock competitors to make the leaderboard look populated
-const MOCK_COMPETITORS = [
-    { user_id: 'mock1', username: 'Sarah Chen', total_ideas: 12, win_rate: 75, total_return_pct: 15.4, alpha_pct: 15.4, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Sarah' },
-    { user_id: 'mock2', username: 'Michael Ross', total_ideas: 8, win_rate: 62.5, total_return_pct: 12.8, alpha_pct: 12.8, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Michael' },
-    { user_id: 'mock3', username: 'Jessica Wu', total_ideas: 15, win_rate: 66.7, total_return_pct: 11.2, alpha_pct: 11.2, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Jessica' },
-    { user_id: 'mock4', username: 'David Miller', total_ideas: 6, win_rate: 50, total_return_pct: -2.5, alpha_pct: 9.5, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David' },
-    { user_id: 'mock5', username: 'Emily Davis', total_ideas: 10, win_rate: 60, total_return_pct: 8.7, alpha_pct: 8.7, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Emily' },
-];
+type LeaderboardType = 'organization' | 'public';
 
 export default function Leaderboard() {
     const { session } = useAuth();
+    const { organization, loading: orgLoading } = useOrganization();
     const [analysts, setAnalysts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedAnalyst, setSelectedAnalyst] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<LeaderboardType | null>(null);
+    const [hasInitialized, setHasInitialized] = useState(false);
 
+    // Set initial tab based on organization membership - only once when org loading completes
     useEffect(() => {
-        calculateLeaderboard();
-    }, [session]);
-
-    useEffect(() => {
-        // Also fetch performance-enhanced leaderboard
-        fetchPerformanceLeaderboard();
-    }, []);
-
-    const fetchPerformanceLeaderboard = async () => {
-        try {
-            const perfData = await getLeaderboardPerformance();
-            if (perfData && perfData.length > 0) {
-                // Merge performance data with existing analysts
-                setAnalysts(prev => {
-                    const merged = prev.map(analyst => {
-                        const perf = perfData.find((p: any) => p.user_id === analyst.user_id);
-                        if (perf) {
-                            return {
-                                ...analyst,
-                                sharpe_ratio: perf.sharpe_ratio,
-                                max_drawdown_pct: perf.max_drawdown_pct,
-                                profitable_weeks_pct: perf.profitable_weeks_pct,
-                                avg_risk_score: perf.avg_risk_score
-                            };
-                        }
-                        return analyst;
-                    });
-                    return merged.sort((a, b) => (b.alpha_pct || 0) - (a.alpha_pct || 0));
-                });
-            }
-        } catch (error) {
-            console.error('Error fetching performance leaderboard:', error);
+        if (!orgLoading && !hasInitialized) {
+            const initialTab = organization?.id ? 'organization' : 'public';
+            setActiveTab(initialTab);
+            setHasInitialized(true);
         }
-    };
+    }, [orgLoading, organization, hasInitialized]);
+
+    // Recalculate leaderboard when tab changes or organization changes
+    // Only trigger after initialization is complete
+    useEffect(() => {
+        if (!orgLoading && hasInitialized && activeTab) {
+            calculateLeaderboard();
+        }
+    }, [activeTab, hasInitialized, orgLoading]);
 
     const calculateLeaderboard = async () => {
+        // Don't proceed if still loading organization or not initialized
+        if (orgLoading || !hasInitialized || !activeTab) {
+            return;
+        }
+
+        setLoading(true);
         try {
-            let currentUserStats = {
-                user_id: session?.user?.id || 'current',
-                username: 'You',
-                total_ideas: 0,
-                win_rate: 0,
-                total_return_pct: 0,
-                alpha_pct: 0,
-                avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=You'
-            };
-
-            if (session?.user) {
-                const { data: recommendations } = await supabase
-                    .from('recommendations')
-                    .select('*')
-                    .eq('user_id', session.user.id);
-
-                if (recommendations && recommendations.length > 0) {
-                    // Filter out WATCHLIST items - they should not count towards portfolio performance
-                    const portfolioRecs = recommendations.filter(r => r.status !== 'WATCHLIST');
-
-                    if (portfolioRecs.length > 0) {
-                        // Fetch live prices for OPEN positions
-                        const openPositions = portfolioRecs.filter(r => r.status === 'OPEN');
-                        const prices: Record<string, number> = {};
-
-                        // Batch fetch would be better, but simple loop for now
-                        await Promise.all(openPositions.map(async (rec) => {
-                            try {
-                                const data = await getPrice(rec.ticker);
-                                if (data && data.price) {
-                                    prices[rec.ticker] = data.price;
-                                }
-                            } catch (e) {
-                                console.warn("Failed to fetch price for leaderboard", rec.ticker);
-                            }
-                        }));
-
-                        const totalIdeas = portfolioRecs.length;
-                        const wins = portfolioRecs.filter(r => {
-                            // Skip if entry_price is missing
-                            if (!r.entry_price) return false;
-
-                            let currentPrice = r.current_price; // Default to DB value
-                            if (r.status === 'OPEN' && prices[r.ticker]) {
-                                currentPrice = prices[r.ticker];
-                            } else if (r.status === 'CLOSED') {
-                                currentPrice = r.exit_price || r.current_price;
-                            }
-
-                            const ret = ((currentPrice - r.entry_price) / r.entry_price * 100) * (r.action === 'SELL' ? -1 : 1);
-                            return ret > 0;
-                        }).length;
-
-                        const totalReturn = portfolioRecs.reduce((acc, r) => {
-                            // Skip if entry_price is missing
-                            if (!r.entry_price) return acc;
-
-                            let currentPrice = r.current_price;
-                            if (r.status === 'OPEN' && prices[r.ticker]) {
-                                currentPrice = prices[r.ticker];
-                            } else if (r.status === 'CLOSED') {
-                                currentPrice = r.exit_price || r.current_price;
-                            }
-
-                            const ret = ((currentPrice - r.entry_price) / r.entry_price * 100) * (r.action === 'SELL' ? -1 : 1);
-                            return acc + ret;
-                        }, 0);
-
-                        currentUserStats = {
-                            ...currentUserStats,
-                            total_ideas: totalIdeas,
-                            win_rate: totalIdeas > 0 ? (wins / totalIdeas) * 100 : 0,
-                            total_return_pct: totalReturn, // Sum of returns for simplicity
-                            alpha_pct: totalReturn // Using total return as proxy for alpha for now
-                        };
-                    }
+            if (activeTab === 'organization') {
+                if (organization?.id) {
+                    await calculateOrganizationLeaderboard(organization.id);
+                } else {
+                    // User switched to org tab but has no org - show empty
+                    setAnalysts([]);
                 }
+            } else if (activeTab === 'public') {
+                await calculatePublicLeaderboard();
             }
-
-            // Combine and sort
-            const allAnalysts = [...MOCK_COMPETITORS, currentUserStats].sort((a, b) => b.alpha_pct - a.alpha_pct);
-            setAnalysts(allAnalysts);
-
         } catch (err) {
             console.error(err);
-            setAnalysts(MOCK_COMPETITORS);
+            setAnalysts([]);
         } finally {
             setLoading(false);
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-white">Loading leaderboard...</div>;
+    const calculateOrganizationLeaderboard = async (organizationId: string) => {
+        try {
+            // Get all members of the organization (without trying to join profiles)
+            const { data: memberships, error: membersError } = await supabase
+                .from('user_organization_membership')
+                .select('user_id, role')
+                .eq('organization_id', organizationId);
+
+            if (membersError) {
+                console.error('Error fetching organization members:', membersError);
+                setAnalysts([]);
+                return;
+            }
+
+            const memberUserIds = memberships?.map(m => m.user_id) || [];
+            
+            if (memberUserIds.length === 0) {
+                setAnalysts([]);
+                return;
+            }
+
+            // Create a map of user_id to role for quick lookup
+            const roleMap = new Map<string, 'admin' | 'analyst'>();
+            memberships?.forEach(m => {
+                roleMap.set(m.user_id, m.role as 'admin' | 'analyst');
+            });
+
+            // Fetch profiles for organization members
+            const { data: orgProfiles, error: profilesError } = await supabase
+                .from('profiles')
+                .select('id, username')
+                .in('id', memberUserIds)
+                .eq('organization_id', organizationId); // Ensure they belong to this org
+
+            if (profilesError) {
+                console.error('Error fetching organization profiles:', profilesError);
+                setAnalysts([]);
+                return;
+            }
+
+            // Create a map of user_id to username
+            const usernameMap = new Map<string, string>();
+            orgProfiles?.forEach(p => {
+                usernameMap.set(p.id, p.username || 'Unknown');
+            });
+
+            // Fetch performance for organization members only
+            const { data: orgPerformance, error: perfError } = await supabase
+                .from('performance')
+                .select('*')
+                .in('user_id', memberUserIds)
+                .order('alpha_pct', { ascending: false });
+
+            if (perfError) {
+                console.error('Error fetching organization performance:', perfError);
+                // Continue with empty performance data
+            }
+
+            const leaderboardData: any[] = [];
+
+            // Add organization members with their performance data
+            memberUserIds.forEach(userId => {
+                const username = usernameMap.get(userId) || 'Unknown';
+                const role = roleMap.get(userId) || 'analyst';
+                const perf = orgPerformance?.find(p => p.user_id === userId);
+
+                leaderboardData.push({
+                    user_id: userId,
+                    username: username,
+                    total_ideas: perf?.total_ideas || 0,
+                    win_rate: perf?.win_rate || 0,
+                    total_return_pct: perf?.total_return_pct || 0,
+                    alpha_pct: perf?.alpha_pct || 0,
+                    sharpe_ratio: perf?.sharpe_ratio || null,
+                    role: role,
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+                });
+            });
+
+            // Sort by alpha_pct
+            const allAnalysts = leaderboardData.sort((a, b) => (b.alpha_pct || 0) - (a.alpha_pct || 0));
+            setAnalysts(allAnalysts);
+        } catch (err) {
+            console.error('Error calculating organization leaderboard:', err);
+            setAnalysts([]);
+        }
+    };
+
+    const calculatePublicLeaderboard = async () => {
+        try {
+            // Fetch ONLY public leaderboard (users without org, not private)
+            const { data: publicProfiles } = await supabase
+                .from('profiles')
+                .select('id, username')
+                .is('organization_id', null)
+                .eq('is_private', false);
+
+            const publicUserIds = publicProfiles?.map(p => p.id) || [];
+            
+            if (publicUserIds.length === 0) {
+                setAnalysts([]);
+                return;
+            }
+
+            // Create a map of user_id to username
+            const usernameMap = new Map<string, string>();
+            publicProfiles?.forEach(p => {
+                usernameMap.set(p.id, p.username || 'Unknown');
+            });
+
+            // Fetch performance for public users only
+            const { data: publicPerformance, error: perfError } = await supabase
+                .from('performance')
+                .select('*')
+                .in('user_id', publicUserIds)
+                .order('alpha_pct', { ascending: false });
+
+            if (perfError) {
+                console.error('Error fetching public performance:', perfError);
+                // Continue with empty performance data
+            }
+
+            const leaderboardData: any[] = [];
+            
+            // Add public users with their performance data
+            publicUserIds.forEach(userId => {
+                const username = usernameMap.get(userId) || 'Unknown';
+                const perf = publicPerformance?.find(p => p.user_id === userId);
+
+                leaderboardData.push({
+                    user_id: userId,
+                    username: username,
+                    total_ideas: perf?.total_ideas || 0,
+                    win_rate: perf?.win_rate || 0,
+                    total_return_pct: perf?.total_return_pct || 0,
+                    alpha_pct: perf?.alpha_pct || 0,
+                    sharpe_ratio: perf?.sharpe_ratio || null,
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+                });
+            });
+
+            // Sort by alpha_pct
+            const allAnalysts = leaderboardData.sort((a, b) => (b.alpha_pct || 0) - (a.alpha_pct || 0));
+            setAnalysts(allAnalysts);
+        } catch (err) {
+            console.error('Error calculating public leaderboard:', err);
+            setAnalysts([]);
+        }
+    };
+
+    if (orgLoading || loading) {
+        return <div className="p-8 text-center text-white">Loading leaderboard...</div>;
+    }
 
     return (
         <div className="space-y-8 relative">
@@ -159,10 +222,48 @@ export default function Leaderboard() {
 
             <div className="text-center py-4 relative z-10">
                 <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200">
-                    Analyst Leaderboard
+                    {activeTab === 'organization' && organization 
+                        ? `${organization.name} Leaderboard` 
+                        : 'Public Leaderboard'}
                 </h1>
-                <p className="mt-2 text-blue-200/60 font-light">Top performers ranked by Alpha generation</p>
+                <p className="mt-2 text-blue-200/60 font-light">
+                    {activeTab === 'organization' && organization
+                        ? `Organization members ranked by Alpha generation`
+                        : 'Top public performers ranked by Alpha generation'}
+                </p>
             </div>
+
+            {/* Tabs */}
+            {organization?.id && (
+                <div className="flex justify-center gap-4 relative z-10">
+                    <button
+                        onClick={() => setActiveTab('organization')}
+                        className={`
+                            px-6 py-3 rounded-lg font-medium transition-all
+                            flex items-center gap-2
+                            ${activeTab === 'organization'
+                                ? 'bg-blue-500/20 text-blue-200 border border-blue-400/30'
+                                : 'bg-white/5 text-white/60 hover:bg-white/10 border border-transparent'}
+                        `}
+                    >
+                        <Building2 className="w-4 h-4" />
+                        {organization.name}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('public')}
+                        className={`
+                            px-6 py-3 rounded-lg font-medium transition-all
+                            flex items-center gap-2
+                            ${activeTab === 'public'
+                                ? 'bg-blue-500/20 text-blue-200 border border-blue-400/30'
+                                : 'bg-white/5 text-white/60 hover:bg-white/10 border border-transparent'}
+                        `}
+                    >
+                        <Globe className="w-4 h-4" />
+                        Public Leaderboard
+                    </button>
+                </div>
+            )}
 
             <div className="glass-panel rounded-3xl overflow-hidden max-w-6xl mx-auto relative z-10">
                 <table className="min-w-full divide-y divide-white/10">
@@ -204,6 +305,9 @@ export default function Leaderboard() {
                                         <img src={analyst.avatar} alt={analyst.username} className="w-8 h-8 rounded-full bg-white/10" />
                                         <div className="font-medium text-white">{analyst.username}</div>
                                         {analyst.username === 'You' && <span className="text-xs bg-indigo-500/30 px-2 py-0.5 rounded text-indigo-200">Me</span>}
+                                        {activeTab === 'organization' && organization && analyst.role === 'admin' && (
+                                            <span className="text-xs bg-purple-500/30 px-2 py-0.5 rounded text-purple-200">Admin</span>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap text-sm text-white/70">
@@ -230,6 +334,15 @@ export default function Leaderboard() {
                                 </td>
                             </tr>
                         ))}
+                        {analysts.length === 0 && (
+                            <tr>
+                                <td colSpan={7} className="px-6 py-8 text-center text-white/50">
+                                    {activeTab === 'organization' && organization
+                                        ? `No members found in ${organization.name}.`
+                                        : 'No public analysts found.'}
+                                </td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

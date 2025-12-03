@@ -1,11 +1,45 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, Trophy, LogOut, User, BarChart2 } from 'lucide-react';
+import { LayoutDashboard, Trophy, LogOut, User, BarChart2, Building2, Settings, Users } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 export default function Layout() {
     const { session } = useAuth();
     const navigate = useNavigate();
+    const [organization, setOrganization] = useState<{ id: string; name: string; role: string } | null>(null);
+    const [loadingOrg, setLoadingOrg] = useState(true);
+
+    useEffect(() => {
+        if (session?.user?.id) {
+            fetchOrganization();
+        } else {
+            setLoadingOrg(false);
+        }
+    }, [session]);
+
+    const fetchOrganization = async () => {
+        try {
+            const { data, error } = await supabase
+                .from('user_organization_membership')
+                .select('organization_id, role, organizations(id, name)')
+                .eq('user_id', session!.user!.id)
+                .single();
+
+            if (!error && data) {
+                const org = data.organizations as any;
+                setOrganization({
+                    id: data.organization_id,
+                    name: org?.name || 'Unknown',
+                    role: data.role,
+                });
+            }
+        } catch (err) {
+            console.error('Error fetching organization:', err);
+        } finally {
+            setLoadingOrg(false);
+        }
+    };
 
     const handleLogout = async () => {
         await supabase.auth.signOut();
@@ -34,6 +68,30 @@ export default function Layout() {
                                     <Link to={`/analyst/${session.user.id}/performance`} className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                         <BarChart2 className="w-4 h-4 mr-2" />
                                         Performance
+                                    </Link>
+                                )}
+                                {organization && organization.role === 'admin' && (
+                                    <Link to="/organization/admin" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Building2 className="w-4 h-4 mr-2" />
+                                        {organization.name}
+                                    </Link>
+                                )}
+                                {!organization && !loadingOrg && (
+                                    <div className="flex items-center gap-2">
+                                        <Link to="/organization/join" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                            <Users className="w-4 h-4 mr-2" />
+                                            Join Org
+                                        </Link>
+                                        <Link to="/organization/create" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                            <Building2 className="w-4 h-4 mr-2" />
+                                            Create Org
+                                        </Link>
+                                    </div>
+                                )}
+                                {session?.user?.id && (
+                                    <Link to="/settings/privacy" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Settings className="w-4 h-4 mr-2" />
+                                        Settings
                                     </Link>
                                 )}
                             </div>
