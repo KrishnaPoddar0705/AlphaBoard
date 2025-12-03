@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Award, TrendingUp, TrendingDown, Users, Globe, Building2 } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { Award, TrendingUp, TrendingDown, Globe, Building2 } from 'lucide-react';
 import { useOrganization } from '../hooks/useOrganization';
-import { getPrice, getLeaderboardPerformance } from '../lib/api';
 import AnalystProfile from '../components/AnalystProfile/AnalystProfile';
 
 type LeaderboardType = 'organization' | 'public';
 
 export default function Leaderboard() {
-    const { session } = useAuth();
     const { organization, loading: orgLoading } = useOrganization();
     const [analysts, setAnalysts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);

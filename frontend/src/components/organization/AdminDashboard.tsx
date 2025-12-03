@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import { getOrganizationUsers, getOrganizationPerformance } from '../../lib/edgeFunctions';
-import { Users, TrendingUp, BarChart3, ArrowRight, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon } from 'lucide-react';
+import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon } from 'lucide-react';
 
 interface OrganizationUser {
   userId: string;
@@ -16,11 +15,18 @@ interface OrganizationUser {
 interface Recommendation {
   id: string;
   ticker: string;
-  position: string;
+  position?: string;
   entry_price: number;
+  exit_price?: number;
+  action?: string;
+  status?: string;
   thesis: string;
-  created_at: string;
+  entry_date: string;
+  created_at?: string;
   screenshots?: string[];
+  images?: string[];
+  final_return_pct?: number;
+  final_alpha_pct?: number;
 }
 
 interface PriceTarget {
@@ -59,7 +65,6 @@ export default function AdminDashboard() {
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [users, setUsers] = useState<OrganizationUser[]>([]);
   const [performance, setPerformance] = useState<AnalystPerformance[]>([]);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [expandedAnalyst, setExpandedAnalyst] = useState<string | null>(null);
   const [analystRecommendations, setAnalystRecommendations] = useState<Record<string, Recommendation[]>>({});
@@ -99,7 +104,6 @@ export default function AdminDashboard() {
         return;
       }
 
-      setIsAdmin(true);
       const org = membership.organizations as any;
       const orgId = membership.organization_id;
       setOrganizationId(orgId);

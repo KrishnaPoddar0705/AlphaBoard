@@ -12,7 +12,6 @@ export default function CreateOrganization() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [joinCode, setJoinCode] = useState<string | null>(null);
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -29,7 +28,6 @@ export default function CreateOrganization() {
     try {
       const result = await createOrganization(organizationName.trim(), session.user.id);
       setJoinCode(result.joinCode);
-      setOrganizationId(result.organizationId);
       setSuccess(true);
     } catch (err: any) {
       setError(err.message || 'Failed to create organization');
