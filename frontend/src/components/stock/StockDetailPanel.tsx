@@ -36,6 +36,7 @@ import { useAuth } from '../../hooks/useAuth';
 import NewsCard from '../NewsCard';
 import PodcastPlayer from '../PodcastPlayer';
 import PodcastList from '../PodcastList';
+import { PriceTargetTimeline } from './PriceTargetTimeline';
 
 interface StockDetailPanelProps {
     stock: any;
@@ -332,6 +333,11 @@ export function StockDetailPanel({
                             )}
                         </div>
                     </Card>
+                </div>
+
+                {/* Price Target Timeline Section */}
+                <div className="px-6 py-4 border-b border-white/5">
+                    <PriceTargetTimeline ticker={stock.ticker} />
                 </div>
 
                 {/* Sticky Tabs */}

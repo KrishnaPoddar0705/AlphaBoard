@@ -68,6 +68,8 @@ export default function Dashboard() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showWeightPanel, setShowWeightPanel] = useState(false);
     const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+    const [priceTarget, setPriceTarget] = useState<string>('');
+    const [targetDate, setTargetDate] = useState<string>('');
 
     // Ref for polling interval
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -361,9 +363,11 @@ export default function Dashboard() {
                 benchmark_ticker: "^NSEI",
                 entry_date: new Date().toISOString(),
                 status: isWatchlistAdd ? 'WATCHLIST' : 'OPEN',
-                images: imageUrls
+                images: imageUrls,
+                // price_target and target_date are handled separately via the API
+                price_target: priceTarget ? parseFloat(priceTarget) : null,
+                target_date: targetDate ? new Date(targetDate).toISOString() : null
             };
-
 
             // Use API endpoint to create recommendation
             try {
@@ -371,9 +375,21 @@ export default function Dashboard() {
                 await createRecommendation(newRec, session.user.id);
             } catch (apiError: any) {
                 // If API fails, fallback to direct Supabase insert
+                // Remove price_target and target_date for direct insert since they're not in recommendations table
+                const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
                 console.warn('API create failed, using direct insert:', apiError);
-                const { error: sbError } = await supabase.from('recommendations').insert([newRec]);
+                const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
                 if (sbError) throw sbError;
+
+                // If we had a price target, create it separately
+                if (price_target) {
+                    try {
+                        const { createPriceTarget } = await import('../lib/api');
+                        await createPriceTarget(ticker, price_target, target_date, session.user.id);
+                    } catch (ptError) {
+                        console.warn('Failed to create price target in fallback:', ptError);
+                    }
+                }
             }
 
             await fetchRecommendations();
@@ -541,6 +557,8 @@ export default function Dashboard() {
         setHasSearched(false);
         setIsWatchlistAdd(false);
         setSelectedImages([]);
+        setPriceTarget('');
+        setTargetDate('');
     };
 
     if (!session) return (
@@ -795,6 +813,32 @@ export default function Dashboard() {
                                                         placeholder="0.00"
                                                     />
                                                 </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Price Target (Optional)</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">₹</span>
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={priceTarget}
+                                                        onChange={(e) => setPriceTarget(e.target.value)}
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Time Horizon (Optional)</label>
+                                                <input
+                                                    type="date"
+                                                    value={targetDate}
+                                                    onChange={(e) => setTargetDate(e.target.value)}
+                                                    className="block w-full px-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                    min={new Date().toISOString().split('T')[0]}
+                                                />
                                             </div>
                                         </div>
                                     )}

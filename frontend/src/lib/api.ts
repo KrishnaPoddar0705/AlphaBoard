@@ -245,3 +245,28 @@ export const getPortfolioContribution = async (userId: string) => {
     const res = await api.get(`/api/portfolio/contribution/${userId}`);
     return res.data;
 };
+
+// --- Price Target Endpoints ---
+
+export const createPriceTarget = async (ticker: string, targetPrice: number, targetDate: string | null, userId: string) => {
+    const res = await api.post('/price-targets', {
+        ticker,
+        target_price: targetPrice,
+        target_date: targetDate || null
+    }, {
+        params: { user_id: userId }
+    });
+    return res.data;
+};
+
+export const getPriceTargets = async (ticker: string, userId: string) => {
+    const res = await api.get(`/price-targets/${ticker}`, {
+        params: { user_id: userId }
+    });
+    return res.data;
+};
+
+export const getAnalystPriceTargets = async (analystUserId: string, ticker: string) => {
+    const res = await api.get(`/price-targets/analyst/${analystUserId}/${ticker}`);
+    return res.data;
+};

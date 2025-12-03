@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Request
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Request, Query
 from fastapi.responses import StreamingResponse
 import base64
 import json
@@ -8,7 +8,8 @@ from .models import (
     ELI5Request, ELI5Response, ThesisGenerateRequest, ThesisResponse,
     ExportPDFRequest, ExportNotionRequest,
     PodcastSingleStockRequest, PodcastPortfolioRequest, PodcastResponse,
-    PerformanceMetricsResponse, MonthlyReturnsMatrix, PortfolioAllocation
+    PerformanceMetricsResponse, MonthlyReturnsMatrix, PortfolioAllocation,
+    PriceTargetCreate, PriceTargetResponse
 )
 from .market import (
     get_current_price, 
@@ -135,6 +136,12 @@ def create_rec_endpoint(rec: RecommendationCreate, user_id: str, background_task
     # I'll stick to logic.py approach.
     
     data = rec.dict()
+    
+    # Extract price_target and target_date before inserting into recommendations table
+    # These are stored separately in the price_targets table
+    price_target = data.pop('price_target', None)
+    target_date = data.pop('target_date', None)
+    
     data['user_id'] = user_id
     
     # Force entry price check
@@ -191,6 +198,28 @@ def create_rec_endpoint(rec: RecommendationCreate, user_id: str, background_task
     if not res.data:
         raise HTTPException(status_code=500, detail="Failed to create recommendation")
     
+    # If price_target is provided, create a price target entry in the price_targets table
+    if price_target is not None:
+        try:
+            # target_date might already be a string (ISO format) from frontend
+            target_date_str = None
+            if target_date:
+                if isinstance(target_date, str):
+                    target_date_str = target_date
+                else:
+                    target_date_str = target_date.isoformat()
+            
+            price_target_data = {
+                "user_id": user_id,
+                "ticker": data['ticker'],
+                "target_price": float(price_target),
+                "target_date": target_date_str
+            }
+            supabase.table("price_targets").insert(price_target_data).execute()
+        except Exception as e:
+            # Log error but don't fail the recommendation creation
+            print(f"Warning: Failed to create price target: {str(e)}")
+    
     # Rebalance weights and calculate position_size for all positions
     from .performance import rebalance_portfolio_weights
     background_tasks.add_task(rebalance_portfolio_weights, user_id)
@@ -215,6 +244,66 @@ def get_leaderboard():
 def trigger_update(user_id: str):
     update_user_performance(user_id)
     return {"status": "updated"}
+
+# PRICE TARGET ENDPOINTS
+
+@app.post("/price-targets", response_model=PriceTargetResponse)
+def create_price_target(price_target: PriceTargetCreate, user_id: str = Query(...)):
+    """
+    Create a new price target for a user+ticker combination.
+    Price targets are immutable once created.
+    """
+    try:
+        data = {
+            "user_id": user_id,
+            "ticker": price_target.ticker,
+            "target_price": price_target.target_price,
+            "target_date": price_target.target_date.isoformat() if price_target.target_date else None
+        }
+        
+        res = supabase.table("price_targets").insert(data).execute()
+        
+        if not res.data:
+            raise HTTPException(status_code=500, detail="Failed to create price target")
+        
+        return res.data[0]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating price target: {str(e)}")
+
+@app.get("/price-targets/{ticker}")
+def get_price_targets(ticker: str, user_id: str = Query(...)):
+    """
+    Get all price targets for current user's ticker, ordered by creation date.
+    """
+    try:
+        res = supabase.table("price_targets")\
+            .select("*")\
+            .eq("user_id", user_id)\
+            .eq("ticker", ticker)\
+            .order("created_at", desc=False)\
+            .execute()
+        
+        return res.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching price targets: {str(e)}")
+
+@app.get("/price-targets/analyst/{analyst_user_id}/{ticker}")
+def get_analyst_price_targets(analyst_user_id: str, ticker: str):
+    """
+    Get all price targets for a specific analyst's ticker, ordered by creation date.
+    Used for displaying in analyst profile.
+    """
+    try:
+        res = supabase.table("price_targets")\
+            .select("*")\
+            .eq("user_id", analyst_user_id)\
+            .eq("ticker", ticker)\
+            .order("created_at", desc=False)\
+            .execute()
+        
+        return res.data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching analyst price targets: {str(e)}")
 
 # NEWS ENDPOINTS
 

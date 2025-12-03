@@ -13,6 +13,8 @@ class RecommendationCreate(BaseModel):
     thesis: Optional[str] = None
     images: Optional[List[str]] = []
     weight_pct: Optional[float] = None  # Optional weight percentage (0-100)
+    price_target: Optional[float] = None  # Price target for timeline
+    target_date: Optional[datetime] = None  # Optional time horizon for price target
 
 class RecommendationResponse(RecommendationCreate):
     id: UUID
@@ -130,4 +132,18 @@ class PodcastResponse(BaseModel):
     keyPoints: Optional[List[str]] = None
     highlights: Optional[List[PodcastHighlight]] = None
     audioBase64: Optional[str] = None
+
+# Price Target Models
+class PriceTargetCreate(BaseModel):
+    ticker: str
+    target_price: float
+    target_date: Optional[datetime] = None
+
+class PriceTargetResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    ticker: str
+    target_price: float
+    created_at: datetime
+    target_date: Optional[datetime] = None
 

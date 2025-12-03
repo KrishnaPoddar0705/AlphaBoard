@@ -3,6 +3,7 @@ import { X, User, Clock, Award } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getPrice } from '../../lib/api';
 import { PerformanceMetricsV2 } from '../PerformanceMetricsV2';
+import { PriceTargetTimeline } from '../stock/PriceTargetTimeline';
 
 interface AnalystProfileProps {
     analyst: any;
@@ -154,7 +155,7 @@ export default function AnalystProfile({ analyst, onClose }: AnalystProfileProps
                                                     <span>Current: ₹{rec.current_price?.toFixed(2)}</span>
                                                 </div>
                                                 {rec.thesis && (
-                                                    <div className="bg-black/20 rounded p-3 text-sm text-gray-300 italic">
+                                                    <div className="bg-black/20 rounded p-3 text-sm text-gray-300 italic mb-3">
                                                         "{rec.thesis}"
                                                         {rec.images && rec.images.length > 0 && (
                                                             <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
@@ -174,6 +175,10 @@ export default function AnalystProfile({ analyst, onClose }: AnalystProfileProps
                                                         )}
                                                     </div>
                                                 )}
+                                                {/* Price Target Timeline for this stock */}
+                                                <div className="mt-3">
+                                                    <PriceTargetTimeline ticker={rec.ticker} userId={analyst.user_id} />
+                                                </div>
                                             </div>
                                         ))
                                     )}
