@@ -19,6 +19,8 @@ import { Search, AlertCircle, Upload, X, Menu } from 'lucide-react';
 import { IdeaList } from '../components/ideas/IdeaList';
 import { StockDetailPanel } from '../components/stock/StockDetailPanel';
 import { usePanelWidth, usePanelTransition } from '../hooks/useLayout';
+import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
+import { setCachedReturn, calculateReturn } from '../lib/returnsCache';
 
 // Mock data fallback
 const MOCK_STOCKS = [
@@ -56,6 +58,7 @@ export default function DashboardNew() {
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [isLoadingPrices, setIsLoadingPrices] = useState(false);
 
     // Panel transition hook
     const { shouldRender: shouldRenderDetail, isAnimating: isDetailAnimating } = usePanelTransition(!!selectedStock);
@@ -63,7 +66,9 @@ export default function DashboardNew() {
     // Effects
     useEffect(() => {
         if (session?.user) {
-            fetchRecommendations();
+            // Clear expired cache entries on mount
+            clearExpiredPrices();
+            loadRecommendationsWithPrices();
             startPricePolling();
         }
         return () => {
@@ -80,50 +85,151 @@ export default function DashboardNew() {
 
     // Data Fetching Functions
     const fetchRecommendations = async () => {
-        if (!session?.user) return;
+        if (!session?.user) return [];
         try {
             const { data, error } = await supabase
                 .from('recommendations')
                 .select('*')
                 .eq('user_id', session.user.id)
                 .order('entry_date', { ascending: false });
-            if (data) setRecommendations(data);
             if (error) throw error;
+            return data || [];
         } catch (err) {
             console.warn('Could not fetch recommendations', err);
+            return [];
+        }
+    };
+
+    const loadRecommendationsWithPrices = async () => {
+        if (!session?.user) return;
+        setIsLoadingPrices(true);
+        try {
+            // First fetch recommendations from DB
+            const data = await fetchRecommendations();
+            if (!data || data.length === 0) {
+                setRecommendations([]);
+                setIsLoadingPrices(false);
+                return;
+            }
+
+            // Then update prices (awaits completion)
+            await updatePricesForRecommendations(data);
+        } catch (err) {
+            console.error("Failed to load recommendations with prices", err);
+        } finally {
+            setIsLoadingPrices(false);
         }
     };
 
     const startPricePolling = () => {
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-        updatePricesForRecommendations(recommendations);
-        pollIntervalRef.current = setInterval(() => {
-            setRecommendations(prev => {
-                const activeRecs = prev.filter(r => r.status === 'OPEN' || r.status === 'WATCHLIST');
-                if (activeRecs.length > 0) updatePricesForRecommendations(prev);
-                return prev;
+
+        pollIntervalRef.current = setInterval(async () => {
+            if (!session?.user) return;
+            setRecommendations(prevRecs => {
+                // Only update prices for active or watchlist recommendations
+                const activeRecs = prevRecs.filter(r => r.status === 'OPEN' || r.status === 'WATCHLIST');
+                if (activeRecs.length > 0) {
+                    updatePricesForRecommendations(prevRecs);
+                }
+                return prevRecs;
             });
-        }, 10000);
+        }, 60000); // Poll every 60 seconds
     };
 
     const updatePricesForRecommendations = async (currentRecs: any[]) => {
-        if (currentRecs.length === 0) return;
+        if (currentRecs.length === 0) {
+            setRecommendations([]);
+            return;
+        }
+
         const uniqueTickers = Array.from(new Set(
             currentRecs.filter(r => r.status === 'OPEN' || r.status === 'WATCHLIST').map(r => r.ticker)
         ));
 
+        // First, update recommendations with cached prices immediately (no flash of 0%)
+        const cachedUpdates: Record<string, number> = {};
         for (const symbol of uniqueTickers) {
+            const cachedPrice = getCachedPrice(symbol);
+            if (cachedPrice !== null) {
+                cachedUpdates[symbol] = cachedPrice;
+            }
+        }
+
+        // Start with recommendations, applying cached prices if available
+        let updatedRecs = currentRecs.map(rec => {
+            if (rec.ticker in cachedUpdates && (rec.status === 'OPEN' || rec.status === 'WATCHLIST')) {
+                const cachedPrice = cachedUpdates[rec.ticker];
+                const entryPrice = rec.entry_price || 0;
+
+                // Calculate and cache return immediately
+                if (entryPrice > 0) {
+                    const returnValue = calculateReturn(
+                        entryPrice,
+                        cachedPrice,
+                        rec.action || 'BUY'
+                    );
+                    setCachedReturn(rec.ticker, entryPrice, returnValue);
+                }
+
+                return {
+                    ...rec,
+                    current_price: cachedPrice,
+                    last_updated: new Date().toISOString()
+                };
+            }
+            return rec;
+        });
+
+        // Update state with cached prices first
+        setRecommendations(updatedRecs);
+
+        // Then, fetch prices only for tickers with expired or missing cache
+        const tickersToFetch = uniqueTickers.filter(symbol => !isPriceCacheValid(symbol));
+
+        // Fetch prices in parallel for better performance
+        const pricePromises = tickersToFetch.map(async (symbol) => {
             try {
                 const priceData = await getPrice(symbol);
-                setRecommendations(prev => prev.map(rec => {
-                    if (rec.ticker === symbol && (rec.status === 'OPEN' || rec.status === 'WATCHLIST')) {
-                        return { ...rec, current_price: priceData.price, last_updated: new Date().toISOString() };
-                    }
-                    return rec;
-                }));
+                return { symbol, price: priceData.price };
             } catch (e) {
                 console.warn(`Failed to update price for ${symbol}`, e);
+                return null;
             }
+        });
+
+        const priceResults = await Promise.all(pricePromises);
+
+        // Update cache and recommendations with fetched prices
+        const finalUpdates: Record<string, number> = {};
+        priceResults.forEach(result => {
+            if (result) {
+                setCachedPrice(result.symbol, result.price);
+                finalUpdates[result.symbol] = result.price;
+            }
+        });
+
+        // Apply fetched prices and calculate returns
+        if (Object.keys(finalUpdates).length > 0) {
+            setRecommendations(prev => prev.map(rec => {
+                if (rec.ticker in finalUpdates && (rec.status === 'OPEN' || rec.status === 'WATCHLIST')) {
+                    const newPrice = finalUpdates[rec.ticker];
+                    const entryPrice = rec.entry_price || 0;
+
+                    // Calculate and cache return immediately
+                    if (entryPrice > 0) {
+                        const returnValue = calculateReturn(
+                            entryPrice,
+                            newPrice,
+                            rec.action || 'BUY'
+                        );
+                        setCachedReturn(rec.ticker, entryPrice, returnValue);
+                    }
+
+                    return { ...rec, current_price: newPrice, last_updated: new Date().toISOString() };
+                }
+                return rec;
+            }));
         }
     };
 
@@ -350,6 +456,7 @@ export default function DashboardNew() {
                     ${isMobile && !isMobileDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
                 `}>
                     <IdeaList
+                        isLoading={isLoadingPrices}
                         recommendations={recommendations}
                         selectedStock={selectedStock}
                         setSelectedStock={setSelectedStock}

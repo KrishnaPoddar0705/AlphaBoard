@@ -22,6 +22,7 @@ import { useAuth } from '../../hooks/useAuth';
 import DateRangePicker from '../ui/DateRangePicker';
 import PodcastPlayer from '../PodcastPlayer';
 import PodcastList from '../PodcastList';
+import { getReturnFromCacheOrCalculate, clearExpiredReturns } from '../../lib/returnsCache';
 
 interface IdeaListProps {
     recommendations: any[];
@@ -78,6 +79,11 @@ export function IdeaList({
         displayedRecommendations.map(r => r.ticker).sort().join(','),
         [displayedRecommendations]
     );
+
+    // Clear expired returns cache on mount
+    useEffect(() => {
+        clearExpiredReturns();
+    }, []);
 
     // Fetch company names for displayed recommendations
     useEffect(() => {
@@ -473,14 +479,20 @@ function IdeaListItem({
     const entry = rec.entry_price || 0;
     const isClosed = rec.status === 'CLOSED';
     const current = isClosed ? (rec.exit_price || entry) : rec.current_price;
-    const hasCurrentPrice = current !== undefined && current !== null;
 
-    // Calculate return
+    // Calculate return using cache
     let ret = 0;
     if (isClosed && rec.final_return_pct !== undefined) {
+        // For closed positions, use final_return_pct if available
         ret = rec.final_return_pct;
-    } else if (hasCurrentPrice && entry > 0 && viewMode !== 'watchlist') {
-        ret = ((current - entry) / entry * 100) * (rec.action === 'SELL' ? -1 : 1);
+    } else if (entry > 0 && viewMode !== 'watchlist') {
+        // Use the smart cache function which prioritizes current_price when available
+        ret = getReturnFromCacheOrCalculate(
+            rec.ticker,
+            entry,
+            current || null,
+            rec.action || 'BUY'
+        );
     }
 
     const isPositive = ret >= 0;
