@@ -8,16 +8,17 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-requested-with, accept, origin',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Max-Age': '86400',
 }
 
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
+    return new Response(null, {
       status: 204,
-      headers: corsHeaders 
+      headers: corsHeaders
     })
   }
 
@@ -78,7 +79,7 @@ serve(async (req) => {
 
     // Verify user exists in auth.users using admin client
     const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
-    
+
     if (userError || !authUser?.user) {
       console.error('User verification error:', userError)
       return new Response(
@@ -204,7 +205,7 @@ serve(async (req) => {
         .update({ organization_id: orgId })
         .eq('user_id', targetUserId)
         .is('organization_id', null)
-      
+
       if (priceTargetsError) {
         console.warn('Warning: Could not update price_targets:', priceTargetsError)
       }
@@ -220,7 +221,7 @@ serve(async (req) => {
         .update({ organization_id: orgId })
         .eq('user_id', targetUserId)
         .is('organization_id', null)
-      
+
       if (podcastsError) {
         console.warn('Warning: Could not update podcasts:', podcastsError)
       }

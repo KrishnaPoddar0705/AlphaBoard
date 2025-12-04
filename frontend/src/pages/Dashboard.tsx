@@ -20,7 +20,6 @@ import { searchStocks, getPrice } from '../lib/api';
 import { Search, AlertCircle, Upload, X, Menu } from 'lucide-react';
 import { StockDetailPanel } from '../components/stock/StockDetailPanel';
 import { IdeaList } from '../components/ideas/IdeaList';
-import { PerformanceMetricsV2 } from '../components/PerformanceMetricsV2';
 import { PortfolioWeightPanelV2 } from '../components/portfolio/PortfolioWeightPanelV2';
 import { usePanelTransition } from '../hooks/useLayout';
 import { Settings } from 'lucide-react';
@@ -47,7 +46,6 @@ export default function Dashboard() {
     const [showModal, setShowModal] = useState(false);
     const [selectedStock, setSelectedStock] = useState<any>(null);
     const [viewMode, setViewMode] = useState<'active' | 'watchlist' | 'history'>('active');
-    const [mainView, setMainView] = useState<'ideas' | 'performance'>('ideas');
     const [isMobile, setIsMobile] = useState(false);
     const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
@@ -582,62 +580,32 @@ export default function Dashboard() {
                     ${isMobile && !isMobileDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
                     h-full overflow-hidden flex flex-col bg-slate-900
                 `}>
-                    {/* Tab Switcher */}
-                    <div className="flex border-b border-white/10 bg-[#1e293b]">
-                        <button
-                            onClick={() => setMainView('ideas')}
-                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${mainView === 'ideas'
-                                ? 'border-indigo-500 text-white'
-                                : 'border-transparent text-gray-400 hover:text-white'
-                                }`}
-                        >
-                            My Ideas
-                        </button>
-                        <button
-                            onClick={() => setMainView('performance')}
-                            className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${mainView === 'performance'
-                                ? 'border-indigo-500 text-white'
-                                : 'border-transparent text-gray-400 hover:text-white'
-                                }`}
-                        >
-                            Performance
-                        </button>
-                    </div>
-
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto relative">
-                        {mainView === 'ideas' ? (
-                            <>
-                                {/* Weight Panel Toggle Button */}
-                                {session?.user && (
-                                    <div className="p-3 border-b border-white/10">
-                                        <button
-                                            onClick={() => setShowWeightPanel(!showWeightPanel)}
-                                            className="w-full px-3 py-2 text-sm font-medium text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors flex items-center justify-center gap-2"
-                                        >
-                                            <Settings className="w-4 h-4" />
-                                            {showWeightPanel ? 'Hide' : 'Show'} Portfolio Weights
-                                        </button>
-                                    </div>
-                                )}
-                                <IdeaList
-                                    isLoading={isLoadingPrices}
-                                    recommendations={recommendations}
-                                    selectedStock={selectedStock}
-                                    setSelectedStock={setSelectedStock}
-                                    viewMode={viewMode}
-                                    setViewMode={setViewMode}
-                                    handleCloseIdea={handleCloseIdea}
-                                    handlePromoteWatchlist={handlePromoteWatchlist}
-                                    handleDeleteWatchlist={handleDeleteWatchlist}
-                                    onNewIdea={() => { setIsWatchlistAdd(false); setShowModal(true); }}
-                                />
-                            </>
-                        ) : (
-                            session?.user && (
-                                <PerformanceMetricsV2 userId={session.user.id} />
-                            )
+                        {/* Weight Panel Toggle Button */}
+                        {session?.user && (
+                            <div className="p-3 border-b border-white/10">
+                                <button
+                                    onClick={() => setShowWeightPanel(!showWeightPanel)}
+                                    className="w-full px-3 py-2 text-sm font-medium text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Settings className="w-4 h-4" />
+                                    {showWeightPanel ? 'Hide' : 'Show'} Portfolio Weights
+                                </button>
+                            </div>
                         )}
+                        <IdeaList
+                            isLoading={isLoadingPrices}
+                            recommendations={recommendations}
+                            selectedStock={selectedStock}
+                            setSelectedStock={setSelectedStock}
+                            viewMode={viewMode}
+                            setViewMode={setViewMode}
+                            handleCloseIdea={handleCloseIdea}
+                            handlePromoteWatchlist={handlePromoteWatchlist}
+                            handleDeleteWatchlist={handleDeleteWatchlist}
+                            onNewIdea={() => { setIsWatchlistAdd(false); setShowModal(true); }}
+                        />
                     </div>
                 </div>
 
