@@ -15,6 +15,7 @@ export function useAuth() {
   const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
   const syncingRef = useRef(false);
   const hasSyncedRef = useRef(false);
+  const lastClerkUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!clerkLoaded) {
@@ -23,13 +24,42 @@ export function useAuth() {
     }
 
     if (!clerkUser) {
-      // No Clerk user, clear Supabase session
+      // No Clerk user, clear Supabase session and reset sync flags
       setSupabaseSession(null);
       setSupabaseUserId(null);
       setLoading(false);
       hasSyncedRef.current = false;
+      syncingRef.current = false;
+      lastClerkUserIdRef.current = null;
+      // Clear Supabase session
+      supabase.auth.signOut().catch(err => console.warn('Error clearing session:', err));
+      // Clear Supabase auth data from localStorage
+      const supabaseKeys = Object.keys(localStorage).filter(key => 
+        key.includes('supabase') || key.includes('sb-') || key.startsWith('sb_')
+      );
+      supabaseKeys.forEach(key => localStorage.removeItem(key));
       return;
     }
+
+    // Check if Clerk user has changed
+    const currentClerkUserId = clerkUser.id;
+    if (lastClerkUserIdRef.current && lastClerkUserIdRef.current !== currentClerkUserId) {
+      // User changed - clear everything and reset sync flags
+      console.log('Clerk user changed, clearing previous session');
+      setSupabaseSession(null);
+      setSupabaseUserId(null);
+      hasSyncedRef.current = false;
+      syncingRef.current = false;
+      // Clear Supabase session
+      supabase.auth.signOut().catch(err => console.warn('Error clearing session:', err));
+      // Clear Supabase auth data from localStorage
+      const supabaseKeys = Object.keys(localStorage).filter(key => 
+        key.includes('supabase') || key.includes('sb-') || key.startsWith('sb_')
+      );
+      supabaseKeys.forEach(key => localStorage.removeItem(key));
+    }
+    
+    lastClerkUserIdRef.current = currentClerkUserId;
 
     // Only sync once per Clerk user
     if (hasSyncedRef.current && syncingRef.current) {
@@ -45,17 +75,37 @@ export function useAuth() {
       
       try {
         // First, check if we already have a valid Supabase session
+        // BUT verify it matches the current Clerk user
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         
         if (existingSession && existingSession.user) {
-          // Verify session is still valid
+          // Verify session is still valid AND matches current Clerk user
           const { data: { user: supabaseUser } } = await supabase.auth.getUser();
           if (supabaseUser && supabaseUser.id === existingSession.user.id) {
-            setSupabaseSession(existingSession);
-            setSupabaseUserId(existingSession.user.id);
-            setLoading(false);
-            syncingRef.current = false;
-            return;
+            // Check if this Supabase user matches the current Clerk user
+            // Use getSupabaseUserIdForClerkUser helper to verify mapping
+            const mappedUserId = await getSupabaseUserIdForClerkUser(clerkUser.id);
+            
+            // If mapping exists and matches current session user, use the session
+            if (mappedUserId && mappedUserId === supabaseUser.id) {
+              setSupabaseSession(existingSession);
+              setSupabaseUserId(existingSession.user.id);
+              setLoading(false);
+              syncingRef.current = false;
+              return;
+            } else {
+              // Session exists but doesn't match current Clerk user - clear it
+              console.log('Supabase session does not match current Clerk user, clearing...');
+              await supabase.auth.signOut();
+              // Clear Supabase auth data from localStorage
+              const supabaseKeys = Object.keys(localStorage).filter(key => 
+                key.includes('supabase') || key.includes('sb-') || key.startsWith('sb_')
+              );
+              supabaseKeys.forEach(key => localStorage.removeItem(key));
+              // Clear state
+              setSupabaseSession(null);
+              setSupabaseUserId(null);
+            }
           }
         }
 
@@ -68,25 +118,52 @@ export function useAuth() {
             setSupabaseUserId(syncResult.userId);
           }
           
-          // Get the Supabase session
-          const { data: { session } } = await supabase.auth.getSession();
-          if (session && session.user) {
-            setSupabaseSession(session);
-            setSupabaseUserId(session.user.id);
-          } else if (syncResult.userId) {
-            // Session not available yet, but we have the Supabase user ID
-            // Try to get user info to create a compatibility session
+          // If we got a session from sync, use it immediately
+          if (syncResult.session && syncResult.session.access_token) {
+            setSupabaseSession(syncResult.session);
+            setSupabaseUserId(syncResult.session.user.id);
+            setLoading(false);
+            syncingRef.current = false;
+            return;
+          }
+          
+          // Wait for session to be created (with retries)
+          let retries = 0;
+          const maxRetries = 10;
+          const retryDelay = 500; // 500ms between retries
+          
+          while (retries < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && session.user && session.access_token) {
+              // Verify it's the right user
+              if (syncResult.userId && session.user.id === syncResult.userId) {
+                setSupabaseSession(session);
+                setSupabaseUserId(session.user.id);
+                setLoading(false);
+                syncingRef.current = false;
+                return;
+              }
+            }
+            
+            retries++;
+          }
+          
+          // If we still don't have a session but have a user ID, create compatibility session
+          if (syncResult.userId) {
             const { data: { user: supabaseUser } } = await supabase.auth.getUser();
             if (supabaseUser && supabaseUser.id === syncResult.userId) {
-              setSupabaseSession({
-                access_token: '', // Will be filled when session is available
-                refresh_token: '',
-                expires_in: 3600,
-                expires_at: Math.floor(Date.now() / 1000) + 3600,
-                token_type: 'bearer',
-                user: supabaseUser,
-              } as Session);
-              setSupabaseUserId(supabaseUser.id);
+              // Still try to get a real session
+              const { data: { session: finalSession } } = await supabase.auth.getSession();
+              if (finalSession && finalSession.access_token) {
+                setSupabaseSession(finalSession);
+                setSupabaseUserId(finalSession.user.id);
+              } else {
+                // Only use compatibility session as last resort
+                console.warn('Using compatibility session - real session not available');
+                setSupabaseUserId(supabaseUser.id);
+              }
             }
           }
         } else {
@@ -94,6 +171,11 @@ export function useAuth() {
           const mappedUserId = await getSupabaseUserIdForClerkUser(clerkUser.id);
           if (mappedUserId) {
             setSupabaseUserId(mappedUserId);
+            // Try one more time to get session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session && session.user && session.access_token) {
+              setSupabaseSession(session);
+            }
           }
           console.warn('Failed to sync Clerk user with Supabase');
         }
@@ -107,6 +189,14 @@ export function useAuth() {
 
     syncUser();
   }, [clerkUser?.id, clerkLoaded]); // Only depend on clerkUser.id, not the whole object
+  
+  // Reset sync when Clerk user changes
+  useEffect(() => {
+    if (clerkUser?.id !== lastClerkUserIdRef.current) {
+      hasSyncedRef.current = false;
+      syncingRef.current = false;
+    }
+  }, [clerkUser?.id]);
 
   // Listen for Supabase auth state changes
   useEffect(() => {

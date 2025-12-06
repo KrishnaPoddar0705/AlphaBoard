@@ -47,22 +47,22 @@ serve(async (req) => {
     }
 
     try {
-        // Get authorization header
-        const authHeader = req.headers.get('Authorization')
-        if (!authHeader) {
-            return new Response(
-                JSON.stringify({ error: 'Missing Authorization header' }),
-                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
+        // Parse request body first to check for Clerk user ID
+        const requestBody = await req.json().catch(() => ({}))
+        const { name, adminUserId, clerkUserId } = requestBody
 
-        // Extract token from Authorization header (format: "Bearer <token>")
-        const token = authHeader.replace('Bearer ', '').trim()
-        if (!token) {
-            return new Response(
-                JSON.stringify({ error: 'Invalid Authorization header format' }),
-                { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
+        // Get authorization header (only used if Clerk user ID is NOT provided)
+        const authHeader = req.headers.get('Authorization')
+        let token: string | null = null
+        
+        // Only parse token if we don't have Clerk user ID
+        // This prevents "Invalid token format" errors when anon key is sent
+        if (!clerkUserId && authHeader) {
+            const bearerToken = authHeader.replace('Bearer ', '').trim()
+            // Only use token if it looks like a JWT (has 3 parts separated by dots)
+            if (bearerToken.split('.').length === 3) {
+                token = bearerToken
+            }
         }
 
         // Get service role key for database operations
@@ -80,30 +80,172 @@ serve(async (req) => {
             serviceRoleKey,
         )
 
-        // Decode JWT token to get user ID (simple base64 decode of payload)
-        // JWT format: header.payload.signature
-        let userId: string | null = null
-        try {
-            const parts = token.split('.')
-            if (parts.length === 3) {
-                const payload = JSON.parse(
-                    atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
-                )
-                userId = payload.sub || payload.user_id || null
-            }
-        } catch (e) {
-            console.error('Error decoding token:', e)
-        }
+        // Request body already parsed above
 
-        if (!userId) {
+        // If we have a Clerk user ID, use it to look up Supabase user ID
+        let finalUserId: string | null = null
+        if (clerkUserId) {
+            console.log(`Looking up Supabase user for Clerk user: ${clerkUserId}`)
+            const { data: mapping, error: mappingError } = await supabaseAdmin
+                .from('clerk_user_mapping')
+                .select('supabase_user_id')
+                .eq('clerk_user_id', clerkUserId)
+                .maybeSingle()
+
+            if (!mappingError && mapping?.supabase_user_id) {
+                finalUserId = mapping.supabase_user_id
+                console.log(`Found Supabase user ID: ${finalUserId} for Clerk user: ${clerkUserId}`)
+            } else {
+                // No mapping found - call sync-clerk-user function internally
+                console.log(`No mapping found for Clerk user ${clerkUserId}, calling sync function...`)
+                
+                try {
+                    const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY')
+                    if (!clerkSecretKey) {
+                        return new Response(
+                            JSON.stringify({ 
+                                error: 'Server configuration error', 
+                                details: 'CLERK_SECRET_KEY not configured. Please contact support.' 
+                            }),
+                            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        )
+                    }
+
+                    // Fetch Clerk user info to get email
+                    const clerkApiUrl = 'https://api.clerk.com/v1'
+                    const clerkUserResponse = await fetch(`${clerkApiUrl}/users/${clerkUserId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${clerkSecretKey}`,
+                        },
+                    })
+
+                    if (!clerkUserResponse.ok) {
+                        const errorText = await clerkUserResponse.text()
+                        console.error('Failed to fetch Clerk user:', errorText)
+                        return new Response(
+                            JSON.stringify({ 
+                                error: 'Failed to fetch user from Clerk', 
+                                details: `Clerk API error: ${clerkUserResponse.status}` 
+                            }),
+                            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        )
+                    }
+
+                    const clerkUser = await clerkUserResponse.json()
+                    const email = clerkUser.email_addresses?.[0]?.email_address
+                    
+                    if (!email) {
+                        return new Response(
+                            JSON.stringify({ 
+                                error: 'Invalid Clerk user', 
+                                details: 'Clerk user has no email address' 
+                            }),
+                            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        )
+                    }
+
+                    // Create Supabase user directly (same logic as sync-clerk-user)
+                    const userMetadata: Record<string, any> = {}
+                    if (clerkUser.username) userMetadata.username = clerkUser.username
+                    if (clerkUser.first_name) userMetadata.first_name = clerkUser.first_name
+                    if (clerkUser.last_name) userMetadata.last_name = clerkUser.last_name
+                    userMetadata.clerk_user_id = clerkUserId
+
+                    const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+                        email: email,
+                        email_confirm: true,
+                        user_metadata: userMetadata,
+                    })
+
+                    if (createUserError || !newUser?.user) {
+                        console.error('Failed to create Supabase user:', createUserError)
+                        return new Response(
+                            JSON.stringify({ 
+                                error: 'Failed to create user', 
+                                details: createUserError?.message || 'Unknown error' 
+                            }),
+                            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        )
+                    }
+
+                    finalUserId = newUser.user.id
+                    console.log(`Created Supabase user ${finalUserId}`)
+                    
+                    // Create mapping
+                    const { error: mappingInsertError } = await supabaseAdmin
+                        .from('clerk_user_mapping')
+                        .insert({
+                            clerk_user_id: clerkUserId,
+                            supabase_user_id: finalUserId,
+                            email: email,
+                        })
+                    
+                    if (mappingInsertError) {
+                        console.error('Failed to create mapping:', mappingInsertError)
+                        // Continue anyway - user was created
+                    }
+                    
+                    // Create profile
+                    await supabaseAdmin
+                        .from('profiles')
+                        .insert({
+                            id: finalUserId,
+                            username: clerkUser.username || clerkUser.first_name || email.split('@')[0],
+                            role: 'analyst',
+                        })
+                        .catch(err => console.warn('Failed to create profile:', err))
+                    
+                    // Create performance record
+                    await supabaseAdmin
+                        .from('performance')
+                        .insert({ user_id: finalUserId })
+                        .catch(err => console.warn('Failed to create performance record:', err))
+                    
+                    console.log(`Auto-synced Clerk user ${clerkUserId} to Supabase user ${finalUserId}`)
+                } catch (syncError) {
+                    console.error('Error during auto-sync:', syncError)
+                    return new Response(
+                        JSON.stringify({ 
+                            error: 'Sync failed', 
+                            details: syncError instanceof Error ? syncError.message : String(syncError) 
+                        }),
+                        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    )
+                }
+            }
+        } else if (token) {
+            // Fallback to JWT token if no Clerk user ID provided
+            // Decode JWT token to get user ID (simple base64 decode of payload)
+            // JWT format: header.payload.signature
+            let userId: string | null = null
+            try {
+                const parts = token.split('.')
+                if (parts.length === 3) {
+                    const payload = JSON.parse(
+                        atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+                    )
+                    userId = payload.sub || payload.user_id || null
+                }
+            } catch (e) {
+                console.error('Error decoding token:', e)
+            }
+
+            if (!userId) {
+                return new Response(
+                    JSON.stringify({ error: 'Invalid token format or missing Clerk user ID' }),
+                    { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+            finalUserId = userId
+        } else {
             return new Response(
-                JSON.stringify({ error: 'Invalid token format' }),
+                JSON.stringify({ error: 'Missing authentication: provide either Clerk user ID or Authorization token' }),
                 { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
         // Verify user exists in auth.users using admin client
-        const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
+        const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(finalUserId)
 
         if (userError || !authUser?.user) {
             console.error('User verification error:', userError)
@@ -115,9 +257,6 @@ serve(async (req) => {
 
         const user = authUser.user
 
-        // Parse request body
-        const { name, adminUserId } = await req.json()
-
         // Validate input
         if (!name || typeof name !== 'string' || name.trim().length === 0) {
             return new Response(
@@ -127,10 +266,10 @@ serve(async (req) => {
         }
 
         // Use provided adminUserId or default to authenticated user
-        const adminId = adminUserId || userId
+        const adminId = adminUserId || finalUserId
 
         // Verify adminId matches authenticated user (security check)
-        if (adminId !== userId) {
+        if (adminId !== finalUserId) {
             return new Response(
                 JSON.stringify({ error: 'Cannot create organization for another user' }),
                 { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -236,11 +375,53 @@ serve(async (req) => {
 
         console.log(`Successfully created organization ${organization.id} for user ${adminId}`)
 
+        // Create organization in Clerk if Clerk user ID is provided
+        let clerkOrgId: string | null = null
+        if (clerkUserId) {
+            try {
+                const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY')
+                if (clerkSecretKey) {
+                    const clerkApiUrl = 'https://api.clerk.com/v1'
+                    const createOrgResponse = await fetch(`${clerkApiUrl}/organizations`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${clerkSecretKey}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            name: name.trim(),
+                            created_by: clerkUserId,
+                        }),
+                    })
+
+                    if (createOrgResponse.ok) {
+                        const clerkOrg = await createOrgResponse.json()
+                        clerkOrgId = clerkOrg.id
+                        console.log(`Created Clerk organization ${clerkOrgId} for Supabase org ${organization.id}`)
+                        
+                        // Store Clerk org ID in Supabase (add to organizations table if column exists)
+                        await supabaseAdmin
+                            .from('organizations')
+                            .update({ clerk_org_id: clerkOrgId })
+                            .eq('id', organization.id)
+                            .catch(err => console.warn('Could not update clerk_org_id:', err))
+                    } else {
+                        const error = await createOrgResponse.json().catch(() => ({}))
+                        console.warn('Failed to create Clerk organization:', error)
+                    }
+                }
+            } catch (error) {
+                console.warn('Error creating Clerk organization:', error)
+                // Non-critical, continue with Supabase organization
+            }
+        }
+
         return new Response(
             JSON.stringify({
                 organizationId: organization.id,
                 joinCode: joinCode,
                 name: organization.name,
+                clerkOrgId: clerkOrgId,
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )

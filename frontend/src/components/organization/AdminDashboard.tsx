@@ -306,20 +306,20 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400">Loading organization data...</div>
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
+        <div className="text-slate-300">Loading organization data...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-          <div className="text-red-600 mb-4">{error}</div>
+      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4">
+        <div className="max-w-md w-full glass rounded-xl shadow-xl p-8 text-center">
+          <div className="text-red-300 mb-4">{error}</div>
           <button
             onClick={() => navigate('/dashboard')}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-md hover:from-indigo-400 hover:to-purple-400 transition-all duration-200"
           >
             Go to Dashboard
           </button>
@@ -329,32 +329,32 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-[#0f172a] p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+          <h1 className="text-3xl font-bold text-white mb-2">
             Admin Dashboard
           </h1>
-          <p className="text-gray-600 mb-4">{organizationName}</p>
+          <p className="text-slate-300 mb-4">{organizationName}</p>
           
           {/* Join Code Section */}
           {joinCode && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="glass rounded-xl p-6 border border-indigo-500/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-blue-900 mb-1">Organization Join Code</p>
-                  <p className="text-xs text-blue-700 mb-2">
+                  <p className="text-sm font-medium text-slate-200 mb-1">Organization Join Code</p>
+                  <p className="text-xs text-slate-400 mb-2">
                     Share this code with analysts to join your organization
                   </p>
                   {showJoinCode ? (
-                    <code className="text-lg font-mono font-bold text-blue-600 bg-white px-3 py-2 rounded border border-blue-300">
+                    <code className="text-lg font-mono font-bold text-indigo-400 bg-slate-900/50 px-3 py-2 rounded border border-indigo-500/30">
                       {joinCode}
                     </code>
                   ) : (
                     <button
                       onClick={() => setShowJoinCode(true)}
-                      className="text-blue-600 hover:text-blue-800 font-medium text-sm underline"
+                      className="text-indigo-400 hover:text-indigo-300 font-medium text-sm underline transition-colors"
                     >
                       Click to reveal join code
                     </button>
@@ -366,7 +366,7 @@ export default function AdminDashboard() {
                       navigator.clipboard.writeText(joinCode);
                       alert('Join code copied to clipboard!');
                     }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
+                    className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-md hover:from-indigo-400 hover:to-purple-400 text-sm transition-all duration-200 shadow-lg shadow-indigo-500/25"
                   >
                     Copy Code
                   </button>
@@ -378,31 +378,31 @@ export default function AdminDashboard() {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass rounded-xl p-6 border border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Total Members</p>
-                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+                <p className="text-sm text-slate-400">Total Members</p>
+                <p className="text-2xl font-bold text-white">{users.length}</p>
               </div>
-              <Users className="w-8 h-8 text-blue-600" />
+              <Users className="w-8 h-8 text-indigo-400" />
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass rounded-xl p-6 border border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Analysts</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-slate-400">Analysts</p>
+                <p className="text-2xl font-bold text-white">
                   {users.filter(u => u.role === 'analyst').length}
                 </p>
               </div>
-              <BarChart3 className="w-8 h-8 text-green-600" />
+              <BarChart3 className="w-8 h-8 text-green-400" />
             </div>
           </div>
-          <div className="bg-white rounded-lg shadow p-6">
+          <div className="glass rounded-xl p-6 border border-white/10">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-600">Avg 12M Return</p>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-sm text-slate-400">Avg 12M Return</p>
+                <p className="text-2xl font-bold text-white">
                   {performance.length > 0
                     ? formatPercent(
                         performance.reduce((sum, p) => sum + p.returns['12M'], 0) /
@@ -411,88 +411,88 @@ export default function AdminDashboard() {
                     : 'N/A'}
                 </p>
               </div>
-              <TrendingUp className="w-8 h-8 text-purple-600" />
+              <TrendingUp className="w-8 h-8 text-purple-400" />
             </div>
           </div>
         </div>
 
         {/* Analyst Performance Table */}
-        <div className="bg-white rounded-lg shadow mb-8">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Analyst Performance</h2>
+        <div className="glass rounded-xl shadow-xl mb-8 border border-white/10">
+          <div className="p-6 border-b border-white/10">
+            <h2 className="text-xl font-bold text-white">Analyst Performance</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-white/10">
+              <thead className="bg-slate-800/50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider w-8">
                     
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                     Analyst
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                     Total Ideas
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                     Win Rate
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                     12M Return
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                     Sharpe
                   </th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody className="bg-slate-900/30 divide-y divide-white/10">
                 {performance.map((analyst) => (
                   <React.Fragment key={analyst.userId}>
-                    <tr className="hover:bg-gray-50 cursor-pointer" onClick={() => toggleAnalystDetails(analyst.userId)}>
+                    <tr className="hover:bg-slate-800/50 cursor-pointer transition-colors" onClick={() => toggleAnalystDetails(analyst.userId)}>
                       <td className="px-6 py-4">
                         {expandedAnalyst === analyst.userId ? (
-                          <ChevronUp className="w-5 h-5 text-gray-400" />
+                          <ChevronUp className="w-5 h-5 text-slate-400" />
                         ) : (
-                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                          <ChevronDown className="w-5 h-5 text-slate-400" />
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
+                        <div className="text-sm font-medium text-white">
                           {analyst.username || 'Unknown'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-slate-200">
                           {analyst.totalRecommendations}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-slate-200">
                           {analyst.winRate.toFixed(1)}%
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div
                           className={`text-sm font-medium ${
-                            analyst.returns['12M'] >= 0 ? 'text-green-600' : 'text-red-600'
+                            analyst.returns['12M'] >= 0 ? 'text-green-400' : 'text-red-400'
                           }`}
                         >
                           {formatPercent(analyst.returns['12M'])}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-slate-200">
                           {analyst.sharpe ? analyst.sharpe.toFixed(2) : 'N/A'}
                         </div>
                       </td>
                     </tr>
                     {expandedAnalyst === analyst.userId && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 bg-gray-50">
+                        <td colSpan={6} className="px-6 py-4 bg-slate-800/30">
                           <div className="space-y-6">
                             {/* All Recommendations with Details */}
                             <div>
-                              <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-lg">
+                              <h4 className="font-semibold text-white mb-3 flex items-center gap-2 text-lg">
                                 <FileText className="w-5 h-5" />
                                 All Recommendations ({analystRecommendations[analyst.userId]?.length || 0})
                               </h4>
@@ -506,50 +506,50 @@ export default function AdminDashboard() {
                                     ) || [];
                                     
                                     return (
-                                      <div key={rec.id} className="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                                      <div key={rec.id} className="bg-slate-800/50 p-5 rounded-lg border border-white/10 shadow-lg">
                                         {/* Recommendation Header */}
                                         <div className="flex justify-between items-start mb-4">
                                           <div className="flex items-center gap-3">
-                                            <span className="text-xl font-bold text-blue-600">{rec.ticker}</span>
+                                            <span className="text-xl font-bold text-indigo-400">{rec.ticker}</span>
                                             <span className={`px-3 py-1 text-sm font-semibold rounded ${
                                               rec.action === 'BUY' 
-                                                ? 'bg-green-100 text-green-800 border border-green-300' 
-                                                : 'bg-red-100 text-red-800 border border-red-300'
+                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
                                             }`}>
                                               {rec.action || 'BUY'}
                                             </span>
                                             <span className={`px-2 py-1 text-xs font-medium rounded ${
                                               rec.status === 'OPEN' 
-                                                ? 'bg-blue-100 text-blue-800' 
-                                                : 'bg-gray-100 text-gray-800'
+                                                ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' 
+                                                : 'bg-slate-700/50 text-slate-300 border border-white/10'
                                             }`}>
                                               {rec.status || 'OPEN'}
                                             </span>
                                           </div>
                                           <div className="text-right">
-                                            <div className="text-xs text-gray-500">Entry Date</div>
-                                            <div className="text-sm font-medium text-gray-700">{formatDate(rec.entry_date)}</div>
+                                            <div className="text-xs text-slate-400">Entry Date</div>
+                                            <div className="text-sm font-medium text-slate-200">{formatDate(rec.entry_date)}</div>
                                           </div>
                                         </div>
 
                                         {/* Price Information */}
-                                        <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-gray-50 rounded">
+                                        <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-slate-900/50 rounded border border-white/10">
                                           <div>
-                                            <div className="text-xs text-gray-600 mb-1">Entry Price</div>
-                                            <div className="text-lg font-semibold text-gray-900">${rec.entry_price}</div>
+                                            <div className="text-xs text-slate-400 mb-1">Entry Price</div>
+                                            <div className="text-lg font-semibold text-white">${rec.entry_price}</div>
                                           </div>
                                           {rec.exit_price && (
                                             <div>
-                                              <div className="text-xs text-gray-600 mb-1">Exit Price</div>
-                                              <div className="text-lg font-semibold text-gray-900">${rec.exit_price}</div>
+                                              <div className="text-xs text-slate-400 mb-1">Exit Price</div>
+                                              <div className="text-lg font-semibold text-white">${rec.exit_price}</div>
                                             </div>
                                           )}
                                           {tickerTargets.length > 0 && (
                                             <div>
-                                              <div className="text-xs text-gray-600 mb-1">Price Targets</div>
+                                              <div className="text-xs text-slate-400 mb-1">Price Targets</div>
                                               <div className="flex gap-2 flex-wrap">
                                                 {tickerTargets.map(t => (
-                                                  <span key={t.id} className="text-sm font-semibold text-purple-600">
+                                                  <span key={t.id} className="text-sm font-semibold text-purple-400">
                                                     ${t.target_price}
                                                   </span>
                                                 ))}
@@ -561,8 +561,8 @@ export default function AdminDashboard() {
                                         {/* Thesis */}
                                         {rec.thesis && (
                                           <div className="mb-4">
-                                            <div className="text-sm font-semibold text-gray-700 mb-2">Investment Thesis:</div>
-                                            <div className="text-sm text-gray-800 bg-blue-50 p-3 rounded border-l-4 border-blue-400">
+                                            <div className="text-sm font-semibold text-slate-200 mb-2">Investment Thesis:</div>
+                                            <div className="text-sm text-slate-300 bg-indigo-500/10 p-3 rounded border-l-4 border-indigo-500">
                                               {rec.thesis}
                                             </div>
                                           </div>
@@ -571,20 +571,20 @@ export default function AdminDashboard() {
                                         {/* Price Target Timeline */}
                                         {tickerTargets.length > 0 && (
                                           <div className="mb-4">
-                                            <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                            <div className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
                                               <Target className="w-4 h-4" />
                                               Price Target Timeline:
                                             </div>
                                             <div className="flex gap-3 overflow-x-auto pb-2">
                                               {tickerTargets.map(target => (
-                                                <div key={target.id} className="bg-purple-50 p-3 rounded border border-purple-200 min-w-[150px]">
-                                                  <div className="text-lg font-bold text-purple-700">${target.target_price}</div>
+                                                <div key={target.id} className="bg-purple-500/20 p-3 rounded border border-purple-500/30 min-w-[150px]">
+                                                  <div className="text-lg font-bold text-purple-400">${target.target_price}</div>
                                                   {target.target_date && (
-                                                    <div className="text-xs text-gray-600 mt-1">
+                                                    <div className="text-xs text-slate-400 mt-1">
                                                       Target: {formatDate(target.target_date)}
                                                     </div>
                                                   )}
-                                                  <div className="text-xs text-gray-500 mt-1">
+                                                  <div className="text-xs text-slate-500 mt-1">
                                                     Set: {formatDate(target.created_at)}
                                                   </div>
                                                 </div>
@@ -596,13 +596,13 @@ export default function AdminDashboard() {
                                         {/* Screenshots/Images */}
                                         {rec.images && rec.images.length > 0 && (
                                           <div>
-                                            <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                                            <div className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
                                               <ImageIcon className="w-4 h-4" />
                                               Attachments ({rec.images.length}):
                                             </div>
                                             <div className="flex gap-2 flex-wrap">
                                               {rec.images.map((image, idx) => (
-                                                <div key={idx} className="relative w-32 h-32 bg-gray-100 rounded border border-gray-300 overflow-hidden hover:opacity-90 cursor-pointer">
+                                                <div key={idx} className="relative w-32 h-32 bg-slate-800 rounded border border-white/10 overflow-hidden hover:opacity-90 cursor-pointer">
                                                   <img 
                                                     src={image} 
                                                     alt={`Attachment ${idx + 1}`}
@@ -619,7 +619,7 @@ export default function AdminDashboard() {
                                   })}
                                 </div>
                               ) : (
-                                <div className="text-center py-8 text-gray-500 bg-white rounded border border-gray-200">
+                                <div className="text-center py-8 text-slate-400 bg-slate-800/50 rounded border border-white/10">
                                   No recommendations yet
                                 </div>
                               )}
@@ -632,7 +632,7 @@ export default function AdminDashboard() {
                 ))}
                 {performance.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                    <td colSpan={6} className="px-6 py-4 text-center text-slate-400">
                       No analyst performance data available
                     </td>
                   </tr>
@@ -643,32 +643,32 @@ export default function AdminDashboard() {
         </div>
 
         {/* Members List */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-xl font-bold text-gray-900">Organization Members</h2>
+        <div className="glass rounded-xl shadow-xl border border-white/10">
+          <div className="p-6 border-b border-white/10">
+            <h2 className="text-xl font-bold text-white">Organization Members</h2>
           </div>
           <div className="p-6">
             <div className="space-y-4">
               {users.map((user) => (
                 <div
                   key={user.userId}
-                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50"
+                  className="flex items-center justify-between p-4 border border-white/10 rounded-lg hover:bg-slate-800/50 transition-colors"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <div className="font-medium text-gray-900">
+                      <div className="font-medium text-white">
                         {user.username || 'Unknown User'}
                       </div>
                       {user.role === 'admin' && (
-                        <span className="px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded">
+                        <span className="px-2 py-1 text-xs font-medium bg-purple-500/20 text-purple-400 rounded border border-purple-500/30">
                           Admin
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">
+                    <div className="text-sm text-slate-300 mt-1">
                       {user.email || 'No email'}
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
+                    <div className="text-xs text-slate-400 mt-1">
                       Joined {formatDate(user.joinedAt)}
                     </div>
                   </div>
@@ -676,7 +676,7 @@ export default function AdminDashboard() {
                     {user.userId !== session?.user?.id && (
                       <button
                         onClick={() => handleRemoveUser(user.userId, user.username || 'this user')}
-                        className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-md text-sm flex items-center gap-1 border border-red-200"
+                        className="px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-md text-sm flex items-center gap-1 border border-red-500/30 transition-colors"
                       >
                         <Trash2 className="w-4 h-4" />
                         Remove

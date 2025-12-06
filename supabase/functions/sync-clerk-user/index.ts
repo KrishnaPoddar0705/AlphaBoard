@@ -94,18 +94,39 @@ serve(async (req) => {
                 console.log(`Supabase user ${supabaseUserId} not found, recreating...`)
                 // Fall through to create new user
             } else {
-                // User exists, update mapping timestamp and return session
+                // User exists, update mapping timestamp
                 await supabaseAdmin
                     .from('clerk_user_mapping')
                     .update({ updated_at: new Date().toISOString() })
                     .eq('clerk_user_id', clerkUserId)
 
-                // Generate a session token for existing user
-                // Use admin API to create a magic link that can be used to sign in
-                const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+                // Generate a session token directly using admin API
+                // This creates an access token that can be used immediately
+                const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
                     type: 'magiclink',
                     email: email,
-                }).catch(() => ({ data: null }))
+                })
+
+                if (sessionError || !sessionData) {
+                    console.error('Error generating session link:', sessionError)
+                    // Fallback: return user ID, frontend will handle session creation
+                    return new Response(
+                        JSON.stringify({
+                            success: true,
+                            supabaseUserId,
+                            email,
+                            isNewUser: false,
+                            sessionToken: null,
+                        }),
+                        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    )
+                }
+
+                // Extract the token from the magic link
+                // The action_link contains a token we can use
+                const actionLink = sessionData.properties?.action_link || ''
+                const tokenMatch = actionLink.match(/[#&]token=([^&]+)/)
+                const sessionToken = tokenMatch ? tokenMatch[1] : sessionData.properties?.hashed_token || null
 
                 return new Response(
                     JSON.stringify({
@@ -113,8 +134,8 @@ serve(async (req) => {
                         supabaseUserId,
                         email,
                         isNewUser: false,
-                        magicLinkToken: linkData?.properties?.hashed_token || null,
-                        magicLink: linkData?.properties?.action_link || null,
+                        sessionToken: sessionToken,
+                        magicLink: actionLink,
                     }),
                     { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
                 )
@@ -204,12 +225,33 @@ serve(async (req) => {
 
         console.log(`Successfully synced Clerk user ${clerkUserId} to Supabase user ${supabaseUserId}`)
 
-        // Generate a magic link for session creation
-        // The frontend will use this to create a Supabase session
-        const { data: linkData } = await supabaseAdmin.auth.admin.generateLink({
+        // Generate a session token directly using admin API
+        // This creates an access token that can be used immediately
+        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
             type: 'magiclink',
             email: email,
-        }).catch(() => ({ data: null }))
+        })
+
+        if (sessionError || !sessionData) {
+            console.error('Error generating session link:', sessionError)
+            // Fallback: return user ID, frontend will handle session creation
+            return new Response(
+                JSON.stringify({
+                    success: true,
+                    supabaseUserId,
+                    email,
+                    isNewUser: true,
+                    sessionToken: null,
+                }),
+                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
+        // Extract the token from the magic link
+        // The action_link contains a token we can use
+        const actionLink = sessionData.properties?.action_link || ''
+        const tokenMatch = actionLink.match(/[#&]token=([^&]+)/)
+        const sessionToken = tokenMatch ? tokenMatch[1] : sessionData.properties?.hashed_token || null
 
         return new Response(
             JSON.stringify({
@@ -217,8 +259,8 @@ serve(async (req) => {
                 supabaseUserId,
                 email,
                 isNewUser: true,
-                magicLinkToken: linkData?.properties?.hashed_token || null,
-                magicLink: linkData?.properties?.action_link || null,
+                sessionToken: sessionToken,
+                magicLink: actionLink,
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
