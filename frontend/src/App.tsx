@@ -1,7 +1,9 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import AuthCallback from './pages/AuthCallback';
 import Dashboard from './pages/Dashboard';
 import Leaderboard from './pages/Leaderboard';
 import PublicLeaderboard from './pages/PublicLeaderboard';
@@ -13,14 +15,13 @@ import OrganizationSettings from './components/organization/OrganizationSettings
 import PrivacySettings from './components/settings/PrivacySettings';
 import ResearchLibrary from './pages/ResearchLibrary';
 import ReportDetail from './pages/ReportDetail';
-import { useAuth } from './hooks/useAuth';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
-  const { session, loading } = useAuth();
+  const { user, isLoaded } = useUser();
   
-  if (loading) return <div>Loading...</div>;
+  if (!isLoaded) return <div>Loading...</div>;
   
-  if (!session) {
+  if (!user) {
     return <Navigate to="/login" />;
   }
   
@@ -32,6 +33,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route element={<Layout />}>
           <Route path="/" element={
             <PrivateRoute>

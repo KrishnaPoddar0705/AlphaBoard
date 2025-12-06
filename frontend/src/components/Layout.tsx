@@ -1,29 +1,43 @@
 import { Link, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useClerk, useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
 import { LayoutDashboard, Trophy, LogOut, User, BarChart2, Building2, Settings, Users, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 export default function Layout() {
     const { session } = useAuth();
+    const { user } = useUser();
+    const { signOut } = useClerk();
     const navigate = useNavigate();
     const [organization, setOrganization] = useState<{ id: string; name: string; role: string } | null>(null);
     const [loadingOrg, setLoadingOrg] = useState(true);
 
     useEffect(() => {
-        if (session?.user?.id) {
+        if (user?.id) {
             fetchOrganization();
         } else {
             setLoadingOrg(false);
         }
-    }, [session]);
+    }, [user]);
 
     const fetchOrganization = async () => {
+        if (!user?.id) return;
+        
         try {
+            // Get Supabase user ID from session (synced from Clerk)
+            const { data: { session: supabaseSession } } = await supabase.auth.getSession();
+            const supabaseUserId = supabaseSession?.user?.id;
+            
+            if (!supabaseUserId) {
+                console.warn('No Supabase user ID available yet');
+                return;
+            }
+            
             const { data, error } = await supabase
                 .from('user_organization_membership')
                 .select('organization_id, role, organizations(id, name)')
-                .eq('user_id', session!.user!.id)
+                .eq('user_id', supabaseUserId)
                 .single();
 
             if (!error && data) {
@@ -42,7 +56,7 @@ export default function Layout() {
     };
 
     const handleLogout = async () => {
-        await supabase.auth.signOut();
+        await signOut();
         navigate('/login');
     };
 
@@ -64,13 +78,13 @@ export default function Layout() {
                                     <Trophy className="w-4 h-4 mr-2" />
                                     Performance Tracker
                                 </Link>
-                                {session?.user?.id && (
-                                    <Link to={`/analyst/${session.user.id}/performance`} className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                {user?.id && (
+                                    <Link to={`/analyst/${user.id}/performance`} className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                         <BarChart2 className="w-4 h-4 mr-2" />
                                         Performance
                                     </Link>
                                 )}
-                                {session?.user?.id && organization && (
+                                {user?.id && organization && (
                                     <Link to="/research" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                         <FileText className="w-4 h-4 mr-2" />
                                         Institutional Memory
@@ -94,7 +108,7 @@ export default function Layout() {
                                         </Link>
                                     </div>
                                 )}
-                                {session?.user?.id && (
+                                {user?.id && (
                                     <Link to="/settings/privacy" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                         <Settings className="w-4 h-4 mr-2" />
                                         Settings
@@ -103,7 +117,7 @@ export default function Layout() {
                             </div>
                         </div>
                         <div className="flex items-center">
-                            {session ? (
+                            {user ? (
                                 <button
                                     onClick={handleLogout}
                                     className="ml-3 inline-flex items-center px-4 py-2 border border-white/10 text-sm font-medium rounded-md text-white bg-white/5 hover:bg-white/10 focus:outline-none backdrop-blur-sm transition-all"

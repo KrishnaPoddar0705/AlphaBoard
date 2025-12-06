@@ -49,6 +49,7 @@ export default function RAGSearchBar() {
     setResult(null);
 
     try {
+      // Get Supabase session (synced from Clerk authentication)
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {

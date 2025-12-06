@@ -5,6 +5,15 @@
 
 import { supabase } from './supabase';
 
+/**
+ * TODO: Backend integration needed to sync Clerk users with Supabase
+ * Currently, this function attempts to get Supabase session token.
+ * After Clerk-Supabase sync is implemented, this should:
+ * 1. Verify Clerk user is authenticated
+ * 2. Get or create corresponding Supabase session
+ * 3. Return Supabase access token for API calls
+ */
+
 // Get Supabase URL and construct Edge Functions endpoint
 const getEdgeFunctionUrl = () => {
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -55,12 +64,18 @@ interface PortfolioReturnsResponse {
 
 /**
  * Get auth headers for Edge Function requests
+ * Uses Supabase session token (synced from Clerk authentication)
  */
 async function getAuthHeaders() {
   const { data: { session } } = await supabase.auth.getSession();
+  
+  if (!session || !session.access_token) {
+    throw new Error('Not authenticated. Please sign in.');
+  }
+  
   return {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${session?.access_token || ''}`,
+    'Authorization': `Bearer ${session.access_token}`,
   };
 }
 

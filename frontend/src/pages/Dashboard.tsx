@@ -13,7 +13,7 @@
  * @page
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { searchStocks, getPrice } from '../lib/api';
@@ -90,28 +90,15 @@ export default function Dashboard() {
         }
     }, [selectedStock, isMobile]);
 
-    useEffect(() => {
-        if (session?.user) {
-            // Clear expired cache entries on mount
-            clearExpiredPrices();
-            loadRecommendationsWithPrices();
-            startPricePolling();
-        }
-
-        return () => {
-            if (pollIntervalRef.current) {
-                clearInterval(pollIntervalRef.current);
-            }
-        };
-    }, [session]);
-
-    const fetchRecommendations = async () => {
-        if (!session?.user) return;
+    // Define functions before useEffect that uses them
+    const fetchRecommendations = useCallback(async () => {
+        const userId = session?.user?.id;
+        if (!userId) return [];
         try {
             const { data, error } = await supabase
                 .from('recommendations')
                 .select('*')
-                .eq('user_id', session.user.id)
+                .eq('user_id', userId)
                 .order('entry_date', { ascending: false });
 
             if (data) return data;
@@ -121,10 +108,11 @@ export default function Dashboard() {
             console.warn("Could not fetch recommendations from Supabase", err);
             return [];
         }
-    };
+    }, [session?.user?.id]);
 
-    const loadRecommendationsWithPrices = async () => {
-        if (!session?.user) return;
+    const loadRecommendationsWithPrices = useCallback(async () => {
+        const userId = session?.user?.id;
+        if (!userId) return;
         setIsLoadingPrices(true);
         try {
             // First fetch recommendations from DB
@@ -142,13 +130,14 @@ export default function Dashboard() {
         } finally {
             setIsLoadingPrices(false);
         }
-    };
+    }, [session?.user?.id, fetchRecommendations]);
 
-    const startPricePolling = () => {
+    const startPricePolling = useCallback(() => {
         if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
 
         pollIntervalRef.current = setInterval(async () => {
-            if (!session?.user) return;
+            const userId = session?.user?.id;
+            if (!userId) return;
             setRecommendations(prevRecs => {
                 // Only update prices for active or watchlist recommendations
                 const activeRecs = prevRecs.filter(r => r.status === 'OPEN' || r.status === 'WATCHLIST');
@@ -158,7 +147,31 @@ export default function Dashboard() {
                 return prevRecs;
             });
         }, 60000); // Poll every 60 seconds
-    };
+    }, [session?.user?.id]);
+
+    useEffect(() => {
+        const userId = session?.user?.id;
+        if (!userId) {
+            // Clear interval if no user
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+            return;
+        }
+
+        // Clear expired cache entries on mount
+        clearExpiredPrices();
+        loadRecommendationsWithPrices();
+        startPricePolling();
+
+        return () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+        };
+    }, [session?.user?.id, loadRecommendationsWithPrices, startPricePolling]); // Depend on stable function references
 
     const updatePricesForRecommendations = async (currentRecs: any[]) => {
         if (currentRecs.length === 0) {

@@ -81,7 +81,7 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
     setUploadStatus('Uploading file...');
 
     try {
-      // Get auth token
+      // Get Supabase session (synced from Clerk authentication)
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
