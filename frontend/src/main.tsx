@@ -18,7 +18,12 @@ if (import.meta.env.DEV) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/login">
+    <ClerkProvider 
+      publishableKey={PUBLISHABLE_KEY} 
+      afterSignOutUrl="/login"
+      afterSignInUrl="/"
+      afterSignUpUrl="/"
+    >
       <App />
     </ClerkProvider>
   </StrictMode>,

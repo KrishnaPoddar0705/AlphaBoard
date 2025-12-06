@@ -42,12 +42,21 @@ from typing import List, Dict
 
 app = FastAPI()
 
+# CORS middleware - must be added before routes
+# This ensures CORS headers are sent even on errors
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://www.alphaboard.theunicornlabs.com",
+        "https://alphaboard.onrender.com",
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "*"  # Allow all for development
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 @app.get("/")

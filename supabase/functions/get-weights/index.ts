@@ -1,8 +1,18 @@
 // Edge Function: get-weights
 // Purpose: Retrieve user portfolio weights from database
 
+// @ts-ignore - Deno runtime URL imports (Supabase Edge Functions run in Deno, not Node.js)
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+// @ts-ignore - Deno runtime URL imports (Supabase Edge Functions run in Deno, not Node.js)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+
+// Declare Deno global for TypeScript (Supabase Edge Functions run in Deno runtime)
+// @ts-ignore - Deno is available at runtime but TypeScript doesn't recognize it
+declare const Deno: {
+  env: {
+    get(key: string): string | undefined
+  }
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

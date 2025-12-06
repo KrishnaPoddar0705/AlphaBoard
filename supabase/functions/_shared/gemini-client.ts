@@ -5,6 +5,16 @@
 // @ts-ignore - Deno npm imports don't have built-in type declarations
 import { GoogleGenAI } from 'npm:@google/genai@1.29.0';
 
+// Declare Deno global for TypeScript (Supabase Edge Functions run in Deno runtime)
+// @ts-ignore - Deno is available at runtime but TypeScript doesn't recognize it
+declare const Deno: {
+    env: {
+        get(key: string): string | undefined
+    }
+    writeFile(path: string, data: Uint8Array): Promise<void>
+    remove(path: string, options?: { recursive?: boolean }): Promise<void>
+}
+
 // Environment variables
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
 const GEMINI_MODEL = 'gemini-flash-latest'; // Latest Flash model with File Search support
