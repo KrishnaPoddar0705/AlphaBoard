@@ -76,15 +76,8 @@ export const getEarnings = async (ticker: string) => {
 
 // ---
 
-export const createRecommendation = async (data: any, userId: string | null) => {
-    // If no userId provided, try to get it from Clerk user
+export const createRecommendation = async (data: any, userId: string) => {
     if (!userId) {
-        // Import Clerk hook dynamically to avoid circular dependencies
-        const { useUser } = await import('@clerk/clerk-react');
-        const { syncClerkUserToSupabase } = await import('./clerkSupabaseSync');
-
-        // Get Clerk user and sync to Supabase
-        // Note: This requires the component to pass Clerk user, so we'll handle it in the component
         throw new Error('User ID is required. Please ensure user is authenticated and synced with Supabase.');
     }
 
