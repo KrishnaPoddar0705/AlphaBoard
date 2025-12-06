@@ -27,7 +27,7 @@ export default function OrganizationSettings() {
 
   useEffect(() => {
     if (!session?.user?.id) {
-      navigate('/login');
+      navigate('/');
       return;
     }
 

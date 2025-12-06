@@ -19,14 +19,14 @@ export default function Layout() {
             setLoadingOrg(false);
             return;
         }
-        
+
         try {
             setLoadingOrg(true);
-            
+
             // Always fetch the latest session from Supabase to ensure we have the most up-to-date info
             const { data: { session: supabaseSession } } = await supabase.auth.getSession();
             const supabaseUserId = supabaseSession?.user?.id;
-            
+
             if (!supabaseUserId) {
                 // Retry after a short delay if session isn't ready yet
                 console.log('No Supabase user ID available yet, will retry...');
@@ -37,7 +37,7 @@ export default function Layout() {
                 }, 1000);
                 return;
             }
-            
+
             // Verify this Supabase user matches the current Clerk user
             // by checking the mapping table
             const { data: mapping } = await supabase
@@ -45,7 +45,7 @@ export default function Layout() {
                 .select('clerk_user_id')
                 .eq('supabase_user_id', supabaseUserId)
                 .maybeSingle();
-            
+
             if (!mapping || mapping.clerk_user_id !== user.id) {
                 // Session doesn't match current Clerk user - clear organization
                 console.log('Supabase session does not match current Clerk user');
@@ -53,7 +53,7 @@ export default function Layout() {
                 setLoadingOrg(false);
                 return;
             }
-            
+
             const { data, error } = await supabase
                 .from('user_organization_membership')
                 .select('organization_id, role, organizations(id, name)')
@@ -107,33 +107,33 @@ export default function Layout() {
         try {
             // Clear Supabase session first
             await supabase.auth.signOut();
-            
+
             // Clear Supabase auth data from localStorage (Supabase stores session there)
             // Supabase uses keys like: sb-<project-ref>-auth-token
-            const supabaseKeys = Object.keys(localStorage).filter(key => 
+            const supabaseKeys = Object.keys(localStorage).filter(key =>
                 key.includes('supabase') || key.includes('sb-') || key.startsWith('sb_')
             );
             supabaseKeys.forEach(key => localStorage.removeItem(key));
-            
+
             // Clear sessionStorage as well
-            const supabaseSessionKeys = Object.keys(sessionStorage).filter(key => 
+            const supabaseSessionKeys = Object.keys(sessionStorage).filter(key =>
                 key.includes('supabase') || key.includes('sb-') || key.startsWith('sb_')
             );
             supabaseSessionKeys.forEach(key => sessionStorage.removeItem(key));
-            
+
             // Clear organization state
             setOrganization(null);
-            
+
             // Sign out from Clerk
             await signOut();
-            
+
             // Navigate to login
-            navigate('/login');
+            navigate('/');
         } catch (error) {
             console.error('Error during logout:', error);
             // Still try to sign out from Clerk even if Supabase signout fails
             await signOut();
-            navigate('/login');
+            navigate('/');
         }
     };
 
@@ -204,7 +204,7 @@ export default function Layout() {
                                 </button>
                             ) : (
                                 <Link
-                                    to="/login"
+                                    to="/"
                                     className="ml-3 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none"
                                 >
                                     <User className="w-4 h-4 mr-2" />

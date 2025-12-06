@@ -14,6 +14,9 @@
  *    npx tsx scripts/map-clerk-prod-users.ts
  */
 
+// Make this a module to avoid conflicts with other scripts
+export { };
+
 const CLERK_API_URL = 'https://api.clerk.com/v1';
 
 interface ClerkUser {

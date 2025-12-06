@@ -18,13 +18,13 @@ import ReportDetail from './pages/ReportDetail';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
-  
+
   if (!isLoaded) return <div>Loading...</div>;
-  
+
   if (!user) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/" />;
   }
-  
+
   return <>{children}</>;
 }
 
