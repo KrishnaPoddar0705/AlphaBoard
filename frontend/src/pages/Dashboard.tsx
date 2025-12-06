@@ -15,7 +15,9 @@
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
+import { syncClerkUserToSupabase } from '../lib/clerkSupabaseSync';
 import { searchStocks, getPrice } from '../lib/api';
 import { Search, AlertCircle, Upload, X, Menu } from 'lucide-react';
 import { StockDetailPanel } from '../components/stock/StockDetailPanel';
@@ -42,6 +44,7 @@ const MOCK_STOCKS = [
 
 export default function Dashboard() {
     const { session } = useAuth();
+    const { user: clerkUser } = useUser();
     const [recommendations, setRecommendations] = useState<any[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [selectedStock, setSelectedStock] = useState<any>(null);
@@ -331,7 +334,56 @@ export default function Dashboard() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!session?.user) return;
+
+        // Ensure Clerk user is authenticated
+        if (!clerkUser) {
+            setError('Please sign in to create recommendations.');
+            return;
+        }
+
+        // Ensure user is synced with Supabase before creating recommendation
+        let supabaseUserId: string | null = session?.user?.id || null;
+
+        if (!supabaseUserId) {
+            // No Supabase user ID yet - sync Clerk user to Supabase
+            setLoading(true);
+            setError('Syncing user account...');
+
+            try {
+                const syncResult = await syncClerkUserToSupabase(clerkUser);
+                if (syncResult && syncResult.userId) {
+                    supabaseUserId = syncResult.userId;
+                    // Wait a moment for session to be established
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                } else {
+                    // Try to get user ID from mapping table
+                    const { getSupabaseUserIdForClerkUser } = await import('../lib/clerkSupabaseSync');
+                    const mappedId = await getSupabaseUserIdForClerkUser(clerkUser.id);
+                    if (mappedId) {
+                        supabaseUserId = mappedId;
+                    }
+                }
+
+                if (!supabaseUserId) {
+                    setError('Failed to sync user account. Please refresh the page and try again.');
+                    setLoading(false);
+                    return;
+                }
+            } catch (syncError) {
+                console.error('Error syncing user:', syncError);
+                setError('Failed to sync user account. Please refresh the page and try again.');
+                setLoading(false);
+                return;
+            }
+        }
+
+        // Ensure we have a valid user ID before proceeding
+        if (!supabaseUserId) {
+            setError('User ID not available. Please refresh the page and try again.');
+            setLoading(false);
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {
@@ -343,7 +395,7 @@ export default function Dashboard() {
                 for (const file of selectedImages) {
                     const fileExt = file.name.split('.').pop();
                     const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-                    const filePath = `${session.user.id}/${fileName}`;
+                    const filePath = `${supabaseUserId}/${fileName}`;
 
                     // Ensure bucket exists or just try upload (assuming 'recommendation-images' exists)
                     const { error: uploadError } = await supabase.storage
@@ -365,7 +417,7 @@ export default function Dashboard() {
             }
 
             const newRec: any = {
-                user_id: session.user.id,
+                user_id: supabaseUserId,
                 ticker,
                 action: isWatchlistAdd ? 'WATCH' : action,
                 entry_price: isWatchlistAdd ? null : priceToUse, // Watchlist items may not have entry price
@@ -383,7 +435,7 @@ export default function Dashboard() {
             // Use API endpoint to create recommendation
             try {
                 const { createRecommendation } = await import('../lib/api');
-                await createRecommendation(newRec, session.user.id);
+                await createRecommendation(newRec, supabaseUserId);
             } catch (apiError: any) {
                 // If API fails, fallback to direct Supabase insert
                 // Remove price_target and target_date for direct insert since they're not in recommendations table
@@ -396,7 +448,7 @@ export default function Dashboard() {
                 if (price_target) {
                     try {
                         const { createPriceTarget } = await import('../lib/api');
-                        await createPriceTarget(ticker, price_target, target_date, session.user.id);
+                        await createPriceTarget(ticker, price_target, target_date, supabaseUserId);
                     } catch (ptError) {
                         console.warn('Failed to create price target in fallback:', ptError);
                     }
@@ -411,10 +463,15 @@ export default function Dashboard() {
             closeModal();
         } catch (err) {
             console.error("Submission failed", err);
-            // Fallback for demo
+            // Fallback for demo (shouldn't be needed if sync worked)
+            if (!supabaseUserId) {
+                setError('Failed to create recommendation. Please ensure you are signed in.');
+                setLoading(false);
+                return;
+            }
             const mockRec = {
                 id: Math.random().toString(36).substr(2, 9),
-                user_id: session.user.id,
+                user_id: supabaseUserId,
                 ticker,
                 action: isWatchlistAdd ? 'WATCH' : action,
                 entry_price: isWatchlistAdd ? null : (parseFloat(entryPrice) || 0),
