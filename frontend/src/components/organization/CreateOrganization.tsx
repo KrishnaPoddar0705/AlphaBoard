@@ -20,7 +20,7 @@ export default function CreateOrganization() {
   useEffect(() => {
     const checkExistingOrganization = async () => {
       if (!clerkLoaded) return;
-      
+
       if (!clerkUser) {
         setError('You must be logged in to create an organization');
         setCheckingOrg(false);
@@ -31,7 +31,7 @@ export default function CreateOrganization() {
         // Get Supabase session
         const { data: { session: supabaseSession } } = await supabase.auth.getSession();
         const supabaseUserId = supabaseSession?.user?.id;
-        
+
         if (!supabaseUserId) {
           // User not synced yet, but that's okay - they can still create an org
           setCheckingOrg(false);
@@ -83,7 +83,7 @@ export default function CreateOrganization() {
     try {
       // Use Clerk user ID directly - edge function will look up Supabase user
       const result = await createOrganization(
-        organizationName.trim(), 
+        organizationName.trim(),
         undefined, // adminUserId - will be set by edge function
         clerkUser.id // clerkUserId - used to look up Supabase user
       );

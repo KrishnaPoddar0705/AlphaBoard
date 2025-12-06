@@ -144,7 +144,7 @@ export async function syncClerkUserToSupabase(clerkUser: ClerkUser | null): Prom
     // Fallback: Use passwordless OTP (magic link) to create a session
     // This will send an email, but it's the most reliable method
     try {
-      const { data: otpData, error: otpError } = await supabase.auth.signInWithOtp({
+      const { error: otpError } = await supabase.auth.signInWithOtp({
         email: syncData.email,
         options: {
           shouldCreateUser: false, // User already exists

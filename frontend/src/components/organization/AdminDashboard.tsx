@@ -148,7 +148,7 @@ export default function AdminDashboard() {
 
         const profilesMap = new Map();
         const emailsMap = new Map();
-        
+
         profilesData?.forEach((p: any) => {
           profilesMap.set(p.id, p.username);
           emailsMap.set(p.id, p.email);
@@ -263,7 +263,7 @@ export default function AdminDashboard() {
     if (!analystRecommendations[userId]) {
       try {
         console.log('Fetching recommendations for user:', userId, 'in organization:', organizationId);
-        
+
         // Fetch recommendations with all details
         // Don't filter by organization_id - fetch all recommendations for this user
         const { data: recs, error: recsError } = await supabase
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
             Admin Dashboard
           </h1>
           <p className="text-slate-300 mb-4">{organizationName}</p>
-          
+
           {/* Join Code Section */}
           {joinCode && (
             <div className="glass rounded-xl p-6 border border-indigo-500/30">
@@ -405,9 +405,9 @@ export default function AdminDashboard() {
                 <p className="text-2xl font-bold text-white">
                   {performance.length > 0
                     ? formatPercent(
-                        performance.reduce((sum, p) => sum + p.returns['12M'], 0) /
-                          performance.length
-                      )
+                      performance.reduce((sum, p) => sum + p.returns['12M'], 0) /
+                      performance.length
+                    )
                     : 'N/A'}
                 </p>
               </div>
@@ -426,7 +426,7 @@ export default function AdminDashboard() {
               <thead className="bg-slate-800/50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider w-8">
-                    
+
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                     Analyst
@@ -473,9 +473,8 @@ export default function AdminDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div
-                          className={`text-sm font-medium ${
-                            analyst.returns['12M'] >= 0 ? 'text-green-400' : 'text-red-400'
-                          }`}
+                          className={`text-sm font-medium ${analyst.returns['12M'] >= 0 ? 'text-green-400' : 'text-red-400'
+                            }`}
                         >
                           {formatPercent(analyst.returns['12M'])}
                         </div>
@@ -496,7 +495,7 @@ export default function AdminDashboard() {
                                 <FileText className="w-5 h-5" />
                                 All Recommendations ({analystRecommendations[analyst.userId]?.length || 0})
                               </h4>
-                              
+
                               {analystRecommendations[analyst.userId]?.length > 0 ? (
                                 <div className="space-y-4">
                                   {analystRecommendations[analyst.userId].map((rec) => {
@@ -504,25 +503,23 @@ export default function AdminDashboard() {
                                     const tickerTargets = analystPriceTargets[analyst.userId]?.filter(
                                       t => t.ticker === rec.ticker
                                     ) || [];
-                                    
+
                                     return (
                                       <div key={rec.id} className="bg-slate-800/50 p-5 rounded-lg border border-white/10 shadow-lg">
                                         {/* Recommendation Header */}
                                         <div className="flex justify-between items-start mb-4">
                                           <div className="flex items-center gap-3">
                                             <span className="text-xl font-bold text-indigo-400">{rec.ticker}</span>
-                                            <span className={`px-3 py-1 text-sm font-semibold rounded ${
-                                              rec.action === 'BUY' 
-                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                                            <span className={`px-3 py-1 text-sm font-semibold rounded ${rec.action === 'BUY'
+                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
                                                 : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                            }`}>
+                                              }`}>
                                               {rec.action || 'BUY'}
                                             </span>
-                                            <span className={`px-2 py-1 text-xs font-medium rounded ${
-                                              rec.status === 'OPEN' 
-                                                ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30' 
+                                            <span className={`px-2 py-1 text-xs font-medium rounded ${rec.status === 'OPEN'
+                                                ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
                                                 : 'bg-slate-700/50 text-slate-300 border border-white/10'
-                                            }`}>
+                                              }`}>
                                               {rec.status || 'OPEN'}
                                             </span>
                                           </div>
@@ -603,8 +600,8 @@ export default function AdminDashboard() {
                                             <div className="flex gap-2 flex-wrap">
                                               {rec.images.map((image, idx) => (
                                                 <div key={idx} className="relative w-32 h-32 bg-slate-800 rounded border border-white/10 overflow-hidden hover:opacity-90 cursor-pointer">
-                                                  <img 
-                                                    src={image} 
+                                                  <img
+                                                    src={image}
                                                     alt={`Attachment ${idx + 1}`}
                                                     className="w-full h-full object-cover"
                                                     onClick={() => window.open(image, '_blank')}
