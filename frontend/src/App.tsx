@@ -22,7 +22,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
   if (!isLoaded) return <div>Loading...</div>;
 
   if (!user) {
-    return <Navigate to="/" />;
+    return <Navigate to="/login" />;
   }
 
   return <>{children}</>;
