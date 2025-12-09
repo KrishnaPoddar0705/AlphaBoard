@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
@@ -25,10 +25,23 @@ export default function Profile() {
   const { user: clerkUser } = useUser();
   const { organization } = useOrganization();
   // Get only teams user is a member of (not all org teams)
-  const { teams: myTeams, loading: teamsLoading, createTeam, removeMember, refresh: refreshTeams } = useTeams({ 
+  // Use separate hooks: one for fetching user's teams (no orgId), one for creating teams (with orgId)
+  const { teams: myTeams, loading: teamsLoading, removeMember, refresh: refreshTeams } = useTeams({ 
     orgId: undefined, // Don't pass orgId to get only user's teams
     autoFetch: !!organization?.id 
   });
+  
+  // For creating teams, we need orgId, so we'll use the edge function directly
+  const createTeamWithOrg = useCallback(async (name: string) => {
+    if (!organization?.id) {
+      throw new Error('Organization ID is required to create a team');
+    }
+    const { createTeam: createTeamFn } = await import('../lib/edgeFunctions');
+    const result = await createTeamFn(organization.id, name);
+    refreshTeams(); // Refresh user's teams
+    fetchAllOrgTeams(); // Refresh all org teams
+    return result.team;
+  }, [organization?.id, refreshTeams]);
   const [allOrgTeams, setAllOrgTeams] = useState<any[]>([]);
   const [loadingAllTeams, setLoadingAllTeams] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
@@ -241,10 +254,15 @@ export default function Profile() {
   };
 
   const handleCreateTeam = async (name: string) => {
-    await createTeam(name);
-    refreshTeams();
-    fetchAllOrgTeams();
-    setShowCreateTeamModal(false);
+    try {
+      await createTeamWithOrg(name);
+      setSuccess('Team created successfully!');
+      setTimeout(() => setSuccess(null), 3000);
+      setShowCreateTeamModal(false);
+    } catch (err: any) {
+      setError(err.message || 'Failed to create team');
+      setTimeout(() => setError(null), 5000);
+    }
   };
 
   const handleJoinTeam = async (teamId: string) => {

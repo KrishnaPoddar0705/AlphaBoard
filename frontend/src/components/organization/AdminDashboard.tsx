@@ -56,6 +56,7 @@ interface AnalystPerformance {
   openPositions: number;
   closedPositions: number;
   winRate: number;
+  teams: Array<{ id: string; name: string }>;
 }
 
 export default function AdminDashboard() {
@@ -204,32 +205,82 @@ export default function AdminDashboard() {
 
         // Fetch performance data for all members
         if (membersData.length > 0) {
+          const userIds = membersData.map((m: any) => m.user_id);
+          
+          // Fetch recommendations for all analysts to calculate metrics
+          const { data: allRecommendations, error: recsError } = await supabase
+            .from('recommendations')
+            .select('id, user_id, status, final_return_pct, entry_date')
+            .in('user_id', userIds)
+            .neq('status', 'WATCHLIST'); // Exclude watchlist items
+
+          console.log('All recommendations:', allRecommendations, 'Error:', recsError);
+
+          // Fetch team memberships for all users
+          const { data: teamMemberships, error: teamMembersError } = await supabase
+            .from('team_members')
+            .select('user_id, team_id, teams(id, name)')
+            .in('user_id', userIds);
+
+          console.log('Team memberships:', teamMemberships, 'Error:', teamMembersError);
+
+          // Create a map of user_id -> teams[]
+          const userTeamsMap = new Map<string, Array<{ id: string; name: string }>>();
+          teamMemberships?.forEach((tm: any) => {
+            const team = tm.teams as any;
+            if (!userTeamsMap.has(tm.user_id)) {
+              userTeamsMap.set(tm.user_id, []);
+            }
+            userTeamsMap.get(tm.user_id)!.push({ id: team.id, name: team.name });
+          });
+
+          // Fetch performance table data as fallback
           const { data: perfData, error: perfError } = await supabase
             .from('performance')
             .select('user_id, total_ideas, win_rate, total_return_pct, alpha_pct')
-            .in('user_id', membersData.map((m: any) => m.user_id));
+            .in('user_id', userIds);
 
           console.log('Performance data:', perfData, 'Error:', perfError);
 
-          // Create performance list for ALL members, even if no performance data yet
+          // Calculate metrics from recommendations for each user
           const performanceList = membersData.map((m: any) => {
-            const perf = perfData?.find((p: any) => p.user_id === m.user_id);
+            const userId = m.user_id;
+            const userRecs = allRecommendations?.filter((r: any) => r.user_id === userId) || [];
+            
+            // Calculate metrics from recommendations
+            const totalRecommendations = userRecs.length;
+            const closedRecs = userRecs.filter((r: any) => r.status === 'CLOSED');
+            const profitableTrades = closedRecs.filter((r: any) => (r.final_return_pct || 0) > 0).length;
+            const winRate = closedRecs.length > 0 ? (profitableTrades / closedRecs.length) * 100 : 0;
+            
+            // Calculate average return from closed positions
+            const avgReturn = closedRecs.length > 0
+              ? closedRecs.reduce((sum: number, r: any) => sum + (r.final_return_pct || 0), 0) / closedRecs.length
+              : 0;
+
+            // Fallback to performance table if no recommendations
+            const perf = perfData?.find((p: any) => p.user_id === userId);
+            const finalTotalRecs = totalRecommendations > 0 ? totalRecommendations : (perf?.total_ideas || 0);
+            const finalWinRate = totalRecommendations > 0 ? winRate : (perf?.win_rate || 0);
+            const finalReturn = closedRecs.length > 0 ? avgReturn : (perf?.total_return_pct || 0);
+
             return {
-              userId: m.user_id,
-              username: profilesMap.get(m.user_id) || 'Unknown',
+              userId: userId,
+              username: profilesMap.get(userId) || 'Unknown',
               returns: {
-                '1M': perf?.total_return_pct || 0,
-                '3M': perf?.total_return_pct || 0,
-                '6M': perf?.total_return_pct || 0,
-                '12M': perf?.total_return_pct || 0,
+                '1M': finalReturn,
+                '3M': finalReturn,
+                '6M': finalReturn,
+                '12M': finalReturn,
               },
               sharpe: 0,
               volatility: 0,
               drawdown: 0,
-              totalRecommendations: perf?.total_ideas || 0,
-              openPositions: 0,
-              closedPositions: 0,
-              winRate: perf?.win_rate || 0,
+              totalRecommendations: finalTotalRecs,
+              openPositions: userRecs.filter((r: any) => r.status === 'OPEN').length,
+              closedPositions: closedRecs.length,
+              winRate: finalWinRate,
+              teams: userTeamsMap.get(userId) || [],
             };
           });
           setPerformance(performanceList);
@@ -507,6 +558,9 @@ export default function AdminDashboard() {
                     Analyst
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                    Teams
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
                     Total Ideas
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
@@ -541,6 +595,22 @@ export default function AdminDashboard() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-white">
                           {analyst.username || 'Unknown'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex flex-wrap gap-1">
+                          {analyst.teams && analyst.teams.length > 0 ? (
+                            analyst.teams.map((team: any) => (
+                              <span
+                                key={team.id}
+                                className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30"
+                              >
+                                {team.name}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="text-xs text-slate-500">No teams</span>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
