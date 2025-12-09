@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Users, X, Trash2 } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Users, Trash2 } from 'lucide-react';
 import { useTeams, useTeamMembers } from '../../hooks/useTeams';
 import CreateTeamModal from './CreateTeamModal';
 import type { Team } from '../../lib/edgeFunctions';
@@ -211,7 +211,6 @@ export default function TeamManagement({ orgId, isAdmin = false }: TeamManagemen
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreateTeam={handleCreateTeam}
-        orgId={orgId}
       />
     </div>
   );

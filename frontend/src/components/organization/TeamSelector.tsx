@@ -1,4 +1,3 @@
-import React from 'react';
 import { ChevronDown } from 'lucide-react';
 import type { Team } from '../../lib/edgeFunctions';
 
@@ -17,8 +16,6 @@ export default function TeamSelector({
   loading = false,
   showAllOption = true,
 }: TeamSelectorProps) {
-  const selectedTeam = teams.find((t) => t.id === selectedTeamId);
-
   return (
     <div className="relative">
       <select

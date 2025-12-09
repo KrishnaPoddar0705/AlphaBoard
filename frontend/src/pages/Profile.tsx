@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
@@ -465,7 +465,6 @@ export default function Profile() {
           isOpen={showCreateTeamModal}
           onClose={() => setShowCreateTeamModal(false)}
           onCreateTeam={handleCreateTeam}
-          orgId={organization?.id || ''}
         />
       </div>
     </div>

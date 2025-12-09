@@ -281,7 +281,7 @@ export default function AdminDashboard() {
         
         // Fallback to direct query if Edge Function fails or returns no results
         if (recs.length === 0) {
-          const { data: recData, error: recsError } = await supabase
+          const { data: recData } = await supabase
             .from('recommendations')
             .select('id, ticker, action, entry_price, exit_price, status, thesis, entry_date, images, final_return_pct, final_alpha_pct')
             .eq('user_id', userId)

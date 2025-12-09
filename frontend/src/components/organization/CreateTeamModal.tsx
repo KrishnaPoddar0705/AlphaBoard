@@ -5,10 +5,9 @@ interface CreateTeamModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCreateTeam: (name: string) => Promise<void>;
-  orgId: string;
 }
 
-export default function CreateTeamModal({ isOpen, onClose, onCreateTeam, orgId }: CreateTeamModalProps) {
+export default function CreateTeamModal({ isOpen, onClose, onCreateTeam }: CreateTeamModalProps) {
   const [teamName, setTeamName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
