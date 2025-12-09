@@ -451,7 +451,7 @@ export default function Profile() {
                       team={team} 
                       isMember={isMember}
                       hasPendingRequest={hasPendingRequest}
-                      onJoin={() => handleJoinTeam(team.id)}
+                      onJoin={!isMember ? () => handleJoinTeam(team.id) : undefined}
                       onLeave={isMember ? () => handleLeaveTeam(team.id) : undefined}
                     />
                   );
@@ -540,7 +540,7 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
               <LogOut className="w-3 h-3" />
             </button>
           )}
-          {!isMember && (
+          {!isMember && onJoin && (
             hasPendingRequest ? (
               <span className="px-3 py-1 text-sm bg-amber-50 text-amber-700 rounded-md flex items-center gap-1">
                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
@@ -548,7 +548,10 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
               </span>
             ) : (
               <button
-                onClick={onJoin}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onJoin();
+                }}
                 className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
               >
                 <LogIn className="w-3 h-3" />
