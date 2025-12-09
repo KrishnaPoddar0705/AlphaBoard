@@ -16,6 +16,7 @@ import PrivacySettings from './components/settings/PrivacySettings';
 import ResearchLibrary from './pages/ResearchLibrary';
 import ReportDetail from './pages/ReportDetail';
 import Profile from './pages/Profile';
+import NotFound from './pages/NotFound';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -89,6 +90,8 @@ function App() {
             </PrivateRoute>
           } />
         </Route>
+        {/* Catch-all route for 404 errors */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );
