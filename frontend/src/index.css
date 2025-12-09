@@ -23,6 +23,52 @@
 }
 
 /* ===========================
+   Theme CSS Variables
+   =========================== */
+:root[data-theme="dark"] {
+  --bg-primary: #0f172a;
+  --bg-secondary: rgba(255, 255, 255, 0.05);
+  --glass-bg: rgba(30, 41, 59, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --card-bg: rgba(30, 41, 59, 0.5);
+  --list-item-bg: rgba(30, 41, 59, 0.3);
+  --list-item-hover: rgba(255, 255, 255, 0.05);
+}
+
+:root[data-theme="light"] {
+  --bg-primary: #f4f6fa;
+  --bg-secondary: rgba(0, 0, 0, 0.05);
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.35);
+  --text-primary: #0f172a;
+  --text-secondary: #1e293b;
+  --text-tertiary: #334155;
+  --border-color: rgba(0, 0, 0, 0.15);
+  --card-bg: rgba(255, 255, 255, 0.7);
+  --list-item-bg: rgba(255, 255, 255, 0.8);
+  --list-item-hover: rgba(0, 0, 0, 0.05);
+}
+
+/* Default to dark theme if no data-theme attribute */
+:root:not([data-theme]) {
+  --bg-primary: #0f172a;
+  --bg-secondary: rgba(255, 255, 255, 0.05);
+  --glass-bg: rgba(30, 41, 59, 0.5);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --text-tertiary: #64748b;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --card-bg: rgba(30, 41, 59, 0.5);
+  --list-item-bg: rgba(30, 41, 59, 0.3);
+  --list-item-hover: rgba(255, 255, 255, 0.05);
+}
+
+/* ===========================
    Base Layer Customizations
    =========================== */
 @layer base {
@@ -33,8 +79,10 @@
   }
 
   body {
-    @apply bg-[#0f172a] text-slate-100;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   /* Focus ring styles */
@@ -55,7 +103,18 @@
 
   /* Glass card effect */
   .glass {
-    @apply bg-slate-800/30 backdrop-blur-xl border border-white/10;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  /* Glass panel for leaderboard */
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 
   /* Gradient text */
@@ -70,7 +129,14 @@
 
   /* Metric card */
   .metric-card {
-    @apply relative overflow-hidden rounded-xl bg-slate-800/50 border border-white/5 p-4 hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/10 transition-all duration-200;
+    @apply relative overflow-hidden rounded-xl p-4 transition-all duration-200;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    transition: background-color 0.3s ease, border-color 0.3s ease;
+  }
+
+  .metric-card:hover {
+    @apply hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/10;
   }
 }
 
@@ -365,23 +431,23 @@
 
 /* Background */
 .highcharts-background {
-  fill: #0f172a !important;
+  fill: var(--bg-primary) !important;
 }
 
 .highcharts-plot-background {
-  fill: #0f172a !important;
+  fill: var(--bg-primary) !important;
 }
 
 /* Grid lines */
 .highcharts-grid-line {
-  stroke: #334155 !important;
+  stroke: var(--border-color) !important;
   stroke-width: 1 !important;
 }
 
 /* Axis labels and text */
 .highcharts-axis-labels text,
 .highcharts-axis-title {
-  fill: #94a3b8 !important;
+  fill: var(--text-secondary) !important;
   font-size: 11px !important;
 }
 
@@ -392,7 +458,7 @@
 }
 
 .highcharts-crosshair-label text {
-  fill: #e2e8f0 !important;
+  fill: var(--text-primary) !important;
   font-weight: 500 !important;
 }
 
@@ -619,7 +685,7 @@ rect[fill*="rgb(255, 222"] {
 
 /* Ensure plot area uses full width */
 .highcharts-plot-background {
-  fill: #0f172a !important;
+  fill: var(--bg-primary) !important;
 }
 
 /* Remove any left-side scrollbars or controls */
@@ -642,13 +708,13 @@ rect[fill*="rgb(255, 222"] {
 
 /* Range selector buttons */
 .highcharts-button-box {
-  fill: #1e293b !important;
-  stroke: #334155 !important;
+  fill: var(--card-bg) !important;
+  stroke: var(--border-color) !important;
   stroke-width: 1 !important;
 }
 
 .highcharts-button text {
-  fill: #94a3b8 !important;
+  fill: var(--text-secondary) !important;
   font-weight: 600 !important;
 }
 
@@ -662,38 +728,38 @@ rect[fill*="rgb(255, 222"] {
 }
 
 .highcharts-button:hover .highcharts-button-box {
-  fill: #334155 !important;
+  fill: var(--bg-secondary) !important;
 }
 
 .highcharts-button:hover text {
-  fill: white !important;
+  fill: var(--text-primary) !important;
 }
 
 /* Tooltip */
 .highcharts-tooltip-box {
-  fill: #1e293b !important;
+  fill: var(--card-bg) !important;
   fill-opacity: 0.95 !important;
-  stroke: #475569 !important;
+  stroke: var(--border-color) !important;
   stroke-width: 1 !important;
 }
 
 .highcharts-tooltip text {
-  fill: #e2e8f0 !important;
+  fill: var(--text-primary) !important;
 }
 
 .highcharts-label-box {
-  fill: #1e293b !important;
-  stroke: #475569 !important;
+  fill: var(--card-bg) !important;
+  stroke: var(--border-color) !important;
 }
 
 /* Navigator */
 .highcharts-navigator-mask-inside {
-  fill: #0f172a !important;
+  fill: var(--bg-primary) !important;
   fill-opacity: 0.3 !important;
 }
 
 .highcharts-navigator-mask-outside {
-  fill: #0f172a !important;
+  fill: var(--bg-primary) !important;
   fill-opacity: 0.7 !important;
 }
 
@@ -703,54 +769,54 @@ rect[fill*="rgb(255, 222"] {
 }
 
 .highcharts-navigator-outline {
-  stroke: #475569 !important;
+  stroke: var(--border-color) !important;
 }
 
 .highcharts-navigator-handle {
-  fill: #334155 !important;
-  stroke: #94a3b8 !important;
+  fill: var(--bg-secondary) !important;
+  stroke: var(--text-secondary) !important;
 }
 
 /* Scrollbar */
 .highcharts-scrollbar-track {
-  fill: #1e293b !important;
-  stroke: #334155 !important;
+  fill: var(--card-bg) !important;
+  stroke: var(--border-color) !important;
 }
 
 .highcharts-scrollbar-thumb {
-  fill: #475569 !important;
-  stroke: #64748b !important;
+  fill: var(--text-tertiary) !important;
+  stroke: var(--text-secondary) !important;
 }
 
 .highcharts-scrollbar-button {
-  fill: #334155 !important;
-  stroke: #475569 !important;
+  fill: var(--bg-secondary) !important;
+  stroke: var(--border-color) !important;
 }
 
 .highcharts-scrollbar-arrow {
-  fill: #94a3b8 !important;
+  fill: var(--text-secondary) !important;
 }
 
 /* Stock tools */
 .highcharts-stocktools-wrapper {
-  background: #0f172a !important;
-  border: 1px solid #334155 !important;
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--border-color) !important;
 }
 
 .highcharts-stocktools-toolbar {
-  background: #0f172a !important;
+  background: var(--bg-primary) !important;
 }
 
 .highcharts-stocktools-toolbar li button {
-  background: #1e293b !important;
-  border: 1px solid #334155 !important;
-  color: #94a3b8 !important;
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  color: var(--text-secondary) !important;
 }
 
 .highcharts-stocktools-toolbar li button:hover {
-  background: #334155 !important;
-  border-color: #475569 !important;
-  color: white !important;
+  background: var(--bg-secondary) !important;
+  border-color: var(--border-color) !important;
+  color: var(--text-primary) !important;
 }
 
 .highcharts-stocktools-toolbar li.highcharts-active button {
@@ -761,31 +827,31 @@ rect[fill*="rgb(255, 222"] {
 
 /* Legend */
 .highcharts-legend-box {
-  fill: #1e293b !important;
-  stroke: #334155 !important;
+  fill: var(--card-bg) !important;
+  stroke: var(--border-color) !important;
 }
 
 .highcharts-legend-item text {
-  fill: #94a3b8 !important;
+  fill: var(--text-secondary) !important;
 }
 
 .highcharts-legend-item:hover text {
-  fill: white !important;
+  fill: var(--text-primary) !important;
 }
 
 /* Data labels */
 .highcharts-data-label text {
-  fill: #e2e8f0 !important;
+  fill: var(--text-primary) !important;
 }
 
 .highcharts-data-label-box {
-  fill: #1e293b !important;
-  stroke: #475569 !important;
+  fill: var(--card-bg) !important;
+  stroke: var(--border-color) !important;
 }
 
 /* Credits */
 .highcharts-credits {
-  fill: #64748b !important;
+  fill: var(--text-tertiary) !important;
 }
 
 /* ===========================
