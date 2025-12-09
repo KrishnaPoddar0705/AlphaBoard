@@ -694,13 +694,13 @@ export default function Dashboard() {
     };
 
     if (!session) return (
-        <div className="h-screen flex items-center justify-center bg-slate-900">
-            <p className="text-white">Please log in</p>
+        <div className="h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+            <p className="text-[var(--text-primary)]">Please log in</p>
         </div>
     );
 
     return (
-        <div className="h-[calc(100vh-4rem)] bg-slate-900 overflow-hidden">
+        <div className="h-[calc(100vh-4rem)] bg-[var(--bg-primary)] overflow-hidden">
             {/* 12-Column Responsive Grid Layout */}
             <div className="h-full grid grid-cols-12">
                 {/* Left Panel: Idea List or Performance Metrics - 5 columns on desktop */}
@@ -712,16 +712,16 @@ export default function Dashboard() {
                             : 'col-span-12 md:col-span-6 lg:col-span-5 xl:col-span-5'
                     }
                     ${isMobile && !isMobileDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
-                    h-full overflow-hidden flex flex-col bg-slate-900
+                    h-full overflow-hidden flex flex-col bg-[var(--bg-primary)]
                 `}>
                     {/* Content */}
                     <div className="flex-1 overflow-y-auto relative">
                         {/* Weight Panel Toggle Button */}
                         {session?.user && (
-                            <div className="p-3 border-b border-white/10">
+                            <div className="p-3 border-b border-[var(--border-color)]">
                                 <button
                                     onClick={() => setShowWeightPanel(!showWeightPanel)}
-                                    className="w-full px-3 py-2 text-sm font-medium text-gray-300 bg-white/5 hover:bg-white/10 border border-white/10 rounded-lg transition-colors flex items-center justify-center gap-2"
+                                    className="w-full px-3 py-2 text-sm font-medium text-[var(--text-secondary)] bg-white/5 hover:bg-white/10 border border-[var(--border-color)] rounded-lg transition-colors flex items-center justify-center gap-2"
                                 >
                                     <Settings className="w-4 h-4" />
                                     {showWeightPanel ? 'Hide' : 'Show'} Portfolio Weights
@@ -775,13 +775,13 @@ export default function Dashboard() {
 
                 {/* Empty State when no stock selected (desktop only) */}
                 {!selectedStock && !isMobile && (
-                    <div className="col-span-12 md:col-span-6 lg:col-span-7 xl:col-span-7 h-full flex items-center justify-center bg-slate-900/50">
+                    <div className="col-span-12 md:col-span-6 lg:col-span-7 xl:col-span-7 h-full flex items-center justify-center bg-[var(--bg-primary)]/50">
                         <div className="text-center animate-fadeIn">
-                            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-800/50 flex items-center justify-center">
-                                <Search className="w-8 h-8 text-slate-600" />
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--card-bg)] flex items-center justify-center">
+                                <Search className="w-8 h-8 text-[var(--text-tertiary)]" />
                             </div>
-                            <h3 className="text-lg font-semibold text-white mb-2">Select an idea</h3>
-                            <p className="text-sm text-slate-400 max-w-xs">
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">Select an idea</h3>
+                            <p className="text-sm text-[var(--text-secondary)] max-w-xs">
                                 Choose a stock from the list to view detailed analysis and charts.
                             </p>
                         </div>
@@ -806,13 +806,13 @@ export default function Dashboard() {
                     <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={closeModal}></div>
                         <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                        <div className="inline-block align-bottom bg-[#1e293b] rounded-2xl text-left overflow-visible shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-white/10 relative">
+                        <div className="inline-block align-bottom bg-[var(--card-bg)] rounded-2xl text-left overflow-visible shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-[var(--border-color)] relative">
                             <div className="px-6 py-6">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-bold text-white">
+                                    <h3 className="text-xl font-bold text-[var(--text-primary)]">
                                         {isWatchlistAdd ? 'Add to Watchlist' : 'New Recommendation'}
                                     </h3>
-                                    <button onClick={closeModal} className="text-gray-400 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-full">
+                                    <button onClick={closeModal} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors p-1 hover:bg-white/10 rounded-full">
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>
@@ -852,7 +852,7 @@ export default function Dashboard() {
                                                 required
                                                 value={ticker}
                                                 onChange={(e) => handleSearch(e.target.value)}
-                                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg leading-5 bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 transition-all
+                                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg leading-5 bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 transition-all
                             ${hasSearched && searchResults.length === 0 && ticker.length > 1
                                                         ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                                                         : 'border-white/10 focus:ring-indigo-500/50 focus:border-indigo-500'}`}
@@ -866,14 +866,14 @@ export default function Dashboard() {
                                             </div>
                                         )}
                                         {(searchResults.length > 0 || isSearching) && ticker.length > 1 && (
-                                            <ul className="absolute z-50 mt-1 w-full bg-[#1e293b] border border-white/10 shadow-2xl max-h-60 rounded-lg py-1 text-base overflow-auto focus:outline-none sm:text-sm animate-fadeIn">
+                                            <ul className="absolute z-50 mt-1 w-full bg-[var(--card-bg)] border border-[var(--border-color)] shadow-2xl max-h-60 rounded-lg py-1 text-base overflow-auto focus:outline-none sm:text-sm animate-fadeIn">
                                                 {isSearching ? (
                                                     <li className="px-4 py-3 text-gray-400 text-sm text-center">Searching...</li>
                                                 ) : (
                                                     searchResults.map((res) => (
                                                         <li
                                                             key={res.symbol}
-                                                            className="cursor-pointer select-none relative py-2.5 pl-3 pr-9 text-white hover:bg-indigo-600 transition-colors border-b border-white/5 last:border-0 group"
+                                                            className="cursor-pointer select-none relative py-2.5 pl-3 pr-9 text-[var(--text-primary)] hover:bg-indigo-600 transition-colors border-b border-[var(--border-color)] last:border-0 group"
                                                             onClick={() => selectStock(res.symbol)}
                                                         >
                                                             <div className="flex flex-col">
@@ -894,7 +894,7 @@ export default function Dashboard() {
                                                 <select
                                                     value={action}
                                                     onChange={(e) => setAction(e.target.value)}
-                                                    className="block w-full px-3 py-2.5 border border-white/10 bg-white/5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm rounded-lg appearance-none cursor-pointer hover:bg-white/10 transition-colors"
+                                                    className="block w-full px-3 py-2.5 border border-[var(--border-color)] bg-white/5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm rounded-lg appearance-none cursor-pointer hover:bg-white/10 transition-colors"
                                                 >
                                                     <option value="BUY" className="bg-[#1e293b]">BUY</option>
                                                     <option value="SELL" className="bg-[#1e293b]">SELL</option>
@@ -912,7 +912,7 @@ export default function Dashboard() {
                                                         required={!isWatchlistAdd}
                                                         value={entryPrice}
                                                         onChange={(e) => setEntryPrice(e.target.value)}
-                                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
                                                         placeholder="0.00"
                                                     />
                                                 </div>
@@ -928,7 +928,7 @@ export default function Dashboard() {
                                                         step="0.01"
                                                         value={priceTarget}
                                                         onChange={(e) => setPriceTarget(e.target.value)}
-                                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
                                                         placeholder="0.00"
                                                     />
                                                 </div>
@@ -939,7 +939,7 @@ export default function Dashboard() {
                                                     type="date"
                                                     value={targetDate}
                                                     onChange={(e) => setTargetDate(e.target.value)}
-                                                    className="block w-full px-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                    className="block w-full px-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
                                                     min={new Date().toISOString().split('T')[0]}
                                                 />
                                             </div>
@@ -957,7 +957,7 @@ export default function Dashboard() {
                                             </div>
                                         </>
                                     ) : (
-                                        <div className="p-3 rounded-lg bg-white/5 border border-white/10 text-sm text-gray-400 flex items-center justify-between">
+                                        <div className="p-3 rounded-lg bg-white/5 border border-[var(--border-color)] text-sm text-[var(--text-secondary)] flex items-center justify-between">
                                             <span>Fetch price by searching...</span>
                                         </div>
                                     )}
@@ -967,7 +967,7 @@ export default function Dashboard() {
                                             value={thesis}
                                             onChange={(e) => setThesis(e.target.value)}
                                             rows={3}
-                                            className="block w-full py-2.5 px-3 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all resize-none"
+                                            className="block w-full py-2.5 px-3 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all resize-none"
                                             placeholder="What's your rationale for this trade?"
                                         />
                                     </div>

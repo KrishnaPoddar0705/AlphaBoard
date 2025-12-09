@@ -105,7 +105,7 @@ export default function SectorDropdown({
             width: `${menuPosition.width}px`,
             zIndex: 9999,
           }}
-          className="rounded-xl border-2 border-white/20 bg-black/95 backdrop-blur-md overflow-hidden shadow-2xl max-h-60 overflow-y-auto"
+          className="rounded-xl border-2 border-[var(--border-color)] bg-[var(--card-bg)] backdrop-blur-md overflow-hidden shadow-2xl max-h-60 overflow-y-auto"
         >
           {options.length > 0 ? (
             options.map((option, index) => (
@@ -118,10 +118,10 @@ export default function SectorDropdown({
                 onClick={() => handleSelect(option)}
                 className={`w-full px-4 py-3 text-left transition-all duration-150 ${
                   value === option
-                    ? 'bg-blue-500/30 text-white border-l-2 border-blue-500'
-                    : 'hover:bg-white/10 text-white hover:border-l-2 hover:border-blue-500/50'
+                    ? 'bg-indigo-500/30 text-[var(--text-primary)] border-l-2 border-indigo-500'
+                    : 'hover:bg-[var(--list-item-hover)] text-[var(--text-primary)] hover:border-l-2 hover:border-indigo-500/50'
                 } flex items-center justify-between group ${
-                  index !== options.length - 1 ? 'border-b border-white/10' : ''
+                  index !== options.length - 1 ? 'border-b border-[var(--border-color)]' : ''
                 }`}
               >
                 <span className="font-medium text-sm">{option}</span>
@@ -131,13 +131,13 @@ export default function SectorDropdown({
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    <Check className="w-5 h-5 text-blue-400" />
+                    <Check className="w-5 h-5 text-indigo-500" />
                   </motion.div>
                 )}
               </motion.button>
             ))
           ) : (
-            <div className="px-4 py-3 text-gray-400 text-sm text-center">
+            <div className="px-4 py-3 text-[var(--text-secondary)] text-sm text-center">
               No options available
             </div>
           )}
@@ -159,20 +159,20 @@ export default function SectorDropdown({
           disabled={disabled}
           className={`w-full px-4 py-2.5 rounded-lg border-2 transition-all duration-200 ${
             disabled
-              ? 'bg-white/5 border-white/10 text-gray-500 cursor-not-allowed opacity-50'
+              ? 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-tertiary)] cursor-not-allowed opacity-50'
               : isOpen
-              ? 'bg-white/10 border-blue-500 text-white shadow-lg shadow-blue-500/20'
-              : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-blue-500/50'
+              ? 'bg-[var(--list-item-hover)] border-indigo-500 text-[var(--text-primary)] shadow-lg shadow-indigo-500/20'
+              : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-primary)] hover:bg-[var(--list-item-hover)] hover:border-indigo-500/50'
           } flex items-center justify-between group`}
         >
-          <span className={`font-medium text-sm ${!value ? 'text-gray-400' : 'text-white'}`}>
+          <span className={`font-medium text-sm ${!value ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
             {selectedLabel}
           </span>
           <motion.div
             animate={{ rotate: isOpen ? 180 : 0 }}
             transition={{ duration: 0.2 }}
           >
-            <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+            <ChevronDown className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
           </motion.div>
         </motion.button>
       </div>

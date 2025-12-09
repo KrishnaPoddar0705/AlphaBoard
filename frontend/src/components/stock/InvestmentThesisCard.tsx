@@ -82,8 +82,8 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
       <Card variant="glass">
         <CardContent className="py-8 text-center">
           <AlertTriangle className="w-12 h-12 text-rose-400 mx-auto mb-3" />
-          <p className="text-slate-300 mb-2">Unable to generate thesis</p>
-          <p className="text-sm text-slate-500 mb-4">{error}</p>
+          <p className="text-[var(--text-primary)] mb-2">Unable to generate thesis</p>
+          <p className="text-sm text-[var(--text-secondary)] mb-4">{error}</p>
           <button
             onClick={handleRegenerate}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors text-sm"
@@ -110,7 +110,7 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
             </div>
             <div>
               <CardTitle size="lg">AI-Assisted Investment Thesis</CardTitle>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-[var(--text-secondary)] mt-1">
                 Generated {new Date(thesis.generated_at).toLocaleDateString()}
               </p>
             </div>
@@ -142,7 +142,7 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
               <button
                 onClick={() => setShowExportMenu(!showExportMenu)}
                 disabled={isExporting}
-                className="px-3 py-2 bg-slate-700/50 hover:bg-slate-700/70 text-slate-300 rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-3 py-2 bg-[var(--bg-secondary)] hover:bg-[var(--list-item-hover)] text-[var(--text-primary)] rounded-lg transition-colors text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 <Download className="w-4 h-4" />
                 <span>Export</span>
@@ -155,11 +155,11 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
                     className="fixed inset-0 z-10"
                     onClick={() => setShowExportMenu(false)}
                   />
-                  <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-white/10 rounded-lg shadow-xl z-20 overflow-hidden">
+                  <div className="absolute right-0 top-full mt-2 w-48 bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg shadow-xl z-20 overflow-hidden">
                     <button
                       onClick={handlePDFExport}
                       disabled={isExporting}
-                      className="w-full px-4 py-3 text-left hover:bg-white/5 transition-colors flex items-center gap-3 text-slate-300 disabled:opacity-50"
+                      className="w-full px-4 py-3 text-left hover:bg-[var(--list-item-hover)] transition-colors flex items-center gap-3 text-[var(--text-primary)] disabled:opacity-50"
                     >
                       <FileText className="w-4 h-4 text-indigo-400" />
                       <span>Export to PDF</span>
@@ -167,7 +167,7 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
                     <button
                       onClick={handleNotionExport}
                       disabled={isExporting}
-                      className="w-full px-4 py-3 text-left hover:bg-white/5 transition-colors flex items-center gap-3 text-slate-300 disabled:opacity-50 border-t border-white/5"
+                      className="w-full px-4 py-3 text-left hover:bg-[var(--list-item-hover)] transition-colors flex items-center gap-3 text-[var(--text-primary)] disabled:opacity-50 border-t border-[var(--border-color)]"
                     >
                       <Sparkles className="w-4 h-4 text-purple-400" />
                       <span>Export to Notion</span>
@@ -186,7 +186,7 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
             <span className="text-sm font-semibold">{thesis.rating}</span>
           </div>
           {thesis.ratingJustification && (
-            <p className="text-xs text-slate-400 mt-2 ml-1">{thesis.ratingJustification}</p>
+            <p className="text-xs text-[var(--text-secondary)] mt-2 ml-1">{thesis.ratingJustification}</p>
           )}
         </div>
       </CardHeader>
@@ -195,8 +195,8 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
         {/* Summary */}
         {thesis.summary && (
           <div className="mb-6">
-            <h4 className="text-sm font-semibold text-white mb-2">Summary</h4>
-            <p className="text-sm text-slate-300 leading-relaxed">{thesis.summary}</p>
+            <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-2">Summary</h4>
+            <p className="text-sm text-[var(--text-primary)] leading-relaxed">{thesis.summary}</p>
           </div>
         )}
 
@@ -207,21 +207,21 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
             icon={<TrendingUp className="w-4 h-4" />}
             defaultOpen={true}
           >
-            <p className="text-slate-300">{thesis.bullCase}</p>
+            <p className="text-[var(--text-primary)]">{thesis.bullCase}</p>
           </AccordionItem>
 
           <AccordionItem
             title="Bear Case"
             icon={<TrendingDown className="w-4 h-4" />}
           >
-            <p className="text-slate-300">{thesis.bearCase}</p>
+            <p className="text-[var(--text-primary)]">{thesis.bearCase}</p>
           </AccordionItem>
 
           <AccordionItem
             title="Base Case"
             icon={<Target className="w-4 h-4" />}
           >
-            <p className="text-slate-300">{thesis.baseCase}</p>
+            <p className="text-[var(--text-primary)]">{thesis.baseCase}</p>
           </AccordionItem>
 
           <AccordionItem
@@ -232,7 +232,7 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
               {thesis.risks.map((risk, idx) => (
                 <li key={idx} className="flex items-start gap-2">
                   <span className="text-rose-400 mt-1">•</span>
-                  <span className="text-slate-300">{risk}</span>
+                  <span className="text-[var(--text-primary)]">{risk}</span>
                 </li>
               ))}
             </ul>
@@ -246,7 +246,7 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
               {thesis.catalysts.map((catalyst, idx) => (
                 <li key={idx} className="flex items-start gap-2">
                   <span className="text-emerald-400 mt-1">•</span>
-                  <span className="text-slate-300">{catalyst}</span>
+                  <span className="text-[var(--text-primary)]">{catalyst}</span>
                 </li>
               ))}
             </ul>

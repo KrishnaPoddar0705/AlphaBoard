@@ -123,9 +123,9 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
                 </div>
 
                 {loading ? (
-                    <div className="text-center py-6 text-gray-400 text-sm">Loading price targets...</div>
+                    <div className="text-center py-6 text-[var(--text-secondary)] text-sm">Loading price targets...</div>
                 ) : priceTargets.length === 0 ? (
-                    <div className="text-center py-6 text-gray-400 text-sm italic">
+                    <div className="text-center py-6 text-[var(--text-secondary)] text-sm italic">
                         No price targets set yet.
                         {!userId && (
                             <button
@@ -146,16 +146,16 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
                                 <div
                                     key={target.id}
                                     className={`relative pl-6 pb-4 ${
-                                        index < priceTargets.length - 1 ? 'border-l-2 border-white/10' : ''
+                                        index < priceTargets.length - 1 ? 'border-l-2 border-[var(--border-color)]' : ''
                                     }`}
                                 >
                                     {/* Timeline dot */}
-                                    <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-indigo-500 border-2 border-slate-900 -translate-x-[7px]" />
+                                    <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-indigo-500 border-2 border-[var(--bg-primary)] -translate-x-[7px]" />
                                     
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-lg font-bold text-white">
+                                                <span className="text-lg font-bold text-[var(--text-primary)]">
                                                     ₹{target.target_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                                 {isLatest && timeRemaining && (
@@ -170,7 +170,7 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-center gap-3 text-xs text-gray-400">
+                                        <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
                                             <div className="flex items-center gap-1">
                                                 <Calendar className="w-3.5 h-3.5" />
                                                 <span>Set on {formatDate(target.created_at)}</span>

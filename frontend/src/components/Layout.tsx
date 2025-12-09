@@ -139,47 +139,47 @@ export default function Layout() {
 
     return (
         <div className="min-h-screen">
-            <nav className="glass border-b border-white/10 relative z-50">
+            <nav className="glass border-b border-[var(--border-color)] relative z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between h-16">
                         <div className="flex">
                             <div className="flex-shrink-0 flex items-center">
-                                <span className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200">AlphaBoard</span>
+                                <span className="text-xl font-bold text-[var(--text-primary)]">AlphaBoard</span>
                             </div>
                             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                                <Link to="/" className="border-blue-400 text-white inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <Link to="/" className="border-indigo-500 text-[var(--text-primary)] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                     <LayoutDashboard className="w-4 h-4 mr-2" />
                                     Dashboard
                                 </Link>
-                                <Link to="/leaderboard" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <Link to="/leaderboard" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                     <Trophy className="w-4 h-4 mr-2" />
                                     Performance Tracker
                                 </Link>
                                 {user?.id && (
-                                    <Link to={`/analyst/${user.id}/performance`} className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    <Link to={`/analyst/${user.id}/performance`} className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                         <BarChart2 className="w-4 h-4 mr-2" />
                                         Performance
                                     </Link>
                                 )}
                                 {user?.id && organization && (
-                                    <Link to="/research" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    <Link to="/research" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                         <FileText className="w-4 h-4 mr-2" />
                                         Institutional Memory
                                     </Link>
                                 )}
                                 {organization && organization.role === 'admin' && (
-                                    <Link to="/organization/admin" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    <Link to="/organization/admin" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                         <Building2 className="w-4 h-4 mr-2" />
                                         Admin Dashboard
                                     </Link>
                                 )}
                                 {!organization && !loadingOrg && user?.id && (
                                     <>
-                                        <Link to="/organization/join" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Link to="/organization/join" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                             <Users className="w-4 h-4 mr-2" />
                                             Join Org
                                         </Link>
-                                        <Link to="/organization/create" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Link to="/organization/create" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                             <Building2 className="w-4 h-4 mr-2" />
                                             Create Org
                                         </Link>
@@ -187,11 +187,11 @@ export default function Layout() {
                                 )}
                                 {user?.id && (
                                     <>
-                                        <Link to="/profile" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Link to="/profile" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                             <User className="w-4 h-4 mr-2" />
                                             Profile
                                         </Link>
-                                        <Link to="/settings/privacy" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Link to="/settings/privacy" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
                                             <Settings className="w-4 h-4 mr-2" />
                                             Settings
                                         </Link>
@@ -203,7 +203,7 @@ export default function Layout() {
                             {user ? (
                                 <button
                                     onClick={handleLogout}
-                                    className="ml-3 inline-flex items-center px-4 py-2 border border-white/10 text-sm font-medium rounded-md text-white bg-white/5 hover:bg-white/10 focus:outline-none backdrop-blur-sm transition-all"
+                                    className="ml-3 inline-flex items-center px-4 py-2 border border-[var(--border-color)] text-sm font-medium rounded-md text-[var(--text-primary)] bg-white/5 hover:bg-white/10 focus:outline-none backdrop-blur-sm transition-all"
                                 >
                                     <LogOut className="w-4 h-4 mr-2" />
                                     Sign Out

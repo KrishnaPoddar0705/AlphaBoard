@@ -124,18 +124,18 @@ export default function TickerFilter({
             width: `${menuPosition.width}px`,
             zIndex: 9999,
           }}
-          className="rounded-xl border-2 border-white/20 bg-black/95 backdrop-blur-md overflow-hidden shadow-2xl max-h-64 flex flex-col"
+          className="rounded-xl border-2 border-[var(--border-color)] bg-[var(--card-bg)] backdrop-blur-md overflow-hidden shadow-2xl max-h-64 flex flex-col"
         >
           {/* Search Input */}
-          <div className="p-3 border-b border-white/10 bg-white/5">
+          <div className="p-3 border-b border-[var(--border-color)] bg-[var(--bg-secondary)]">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search tickers..."
-                className="w-full bg-white/10 border border-white/20 rounded-lg px-9 py-2 text-sm text-white placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:bg-white/15 transition-all"
+                className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg px-9 py-2 text-sm text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-indigo-500 focus:bg-[var(--list-item-hover)] transition-all"
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
@@ -157,10 +157,10 @@ export default function TickerFilter({
                     onClick={() => handleToggleTicker(ticker)}
                     className={`w-full px-4 py-3 text-left transition-all duration-150 ${
                       isSelected
-                        ? 'bg-blue-500/30 text-white border-l-2 border-blue-500'
-                        : 'hover:bg-white/10 text-white hover:border-l-2 hover:border-blue-500/50'
+                        ? 'bg-indigo-500/30 text-[var(--text-primary)] border-l-2 border-indigo-500'
+                        : 'hover:bg-[var(--list-item-hover)] text-[var(--text-primary)] hover:border-l-2 hover:border-indigo-500/50'
                     } flex items-center justify-between group ${
-                      index !== filteredOptions.length - 1 ? 'border-b border-white/10' : ''
+                      index !== filteredOptions.length - 1 ? 'border-b border-[var(--border-color)]' : ''
                     }`}
                   >
                     <span className="font-medium text-sm">{ticker}</span>
@@ -169,7 +169,7 @@ export default function TickerFilter({
                         initial={{ scale: 0 }}
                         animate={{ scale: 1 }}
                         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                        className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center"
+                        className="w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center"
                       >
                         <span className="text-xs text-white">✓</span>
                       </motion.div>
@@ -178,7 +178,7 @@ export default function TickerFilter({
                 );
               })
             ) : (
-              <div className="px-4 py-3 text-gray-400 text-sm text-center">
+              <div className="px-4 py-3 text-[var(--text-secondary)] text-sm text-center">
                 {searchTerm ? `No tickers found for "${searchTerm}"` : 'No tickers available'}
               </div>
             )}
@@ -236,20 +236,20 @@ export default function TickerFilter({
           disabled={disabled}
           className={`w-full px-4 py-2.5 rounded-lg border-2 transition-all duration-200 ${
             disabled
-              ? 'bg-white/5 border-white/10 text-gray-500 cursor-not-allowed opacity-50'
+              ? 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-tertiary)] cursor-not-allowed opacity-50'
               : isOpen
-              ? 'bg-white/10 border-blue-500 text-white shadow-lg shadow-blue-500/20'
-              : 'bg-white/5 border-white/10 text-white hover:bg-white/10 hover:border-blue-500/50'
+              ? 'bg-[var(--list-item-hover)] border-indigo-500 text-[var(--text-primary)] shadow-lg shadow-indigo-500/20'
+              : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-primary)] hover:bg-[var(--list-item-hover)] hover:border-indigo-500/50'
           } flex items-center justify-between group`}
         >
-          <span className={`font-medium text-sm ${value.length === 0 ? 'text-gray-400' : 'text-white'}`}>
+          <span className={`font-medium text-sm ${value.length === 0 ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
             {value.length === 0 ? placeholder : `${value.length} ticker${value.length !== 1 ? 's' : ''} selected`}
           </span>
           <motion.div
             animate={{ rotate: isOpen ? 180 : 0 }}
             transition={{ duration: 0.2 }}
           >
-            <ChevronDown className="w-4 h-4 text-gray-400 group-hover:text-white transition-colors" />
+            <ChevronDown className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
           </motion.div>
         </motion.button>
       </div>

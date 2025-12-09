@@ -259,7 +259,7 @@ export function StockDetailPanel({
     // Loading State
     if (loading) {
         return (
-            <div className="h-full bg-slate-900 animate-fadeIn">
+            <div className="h-full bg-[var(--bg-primary)] animate-fadeIn">
                 <StockDetailSkeleton />
             </div>
         );
@@ -268,7 +268,7 @@ export function StockDetailPanel({
     const financials = data?.financials || {};
 
     return (
-        <div className="absolute inset-0 bg-slate-900 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent animate-slideInRight">
+        <div className="absolute inset-0 bg-[var(--bg-primary)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent animate-slideInRight">
             {/* All Content - Scrollable */}
             <div
                 ref={scrollRef}
@@ -289,14 +289,14 @@ export function StockDetailPanel({
                 />
 
                 {/* Investment Thesis Section */}
-                <div className="px-6 py-4 border-b border-white/5">
+                <div className="px-6 py-4 border-b border-[var(--border-color)]">
                     <Card variant="glass" padding="md">
                         <div className="flex items-start justify-between gap-4">
                             <div className="flex-1">
                                 <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
                                     Investment Thesis
                                 </h3>
-                                <p className="text-slate-300 text-sm leading-relaxed italic">
+                                <p className="text-[var(--text-primary)] text-sm leading-relaxed italic">
                                     "{stock.thesis || 'No thesis provided for this recommendation.'}"
                                 </p>
 
@@ -309,7 +309,7 @@ export function StockDetailPanel({
                                                 href={img}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="aspect-video rounded-lg overflow-hidden border border-white/10 
+                                                className="aspect-video rounded-lg overflow-hidden border border-[var(--border-color)] 
                                                          hover:border-indigo-500/50 transition-all hover:scale-[1.02]"
                                             >
                                                 <img
@@ -326,7 +326,7 @@ export function StockDetailPanel({
                             {/* Custom Return Display */}
                             {customReturn !== null && (
                                 <div className="text-right flex-shrink-0">
-                                    <span className="text-xs text-slate-400 block mb-1">Period Return</span>
+                                    <span className="text-xs text-[var(--text-secondary)] block mb-1">Period Return</span>
                                     <span className={`text-2xl font-bold font-mono ${customReturn >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                         {customReturn > 0 ? '+' : ''}{customReturn.toFixed(2)}%
                                     </span>
@@ -337,7 +337,7 @@ export function StockDetailPanel({
                 </div>
 
                 {/* Price Target Timeline Section */}
-                <div className="px-6 py-4 border-b border-white/5">
+                <div className="px-6 py-4 border-b border-[var(--border-color)]">
                     <PriceTargetTimeline ticker={stock.ticker} />
                 </div>
 
@@ -428,7 +428,7 @@ export function StockDetailPanel({
                             {session?.user?.id && (
                                 <div className="mb-6">
                                     <div className="flex items-center justify-between mb-3">
-                                        <h3 className="text-lg font-semibold text-white">Saved Podcasts</h3>
+                                        <h3 className="text-lg font-semibold text-[var(--text-primary)]">Saved Podcasts</h3>
                                         <button
                                             onClick={() => setShowSavedPodcasts(!showSavedPodcasts)}
                                             className="text-sm text-indigo-400 hover:text-indigo-300 transition-colors"
@@ -453,15 +453,15 @@ export function StockDetailPanel({
                                 <div className="flex items-center justify-center py-12">
                                     <div className="text-center">
                                         <Loader className="w-8 h-8 text-indigo-500 animate-spin mx-auto mb-2" />
-                                        <p className="text-slate-400">Loading news for {stock.ticker}...</p>
+                                        <p className="text-[var(--text-secondary)]">Loading news for {stock.ticker}...</p>
                                     </div>
                                 </div>
                             ) : data.news && data.news.length > 0 ? (
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between mb-4">
-                                        <h3 className="text-xl font-bold text-white">Latest News</h3>
+                                        <h3 className="text-xl font-bold text-[var(--text-primary)]">Latest News</h3>
                                         <div className="flex items-center gap-3">
-                                            <span className="text-sm text-slate-400">{data.news.length} articles</span>
+                                            <span className="text-sm text-[var(--text-secondary)]">{data.news.length} articles</span>
                                             <button 
                                                 onClick={handleGeneratePodcast}
                                                 disabled={podcastLoading || newsLoading}
@@ -497,9 +497,9 @@ export function StockDetailPanel({
                                 </div>
                             ) : (
                                 <div className="text-center py-12">
-                                    <Newspaper className="w-12 h-12 text-slate-600 mx-auto mb-3" />
-                                    <p className="text-slate-400 mb-2">No news articles available for {stock.ticker}</p>
-                                    <p className="text-xs text-slate-500 mb-4">News will be fetched from multiple sources and summarized with AI.</p>
+                                    <Newspaper className="w-12 h-12 text-[var(--text-tertiary)] mx-auto mb-3" />
+                                    <p className="text-[var(--text-secondary)] mb-2">No news articles available for {stock.ticker}</p>
+                                    <p className="text-xs text-[var(--text-tertiary)] mb-4">News will be fetched from multiple sources and summarized with AI.</p>
                                     <button 
                                         onClick={fetchNews}
                                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"

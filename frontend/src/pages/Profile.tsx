@@ -313,15 +313,15 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-400">Loading profile...</div>
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="text-[var(--text-secondary)]">Loading profile...</div>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
         <div className="text-red-400">Failed to load profile</div>
       </div>
     );
@@ -331,25 +331,25 @@ export default function Profile() {
   const displayEmail = clerkUser?.emailAddresses?.[0]?.emailAddress || '';
 
   return (
-    <div className="min-h-screen bg-slate-900 p-6">
+    <div className="min-h-screen bg-[var(--bg-primary)] p-6">
       <div className="max-w-4xl mx-auto">
         {/* Profile Header */}
-        <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow-lg overflow-hidden mb-6">
+        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg shadow-lg overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 h-32"></div>
           <div className="px-6 pb-6 -mt-16">
             <div className="flex items-end justify-between mb-4">
               <div className="flex items-end gap-4">
-                <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-800 shadow-lg flex items-center justify-center overflow-hidden">
+                <div className="w-24 h-24 rounded-full bg-[var(--card-bg)] border-4 border-[var(--card-bg)] shadow-lg flex items-center justify-center overflow-hidden">
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-12 h-12 text-slate-400" />
+                    <User className="w-12 h-12 text-[var(--text-secondary)]" />
                   )}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">{displayName}</h1>
+                  <h1 className="text-2xl font-bold text-[var(--text-primary)]">{displayName}</h1>
                   {profile.username && (
-                    <p className="text-slate-400 text-sm">@{profile.username}</p>
+                    <p className="text-[var(--text-secondary)] text-sm">@{profile.username}</p>
                   )}
                 </div>
               </div>
@@ -368,19 +368,19 @@ export default function Profile() {
             <div className="space-y-2 mb-4">
               {displayEmail && (
                 <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-200">{displayEmail}</span>
+                  <Mail className="w-4 h-4 text-[var(--text-secondary)]" />
+                  <span className="text-[var(--text-primary)]">{displayEmail}</span>
                 </div>
               )}
               {profile.location && (
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-200">{profile.location}</span>
+                  <MapPin className="w-4 h-4 text-[var(--text-secondary)]" />
+                  <span className="text-[var(--text-primary)]">{profile.location}</span>
                 </div>
               )}
               {profile.website && (
                 <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-slate-400" />
+                  <Globe className="w-4 h-4 text-[var(--text-secondary)]" />
                   <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline font-medium">
                     {profile.website}
                   </a>
@@ -388,15 +388,15 @@ export default function Profile() {
               )}
               {profile.created_at && (
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-slate-400" />
-                  <span className="text-slate-200">Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                  <Calendar className="w-4 h-4 text-[var(--text-secondary)]" />
+                  <span className="text-[var(--text-primary)]">Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                 </div>
               )}
             </div>
 
             {/* Bio */}
             {profile.bio && !editing && (
-              <p className="text-slate-200 whitespace-pre-wrap leading-relaxed">{profile.bio}</p>
+              <p className="text-[var(--text-primary)] whitespace-pre-wrap leading-relaxed">{profile.bio}</p>
             )}
 
             {/* Success/Error Messages */}
@@ -413,7 +413,7 @@ export default function Profile() {
 
             {/* Edit Form */}
             {editing && (
-              <div className="space-y-4 pt-4 border-t border-white/10">
+              <div className="space-y-4 pt-4 border-t border-[var(--border-color)]">
                 {error && (
                   <div className="bg-red-900/30 border border-red-500/30 text-red-300 px-4 py-3 rounded-md font-medium">
                     {error}
@@ -426,52 +426,52 @@ export default function Profile() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                     Full Name
                   </label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder:text-slate-400 bg-slate-800/50"
+                    className="w-full px-3 py-2 border border-[var(--border-color)] rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] bg-[var(--card-bg)]"
                     placeholder="Your full name"
                     maxLength={100}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                     Bio
                   </label>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={4}
-                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder:text-slate-400 bg-slate-800/50 resize-y"
+                    className="w-full px-3 py-2 border border-[var(--border-color)] rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] bg-[var(--card-bg)] resize-y"
                     placeholder="Tell us about yourself..."
                     maxLength={500}
                   />
                   {bio.length > 0 && (
-                    <p className="mt-1 text-xs text-slate-400">{bio.length}/500 characters</p>
+                    <p className="mt-1 text-xs text-[var(--text-secondary)]">{bio.length}/500 characters</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-200 mb-2">
+                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                     Location
                   </label>
                   <input
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder:text-slate-400 bg-slate-800/50"
+                    className="w-full px-3 py-2 border border-[var(--border-color)] rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] bg-[var(--card-bg)]"
                     placeholder="City, Country"
                     maxLength={100}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="website" className="block text-sm font-medium text-slate-200 mb-2">
+                  <label htmlFor="website" className="block text-sm font-medium text-[var(--text-primary)] mb-2">
                     Website
                   </label>
                   <input
@@ -479,7 +479,7 @@ export default function Profile() {
                     type="text"
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-white placeholder:text-slate-400 bg-slate-800/50"
+                    className="w-full px-3 py-2 border border-[var(--border-color)] rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] bg-[var(--card-bg)]"
                     placeholder="https://yourwebsite.com"
                     maxLength={200}
                   />
@@ -494,7 +494,7 @@ export default function Profile() {
                   <button
                     onClick={handleCancel}
                     disabled={saving}
-                    className="px-4 py-2 text-slate-200 bg-slate-700 rounded-md hover:bg-slate-600 disabled:opacity-50"
+                    className="px-4 py-2 text-[var(--text-primary)] bg-[var(--bg-secondary)] rounded-md hover:bg-[var(--card-bg)] disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -514,11 +514,11 @@ export default function Profile() {
 
         {/* Teams Section */}
         {organization && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow-lg p-6">
+          <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-slate-300" />
-                <h2 className="text-xl font-bold text-white">Organization Teams</h2>
+                <Users className="w-5 h-5 text-[var(--text-secondary)]" />
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">Organization Teams</h2>
               </div>
               <button
                 onClick={() => setShowCreateTeamModal(true)}
@@ -530,10 +530,10 @@ export default function Profile() {
             </div>
 
             {teamsLoading || loadingAllTeams ? (
-              <div className="text-slate-400 text-center py-8">Loading teams...</div>
+              <div className="text-[var(--text-secondary)] text-center py-8">Loading teams...</div>
             ) : allOrgTeams.length === 0 ? (
-              <div className="text-center py-8 text-slate-400">
-                <Users className="w-12 h-12 mx-auto mb-4 text-slate-500" />
+              <div className="text-center py-8 text-[var(--text-secondary)]">
+                <Users className="w-12 h-12 mx-auto mb-4 text-[var(--text-tertiary)]" />
                 <p className="mb-4">No teams available yet.</p>
                 <button
                   onClick={() => setShowCreateTeamModal(true)}
@@ -566,14 +566,14 @@ export default function Profile() {
         )}
 
         {!organization && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow-lg p-6 text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-slate-500" />
-            <p className="text-slate-300 mb-4">Join or create an organization to access teams.</p>
+          <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg shadow-lg p-6 text-center">
+            <Users className="w-12 h-12 mx-auto mb-4 text-[var(--text-tertiary)]" />
+            <p className="text-[var(--text-secondary)] mb-4">Join or create an organization to access teams.</p>
             <div className="flex gap-4 justify-center">
               <a href="/organization/join" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                 Join Organization
               </a>
-              <a href="/organization/create" className="px-4 py-2 bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600">
+              <a href="/organization/create" className="px-4 py-2 bg-[var(--bg-secondary)] text-[var(--text-primary)] rounded-md hover:bg-[var(--card-bg)]">
                 Create Organization
               </a>
             </div>
@@ -582,11 +582,11 @@ export default function Profile() {
 
         {/* Admin Join Requests Section */}
         {isAdmin && organization && (
-          <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow-lg p-6 mt-6">
+          <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg shadow-lg p-6 mt-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-slate-300" />
-                <h2 className="text-xl font-bold text-white">Pending Join Requests</h2>
+                <Users className="w-5 h-5 text-[var(--text-secondary)]" />
+                <h2 className="text-xl font-bold text-[var(--text-primary)]">Pending Join Requests</h2>
                 {adminJoinRequests.length > 0 && (
                   <span className="px-2 py-1 text-xs bg-blue-900/50 text-blue-300 rounded-full border border-blue-500/30">
                     {adminJoinRequests.length}
@@ -596,10 +596,10 @@ export default function Profile() {
             </div>
 
             {loadingAdminRequests ? (
-              <div className="text-slate-400 text-center py-8">Loading requests...</div>
+              <div className="text-[var(--text-secondary)] text-center py-8">Loading requests...</div>
             ) : adminJoinRequests.length === 0 ? (
-              <div className="text-center py-8 text-slate-400">
-                <Users className="w-12 h-12 mx-auto mb-4 text-slate-500" />
+              <div className="text-center py-8 text-[var(--text-secondary)]">
+                <Users className="w-12 h-12 mx-auto mb-4 text-[var(--text-tertiary)]" />
                 <p>No pending join requests</p>
               </div>
             ) : (
@@ -607,19 +607,19 @@ export default function Profile() {
                 {adminJoinRequests.map((request) => (
                   <div
                     key={request.id}
-                    className="border border-white/10 rounded-lg p-4 hover:bg-slate-700/50 transition-colors bg-slate-800/30"
+                    className="border border-[var(--border-color)] rounded-lg p-4 hover:bg-[var(--bg-secondary)] transition-colors bg-[var(--card-bg)]"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="font-semibold text-white">{request.username}</span>
-                          <span className="text-sm text-slate-400">wants to join</span>
+                          <span className="font-semibold text-[var(--text-primary)]">{request.username}</span>
+                          <span className="text-sm text-[var(--text-secondary)]">wants to join</span>
                           <span className="font-semibold text-blue-400">{request.teamName}</span>
                         </div>
                         {request.email && (
-                          <div className="text-sm text-slate-400 ml-0">{request.email}</div>
+                          <div className="text-sm text-[var(--text-secondary)] ml-0">{request.email}</div>
                         )}
-                        <div className="text-xs text-slate-500 mt-1">
+                        <div className="text-xs text-[var(--text-tertiary)] mt-1">
                           Requested {new Date(request.requestedAt).toLocaleString()}
                         </div>
                       </div>
@@ -668,24 +668,24 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
   const shouldShowMembers = expanded;
 
   return (
-    <div className="border border-white/10 rounded-lg overflow-hidden bg-slate-800/30">
+    <div className="border border-[var(--border-color)] rounded-lg overflow-hidden bg-[var(--card-bg)]">
       <div className="p-4 flex items-center justify-between">
         <div className="flex-1 cursor-pointer" onClick={() => setExpanded(!expanded)}>
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-white">{team.name}</h3>
+            <h3 className="font-semibold text-[var(--text-primary)]">{team.name}</h3>
             {isMember && (
               <span className="px-2 py-1 text-xs bg-green-900/50 text-green-300 rounded border border-green-500/30">Member</span>
             )}
           </div>
           {team.createdAt && (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-[var(--text-secondary)]">
               Created {new Date(team.createdAt).toLocaleDateString()}
             </p>
           )}
         </div>
         <div className="flex items-center gap-2">
           {!loading && (
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-[var(--text-secondary)]">
               {members.length} member{members.length !== 1 ? 's' : ''}
             </span>
           )}
@@ -694,10 +694,10 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
               e.stopPropagation();
               setExpanded(!expanded);
             }}
-            className="p-1 hover:bg-slate-700 rounded transition-colors"
+            className="p-1 hover:bg-[var(--bg-secondary)] rounded transition-colors"
             title={expanded ? 'Collapse' : 'Expand'}
           >
-            {expanded ? <X className="w-4 h-4 text-slate-400" /> : <Users className="w-4 h-4 text-slate-400" />}
+            {expanded ? <X className="w-4 h-4 text-[var(--text-secondary)]" /> : <Users className="w-4 h-4 text-[var(--text-secondary)]" />}
           </button>
           {isMember && onLeave && (
             <button
@@ -734,25 +734,25 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
       </div>
 
       {shouldShowMembers && (
-        <div className="border-t border-white/10 p-4 bg-slate-800/50">
+        <div className="border-t border-[var(--border-color)] p-4 bg-[var(--card-bg)]">
           {loading ? (
-            <div className="text-slate-400 text-sm text-center py-2">Loading members...</div>
+            <div className="text-[var(--text-secondary)] text-sm text-center py-2">Loading members...</div>
           ) : members.length === 0 ? (
-            <div className="text-slate-400 text-sm text-center py-2">No members yet</div>
+            <div className="text-[var(--text-secondary)] text-sm text-center py-2">No members yet</div>
           ) : (
             <div className="space-y-2">
-              <h4 className="font-medium text-slate-200 mb-2">Members ({members.length})</h4>
+              <h4 className="font-medium text-[var(--text-primary)] mb-2">Members ({members.length})</h4>
               {members.map((member) => (
-                <div key={member.id} className="flex items-center gap-2 p-2 bg-slate-700/50 rounded border border-white/10 hover:bg-slate-700 transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-slate-300" />
+                <div key={member.id} className="flex items-center gap-2 p-2 bg-[var(--bg-secondary)] rounded border border-[var(--border-color)] hover:bg-[var(--card-bg)] transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-[var(--bg-secondary)] flex items-center justify-center flex-shrink-0">
+                    <User className="w-4 h-4 text-[var(--text-secondary)]" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-white truncate">
+                    <div className="font-medium text-sm text-[var(--text-primary)] truncate">
                       {member.profile?.username || 'Unknown User'}
                     </div>
                     {member.profile?.email && (
-                      <div className="text-xs text-slate-400 truncate">{member.profile.email}</div>
+                      <div className="text-xs text-[var(--text-secondary)] truncate">{member.profile.email}</div>
                     )}
                   </div>
                   {member.userId === session?.user?.id && (

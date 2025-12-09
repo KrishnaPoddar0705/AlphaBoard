@@ -216,16 +216,16 @@ export function IdeaList({
     };
 
     return (
-        <div className="h-full flex flex-col bg-slate-900 border-r border-white/5 overflow-hidden max-h-full">
+        <div className="h-full flex flex-col bg-[var(--bg-primary)] border-r border-[var(--border-color)] overflow-hidden max-h-full">
             {/* Portfolio Podcast Modal */}
             {showPodcastModal && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-                    <div className="bg-slate-800 rounded-lg border border-white/10 p-6 w-full max-w-md">
+                    <div className="bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)] p-6 w-full max-w-md">
                         <div className="flex items-center justify-between mb-4">
-                            <h3 className="text-lg font-bold text-white">Weekly Portfolio Podcast</h3>
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Weekly Portfolio Podcast</h3>
                             <button
                                 onClick={() => setShowPodcastModal(false)}
-                                className="text-slate-400 hover:text-white transition-colors"
+                                className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
                             >
                                 <X className="w-5 h-5" />
                             </button>
@@ -239,8 +239,8 @@ export function IdeaList({
                         <div className="mt-6 flex justify-end gap-3">
                             <button
                                 onClick={() => setShowPodcastModal(false)}
-                                className="px-4 py-2 text-sm text-slate-300 bg-transparent border border-white/10 
-                                         rounded-lg hover:bg-white/5 transition-colors"
+                                className="px-4 py-2 text-sm text-[var(--text-primary)] bg-transparent border border-[var(--border-color)] 
+                                         rounded-lg hover:bg-[var(--list-item-hover)] transition-colors"
                             >
                                 Cancel
                             </button>
@@ -292,9 +292,9 @@ export function IdeaList({
             )}
 
             {/* Header */}
-            <div className="flex-shrink-0 px-4 py-4 border-b border-white/5 bg-slate-900/95 backdrop-blur-sm z-10">
+            <div className="flex-shrink-0 px-4 py-4 border-b border-[var(--border-color)] bg-[var(--bg-primary)]/95 backdrop-blur-sm z-10">
                 <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+                    <h1 className="text-xl font-bold text-[var(--text-primary)]">
                         My Ideas
                     </h1>
                     <div className="flex items-center gap-2">
@@ -335,8 +335,8 @@ export function IdeaList({
 
                 {/* Saved Podcasts Section */}
                 {session?.user?.id && showSavedPodcasts && (
-                    <div className="mb-4 pb-4 border-b border-white/5">
-                        <h3 className="text-sm font-semibold text-white mb-3">Saved Portfolio Podcasts</h3>
+                    <div className="mb-4 pb-4 border-b border-[var(--border-color)]">
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">Saved Portfolio Podcasts</h3>
                         <PodcastList
                             userId={session.user.id}
                             podcastType="portfolio"
@@ -346,7 +346,7 @@ export function IdeaList({
                 )}
 
                 {/* View Mode Toggle */}
-                <div className="flex gap-1 p-1 bg-slate-800/50 rounded-xl border border-white/5">
+                <div className="flex gap-1 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)]">
                     <ViewModeButton
                         active={viewMode === 'active'}
                         onClick={() => setViewMode('active')}
@@ -387,16 +387,16 @@ export function IdeaList({
                     // Idea List
                     <div>
                         {/* Table Header */}
-                        <div className="px-6 py-3 bg-slate-800/50 border-b border-white/5 sticky top-0 z-10">
+                        <div className="px-6 py-3 bg-[var(--card-bg)] border-b border-[var(--border-color)] sticky top-0 z-10">
                             <div className="grid grid-cols-12 gap-3 items-center">
-                                <div className="col-span-4 px-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Ticker</div>
-                                <div className="col-span-2 px-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
+                                <div className="col-span-4 px-3 text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Ticker</div>
+                                <div className="col-span-2 px-3 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                                     {viewMode === 'watchlist' ? 'Current Price' : 'Entry'}
                                 </div>
                                 {viewMode !== 'watchlist' && (
-                                    <div className="col-span-2 px-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Current Price</div>
+                                    <div className="col-span-2 px-3 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Current Price</div>
                                 )}
-                                <div className={`px-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider ${viewMode === 'watchlist' ? 'col-span-4' : 'col-span-3'}`}>Return</div>
+                                <div className={`px-3 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider ${viewMode === 'watchlist' ? 'col-span-4' : 'col-span-3'}`}>Return</div>
                                 <div className={`${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-1'}`}></div>
                             </div>
                         </div>
@@ -441,7 +441,7 @@ function ViewModeButton({ active, onClick, count, children }: ViewModeButtonProp
                 rounded-lg transition-all duration-200
                 ${active
                     ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)]'
                 }
             `}
         >
@@ -449,7 +449,7 @@ function ViewModeButton({ active, onClick, count, children }: ViewModeButtonProp
             {count > 0 && (
                 <span className={`
                     px-1.5 py-0.5 text-[10px] font-bold rounded
-                    ${active ? 'bg-white/20' : 'bg-slate-700'}
+                    ${active ? 'bg-[var(--list-item-bg)]' : 'bg-[var(--bg-secondary)]'}
                 `}>
                     {count}
                 </span>
@@ -514,7 +514,7 @@ function IdeaListItem({
                 group relative px-6 py-3 cursor-pointer transition-all duration-200
                 ${isSelected
                     ? 'bg-indigo-500/10 border-l-2 border-indigo-500'
-                    : 'hover:bg-white/5 border-l-2 border-transparent'
+                    : 'hover:bg-[var(--list-item-hover)] border-l-2 border-transparent'
                 }
             `}
         >
@@ -527,10 +527,10 @@ function IdeaListItem({
                 */}
                 <div className="col-span-4 px-3 min-w-0">
                     <div className="flex items-center gap-2">
-                        <span className="text-white font-semibold text-sm">{rec.ticker}</span>
+                        <span className="text-[var(--text-primary)] font-semibold text-sm">{rec.ticker}</span>
                     </div>
                     {companyName && (
-                        <div className="text-xs text-slate-400 mt-0.5 truncate block min-w-0">
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5 truncate block min-w-0">
                             {companyName}
                         </div>
                     )}
@@ -546,7 +546,7 @@ function IdeaListItem({
                         `}>
                             {rec.action}
                         </span>
-                        <span className="text-[10px] text-slate-500">{dateAdded}</span>
+                        <span className="text-[10px] text-[var(--text-tertiary)]">{dateAdded}</span>
                     </div>
                 </div>
 
@@ -558,11 +558,11 @@ function IdeaListItem({
                 */}
                 <div className="col-span-2 px-3 text-right">
                     {viewMode === 'watchlist' ? (
-                        <span className="text-sm text-slate-300 font-mono">
+                        <span className="text-sm text-[var(--text-primary)] font-mono">
                             {current ? `₹${current.toFixed(2)}` : '-'}
                         </span>
                     ) : (
-                        <span className="text-sm text-slate-300 font-mono">
+                        <span className="text-sm text-[var(--text-primary)] font-mono">
                             ₹{entry.toFixed(2)}
                         </span>
                     )}
@@ -575,7 +575,7 @@ function IdeaListItem({
                 */}
                 {viewMode !== 'watchlist' && (
                     <div className="col-span-2 px-3 text-right min-w-0 overflow-hidden">
-                        <span className="text-sm text-slate-300 font-mono">
+                        <span className="text-sm text-[var(--text-primary)] font-mono">
                             {current ? `₹${current.toFixed(2)}` : '-'}
                         </span>
                     </div>
@@ -635,7 +635,7 @@ function IdeaListItem({
                             )}
                         </div>
                     ) : (
-                        <span className="text-slate-500">-</span>
+                        <span className="text-[var(--text-tertiary)]">-</span>
                     )}
                 </div>
 
@@ -661,7 +661,7 @@ function IdeaListItem({
                             </button>
                             <button
                                 onClick={onDelete}
-                                className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                                className="p-1.5 text-[var(--text-secondary)] hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
                             >
                                 <Trash2 className="w-4 h-4" />
                             </button>
@@ -690,7 +690,7 @@ function EmptyState({
 }) {
     const messages = {
         active: {
-            icon: <TrendingUp className="w-10 h-10 text-slate-600" />,
+            icon: <TrendingUp className="w-10 h-10 text-[var(--text-tertiary)]" />,
             title: 'No active ideas',
             description: 'Start tracking your investment thesis by adding a new idea.',
             action: 'Add First Idea',
@@ -713,11 +713,11 @@ function EmptyState({
 
     return (
         <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-            <div className="p-4 rounded-2xl bg-slate-800/50 mb-4">
+            <div className="p-4 rounded-2xl bg-[var(--card-bg)] mb-4">
                 {icon}
             </div>
-            <h3 className="text-lg font-semibold text-white mb-2">{title}</h3>
-            <p className="text-sm text-slate-400 max-w-xs mb-6">{description}</p>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">{title}</h3>
+            <p className="text-sm text-[var(--text-secondary)] max-w-xs mb-6">{description}</p>
             {action && (
                 <button
                     onClick={onNewIdea}

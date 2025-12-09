@@ -37,7 +37,7 @@ export default function RecommendationList({
             {/* Header - Responsive */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 p-4 sm:p-6 border-b border-white/10 flex-shrink-0">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
-                    <h1 className="text-xl sm:text-2xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-200 to-purple-200 whitespace-nowrap">
+                    <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] whitespace-nowrap">
                         My Ideas
                     </h1>
                     <div className="flex bg-white/5 rounded-lg p-1 border border-white/10">

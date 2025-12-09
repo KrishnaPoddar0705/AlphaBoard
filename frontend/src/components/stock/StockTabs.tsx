@@ -41,8 +41,8 @@ export function StockTabs({ activeTab, onTabChange, isSticky = false }: StockTab
             className={`
                 sticky top-[88px] z-20 transition-all duration-300
                 ${isSticky 
-                    ? 'bg-slate-900/95 backdrop-blur-xl border-b border-white/10' 
-                    : 'bg-slate-900/80 backdrop-blur-sm border-b border-white/5'
+                    ? 'bg-[var(--bg-primary)]/95 backdrop-blur-xl border-b border-[var(--border-color)]' 
+                    : 'bg-[var(--bg-primary)]/80 backdrop-blur-sm border-b border-[var(--border-color)]'
                 }
             `}
         >
@@ -62,15 +62,15 @@ export function StockTabs({ activeTab, onTabChange, isSticky = false }: StockTab
                                     text-sm font-medium transition-all duration-200
                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900
                                     ${isActive 
-                                        ? 'text-white' 
-                                        : 'text-slate-400 hover:text-slate-200'
+                                        ? 'text-[var(--text-primary)]' 
+                                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                     }
                                 `}
                             >
                                 {/* Icon */}
                                 <span className={`
                                     transition-colors duration-200
-                                    ${isActive ? 'text-indigo-400' : 'text-slate-500 group-hover:text-slate-400'}
+                                    ${isActive ? 'text-indigo-400' : 'text-[var(--text-tertiary)] group-hover:text-[var(--text-secondary)]'}
                                 `}>
                                     {tab.icon}
                                 </span>
@@ -100,8 +100,8 @@ export function StockTabs({ activeTab, onTabChange, isSticky = false }: StockTab
                                 <span className={`
                                     absolute inset-0 rounded-lg transition-colors duration-200
                                     ${isActive 
-                                        ? 'bg-white/5' 
-                                        : 'group-hover:bg-white/5'
+                                        ? 'bg-[var(--list-item-hover)]' 
+                                        : 'group-hover:bg-[var(--list-item-hover)]'
                                     }
                                 `} />
                             </button>
@@ -132,14 +132,14 @@ export function ChartSubTabs({
     return (
         <div className="flex items-center justify-between flex-wrap gap-4 mb-4">
             {/* Category Toggle */}
-            <div className="flex items-center gap-2 p-1 bg-slate-800/50 rounded-xl border border-white/5">
+            <div className="flex items-center gap-2 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)]">
                 <button
                     onClick={() => onCategoryChange('technical')}
                     className={`
                         px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
                         ${activeCategory === 'technical'
                             ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)]'
                         }
                     `}
                 >
@@ -151,7 +151,7 @@ export function ChartSubTabs({
                         px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
                         ${activeCategory === 'fundamental'
                             ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                            : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)]'
                         }
                     `}
                 >
@@ -161,14 +161,14 @@ export function ChartSubTabs({
 
             {/* Chart Type Toggle (only for technical) */}
             {activeCategory === 'technical' && (
-                <div className="flex items-center gap-2 p-1 bg-slate-800/50 rounded-xl border border-white/5">
+                <div className="flex items-center gap-2 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)]">
                     <button
                         onClick={() => onTechnicalTypeChange('line')}
                         className={`
                             px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
                             ${activeTechnicalType === 'line'
                                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)]'
                             }
                         `}
                     >
@@ -180,7 +180,7 @@ export function ChartSubTabs({
                             px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
                             ${activeTechnicalType === 'candlestick'
                                 ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/25'
-                                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                                : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)]'
                             }
                         `}
                     >

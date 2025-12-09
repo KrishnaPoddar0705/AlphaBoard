@@ -148,10 +148,10 @@ export default function ResearchLibrary() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200">
+          <h1 className="text-3xl font-bold text-[var(--text-primary)]">
             Institutional Memory
           </h1>
-          <p className="text-gray-400 mt-1">
+          <p className="text-[var(--text-secondary)] mt-1">
             Upload, search, and analyze research reports with AI-powered insights
           </p>
         </div>
@@ -174,23 +174,23 @@ export default function ResearchLibrary() {
       {/* Toggle RAG Search */}
       <button
         onClick={() => setShowRAGSearch(!showRAGSearch)}
-        className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+        className="text-sm text-indigo-500 hover:text-indigo-600 transition-colors"
       >
         {showRAGSearch ? 'Hide' : 'Show'} AI Search
       </button>
 
       {/* Filters */}
-      <div className="glass p-4 rounded-xl border border-white/10">
+      <div className="glass p-4 rounded-xl border border-[var(--border-color)]">
         <div className="space-y-4">
           {/* First Row: Search */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-secondary)]" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search reports by title, ticker..."
-              className="w-full bg-white/5 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg pl-10 pr-4 py-2 text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-blue-500"
             />
           </div>
 
@@ -198,7 +198,7 @@ export default function ResearchLibrary() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Sector Filter */}
             <div className="relative">
-              <label className="block text-xs font-medium text-gray-300 mb-2">
+              <label className="block text-xs font-medium text-[var(--text-primary)] mb-2">
                 Sector
               </label>
               <SectorDropdown
@@ -211,7 +211,7 @@ export default function ResearchLibrary() {
 
             {/* Status Filter */}
             <div className="relative">
-              <label className="block text-xs font-medium text-gray-300 mb-2">
+              <label className="block text-xs font-medium text-[var(--text-primary)] mb-2">
                 Status
               </label>
               <SectorDropdown
@@ -224,7 +224,7 @@ export default function ResearchLibrary() {
 
             {/* Ticker Filter */}
             <div className="relative">
-              <label className="block text-xs font-medium text-gray-300 mb-2">
+              <label className="block text-xs font-medium text-[var(--text-primary)] mb-2">
                 Tickers
               </label>
               <TickerFilter
@@ -241,7 +241,7 @@ export default function ResearchLibrary() {
             <div className="flex justify-end">
               <button
                 onClick={clearAllFilters}
-                className="px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+                className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-2"
               >
                 <X className="w-4 h-4" />
                 Clear All Filters
@@ -251,27 +251,27 @@ export default function ResearchLibrary() {
         </div>
 
         {/* Stats */}
-        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-white/10">
+        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-[var(--border-color)]">
           <div className="text-sm">
-            <span className="text-gray-400">Showing </span>
-            <span className="text-white font-semibold">{filteredReports.length}</span>
-            <span className="text-gray-400"> of {reports.length} reports</span>
+            <span className="text-[var(--text-secondary)]">Showing </span>
+            <span className="text-[var(--text-primary)] font-semibold">{filteredReports.length}</span>
+            <span className="text-[var(--text-secondary)]"> of {reports.length} reports</span>
           </div>
           {hasActiveFilters && (
-            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
+            <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--text-secondary)]">
               <span>Filters:</span>
               {sectorFilter && (
-                <span className="px-2 py-1 bg-blue-500/20 rounded text-white text-xs">
+                <span className="px-2 py-1 bg-blue-500/20 rounded text-[var(--text-primary)] text-xs">
                   Sector: {sectorFilter}
                 </span>
               )}
               {statusFilter && (
-                <span className="px-2 py-1 bg-purple-500/20 rounded text-white text-xs">
+                <span className="px-2 py-1 bg-purple-500/20 rounded text-[var(--text-primary)] text-xs">
                   Status: {statusFilter}
                 </span>
               )}
               {tickerFilter.length > 0 && (
-                <span className="px-2 py-1 bg-green-500/20 rounded text-white text-xs">
+                <span className="px-2 py-1 bg-green-500/20 rounded text-[var(--text-primary)] text-xs">
                   Tickers: {tickerFilter.length}
                 </span>
               )}
@@ -283,7 +283,7 @@ export default function ResearchLibrary() {
       {/* Reports Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-blue-400 animate-spin" />
+          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
         </div>
       ) : filteredReports.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -292,10 +292,10 @@ export default function ResearchLibrary() {
           ))}
         </div>
       ) : (
-        <div className="glass p-12 rounded-xl border border-white/10 text-center">
-          <Filter className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">No reports found</h3>
-          <p className="text-gray-400 mb-6">
+        <div className="glass p-12 rounded-xl border border-[var(--border-color)] text-center">
+          <Filter className="w-12 h-12 text-[var(--text-tertiary)] mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">No reports found</h3>
+          <p className="text-[var(--text-secondary)] mb-6">
             {reports.length === 0
               ? 'Upload your first research report to get started'
               : 'Try adjusting your filters or search terms'}

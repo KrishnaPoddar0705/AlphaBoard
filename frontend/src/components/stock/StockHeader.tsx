@@ -72,8 +72,8 @@ export function StockHeader({
             className={`
                 sticky top-0 z-30 transition-all duration-300
                 ${isSticky 
-                    ? 'bg-slate-900/95 backdrop-blur-xl shadow-lg shadow-black/20 border-b border-white/10' 
-                    : 'bg-gradient-to-b from-slate-900 to-slate-900/95'
+                    ? 'bg-[var(--bg-primary)]/95 backdrop-blur-xl shadow-lg shadow-black/20 border-b border-[var(--border-color)]' 
+                    : 'bg-gradient-to-b from-[var(--bg-primary)] to-[var(--bg-primary)]/95'
                 }
             `}
         >
@@ -83,7 +83,7 @@ export function StockHeader({
                     <div className="flex-1 min-w-0">
                         {/* Ticker & Status */}
                         <div className="flex items-center gap-3 mb-2">
-                            <h1 className="text-2xl md:text-3xl font-bold text-white truncate">
+                            <h1 className="text-2xl md:text-3xl font-bold text-[var(--text-primary)] truncate">
                                 {ticker}
                             </h1>
                         </div>
@@ -115,22 +115,22 @@ export function StockHeader({
                             </div>
 
                             {/* Entry Price */}
-                            <span className="text-sm text-slate-400">
-                                Entry: <span className="font-mono text-slate-300">₹{entryPrice?.toFixed(2)}</span>
+                            <span className="text-sm text-[var(--text-secondary)]">
+                                Entry: <span className="font-mono text-[var(--text-primary)]">₹{entryPrice?.toFixed(2)}</span>
                                 {formattedEntryDate && (
-                                    <span className="ml-2 text-slate-500">({formattedEntryDate})</span>
+                                    <span className="ml-2 text-[var(--text-tertiary)]">({formattedEntryDate})</span>
                                 )}
                             </span>
 
                             {/* Exit Price & Date (only show if position is closed) */}
                             {exitPrice && (
                                 <>
-                                    <span className="text-sm text-slate-400">
-                                        Exit: <span className="font-mono text-slate-300">₹{exitPrice.toFixed(2)}</span>
+                                    <span className="text-sm text-[var(--text-secondary)]">
+                                        Exit: <span className="font-mono text-[var(--text-primary)]">₹{exitPrice.toFixed(2)}</span>
                                     </span>
                                     {formattedExitDate && (
-                                        <span className="text-sm text-slate-400">
-                                            Exit Date: <span className="font-mono text-slate-300">{formattedExitDate}</span>
+                                        <span className="text-sm text-[var(--text-secondary)]">
+                                            Exit Date: <span className="font-mono text-[var(--text-primary)]">{formattedExitDate}</span>
                                         </span>
                                     )}
                                 </>
@@ -144,7 +144,7 @@ export function StockHeader({
                         {onToggleExpand && (
                             <button
                                 onClick={onToggleExpand}
-                                className="p-2 hover:bg-white/10 rounded-lg transition-colors text-slate-400 hover:text-white"
+                                className="p-2 hover:bg-[var(--list-item-hover)] rounded-lg transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
                                 title={isExpanded ? "Collapse" : "Expand"}
                             >
                                 {isExpanded ? (

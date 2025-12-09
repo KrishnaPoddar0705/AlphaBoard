@@ -34,19 +34,19 @@ export default function ReportCard({ report }: ReportCardProps) {
   return (
     <div
       onClick={() => navigate(`/research/${report.id}`)}
-      className="glass p-6 rounded-lg border border-white/10 hover:border-blue-500/50 transition-all cursor-pointer group"
+      className="glass p-6 rounded-lg border border-[var(--border-color)] hover:border-indigo-500/50 transition-all cursor-pointer group"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-500/10 rounded-lg">
-            <FileText className="w-5 h-5 text-blue-400" />
+          <div className="p-2 bg-indigo-500/10 rounded-lg">
+            <FileText className="w-5 h-5 text-indigo-500" />
           </div>
           <div>
-            <h3 className="text-white font-semibold group-hover:text-blue-400 transition-colors">
+            <h3 className="text-[var(--text-primary)] font-semibold group-hover:text-indigo-500 transition-colors">
               {report.title}
             </h3>
-            <p className="text-sm text-gray-400">{report.original_filename}</p>
+            <p className="text-sm text-[var(--text-secondary)]">{report.original_filename}</p>
           </div>
         </div>
         <span className={`px-2 py-1 rounded text-xs font-medium ${statusColor}`}>
@@ -57,7 +57,7 @@ export default function ReportCard({ report }: ReportCardProps) {
       {/* Metadata */}
       <div className="space-y-2">
         {report.sector && (
-          <div className="flex items-center gap-2 text-sm text-gray-300">
+          <div className="flex items-center gap-2 text-sm text-[var(--text-primary)]">
             <Tag className="w-4 h-4" />
             <span>{report.sector}</span>
           </div>
@@ -68,26 +68,26 @@ export default function ReportCard({ report }: ReportCardProps) {
             {report.tickers.slice(0, 5).map((ticker) => (
               <span
                 key={ticker}
-                className="px-2 py-1 bg-white/5 border border-white/10 rounded text-xs text-gray-300"
+                className="px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-xs text-[var(--text-primary)]"
               >
                 {ticker}
               </span>
             ))}
             {report.tickers.length > 5 && (
-              <span className="px-2 py-1 text-xs text-gray-400">
+              <span className="px-2 py-1 text-xs text-[var(--text-secondary)]">
                 +{report.tickers.length - 5} more
               </span>
             )}
           </div>
         )}
 
-        <div className="flex items-center justify-between pt-2 mt-2 border-t border-white/5">
-          <div className="flex items-center gap-2 text-sm text-gray-400">
+        <div className="flex items-center justify-between pt-2 mt-2 border-t border-[var(--border-color)]">
+          <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
             <Calendar className="w-4 h-4" />
             <span>{new Date(report.created_at).toLocaleDateString()}</span>
           </div>
           {report.analyst && (
-            <div className="flex items-center gap-2 text-sm text-gray-400">
+            <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
               <User className="w-4 h-4" />
               <span>{report.analyst.username}</span>
             </div>

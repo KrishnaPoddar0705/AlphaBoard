@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
+import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
-import { ArrowLeft, Lock, Globe } from 'lucide-react';
+import { ArrowLeft, Lock, Globe, Moon, Sun } from 'lucide-react';
 
 export default function PrivacySettings() {
   const { session } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -73,26 +75,26 @@ export default function PrivacySettings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <div className="text-slate-400">Loading privacy settings...</div>
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="text-[var(--text-secondary)]">Loading privacy settings...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 p-6">
+    <div className="min-h-screen bg-[var(--bg-primary)] p-6">
       <div className="max-w-2xl mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-slate-300 hover:text-white mb-6 transition-colors"
+          className="flex items-center gap-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
 
-        <h1 className="text-3xl font-bold text-white mb-8">Privacy Settings</h1>
+        <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-8">Privacy Settings</h1>
 
-        <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow p-6">
+        <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg shadow p-6">
           {success && (
             <div className="mb-6 bg-green-900/30 border border-green-500/30 text-green-300 px-4 py-3 rounded-md">
               {success}
@@ -105,15 +107,44 @@ export default function PrivacySettings() {
           )}
 
           <div className="space-y-6">
-            {/* Profile Visibility */}
+            {/* Appearance / Theme */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    {isPrivate ? <Lock className="w-5 h-5 text-slate-300" /> : <Globe className="w-5 h-5 text-slate-300" />}
+                  <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                    {theme === 'dark' ? <Moon className="w-5 h-5 text-[var(--text-secondary)]" /> : <Sun className="w-5 h-5 text-[var(--text-secondary)]" />}
+                    Appearance
+                  </h3>
+                  <p className="text-sm text-[var(--text-secondary)] mt-1">
+                    {theme === 'dark'
+                      ? 'Dark mode provides a comfortable viewing experience in low-light conditions.'
+                      : 'Light mode provides a clean, modern interface with a frosted glass aesthetic.'}
+                  </p>
+                </div>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={theme === 'light'}
+                    onChange={toggleTheme}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+              <div className="text-xs text-[var(--text-tertiary)] mt-2">
+                Current theme: <span className="font-medium">{theme === 'dark' ? 'Dark' : 'Light'}</span>
+              </div>
+            </div>
+
+            {/* Profile Visibility */}
+            <div className="border-t border-[var(--border-color)] pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
+                    {isPrivate ? <Lock className="w-5 h-5 text-[var(--text-secondary)]" /> : <Globe className="w-5 h-5 text-[var(--text-secondary)]" />}
                     Profile Visibility
                   </h3>
-                  <p className="text-sm text-slate-300 mt-1">
+                  <p className="text-sm text-[var(--text-secondary)] mt-1">
                     {isPrivate
                       ? 'Your profile and portfolio are private. Only you can see your data.'
                       : 'Your profile and portfolio are public. They will appear in the leaderboard.'}
@@ -133,27 +164,27 @@ export default function PrivacySettings() {
             </div>
 
             {/* Privacy Explanation */}
-            <div className="border-t border-white/10 pt-6">
-              <h4 className="font-semibold text-white mb-2">How Privacy Works</h4>
-              <ul className="space-y-2 text-sm text-slate-300">
+            <div className="border-t border-[var(--border-color)] pt-6">
+              <h4 className="font-semibold text-[var(--text-primary)] mb-2">How Privacy Works</h4>
+              <ul className="space-y-2 text-sm text-[var(--text-secondary)]">
                 <li className="flex items-start gap-2">
                   <span className="text-blue-400 mt-1">•</span>
                   <span>
-                    <strong className="text-white">Public Profile:</strong> Your recommendations, portfolio, and performance
+                    <strong className="text-[var(--text-primary)]">Public Profile:</strong> Your recommendations, portfolio, and performance
                     metrics are visible to everyone in the public leaderboard.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-400 mt-1">•</span>
                   <span>
-                    <strong className="text-white">Private Profile:</strong> Your data is only visible to you. If you're in
+                    <strong className="text-[var(--text-primary)]">Private Profile:</strong> Your data is only visible to you. If you're in
                     an organization, admins can also view your data.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
                   <span className="text-blue-400 mt-1">•</span>
                   <span>
-                    <strong className="text-white">Organization Members:</strong> If you're part of an organization, your
+                    <strong className="text-[var(--text-primary)]">Organization Members:</strong> If you're part of an organization, your
                     data is always visible to organization admins, regardless of privacy settings.
                   </span>
                 </li>

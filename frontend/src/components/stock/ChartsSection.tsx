@@ -64,11 +64,11 @@ export function ChartsSection({
                         <select
                             value={activeChartId}
                             onChange={(e) => setActiveChartId(Number(e.target.value))}
-                            className="px-3 py-2 text-sm bg-slate-800/50 border border-white/10 rounded-lg
-                                     text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                            className="px-3 py-2 text-sm bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg
+                                     text-[var(--text-primary)] focus:outline-none focus:border-indigo-500 transition-colors"
                         >
                             {fundamentalCharts.map((c) => (
-                                <option key={c.id} value={c.id} className="bg-slate-800">
+                                <option key={c.id} value={c.id} className="bg-[var(--card-bg)]">
                                     {c.chartType}
                                 </option>
                             ))}
@@ -76,21 +76,21 @@ export function ChartsSection({
                     )}
 
                     {/* Toolbar Actions */}
-                    <div className="flex items-center gap-1 p-1 bg-slate-800/50 rounded-lg border border-white/5">
+                    <div className="flex items-center gap-1 p-1 bg-[var(--card-bg)] rounded-lg border border-[var(--border-color)]">
                         <button
-                            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                            className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)] rounded-lg transition-colors"
                             title="Chart Settings"
                         >
                             <Settings2 className="w-4 h-4" />
                         </button>
                         <button
-                            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                            className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)] rounded-lg transition-colors"
                             title="Download Chart"
                         >
                             <Download className="w-4 h-4" />
                         </button>
                         <button
-                            className="p-2 text-slate-400 hover:text-white hover:bg-white/5 rounded-lg transition-colors"
+                            className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)] rounded-lg transition-colors"
                             title="Fullscreen"
                         >
                             <Maximize2 className="w-4 h-4" />

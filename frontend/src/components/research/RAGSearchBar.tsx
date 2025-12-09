@@ -98,10 +98,10 @@ export default function RAGSearchBar() {
   return (
     <div className="space-y-6">
       {/* Search Input */}
-      <div className="glass p-6 rounded-xl border border-white/10">
+      <div className="glass p-6 rounded-xl border border-[var(--border-color)]">
         <div className="flex gap-3">
           <div className="flex-1 relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-secondary)]" />
             <input
               type="text"
               value={query}
@@ -109,7 +109,7 @@ export default function RAGSearchBar() {
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
               placeholder="Ask a question about your research reports..."
               disabled={searching}
-              className="w-full bg-white/5 border border-white/10 rounded-lg pl-12 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg pl-12 pr-4 py-3 text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-blue-500 disabled:opacity-50"
             />
           </div>
           <button
@@ -134,13 +134,13 @@ export default function RAGSearchBar() {
         {/* Example Queries */}
         {!result && !searching && (
           <div className="mt-4">
-            <p className="text-sm text-gray-400 mb-2">Try asking:</p>
+            <p className="text-sm text-[var(--text-secondary)] mb-2">Try asking:</p>
             <div className="flex flex-wrap gap-2">
               {EXAMPLE_QUERIES.map((example, index) => (
                 <button
                   key={index}
                   onClick={() => handleExampleQuery(example)}
-                  className="text-xs px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full text-gray-300 transition-colors"
+                  className="text-xs px-3 py-1.5 bg-[var(--bg-secondary)] hover:bg-[var(--list-item-hover)] border border-[var(--border-color)] rounded-full text-[var(--text-primary)] transition-colors"
                 >
                   {example}
                 </button>
@@ -161,30 +161,30 @@ export default function RAGSearchBar() {
       {result && (
         <div className="space-y-4">
           {/* Answer */}
-          <div className="glass p-6 rounded-xl border border-white/10">
+          <div className="glass p-6 rounded-xl border border-[var(--border-color)]">
             <div className="flex items-start justify-between mb-4">
-              <h3 className="text-lg font-semibold text-white">Answer</h3>
-              <span className="text-sm text-gray-400">
+              <h3 className="text-lg font-semibold text-[var(--text-primary)]">Answer</h3>
+              <span className="text-sm text-[var(--text-secondary)]">
                 {result.total_reports_searched} reports searched in {result.query_time_ms}ms
               </span>
             </div>
             <div className="prose prose-invert max-w-none">
-              <p className="text-gray-300 whitespace-pre-wrap">{result.answer}</p>
+              <p className="text-[var(--text-primary)] whitespace-pre-wrap">{result.answer}</p>
             </div>
           </div>
 
           {/* Citations */}
           {result.citations && result.citations.length > 0 && (
-            <div className="glass p-6 rounded-xl border border-white/10">
-              <h3 className="text-lg font-semibold text-white mb-4">Citations</h3>
+            <div className="glass p-6 rounded-xl border border-[var(--border-color)]">
+              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Citations</h3>
               <div className="space-y-3">
                 {result.citations.map((citation, index) => (
                   <div
                     key={index}
-                    className="p-4 bg-white/5 border border-white/10 rounded-lg hover:border-blue-500/50 transition-colors"
+                    className="p-4 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg hover:border-blue-500/50 transition-colors"
                   >
-                    <p className="text-gray-300 text-sm mb-2 italic">"{citation.excerpt}"</p>
-                    <div className="flex items-center justify-between text-xs text-gray-400">
+                    <p className="text-[var(--text-primary)] text-sm mb-2 italic">"{citation.excerpt}"</p>
+                    <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
                       <div className="flex items-center gap-3">
                         {citation.page && <span>Page {citation.page}</span>}
                         {citation.source && <span>{citation.source}</span>}
@@ -192,7 +192,7 @@ export default function RAGSearchBar() {
                       {citation.report_id && (
                         <button
                           onClick={() => navigate(`/research/${citation.report_id}`)}
-                          className="flex items-center gap-1 text-blue-400 hover:text-blue-300 transition-colors"
+                          className="flex items-center gap-1 text-indigo-500 hover:text-indigo-600 transition-colors"
                         >
                           View Report
                           <ExternalLink className="w-3 h-3" />
@@ -207,23 +207,23 @@ export default function RAGSearchBar() {
 
           {/* Relevant Reports */}
           {result.relevant_reports && result.relevant_reports.length > 0 && (
-            <div className="glass p-6 rounded-xl border border-white/10">
-              <h3 className="text-lg font-semibold text-white mb-4">Relevant Reports</h3>
+            <div className="glass p-6 rounded-xl border border-[var(--border-color)]">
+              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Relevant Reports</h3>
               <div className="grid gap-3">
                 {result.relevant_reports.map((report) => (
                   <div
                     key={report.id}
                     onClick={() => navigate(`/research/${report.id}`)}
-                    className="p-4 bg-white/5 border border-white/10 rounded-lg hover:border-blue-500/50 transition-colors cursor-pointer group"
+                    className="p-4 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg hover:border-blue-500/50 transition-colors cursor-pointer group"
                   >
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3">
-                        <FileText className="w-5 h-5 text-blue-400 mt-0.5" />
+                        <FileText className="w-5 h-5 text-indigo-500 mt-0.5" />
                         <div>
-                          <h4 className="text-white font-medium group-hover:text-blue-400 transition-colors">
+                          <h4 className="text-[var(--text-primary)] font-medium group-hover:text-indigo-500 transition-colors">
                             {report.title}
                           </h4>
-                          <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
+                          <div className="flex items-center gap-3 mt-1 text-xs text-[var(--text-secondary)]">
                             {report.sector && <span>{report.sector}</span>}
                             {report.tickers && report.tickers.length > 0 && (
                               <span>{report.tickers.slice(0, 3).join(', ')}</span>

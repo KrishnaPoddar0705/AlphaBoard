@@ -88,14 +88,14 @@ export function SummarySection({
                         <div className="overflow-x-auto -mx-4 px-4">
                             <table className="w-full text-sm">
                                 <thead>
-                                    <tr className="border-b border-white/10">
-                                        <th className="py-3 px-4 text-left text-slate-400 font-medium">Period</th>
-                                        <th className="py-3 px-4 text-right text-slate-400 font-medium">Revenue</th>
-                                        <th className="py-3 px-4 text-right text-slate-400 font-medium">Profit</th>
-                                        <th className="py-3 px-4 text-right text-slate-400 font-medium">Growth</th>
+                                    <tr className="border-b border-[var(--border-color)]">
+                                        <th className="py-3 px-4 text-left text-[var(--text-secondary)] font-medium">Period</th>
+                                        <th className="py-3 px-4 text-right text-[var(--text-secondary)] font-medium">Revenue</th>
+                                        <th className="py-3 px-4 text-right text-[var(--text-secondary)] font-medium">Profit</th>
+                                        <th className="py-3 px-4 text-right text-[var(--text-secondary)] font-medium">Growth</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-white/5">
+                                <tbody className="divide-y divide-[var(--border-color)]">
                                     {quarterly.map((q: any, i: number) => {
                                         // Calculate QoQ growth if we have previous quarter
                                         const prevQuarter = quarterly[i + 1];
@@ -105,8 +105,8 @@ export function SummarySection({
                                         
                                         return (
                                             <tr key={i} className="hover:bg-white/5 transition-colors">
-                                                <td className="py-3 px-4 text-white font-medium">{q.year}</td>
-                                                <td className="py-3 px-4 text-right text-white font-mono">
+                                                <td className="py-3 px-4 text-[var(--text-primary)] font-medium">{q.year}</td>
+                                                <td className="py-3 px-4 text-right text-[var(--text-primary)] font-mono">
                                                     ₹{(q.revenue / 10000000).toFixed(0)} Cr
                                                 </td>
                                                 <td className="py-3 px-4 text-right">
@@ -121,7 +121,7 @@ export function SummarySection({
                                                             {Math.abs(growth).toFixed(1)}%
                                                         </span>
                                                     ) : (
-                                                        <span className="text-slate-500">-</span>
+                                                        <span className="text-[var(--text-tertiary)]">-</span>
                                                     )}
                                                 </td>
                                             </tr>
@@ -132,7 +132,7 @@ export function SummarySection({
                         </div>
                     ) : (
                         <div className="py-8 text-center">
-                            <p className="text-slate-500 italic">No quarterly data available</p>
+                            <p className="text-[var(--text-tertiary)] italic">No quarterly data available</p>
                         </div>
                     )}
                 </CardContent>
@@ -177,8 +177,8 @@ function MetricCard({ label, value, icon, color, trend }: MetricCardProps) {
                         </span>
                     )}
                 </div>
-                <p className="text-xs text-slate-400 uppercase tracking-wider mb-1">{label}</p>
-                <p className="text-xl font-bold text-white font-mono truncate">{value}</p>
+                <p className="text-xs text-[var(--text-secondary)] uppercase tracking-wider mb-1">{label}</p>
+                <p className="text-xl font-bold text-[var(--text-primary)] font-mono truncate">{value}</p>
             </div>
         </Card>
     );

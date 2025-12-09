@@ -195,7 +195,7 @@ export default function PublicLeaderboard() {
         }
     };
 
-    if (loading) return <div className="p-8 text-center text-white">Loading leaderboard...</div>;
+    if (loading) return <div className="p-8 text-center text-[var(--text-primary)]">Loading leaderboard...</div>;
 
     return (
         <div className="space-y-8 relative">
@@ -204,58 +204,58 @@ export default function PublicLeaderboard() {
             <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-blue-500/20 rounded-full mix-blend-screen filter blur-3xl animate-blob animation-delay-2000 pointer-events-none"></div>
 
             <div className="text-center py-4 relative z-10">
-                <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-purple-200">
+                <h1 className="text-4xl font-bold text-[var(--text-primary)]">
                     Public Leaderboard
                 </h1>
-                <p className="mt-2 text-blue-200/60 font-light">Top public performers ranked by Alpha generation</p>
+                <p className="mt-2 text-[var(--text-secondary)] font-light">Top public performers ranked by Alpha generation</p>
             </div>
 
-            <div className="glass-panel rounded-3xl overflow-hidden max-w-6xl mx-auto relative z-10">
-                <table className="min-w-full divide-y divide-white/10">
-                    <thead className="bg-white/5">
+            <div className="glass-panel rounded-3xl overflow-hidden max-w-6xl mx-auto relative z-10 border-2 border-[var(--border-color)]">
+                <table className="min-w-full divide-y divide-[var(--border-color)]">
+                    <thead className="bg-[var(--card-bg)] border-b-2 border-[var(--border-color)]">
                         <tr>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-blue-200/70 uppercase tracking-wider">Rank</th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-blue-200/70 uppercase tracking-wider">Analyst</th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-blue-200/70 uppercase tracking-wider">Total Ideas</th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-blue-200/70 uppercase tracking-wider">Win Rate</th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-blue-200/70 uppercase tracking-wider">Total Return</th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-blue-200/70 uppercase tracking-wider">Alpha</th>
-                            <th className="px-6 py-4 text-left text-xs font-medium text-blue-200/70 uppercase tracking-wider">Sharpe</th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-primary)] uppercase tracking-wider font-bold">Rank</th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-primary)] uppercase tracking-wider font-bold">Analyst</th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-primary)] uppercase tracking-wider font-bold">Total Ideas</th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-primary)] uppercase tracking-wider font-bold">Win Rate</th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-primary)] uppercase tracking-wider font-bold">Total Return</th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-primary)] uppercase tracking-wider font-bold">Alpha</th>
+                            <th className="px-6 py-4 text-left text-xs font-medium text-[var(--text-primary)] uppercase tracking-wider font-bold">Sharpe</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/10 bg-transparent text-white">
+                    <tbody className="divide-y divide-[var(--border-color)] bg-transparent text-[var(--text-primary)]">
                         {analysts.map((analyst, index) => (
                             <tr key={analyst.user_id}
                                 onClick={() => setSelectedAnalyst({ ...analyst, rank: index + 1 })}
                                 className={`
-                hover:bg-white/5 transition-colors cursor-pointer
+                hover:bg-[var(--list-item-hover)] transition-colors cursor-pointer border-b border-[var(--border-color)]
                 ${analyst.username === 'You' ? 'bg-indigo-500/10 border-l-2 border-l-indigo-500' : ''}
               `}>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center">
                                         <div className={`
                       w-8 h-8 flex items-center justify-center rounded-full font-bold mr-2
-                      ${index === 0 ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/30' :
-                                                index === 1 ? 'bg-slate-300/20 text-slate-200 border border-slate-300/30' :
-                                                    index === 2 ? 'bg-orange-400/20 text-orange-300 border border-orange-400/30' :
-                                                        'text-white/40'}
+                      ${index === 0 ? 'bg-yellow-400/20 text-yellow-600 dark:text-yellow-300 border-2 border-yellow-500 dark:border-yellow-400/30' :
+                                                index === 1 ? 'bg-slate-300/20 text-slate-700 dark:text-slate-200 border-2 border-slate-500 dark:border-slate-300/30' :
+                                                    index === 2 ? 'bg-orange-400/20 text-orange-600 dark:text-orange-300 border-2 border-orange-500 dark:border-orange-400/30' :
+                                                        'text-[var(--text-primary)] border-2 border-[var(--border-color)]'}
                     `}>
                                             {index + 1}
                                         </div>
-                                        {index === 0 && <Award className="w-5 h-5 text-yellow-400 drop-shadow-lg" />}
+                                        {index === 0 && <Award className="w-5 h-5 text-yellow-500 dark:text-yellow-400 drop-shadow-lg" />}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
                                     <div className="flex items-center gap-3">
-                                        <img src={analyst.avatar} alt={analyst.username} className="w-8 h-8 rounded-full bg-white/10" />
-                                        <div className="font-medium text-white">{analyst.username}</div>
+                                        <img src={analyst.avatar} alt={analyst.username} className="w-8 h-8 rounded-full bg-[var(--bg-secondary)]" />
+                                        <div className="font-medium text-[var(--text-primary)]">{analyst.username}</div>
                                         {analyst.username === 'You' && <span className="text-xs bg-indigo-500/30 px-2 py-0.5 rounded text-indigo-200">Me</span>}
                                     </div>
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-white/70">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
                                     {analyst.total_ideas}
                                 </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-white/70">
+                                <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
                                     {analyst.win_rate?.toFixed(1)}%
                                 </td>
                                 <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium ${analyst.total_return_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
@@ -270,7 +270,7 @@ export default function PublicLeaderboard() {
                                     </span>
                                 </td>
                                 <td className="px-6 py-4 whitespace-nowrap">
-                                    <div className="text-sm text-white/70" title={`Sharpe Ratio: ${analyst.sharpe_ratio?.toFixed(2) || 'N/A'}`}>
+                                    <div className="text-sm text-[var(--text-secondary)]" title={`Sharpe Ratio: ${analyst.sharpe_ratio?.toFixed(2) || 'N/A'}`}>
                                         {analyst.sharpe_ratio?.toFixed(2) || '-'}
                                     </div>
                                 </td>
@@ -278,7 +278,7 @@ export default function PublicLeaderboard() {
                         ))}
                         {analysts.length === 0 && (
                             <tr>
-                                <td colSpan={7} className="px-6 py-8 text-center text-white/50">
+                                <td colSpan={7} className="px-6 py-8 text-center text-[var(--text-secondary)]">
                                     No public analysts found. Analysts must have public profiles (not in an organization and not private) to appear here.
                                 </td>
                             </tr>

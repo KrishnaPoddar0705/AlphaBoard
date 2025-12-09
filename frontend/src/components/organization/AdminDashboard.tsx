@@ -433,15 +433,15 @@ export default function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center">
-        <div className="text-slate-300">Loading organization data...</div>
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
+        <div className="text-[var(--text-secondary)]">Loading organization data...</div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-[#0f172a] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center p-4">
         <div className="max-w-md w-full glass rounded-xl shadow-xl p-8 text-center">
           <div className="text-red-300 mb-4">{error}</div>
           <button
@@ -456,26 +456,26 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f172a] p-6">
+    <div className="min-h-screen bg-[var(--bg-primary)] p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">
+          <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
             Admin Dashboard
           </h1>
-          <p className="text-slate-300 mb-4">{organizationName}</p>
+          <p className="text-[var(--text-secondary)] mb-4">{organizationName}</p>
 
           {/* Join Code Section */}
           {joinCode && (
             <div className="glass rounded-xl p-6 border border-indigo-500/30">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-200 mb-1">Organization Join Code</p>
-                  <p className="text-xs text-slate-400 mb-2">
+                  <p className="text-sm font-medium text-[var(--text-primary)] mb-1">Organization Join Code</p>
+                  <p className="text-xs text-[var(--text-secondary)] mb-2">
                     Share this code with analysts to join your organization
                   </p>
                   {showJoinCode ? (
-                    <code className="text-lg font-mono font-bold text-indigo-400 bg-slate-900/50 px-3 py-2 rounded border border-indigo-500/30">
+                    <code className="text-lg font-mono font-bold text-indigo-400 bg-[var(--card-bg)] px-3 py-2 rounded border border-indigo-500/30">
                       {joinCode}
                     </code>
                   ) : (
@@ -505,31 +505,31 @@ export default function AdminDashboard() {
 
         {/* Stats Overview */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="glass rounded-xl p-6 border border-white/10">
+          <div className="glass rounded-xl p-6 border border-[var(--border-color)]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-400">Total Members</p>
-                <p className="text-2xl font-bold text-white">{users.length}</p>
+                <p className="text-sm text-[var(--text-secondary)]">Total Members</p>
+                <p className="text-2xl font-bold text-[var(--text-primary)]">{users.length}</p>
               </div>
               <Users className="w-8 h-8 text-indigo-400" />
             </div>
           </div>
-          <div className="glass rounded-xl p-6 border border-white/10">
+          <div className="glass rounded-xl p-6 border border-[var(--border-color)]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-400">Analysts</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-sm text-[var(--text-secondary)]">Analysts</p>
+                <p className="text-2xl font-bold text-[var(--text-primary)]">
                   {users.filter(u => u.role === 'analyst').length}
                 </p>
               </div>
               <BarChart3 className="w-8 h-8 text-green-400" />
             </div>
           </div>
-          <div className="glass rounded-xl p-6 border border-white/10">
+          <div className="glass rounded-xl p-6 border border-[var(--border-color)]">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-slate-400">Avg 12M Return</p>
-                <p className="text-2xl font-bold text-white">
+                <p className="text-sm text-[var(--text-secondary)]">Avg 12M Return</p>
+                <p className="text-2xl font-bold text-[var(--text-primary)]">
                   {performance.length > 0
                     ? formatPercent(
                       performance.reduce((sum, p) => sum + p.returns['12M'], 0) /
@@ -545,9 +545,9 @@ export default function AdminDashboard() {
 
         {/* Team Filter */}
         {teams.length > 0 && (
-          <div className="glass rounded-xl shadow-xl mb-8 border border-white/10 p-4">
+          <div className="glass rounded-xl shadow-xl mb-8 border border-[var(--border-color)] p-4">
             <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-slate-300">Filter by Team:</label>
+              <label className="text-sm font-medium text-[var(--text-primary)]">Filter by Team:</label>
               <TeamSelector
                 teams={teams}
                 selectedTeamId={selectedTeamId}
@@ -559,7 +559,7 @@ export default function AdminDashboard() {
                 showAllOption={true}
               />
               {selectedTeamId && (
-                <span className="text-xs text-slate-400 ml-2">
+                <span className="text-xs text-[var(--text-secondary)] ml-2">
                   Showing {performance.filter(a => teamMemberIds.has(a.userId)).length} analyst{performance.filter(a => teamMemberIds.has(a.userId)).length !== 1 ? 's' : ''}
                 </span>
               )}
@@ -568,33 +568,33 @@ export default function AdminDashboard() {
         )}
 
         {/* Analyst Performance Table */}
-        <div className="glass rounded-xl shadow-xl mb-8 border border-white/10">
-          <div className="p-6 border-b border-white/10">
-            <h2 className="text-xl font-bold text-white">Analyst Performance</h2>
+        <div className="glass rounded-xl shadow-xl mb-8 border border-[var(--border-color)]">
+          <div className="p-6 border-b border-[var(--border-color)]">
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">Analyst Performance</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-white/10">
-              <thead className="bg-slate-800/50">
+            <table className="min-w-full divide-y divide-[var(--border-color)]">
+              <thead className="bg-[var(--card-bg)]">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider w-8">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider w-8">
 
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                     Analyst
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                     Teams
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                     Total Ideas
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                     Win Rate
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                     12M Return
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-300 uppercase tracking-wider">
+                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                     Sharpe
                   </th>
                 </tr>
@@ -618,7 +618,7 @@ export default function AdminDashboard() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-white">
+                        <div className="text-sm font-medium text-[var(--text-primary)]">
                           {analyst.username || 'Unknown'}
                         </div>
                       </td>
@@ -634,17 +634,17 @@ export default function AdminDashboard() {
                               </span>
                             ))
                           ) : (
-                            <span className="text-xs text-slate-500">No teams</span>
+                            <span className="text-xs text-[var(--text-tertiary)]">No teams</span>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-200">
+                        <div className="text-sm text-[var(--text-primary)]">
                           {analyst.totalRecommendations}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-200">
+                        <div className="text-sm text-[var(--text-primary)]">
                           {analyst.winRate.toFixed(1)}%
                         </div>
                       </td>
@@ -657,18 +657,18 @@ export default function AdminDashboard() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-slate-200">
+                        <div className="text-sm text-[var(--text-primary)]">
                           {analyst.sharpe ? analyst.sharpe.toFixed(2) : 'N/A'}
                         </div>
                       </td>
                     </tr>
                     {expandedAnalyst === analyst.userId && (
                       <tr>
-                        <td colSpan={6} className="px-6 py-4 bg-slate-800/30">
+                        <td colSpan={6} className="px-6 py-4 bg-[var(--card-bg)]">
                           <div className="space-y-6">
                             {/* All Recommendations with Details */}
                             <div>
-                              <h4 className="font-semibold text-white mb-3 flex items-center gap-2 text-lg">
+                              <h4 className="font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2 text-lg">
                                 <FileText className="w-5 h-5" />
                                 All Recommendations ({analystRecommendations[analyst.userId]?.length || 0})
                               </h4>
@@ -682,7 +682,7 @@ export default function AdminDashboard() {
                                     ) || [];
 
                                     return (
-                                      <div key={rec.id} className="bg-slate-800/50 p-5 rounded-lg border border-white/10 shadow-lg">
+                                      <div key={rec.id} className="bg-[var(--card-bg)] p-5 rounded-lg border border-[var(--border-color)] shadow-lg">
                                         {/* Recommendation Header */}
                                         <div className="flex justify-between items-start mb-4">
                                           <div className="flex items-center gap-3">
@@ -695,32 +695,32 @@ export default function AdminDashboard() {
                                             </span>
                                             <span className={`px-2 py-1 text-xs font-medium rounded ${rec.status === 'OPEN'
                                                 ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                                                : 'bg-slate-700/50 text-slate-300 border border-white/10'
+                                                : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-color)]'
                                               }`}>
                                               {rec.status || 'OPEN'}
                                             </span>
                                           </div>
                                           <div className="text-right">
-                                            <div className="text-xs text-slate-400">Entry Date</div>
-                                            <div className="text-sm font-medium text-slate-200">{formatDate(rec.entry_date)}</div>
+                                            <div className="text-xs text-[var(--text-secondary)]">Entry Date</div>
+                                            <div className="text-sm font-medium text-[var(--text-primary)]">{formatDate(rec.entry_date)}</div>
                                           </div>
                                         </div>
 
                                         {/* Price Information */}
-                                        <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-slate-900/50 rounded border border-white/10">
+                                        <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-[var(--bg-secondary)] rounded border border-[var(--border-color)]">
                                           <div>
-                                            <div className="text-xs text-slate-400 mb-1">Entry Price</div>
-                                            <div className="text-lg font-semibold text-white">${rec.entry_price}</div>
+                                            <div className="text-xs text-[var(--text-secondary)] mb-1">Entry Price</div>
+                                            <div className="text-lg font-semibold text-[var(--text-primary)]">${rec.entry_price}</div>
                                           </div>
                                           {rec.exit_price && (
                                             <div>
-                                              <div className="text-xs text-slate-400 mb-1">Exit Price</div>
-                                              <div className="text-lg font-semibold text-white">${rec.exit_price}</div>
+                                              <div className="text-xs text-[var(--text-secondary)] mb-1">Exit Price</div>
+                                              <div className="text-lg font-semibold text-[var(--text-primary)]">${rec.exit_price}</div>
                                             </div>
                                           )}
                                           {tickerTargets.length > 0 && (
                                             <div>
-                                              <div className="text-xs text-slate-400 mb-1">Price Targets</div>
+                                              <div className="text-xs text-[var(--text-secondary)] mb-1">Price Targets</div>
                                               <div className="flex gap-2 flex-wrap">
                                                 {tickerTargets.map(t => (
                                                   <span key={t.id} className="text-sm font-semibold text-purple-400">
@@ -735,8 +735,8 @@ export default function AdminDashboard() {
                                         {/* Thesis */}
                                         {rec.thesis && (
                                           <div className="mb-4">
-                                            <div className="text-sm font-semibold text-slate-200 mb-2">Investment Thesis:</div>
-                                            <div className="text-sm text-slate-300 bg-indigo-500/10 p-3 rounded border-l-4 border-indigo-500">
+                                            <div className="text-sm font-semibold text-[var(--text-primary)] mb-2">Investment Thesis:</div>
+                                            <div className="text-sm text-[var(--text-primary)] bg-indigo-500/10 p-3 rounded border-l-4 border-indigo-500">
                                               {rec.thesis}
                                             </div>
                                           </div>
@@ -745,7 +745,7 @@ export default function AdminDashboard() {
                                         {/* Price Target Timeline */}
                                         {tickerTargets.length > 0 && (
                                           <div className="mb-4">
-                                            <div className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                                            <div className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
                                               <Target className="w-4 h-4" />
                                               Price Target Timeline:
                                             </div>
@@ -754,11 +754,11 @@ export default function AdminDashboard() {
                                                 <div key={target.id} className="bg-purple-500/20 p-3 rounded border border-purple-500/30 min-w-[150px]">
                                                   <div className="text-lg font-bold text-purple-400">${target.target_price}</div>
                                                   {target.target_date && (
-                                                    <div className="text-xs text-slate-400 mt-1">
+                                                    <div className="text-xs text-[var(--text-secondary)] mt-1">
                                                       Target: {formatDate(target.target_date)}
                                                     </div>
                                                   )}
-                                                  <div className="text-xs text-slate-500 mt-1">
+                                                  <div className="text-xs text-[var(--text-tertiary)] mt-1">
                                                     Set: {formatDate(target.created_at)}
                                                   </div>
                                                 </div>
@@ -770,13 +770,13 @@ export default function AdminDashboard() {
                                         {/* Screenshots/Images */}
                                         {rec.images && rec.images.length > 0 && (
                                           <div>
-                                            <div className="text-sm font-semibold text-slate-200 mb-2 flex items-center gap-2">
+                                            <div className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
                                               <ImageIcon className="w-4 h-4" />
                                               Attachments ({rec.images.length}):
                                             </div>
                                             <div className="flex gap-2 flex-wrap">
                                               {rec.images.map((image, idx) => (
-                                                <div key={idx} className="relative w-32 h-32 bg-slate-800 rounded border border-white/10 overflow-hidden hover:opacity-90 cursor-pointer">
+                                                <div key={idx} className="relative w-32 h-32 bg-[var(--card-bg)] rounded border border-[var(--border-color)] overflow-hidden hover:opacity-90 cursor-pointer">
                                                   <img
                                                     src={image}
                                                     alt={`Attachment ${idx + 1}`}
@@ -793,7 +793,7 @@ export default function AdminDashboard() {
                                   })}
                                 </div>
                               ) : (
-                                <div className="text-center py-8 text-slate-400 bg-slate-800/50 rounded border border-white/10">
+                                <div className="text-center py-8 text-[var(--text-secondary)] bg-[var(--card-bg)] rounded border border-[var(--border-color)]">
                                   No recommendations yet
                                 </div>
                               )}
@@ -806,7 +806,7 @@ export default function AdminDashboard() {
                 ))}
                 {performance.length === 0 && (
                   <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-slate-400">
+                    <td colSpan={6} className="px-6 py-4 text-center text-[var(--text-secondary)]">
                       No analyst performance data available
                     </td>
                   </tr>
@@ -817,20 +817,20 @@ export default function AdminDashboard() {
         </div>
 
         {/* Members List */}
-        <div className="glass rounded-xl shadow-xl border border-white/10">
-          <div className="p-6 border-b border-white/10">
-            <h2 className="text-xl font-bold text-white">Organization Members</h2>
+        <div className="glass rounded-xl shadow-xl border border-[var(--border-color)]">
+          <div className="p-6 border-b border-[var(--border-color)]">
+            <h2 className="text-xl font-bold text-[var(--text-primary)]">Organization Members</h2>
           </div>
           <div className="p-6">
             <div className="space-y-4">
               {users.map((user) => (
                 <div
                   key={user.userId}
-                  className="flex items-center justify-between p-4 border border-white/10 rounded-lg hover:bg-slate-800/50 transition-colors"
+                  className="flex items-center justify-between p-4 border border-[var(--border-color)] rounded-lg hover:bg-[var(--list-item-hover)] transition-colors"
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <div className="font-medium text-white">
+                      <div className="font-medium text-[var(--text-primary)]">
                         {user.username || 'Unknown User'}
                       </div>
                       {user.role === 'admin' && (
@@ -839,10 +839,10 @@ export default function AdminDashboard() {
                         </span>
                       )}
                     </div>
-                    <div className="text-sm text-slate-300 mt-1">
+                    <div className="text-sm text-[var(--text-secondary)] mt-1">
                       {user.email || 'No email'}
                     </div>
-                    <div className="text-xs text-slate-400 mt-1">
+                    <div className="text-xs text-[var(--text-secondary)] mt-1">
                       Joined {formatDate(user.joinedAt)}
                     </div>
                   </div>
