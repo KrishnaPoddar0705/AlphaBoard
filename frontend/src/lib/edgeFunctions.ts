@@ -646,6 +646,37 @@ export async function rejectTeamJoinRequest(requestId: string): Promise<{ succes
 }
 
 /**
+ * Update a member's role in an organization
+ */
+export interface UpdateMemberRoleResponse {
+  success: boolean;
+  message: string;
+  role: 'admin' | 'analyst';
+  membership: any;
+}
+
+export async function updateMemberRole(
+  orgId: string,
+  targetUserId: string,
+  newRole: 'admin' | 'analyst'
+): Promise<UpdateMemberRoleResponse> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/update-member-role`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ orgId, targetUserId, newRole }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to update member role');
+  }
+
+  return response.json();
+}
+
+/**
  * Get all teams the current user belongs to in their organization
  */
 export async function getMyTeams(): Promise<TeamsResponse> {

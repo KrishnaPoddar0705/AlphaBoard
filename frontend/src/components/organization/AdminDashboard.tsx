@@ -2,10 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import { getVisibleRecommendations } from '../../lib/edgeFunctions';
+import { getVisibleRecommendations, updateMemberRole } from '../../lib/edgeFunctions';
 import { useTeams } from '../../hooks/useTeams';
 import TeamSelector from './TeamSelector';
-import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon } from 'lucide-react';
+import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon, Shield, ShieldOff } from 'lucide-react';
 
 interface OrganizationUser {
   userId: string;
@@ -303,6 +303,31 @@ export default function AdminDashboard() {
 
   const formatPercent = (value: number) => {
     return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
+  };
+
+  const handleUpdateRole = async (userId: string, username: string, _currentRole: string, newRole: 'admin' | 'analyst') => {
+    const action = newRole === 'admin' ? 'promote' : 'demote';
+    const confirmMessage = newRole === 'admin' 
+      ? `Are you sure you want to promote ${username} to admin? They will have full access to manage the organization.`
+      : `Are you sure you want to demote ${username} from admin to analyst? They will lose admin privileges.`;
+    
+    if (!window.confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      if (!organizationId) {
+        alert('Organization ID is missing');
+        return;
+      }
+
+      const result = await updateMemberRole(organizationId, userId, newRole);
+      alert(result.message || `Successfully ${action}d ${username} to ${newRole}`);
+      fetchOrganizationData(); // Refresh to show updated role
+    } catch (err: any) {
+      console.error('Error updating role:', err);
+      alert('Failed to update role: ' + (err.message || 'Unknown error'));
+    }
   };
 
   const handleRemoveUser = async (userId: string, username: string) => {
@@ -823,13 +848,34 @@ export default function AdminDashboard() {
                   </div>
                   <div className="flex items-center gap-2">
                     {user.userId !== session?.user?.id && (
-                      <button
-                        onClick={() => handleRemoveUser(user.userId, user.username || 'this user')}
-                        className="px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-md text-sm flex items-center gap-1 border border-red-500/30 transition-colors"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        Remove
-                      </button>
+                      <>
+                        {user.role === 'analyst' ? (
+                          <button
+                            onClick={() => handleUpdateRole(user.userId, user.username || 'this user', user.role, 'admin')}
+                            className="px-3 py-2 text-purple-400 hover:bg-purple-500/20 rounded-md text-sm flex items-center gap-1 border border-purple-500/30 transition-colors"
+                            title="Promote to Admin"
+                          >
+                            <Shield className="w-4 h-4" />
+                            Promote to Admin
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleUpdateRole(user.userId, user.username || 'this user', user.role, 'analyst')}
+                            className="px-3 py-2 text-orange-400 hover:bg-orange-500/20 rounded-md text-sm flex items-center gap-1 border border-orange-500/30 transition-colors"
+                            title="Demote to Analyst"
+                          >
+                            <ShieldOff className="w-4 h-4" />
+                            Demote to Analyst
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleRemoveUser(user.userId, user.username || 'this user')}
+                          className="px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-md text-sm flex items-center gap-1 border border-red-500/30 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Remove
+                        </button>
+                      </>
                     )}
                   </div>
                 </div>
