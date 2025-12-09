@@ -179,10 +179,6 @@ export default function Profile() {
     }
   };
 
-  // Get teams user is NOT part of
-  const availableTeams = allOrgTeams.filter(
-    (team) => !myTeams.some((myTeam) => myTeam.id === team.id)
-  );
 
   if (loading) {
     return (
@@ -379,7 +375,7 @@ export default function Profile() {
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Users className="w-5 h-5 text-gray-600" />
-                <h2 className="text-xl font-bold text-gray-900">My Teams</h2>
+                <h2 className="text-xl font-bold text-gray-900">Organization Teams</h2>
               </div>
               <button
                 onClick={() => setShowCreateTeamModal(true)}
@@ -390,58 +386,34 @@ export default function Profile() {
               </button>
             </div>
 
-            {teamsLoading ? (
+            {teamsLoading || loadingAllTeams ? (
               <div className="text-gray-400 text-center py-8">Loading teams...</div>
+            ) : allOrgTeams.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p className="mb-4">No teams available yet.</p>
+                <button
+                  onClick={() => setShowCreateTeamModal(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                >
+                  Create Your First Team
+                </button>
+              </div>
             ) : (
-              <>
-                {/* My Teams */}
-                {myTeams.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Teams I'm In</h3>
-                    <div className="space-y-3">
-                      {myTeams.map((team) => (
-                        <TeamCard 
-                          key={team.id} 
-                          team={team} 
-                          isMember={true}
-                          onLeave={() => handleLeaveTeam(team.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Available Teams to Join */}
-                {availableTeams.length > 0 && (
-                  <div className="mb-6">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3">Available Teams</h3>
-                    <div className="space-y-3">
-                      {availableTeams.map((team) => (
-                        <TeamCard 
-                          key={team.id} 
-                          team={team} 
-                          isMember={false}
-                          onJoin={() => handleJoinTeam(team.id)}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Empty State */}
-                {myTeams.length === 0 && availableTeams.length === 0 && !loadingAllTeams && (
-                  <div className="text-center py-8 text-gray-500">
-                    <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                    <p className="mb-4">No teams available yet.</p>
-                    <button
-                      onClick={() => setShowCreateTeamModal(true)}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                    >
-                      Create Your First Team
-                    </button>
-                  </div>
-                )}
-              </>
+              <div className="space-y-3">
+                {allOrgTeams.map((team) => {
+                  const isMember = myTeams.some((myTeam) => myTeam.id === team.id);
+                  return (
+                    <TeamCard 
+                      key={team.id} 
+                      team={team} 
+                      isMember={isMember}
+                      onJoin={() => handleJoinTeam(team.id)}
+                      onLeave={isMember ? () => handleLeaveTeam(team.id) : undefined}
+                    />
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

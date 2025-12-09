@@ -112,77 +112,28 @@ serve(async (req) => {
             )
         }
 
-        const isAdmin = membership.role === 'admin'
+        // All org members can see all teams in the organization
+        const { data: orgTeams, error: teamsError } = await supabaseAdmin
+            .from('teams')
+            .select('id, name, org_id, created_by, created_at')
+            .eq('org_id', orgId)
+            .order('created_at', { ascending: false })
 
-        let teams: any[] = []
-
-        if (isAdmin) {
-            // Admin sees all teams in org
-            const { data: orgTeams, error: teamsError } = await supabaseAdmin
-                .from('teams')
-                .select('id, name, org_id, created_by, created_at')
-                .eq('org_id', orgId)
-                .order('created_at', { ascending: false })
-
-            if (teamsError) {
-                console.error('Error fetching teams:', teamsError)
-                return new Response(
-                    JSON.stringify({ error: 'Failed to fetch teams', details: teamsError?.message }),
-                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                )
-            }
-
-            teams = orgTeams?.map((t: any) => ({
-                id: t.id,
-                name: t.name,
-                orgId: t.org_id,
-                createdBy: t.created_by,
-                createdAt: t.created_at,
-            })) || []
-        } else {
-            // Analyst sees only teams they belong to
-            const { data: teamMemberships, error: teamsError } = await supabaseAdmin
-                .from('team_members')
-                .select('team_id')
-                .eq('user_id', userId)
-
-            if (teamsError) {
-                console.error('Error fetching teams:', teamsError)
-                return new Response(
-                    JSON.stringify({ error: 'Failed to fetch teams', details: teamsError?.message }),
-                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                )
-            }
-
-            const teamIds = teamMemberships?.map((tm: any) => tm.team_id) || []
-
-            if (teamIds.length === 0) {
-                teams = []
-            } else {
-                // Fetch teams that belong to the organization
-                const { data: teamsData, error: teamsDataError } = await supabaseAdmin
-                    .from('teams')
-                    .select('id, name, org_id, created_by, created_at')
-                    .in('id', teamIds)
-                    .eq('org_id', orgId)
-
-                if (teamsDataError) {
-                    console.error('Error fetching teams data:', teamsDataError)
-                    return new Response(
-                        JSON.stringify({ error: 'Failed to fetch teams data', details: teamsDataError?.message }),
-                        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                    )
-                }
-
-                teams = (teamsData || []).map((t: any) => ({
-                    id: t.id,
-                    name: t.name,
-                    orgId: t.org_id,
-                    createdBy: t.created_by,
-                    createdAt: t.created_at,
-                }))
-            }
+        if (teamsError) {
+            console.error('Error fetching teams:', teamsError)
+            return new Response(
+                JSON.stringify({ error: 'Failed to fetch teams', details: teamsError?.message }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
         }
+
+        const teams = orgTeams?.map((t: any) => ({
+            id: t.id,
+            name: t.name,
+            orgId: t.org_id,
+            createdBy: t.created_by,
+            createdAt: t.created_at,
+        })) || []
 
         return new Response(
             JSON.stringify({

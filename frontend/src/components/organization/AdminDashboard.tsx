@@ -73,6 +73,7 @@ export default function AdminDashboard() {
   const [analystRecommendations, setAnalystRecommendations] = useState<Record<string, Recommendation[]>>({});
   const [analystPriceTargets, setAnalystPriceTargets] = useState<Record<string, PriceTarget[]>>({});
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const [teamMemberIds, setTeamMemberIds] = useState<Set<string>>(new Set());
   const { teams } = useTeams({ orgId: organizationId || undefined, autoFetch: !!organizationId });
 
   useEffect(() => {
@@ -83,6 +84,37 @@ export default function AdminDashboard() {
       setError('You must be logged in to access this page');
     }
   }, [session]);
+
+  // Fetch team members when team is selected
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      if (!selectedTeamId || !organizationId) {
+        setTeamMemberIds(new Set());
+        return;
+      }
+
+      try {
+        const { data: teamMembers, error } = await supabase
+          .from('team_members')
+          .select('user_id')
+          .eq('team_id', selectedTeamId);
+
+        if (error) {
+          console.error('Error fetching team members:', error);
+          setTeamMemberIds(new Set());
+          return;
+        }
+
+        const memberIds = new Set(teamMembers?.map((tm: any) => tm.user_id) || []);
+        setTeamMemberIds(memberIds);
+      } catch (err) {
+        console.error('Error fetching team members:', err);
+        setTeamMemberIds(new Set());
+      }
+    };
+
+    fetchTeamMembers();
+  }, [selectedTeamId, organizationId]);
 
   const fetchOrganizationData = async () => {
     try {
@@ -443,9 +475,18 @@ export default function AdminDashboard() {
               <TeamSelector
                 teams={teams}
                 selectedTeamId={selectedTeamId}
-                onSelectTeam={setSelectedTeamId}
+                onSelectTeam={(teamId) => {
+                  setSelectedTeamId(teamId);
+                  // Clear expanded analyst when filter changes
+                  setExpandedAnalyst(null);
+                }}
                 showAllOption={true}
               />
+              {selectedTeamId && (
+                <span className="text-xs text-slate-400 ml-2">
+                  Showing {performance.filter(a => teamMemberIds.has(a.userId)).length} analyst{performance.filter(a => teamMemberIds.has(a.userId)).length !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
           </div>
         )}
@@ -480,7 +521,14 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-slate-900/30 divide-y divide-white/10">
-                {performance.map((analyst) => (
+                {performance
+                  .filter((analyst) => {
+                    // If no team selected, show all analysts
+                    if (!selectedTeamId) return true;
+                    // If team selected, only show analysts who are members of that team
+                    return teamMemberIds.has(analyst.userId);
+                  })
+                  .map((analyst) => (
                   <React.Fragment key={analyst.userId}>
                     <tr className="hover:bg-slate-800/50 cursor-pointer transition-colors" onClick={() => toggleAnalystDetails(analyst.userId)}>
                       <td className="px-6 py-4">
