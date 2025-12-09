@@ -30,6 +30,7 @@ export default function Profile() {
   });
   const [allOrgTeams, setAllOrgTeams] = useState<any[]>([]);
   const [loadingAllTeams, setLoadingAllTeams] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -53,8 +54,9 @@ export default function Profile() {
   useEffect(() => {
     if (organization?.id) {
       fetchAllOrgTeams();
+      fetchPendingRequests();
     }
-  }, [organization?.id]);
+  }, [organization?.id, session?.user?.id]);
 
   const fetchAllOrgTeams = async () => {
     if (!organization?.id) return;
@@ -67,6 +69,23 @@ export default function Profile() {
       console.error('Error fetching all org teams:', err);
     } finally {
       setLoadingAllTeams(false);
+    }
+  };
+
+  const fetchPendingRequests = async () => {
+    if (!organization?.id || !session?.user?.id) return;
+    
+    try {
+      const { data: requests } = await supabase
+        .from('team_join_requests')
+        .select('team_id')
+        .eq('user_id', session.user.id)
+        .eq('status', 'pending');
+      
+      const requestTeamIds = new Set(requests?.map((r: any) => r.team_id) || []);
+      setPendingRequests(requestTeamIds);
+    } catch (err) {
+      console.error('Error fetching pending requests:', err);
     }
   };
 
@@ -155,11 +174,21 @@ export default function Profile() {
 
   const handleJoinTeam = async (teamId: string) => {
     try {
-      await joinTeam(teamId);
-      refreshTeams();
-      fetchAllOrgTeams();
+      const result = await joinTeam(teamId);
+      if ((result as any).requiresApproval) {
+        setSuccess('Join request sent! Waiting for admin approval.');
+        setTimeout(() => setSuccess(null), 5000);
+        await fetchPendingRequests();
+      } else {
+        setSuccess((result as any).message || 'Successfully joined team!');
+        setTimeout(() => setSuccess(null), 3000);
+        refreshTeams();
+        fetchAllOrgTeams();
+        await fetchPendingRequests();
+      }
     } catch (err: any) {
-      alert(err.message || 'Failed to join team');
+      setError(err.message || 'Failed to join team');
+      setTimeout(() => setError(null), 5000);
     }
   };
 
@@ -266,6 +295,18 @@ export default function Profile() {
             {/* Bio */}
             {profile.bio && !editing && (
               <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{profile.bio}</p>
+            )}
+
+            {/* Success/Error Messages */}
+            {success && (
+              <div className="mt-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md font-medium">
+                {success}
+              </div>
+            )}
+            {error && (
+              <div className="mt-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md font-medium">
+                {error}
+              </div>
             )}
 
             {/* Edit Form */}
@@ -403,11 +444,13 @@ export default function Profile() {
               <div className="space-y-3">
                 {allOrgTeams.map((team) => {
                   const isMember = myTeams.some((myTeam) => myTeam.id === team.id);
+                  const hasPendingRequest = pendingRequests.has(team.id);
                   return (
                     <TeamCard 
                       key={team.id} 
                       team={team} 
                       isMember={isMember}
+                      hasPendingRequest={hasPendingRequest}
                       onJoin={() => handleJoinTeam(team.id)}
                       onLeave={isMember ? () => handleLeaveTeam(team.id) : undefined}
                     />
@@ -444,7 +487,7 @@ export default function Profile() {
 }
 
 // Team Card Component
-function TeamCard({ team, isMember, onJoin, onLeave }: { team: any; isMember: boolean; onJoin?: () => void; onLeave?: () => void }) {
+function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team: any; isMember: boolean; hasPendingRequest?: boolean; onJoin?: () => void; onLeave?: () => void }) {
   const { session } = useAuth();
   const { members, loading } = useTeamMembers(isMember ? team.id : null);
   const [expanded, setExpanded] = useState(false);
@@ -500,13 +543,20 @@ function TeamCard({ team, isMember, onJoin, onLeave }: { team: any; isMember: bo
               )}
             </>
           ) : (
-            <button
-              onClick={onJoin}
-              className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
-            >
-              <LogIn className="w-3 h-3" />
-              Join
-            </button>
+            hasPendingRequest ? (
+              <span className="px-3 py-1 text-sm bg-amber-50 text-amber-700 rounded-md flex items-center gap-1">
+                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                Request Sent
+              </span>
+            ) : (
+              <button
+                onClick={onJoin}
+                className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
+              >
+                <LogIn className="w-3 h-3" />
+                Join
+              </button>
+            )
           )}
         </div>
       </div>

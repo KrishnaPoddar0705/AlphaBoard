@@ -1,5 +1,5 @@
-// Edge Function: join-team
-// Purpose: Allow user to join a team within their organization
+// Edge Function: approve-team-join-request
+// Purpose: Approve a team join request (admin only)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
@@ -85,147 +85,120 @@ serve(async (req) => {
         }
 
         // Parse request body
-        const { teamId } = await req.json()
+        const { requestId } = await req.json()
 
         // Validate input
-        if (!teamId) {
+        if (!requestId) {
             return new Response(
-                JSON.stringify({ error: 'teamId is required' }),
+                JSON.stringify({ error: 'requestId is required' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
-        // Get team and verify it exists
-        const { data: team, error: teamError } = await supabaseAdmin
-            .from('teams')
-            .select('id, org_id, name')
-            .eq('id', teamId)
+        // Get join request
+        const { data: joinRequest, error: requestError } = await supabaseAdmin
+            .from('team_join_requests')
+            .select('id, team_id, user_id, status, teams(id, org_id, name)')
+            .eq('id', requestId)
             .maybeSingle()
 
-        if (teamError || !team) {
+        if (requestError || !joinRequest) {
             return new Response(
-                JSON.stringify({ error: 'Team not found' }),
+                JSON.stringify({ error: 'Join request not found' }),
                 { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
-        // Verify user belongs to same organization as team
-        const { data: membership, error: membershipError } = await supabaseAdmin
-            .from('user_organization_membership')
-            .select('organization_id, role')
-            .eq('user_id', userId)
-            .eq('organization_id', team.org_id)
-            .maybeSingle()
-
-        if (membershipError || !membership) {
+        if (joinRequest.status !== 'pending') {
             return new Response(
-                JSON.stringify({ error: 'User does not belong to the same organization as the team' }),
-                { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
-
-        const isAdmin = membership.role === 'admin'
-
-        // Check if user is already a member
-        const { data: existingMember, error: checkError } = await supabaseAdmin
-            .from('team_members')
-            .select('id')
-            .eq('team_id', teamId)
-            .eq('user_id', userId)
-            .maybeSingle()
-
-        if (checkError) {
-            console.error('Error checking existing membership:', checkError)
-            return new Response(
-                JSON.stringify({ error: 'Failed to check membership' }),
-                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
-
-        if (existingMember) {
-            return new Response(
-                JSON.stringify({ error: 'User is already a member of this team' }),
+                JSON.stringify({ error: 'Join request has already been processed' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
-        // Admins can join directly, analysts need approval
-        if (isAdmin) {
-            // Add admin to team directly
-            const { error: memberError } = await supabaseAdmin
-                .from('team_members')
-                .insert({
-                    team_id: teamId,
-                    user_id: userId,
-                })
+        const team = joinRequest.teams as any
 
-            if (memberError) {
-                console.error('Error adding user to team:', memberError)
-                return new Response(
-                    JSON.stringify({ error: 'Failed to join team', details: memberError?.message }),
-                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                )
-            }
+        // Verify user is admin of the organization
+        const { data: membership, error: membershipError } = await supabaseAdmin
+            .from('user_organization_membership')
+            .select('role')
+            .eq('user_id', userId)
+            .eq('organization_id', team.org_id)
+            .maybeSingle()
 
+        if (membershipError || !membership || membership.role !== 'admin') {
             return new Response(
-                JSON.stringify({
-                    success: true,
-                    message: `Successfully joined team "${team.name}"`
-                }),
-                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                JSON.stringify({ error: 'Only organization admins can approve join requests' }),
+                { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
-        } else {
-            // Analyst: create a join request
-            // Check if there's already a pending request
-            const { data: existingRequest, error: requestCheckError } = await supabaseAdmin
+        }
+
+        // Check if user is already a member
+        const { data: existingMember } = await supabaseAdmin
+            .from('team_members')
+            .select('id')
+            .eq('team_id', joinRequest.team_id)
+            .eq('user_id', joinRequest.user_id)
+            .maybeSingle()
+
+        if (existingMember) {
+            // User is already a member, just update the request status
+            await supabaseAdmin
                 .from('team_join_requests')
-                .select('id, status')
-                .eq('team_id', teamId)
-                .eq('user_id', userId)
-                .eq('status', 'pending')
-                .maybeSingle()
-
-            if (requestCheckError) {
-                console.error('Error checking existing request:', requestCheckError)
-                return new Response(
-                    JSON.stringify({ error: 'Failed to check existing request' }),
-                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                )
-            }
-
-            if (existingRequest) {
-                return new Response(
-                    JSON.stringify({ error: 'You already have a pending request to join this team' }),
-                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                )
-            }
-
-            // Create join request
-            const { error: requestError } = await supabaseAdmin
-                .from('team_join_requests')
-                .insert({
-                    team_id: teamId,
-                    user_id: userId,
-                    status: 'pending',
+                .update({
+                    status: 'approved',
+                    reviewed_at: new Date().toISOString(),
+                    reviewed_by: userId,
                 })
-
-            if (requestError) {
-                console.error('Error creating join request:', requestError)
-                return new Response(
-                    JSON.stringify({ error: 'Failed to create join request', details: requestError?.message }),
-                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                )
-            }
+                .eq('id', requestId)
 
             return new Response(
                 JSON.stringify({
                     success: true,
-                    message: `Join request sent for team "${team.name}". Waiting for admin approval.`,
-                    requiresApproval: true
+                    message: 'User is already a member of this team'
                 }),
                 { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
+
+        // Add user to team
+        const { error: memberError } = await supabaseAdmin
+            .from('team_members')
+            .insert({
+                team_id: joinRequest.team_id,
+                user_id: joinRequest.user_id,
+            })
+
+        if (memberError) {
+            console.error('Error adding user to team:', memberError)
+            return new Response(
+                JSON.stringify({ error: 'Failed to add user to team', details: memberError?.message }),
+                { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
+        // Update request status
+        const { error: updateError } = await supabaseAdmin
+            .from('team_join_requests')
+            .update({
+                status: 'approved',
+                reviewed_at: new Date().toISOString(),
+                reviewed_by: userId,
+            })
+            .eq('id', requestId)
+
+        if (updateError) {
+            console.error('Error updating request status:', updateError)
+            // Don't fail the request if status update fails
+        }
+
+        return new Response(
+            JSON.stringify({
+                success: true,
+                message: `Successfully approved join request for team "${team.name}"`
+            }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
 
     } catch (error) {
         console.error('Unexpected error:', error)

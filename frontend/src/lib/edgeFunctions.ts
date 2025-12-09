@@ -576,6 +576,76 @@ export async function getTeamMembers(teamId: string): Promise<TeamMembersRespons
 }
 
 /**
+ * Get pending team join requests for an organization (admin only)
+ */
+export async function getTeamJoinRequests(orgId: string): Promise<{
+  success: boolean;
+  requests: Array<{
+    id: string;
+    teamId: string;
+    teamName: string;
+    userId: string;
+    username: string;
+    email: string | null;
+    requestedAt: string;
+  }>;
+}> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/get-team-join-requests?orgId=${orgId}`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to get team join requests');
+  }
+
+  return response.json();
+}
+
+/**
+ * Approve a team join request (admin only)
+ */
+export async function approveTeamJoinRequest(requestId: string): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/approve-team-join-request`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ requestId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to approve join request');
+  }
+
+  return response.json();
+}
+
+/**
+ * Reject a team join request (admin only)
+ */
+export async function rejectTeamJoinRequest(requestId: string): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/reject-team-join-request`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ requestId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to reject join request');
+  }
+
+  return response.json();
+}
+
+/**
  * Get all teams the current user belongs to in their organization
  */
 export async function getMyTeams(): Promise<TeamsResponse> {
@@ -596,8 +666,7 @@ export async function getMyTeams(): Promise<TeamsResponse> {
 
 /**
  * Get all teams in an organization
- * Admin: sees all teams
- * Analyst: sees only teams they belong to
+ * All org members can see all teams
  */
 export async function getOrgTeams(orgId: string): Promise<TeamsResponse> {
   const headers = await getAuthHeaders();

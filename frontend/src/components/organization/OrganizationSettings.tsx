@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
 import { getOrganizationUsers, updateOrganizationSettings, removeAnalyst } from '../../lib/edgeFunctions';
-import { Trash2, Save, ArrowLeft, Users, Settings } from 'lucide-react';
+import { Trash2, Save, ArrowLeft, Users, Settings, Clock } from 'lucide-react';
 import TeamManagement from './TeamManagement';
+import TeamJoinRequests from './TeamJoinRequests';
 
 interface OrganizationUser {
   userId: string;
@@ -25,7 +26,7 @@ export default function OrganizationSettings() {
   const [organizationName, setOrganizationName] = useState('');
   const [users, setUsers] = useState<OrganizationUser[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [activeTab, setActiveTab] = useState<'general' | 'teams'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'teams' | 'requests'>('general');
 
   useEffect(() => {
     if (!session?.user?.id) {
@@ -185,6 +186,20 @@ export default function OrganizationSettings() {
                 Teams
               </div>
             </button>
+            {isAdmin && (
+              <button
+                onClick={() => setActiveTab('requests')}
+                className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'requests'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Join Requests
+                </div>
+              </button>
+            )}
           </nav>
         </div>
 
@@ -268,6 +283,15 @@ export default function OrganizationSettings() {
 
         {activeTab === 'teams' && organizationId && (
           <TeamManagement orgId={organizationId} isAdmin={isAdmin} />
+        )}
+
+        {activeTab === 'requests' && organizationId && isAdmin && (
+          <TeamJoinRequests
+            orgId={organizationId}
+            onRequestProcessed={() => {
+              // Refresh teams if needed
+            }}
+          />
         )}
       </div>
     </div>
