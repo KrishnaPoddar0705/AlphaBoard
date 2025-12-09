@@ -20,9 +20,8 @@ import { supabase } from '../lib/supabase';
 import { syncClerkUserToSupabase } from '../lib/clerkSupabaseSync';
 import { searchStocks, getPrice } from '../lib/api';
 import { getVisibleRecommendations } from '../lib/edgeFunctions';
-import { useTeams } from '../hooks/useTeams';
-import { useOrganization } from '../hooks/useOrganization';
-import TeamSelector from '../components/organization/TeamSelector';
+// Removed useOrganization - no longer using team filter
+// Removed TeamSelector import - no longer using team filter
 import { Search, AlertCircle, Upload, X, Menu } from 'lucide-react';
 import { StockDetailPanel } from '../components/stock/StockDetailPanel';
 import { IdeaList } from '../components/ideas/IdeaList';
@@ -49,9 +48,8 @@ const MOCK_STOCKS = [
 export default function Dashboard() {
     const { session } = useAuth();
     const { user: clerkUser } = useUser();
-    const { organization } = useOrganization();
-    const { teams } = useTeams({ orgId: organization?.id, autoFetch: !!organization?.id });
-    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+    // Removed organization - no longer using team filter
+    // Removed team filter - no longer filtering by team
     const [recommendations, setRecommendations] = useState<any[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [selectedStock, setSelectedStock] = useState<any>(null);
@@ -105,17 +103,10 @@ export default function Dashboard() {
         const userId = session?.user?.id;
         if (!userId) return [];
         try {
-            // If team is selected, use getVisibleRecommendations with team filter
-            // Otherwise, use direct Supabase query for user's own recommendations
-            if (selectedTeamId) {
-                const response = await getVisibleRecommendations(selectedTeamId, undefined);
-                return response.recommendations || [];
-            } else {
-                // Use getVisibleRecommendations without team filter to get all visible recommendations
-                // This respects RLS policies (own + team members + admin sees all)
-                const response = await getVisibleRecommendations(undefined, undefined);
-                return response.recommendations || [];
-            }
+            // Use getVisibleRecommendations without team filter to get all visible recommendations
+            // This respects RLS policies (own + team members + admin sees all)
+            const response = await getVisibleRecommendations(undefined, undefined);
+            return response.recommendations || [];
         } catch (err) {
             console.warn("Could not fetch recommendations", err);
             // Fallback to direct query if Edge Function fails
@@ -132,7 +123,7 @@ export default function Dashboard() {
             }
             return [];
         }
-    }, [session?.user?.id, selectedTeamId]);
+    }, [session?.user?.id]);
 
     const loadRecommendationsWithPrices = useCallback(async () => {
         const userId = session?.user?.id;
@@ -582,55 +573,107 @@ export default function Dashboard() {
         }
     };
 
+    const [promoteModalOpen, setPromoteModalOpen] = useState(false);
+    const [promoteRec, setPromoteRec] = useState<any>(null);
+    const [promoteAction, setPromoteAction] = useState<'BUY' | 'SELL'>('BUY');
+    const [promoteThesis, setPromoteThesis] = useState('');
+    const [promoteImages, setPromoteImages] = useState<File[]>([]);
+    const [promotePriceTarget, setPromotePriceTarget] = useState<string>('');
+    const [promoteTargetDate, setPromoteTargetDate] = useState<string>('');
+    const promoteFileInputRef = useRef<HTMLInputElement>(null);
+
     const handlePromoteWatchlist = async (rec: any, actionType: 'BUY' | 'SELL', e: React.MouseEvent) => {
         e.stopPropagation();
-        // In a real app, we might show a modal to confirm entry price. 
-        // For now, we'll assume current price as entry.
-        const entryPrice = rec.current_price || 0;
+        // Open modal for thesis, screenshots, and price targets
+        setPromoteRec(rec);
+        setPromoteAction(actionType);
+        setPromoteThesis(rec.thesis || '');
+        setPromoteImages([]);
+        setPromotePriceTarget('');
+        setPromoteTargetDate('');
+        setPromoteModalOpen(true);
+    };
 
-        if (!window.confirm(`Confirm ${actionType} recommendation for ${rec.ticker} at ₹${entryPrice.toFixed(2)}?`)) return;
+    const handlePromoteSubmit = async () => {
+        if (!promoteRec) return;
+        if (!promoteThesis.trim()) {
+            setError('Thesis is required');
+            return;
+        }
 
+        setLoading(true);
+        setError(null);
         try {
+            const entryPrice = promoteRec.current_price || 0;
+
+            // Upload images if any
+            const imageUrls: string[] = [];
+            if (promoteImages.length > 0) {
+                for (const file of promoteImages) {
+                    const fileExt = file.name.split('.').pop();
+                    const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
+                    const filePath = `${session?.user?.id}/${fileName}`;
+
+                    const { error: uploadError } = await supabase.storage
+                        .from('recommendation-images')
+                        .upload(filePath, file);
+
+                    if (uploadError) {
+                        console.warn('Image upload failed', uploadError);
+                        continue;
+                    }
+
+                    const { data: { publicUrl } } = supabase.storage
+                        .from('recommendation-images')
+                        .getPublicUrl(filePath);
+
+                    imageUrls.push(publicUrl);
+                }
+            }
+
+            // Combine existing images with new ones
+            const allImages = [...(promoteRec.images || []), ...imageUrls];
+
+            const updateData: any = {
+                status: 'OPEN',
+                action: promoteAction,
+                entry_price: entryPrice,
+                entry_date: new Date().toISOString(),
+                thesis: promoteThesis,
+                images: allImages
+            };
+
             const { error } = await supabase
                 .from('recommendations')
-                .update({
-                    status: 'OPEN',
-                    action: actionType,
-                    entry_price: entryPrice,
-                    entry_date: new Date().toISOString()
-                })
-                .eq('id', rec.id)
-                .select();
+                .update(updateData)
+                .eq('id', promoteRec.id);
 
             if (error) throw error;
 
-            // Update local state
-            setRecommendations(prev => prev.map(r => {
-                if (r.id === rec.id) {
-                    return {
-                        ...r,
-                        status: 'OPEN',
-                        action: actionType,
-                        entry_price: entryPrice,
-                        entry_date: new Date().toISOString()
-                    };
+            // Create price target if provided
+            if (promotePriceTarget) {
+                try {
+                    const { createPriceTarget } = await import('../lib/api');
+                    await createPriceTarget(
+                        promoteRec.ticker,
+                        parseFloat(promotePriceTarget),
+                        promoteTargetDate ? new Date(promoteTargetDate).toISOString() : null,
+                        session?.user?.id || ''
+                    );
+                } catch (ptError) {
+                    console.warn('Failed to create price target:', ptError);
                 }
-                return r;
-            }));
+            }
 
             await fetchRecommendations();
-
-            // Trigger refresh of weight panel if it's open
             window.dispatchEvent(new Event('recommendations-updated'));
-        } catch (err) {
-            console.error("Failed to promote watchlist item", err);
-            // Optimistic
-            setRecommendations(prev => prev.map(r => {
-                if (r.id === rec.id) {
-                    return { ...r, status: 'OPEN', action: actionType, entry_price: entryPrice, entry_date: new Date().toISOString() };
-                }
-                return r;
-            }));
+            setPromoteModalOpen(false);
+            setPromoteRec(null);
+        } catch (err: any) {
+            console.error("Promotion failed", err);
+            setError(err.message || 'Failed to promote watchlist item');
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -660,13 +703,13 @@ export default function Dashboard() {
         <div className="h-[calc(100vh-4rem)] bg-slate-900 overflow-hidden">
             {/* 12-Column Responsive Grid Layout */}
             <div className="h-full grid grid-cols-12">
-                {/* Left Panel: Idea List or Performance Metrics - 4 columns on desktop */}
+                {/* Left Panel: Idea List or Performance Metrics - 5 columns on desktop */}
                 <div className={`
                     ${isMobile
-                        ? 'fixed inset-y-0 left-0 z-40 w-80 transform transition-transform duration-300 ease-out'
+                        ? 'fixed inset-y-0 left-0 z-40 w-96 transform transition-transform duration-300 ease-out'
                         : isExpanded
                             ? 'hidden'
-                            : 'col-span-12 md:col-span-5 lg:col-span-4 xl:col-span-4'
+                            : 'col-span-12 md:col-span-6 lg:col-span-5 xl:col-span-5'
                     }
                     ${isMobile && !isMobileDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
                     h-full overflow-hidden flex flex-col bg-slate-900
@@ -685,20 +728,7 @@ export default function Dashboard() {
                                 </button>
                             </div>
                         )}
-                        {/* Team Filter */}
-                        {organization && teams.length > 0 && (
-                            <div className="mb-4 px-4">
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm font-medium text-gray-300">Filter by Team:</label>
-                                    <TeamSelector
-                                        teams={teams}
-                                        selectedTeamId={selectedTeamId}
-                                        onSelectTeam={setSelectedTeamId}
-                                        showAllOption={true}
-                                    />
-                                </div>
-                            </div>
-                        )}
+                        {/* Team filter removed */}
                         <IdeaList
                             isLoading={isLoadingPrices}
                             recommendations={recommendations}
@@ -729,7 +759,7 @@ export default function Dashboard() {
                             ? 'col-span-12'
                             : isExpanded
                                 ? 'col-span-12'
-                                : 'col-span-12 md:col-span-7 lg:col-span-8 xl:col-span-8'
+                                : 'col-span-12 md:col-span-6 lg:col-span-7 xl:col-span-7'
                         }
                         h-full relative transition-all duration-300
                         ${isDetailAnimating ? 'opacity-100' : 'opacity-0'}
@@ -745,7 +775,7 @@ export default function Dashboard() {
 
                 {/* Empty State when no stock selected (desktop only) */}
                 {!selectedStock && !isMobile && (
-                    <div className="col-span-12 md:col-span-7 lg:col-span-8 xl:col-span-8 h-full flex items-center justify-center bg-slate-900/50">
+                    <div className="col-span-12 md:col-span-6 lg:col-span-7 xl:col-span-7 h-full flex items-center justify-center bg-slate-900/50">
                         <div className="text-center animate-fadeIn">
                             <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-800/50 flex items-center justify-center">
                                 <Search className="w-8 h-8 text-slate-600" />
@@ -1019,6 +1049,170 @@ export default function Dashboard() {
                         fetchRecommendations();
                     }}
                 />
+            )}
+
+            {/* Promote Watchlist Modal */}
+            {promoteModalOpen && promoteRec && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                    <div className="bg-[#1e293b] rounded-xl shadow-2xl border border-white/10 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                        <div className="p-6 border-b border-white/10">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold text-white">
+                                    Promote {promoteRec.ticker} to {promoteAction} Recommendation
+                                </h2>
+                                <button
+                                    onClick={() => {
+                                        setPromoteModalOpen(false);
+                                        setPromoteRec(null);
+                                        setError(null);
+                                    }}
+                                    className="text-gray-400 hover:text-white transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="p-6 space-y-5">
+                            {error && (
+                                <div className="p-3 rounded bg-red-500/20 border border-red-500/30 text-red-200 text-sm flex items-center gap-2">
+                                    <AlertCircle className="w-4 h-4" />
+                                    {error}
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                                    Entry Price
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-400 sm:text-sm">₹</span>
+                                    </div>
+                                    <input
+                                        type="text"
+                                        value={promoteRec.current_price ? `₹${promoteRec.current_price.toFixed(2)}` : 'N/A'}
+                                        disabled
+                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-gray-400 sm:text-sm"
+                                    />
+                                </div>
+                                <p className="mt-1 text-xs text-gray-500">Using current market price as entry price</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                                    Thesis / Notes <span className="text-red-400">*</span>
+                                </label>
+                                <textarea
+                                    value={promoteThesis}
+                                    onChange={(e) => setPromoteThesis(e.target.value)}
+                                    rows={4}
+                                    required
+                                    className="block w-full py-2.5 px-3 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all resize-none"
+                                    placeholder="What's your rationale for this trade?"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                                    Price Target (Optional)
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-400 sm:text-sm">₹</span>
+                                    </div>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        value={promotePriceTarget}
+                                        onChange={(e) => setPromotePriceTarget(e.target.value)}
+                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                        placeholder="0.00"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                                    Target Date (Optional)
+                                </label>
+                                <input
+                                    type="date"
+                                    value={promoteTargetDate}
+                                    onChange={(e) => setPromoteTargetDate(e.target.value)}
+                                    className="block w-full px-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                    min={new Date().toISOString().split('T')[0]}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                                    Screenshots / Attachments (Optional)
+                                </label>
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                    {promoteImages.map((file, index) => (
+                                        <div key={index} className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 group">
+                                            <img
+                                                src={URL.createObjectURL(file)}
+                                                alt="preview"
+                                                className="w-full h-full object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setPromoteImages(prev => prev.filter((_, i) => i !== index))}
+                                                className="absolute top-0.5 right-0.5 bg-black/50 hover:bg-red-500 rounded-full p-0.5 text-white opacity-0 group-hover:opacity-100 transition-all"
+                                            >
+                                                <X className="w-3 h-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <input
+                                    ref={promoteFileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={(e) => {
+                                        if (e.target.files) {
+                                            setPromoteImages(prev => [...prev, ...Array.from(e.target.files || [])]);
+                                        }
+                                    }}
+                                    className="hidden"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => promoteFileInputRef.current?.click()}
+                                    className="w-full px-4 py-2 border border-white/10 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 transition-colors flex items-center justify-center gap-2"
+                                >
+                                    <Upload className="w-4 h-4" />
+                                    Upload Images
+                                </button>
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setPromoteModalOpen(false);
+                                        setPromoteRec(null);
+                                        setError(null);
+                                    }}
+                                    className="px-4 py-2 text-sm text-gray-300 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={handlePromoteSubmit}
+                                    disabled={loading || !promoteThesis.trim()}
+                                    className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    {loading ? 'Promoting...' : `Promote to ${promoteAction}`}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             )}
         </div>
     );

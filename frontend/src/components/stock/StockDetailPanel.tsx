@@ -279,6 +279,7 @@ export function StockDetailPanel({
                     ticker={stock.ticker}
                     currentPrice={financials.currentPrice || stock.current_price}
                     entryPrice={stock.entry_price}
+                    entryDate={stock.entry_date}
                     exitPrice={stock.exit_price}
                     exitDate={stock.exit_date}
                     isSticky={isSticky}

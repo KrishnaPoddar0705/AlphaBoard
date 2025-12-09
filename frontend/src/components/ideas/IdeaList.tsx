@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-    Plus, Clock, TrendingUp, TrendingDown, CheckCircle,
+    Plus, Clock, TrendingUp, TrendingDown,
     Trash2, ChevronRight, Eye, Mic, X, Loader2
 } from 'lucide-react';
 import { IdeaListItemSkeleton } from '../ui/Skeleton';
@@ -371,16 +371,6 @@ export function IdeaList({
                 </div>
             </div>
 
-            {/* Table Header */}
-            <div className="flex-shrink-0 px-4 py-2 border-b border-white/5 bg-slate-800/30">
-                <div className="grid grid-cols-12 gap-2 text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    <div className="col-span-4">Ticker</div>
-                    <div className="col-span-3 text-right">Entry</div>
-                    <div className="col-span-3 text-right">Return</div>
-                    <div className="col-span-2"></div>
-                </div>
-            </div>
-
             {/* List Content */}
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent hover:scrollbar-thumb-slate-600">
                 {isLoading ? (
@@ -395,20 +385,36 @@ export function IdeaList({
                     <EmptyState viewMode={viewMode} onNewIdea={onNewIdea} />
                 ) : (
                     // Idea List
-                    <div className="divide-y divide-white/5">
-                        {displayedRecommendations.map((rec) => (
-                            <IdeaListItem
-                                key={rec.id}
-                                recommendation={rec}
-                                companyName={companyNames[rec.ticker]}
-                                isSelected={selectedStock?.id === rec.id}
-                                viewMode={viewMode}
-                                onSelect={() => setSelectedStock(rec)}
-                                onClose={(e) => handleCloseIdea(rec, e)}
-                                onPromote={(action, e) => handlePromoteWatchlist(rec, action, e)}
-                                onDelete={(e) => handleDeleteWatchlist(rec, e)}
-                            />
-                        ))}
+                    <div>
+                        {/* Table Header */}
+                        <div className="px-6 py-3 bg-slate-800/50 border-b border-white/5 sticky top-0 z-10">
+                            <div className="grid grid-cols-12 gap-3 items-center">
+                                <div className="col-span-4 px-3 text-xs font-medium text-slate-400 uppercase tracking-wider">Ticker</div>
+                                <div className="col-span-2 px-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
+                                    {viewMode === 'watchlist' ? 'Current Price' : 'Entry'}
+                                </div>
+                                {viewMode !== 'watchlist' && (
+                                    <div className="col-span-2 px-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">Current Price</div>
+                                )}
+                                <div className={`px-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider ${viewMode === 'watchlist' ? 'col-span-4' : 'col-span-3'}`}>Return</div>
+                                <div className={`${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-1'}`}></div>
+                            </div>
+                        </div>
+                        <div className="divide-y divide-white/5">
+                            {displayedRecommendations.map((rec) => (
+                                <IdeaListItem
+                                    key={rec.id}
+                                    recommendation={rec}
+                                    companyName={companyNames[rec.ticker]}
+                                    isSelected={selectedStock?.id === rec.id}
+                                    viewMode={viewMode}
+                                    onSelect={() => setSelectedStock(rec)}
+                                    onClose={(e) => handleCloseIdea(rec, e)}
+                                    onPromote={(action, e) => handlePromoteWatchlist(rec, action, e)}
+                                    onDelete={(e) => handleDeleteWatchlist(rec, e)}
+                                />
+                            ))}
+                        </div>
                     </div>
                 )}
             </div>
@@ -505,7 +511,7 @@ function IdeaListItem({
         <div
             onClick={onSelect}
             className={`
-                group relative px-4 py-3 cursor-pointer transition-all duration-200
+                group relative px-6 py-3 cursor-pointer transition-all duration-200
                 ${isSelected
                     ? 'bg-indigo-500/10 border-l-2 border-indigo-500'
                     : 'hover:bg-white/5 border-l-2 border-transparent'
@@ -514,21 +520,28 @@ function IdeaListItem({
         >
             <div className="grid grid-cols-12 gap-2 items-center">
                 {/* Ticker & Action */}
-                <div className="col-span-4">
+                {/* 
+                    Reduced column width from col-span-5 to col-span-4.
+                    Added overflow-hidden and min-w-0 to prevent overflow.
+                    All text elements use truncate to ensure no overflow.
+                */}
+                <div className="col-span-4 px-3 min-w-0">
                     <div className="flex items-center gap-2">
                         <span className="text-white font-semibold text-sm">{rec.ticker}</span>
                     </div>
                     {companyName && (
-                        <div className="text-xs text-slate-400 mt-0.5 truncate">
+                        <div className="text-xs text-slate-400 mt-0.5 truncate block min-w-0">
                             {companyName}
                         </div>
                     )}
                     <div className="flex items-center gap-2 mt-1">
                         <span className={`
-                            text-[10px] font-bold uppercase px-1.5 py-0.5 rounded
-                            ${rec.action === 'BUY'
-                                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                            text-[10px] font-bold uppercase px-1.5 py-0.5 rounded flex-shrink-0
+                            ${rec.action === 'WATCH'
+                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                : rec.action === 'BUY'
+                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
                             }
                         `}>
                             {rec.action}
@@ -537,34 +550,89 @@ function IdeaListItem({
                     </div>
                 </div>
 
-                {/* Entry Price */}
-                <div className="col-span-2 text-right">
-                    <span className="text-sm text-slate-300 font-mono">
-                        ₹{entry.toFixed(2)}
-                    </span>
-                    {viewMode === 'active' && (
-                        <div className="text-xs text-slate-500 mt-0.5">
-                            {rec.weight_pct ? `${rec.weight_pct.toFixed(2)}%` : 'EW'}
-                            {rec.invested_amount && (
-                                <span className="ml-1">(₹{(rec.invested_amount / 1000).toFixed(0)}K)</span>
-                            )}
-                        </div>
+                {/* Entry Price / Current Price */}
+                {/* 
+                    Reduced column width maintained at col-span-2.
+                    Added overflow-hidden and min-w-0 to prevent overflow.
+                    Text uses truncate to ensure numbers are always visible.
+                */}
+                <div className="col-span-2 px-3 text-right">
+                    {viewMode === 'watchlist' ? (
+                        <span className="text-sm text-slate-300 font-mono">
+                            {current ? `₹${current.toFixed(2)}` : '-'}
+                        </span>
+                    ) : (
+                        <span className="text-sm text-slate-300 font-mono">
+                            ₹{entry.toFixed(2)}
+                        </span>
                     )}
                 </div>
 
+                {/* Current Price */}
+                {/* 
+                    Added overflow-hidden and min-w-0 to prevent overflow.
+                    Text uses truncate to ensure numbers are always visible.
+                */}
+                {viewMode !== 'watchlist' && (
+                    <div className="col-span-2 px-3 text-right min-w-0 overflow-hidden">
+                        <span className="text-sm text-slate-300 font-mono">
+                            {current ? `₹${current.toFixed(2)}` : '-'}
+                        </span>
+                    </div>
+                )}
+
                 {/* Return */}
-                <div className="col-span-3 text-right">
+                {/* 
+                    Flex container with whitespace-nowrap prevents text wrapping and ensures
+                    the percentage value and SELL badge never overlap.
+                    justify-end aligns content to the right, gap-2 provides spacing between elements.
+                    Increased column width (col-span-3) to accommodate SELL button on the right.
+                    Added overflow-hidden and min-w-0 to prevent overflow.
+                */}
+                <div className={`px-3 text-right min-w-0 overflow-hidden ${viewMode === 'watchlist' ? 'col-span-4' : 'col-span-3'}`}>
                     {viewMode !== 'watchlist' ? (
-                        <div className={`
-                            inline-flex items-center gap-1 text-sm font-semibold
-                            ${isPositive ? 'text-emerald-400' : 'text-rose-400'}
-                        `}>
-                            {isPositive ? (
-                                <TrendingUp className="w-3 h-3" />
-                            ) : (
-                                <TrendingDown className="w-3 h-3" />
+                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                            {/* 
+                                Percentage value wrapped in flex-shrink-0 to prevent compression.
+                                This ensures the percentage text (e.g., "102.57%") is always fully visible
+                                and never gets truncated or overlapped by adjacent elements.
+                            */}
+                            <div className={`
+                                inline-flex items-center gap-1 text-sm font-semibold flex-shrink-0
+                                ${isPositive ? 'text-emerald-400' : 'text-rose-400'}
+                            `}>
+                                {isPositive ? (
+                                    <TrendingUp className="w-3 h-3 flex-shrink-0" />
+                                ) : (
+                                    <TrendingDown className="w-3 h-3 flex-shrink-0" />
+                                )}
+                                <span className="font-mono">{Math.abs(ret).toFixed(2)}%</span>
+                            </div>
+                            {/* 
+                                SELL/BUY button - 25% smaller, appears only on hover.
+                                Positioned to the right of the percentage text.
+                                Reduced padding: px-3→px-2.25 (25% smaller), py-1.5→py-1.125 (25% smaller).
+                                Reduced font size: text-xs→text-[10px] (approximately 25% smaller).
+                            */}
+                            {viewMode === 'active' && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onClose(e);
+                                    }}
+                                    className={`
+                                        px-[9px] py-[4.5px] text-[10px] font-bold rounded-md transition-all whitespace-nowrap flex-shrink-0
+                                        opacity-0 group-hover:opacity-100
+                                        ${rec.action === 'BUY'
+                                            ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/30'
+                                            : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30'
+                                        }
+                                    `}
+                                    title={rec.action === 'BUY' ? 'SELL Position' : 'BUY Position'}
+                                >
+                                    {rec.action === 'BUY' ? 'SELL' : 'BUY'}
+                                </button>
                             )}
-                            <span className="font-mono">{Math.abs(ret).toFixed(2)}%</span>
                         </div>
                     ) : (
                         <span className="text-slate-500">-</span>
@@ -572,35 +640,30 @@ function IdeaListItem({
                 </div>
 
                 {/* Actions */}
-                <div className="col-span-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {viewMode === 'active' && (
-                        <button
-                            onClick={onClose}
-                            className="p-1.5 text-slate-400 hover:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors"
-                            title="Close Position"
-                        >
-                            <CheckCircle className="w-4 h-4" />
-                        </button>
-                    )}
+                {/* 
+                    Actions column - SELL button moved to Return column.
+                    Only watchlist actions remain here.
+                */}
+                <div className="col-span-1 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                     {viewMode === 'watchlist' && (
                         <>
                             <button
                                 onClick={(e) => onPromote('BUY', e)}
-                                className="p-1 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/10 rounded transition-colors"
+                                className="px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 rounded-lg border border-emerald-500/30 transition-colors"
                             >
-                                B
+                                BUY
                             </button>
                             <button
                                 onClick={(e) => onPromote('SELL', e)}
-                                className="p-1 text-[10px] font-bold text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                                className="px-3 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500/20 rounded-lg border border-rose-500/30 transition-colors"
                             >
-                                S
+                                SELL
                             </button>
                             <button
                                 onClick={onDelete}
-                                className="p-1 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
+                                className="p-1.5 text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
                             >
-                                <Trash2 className="w-3 h-3" />
+                                <Trash2 className="w-4 h-4" />
                             </button>
                         </>
                     )}

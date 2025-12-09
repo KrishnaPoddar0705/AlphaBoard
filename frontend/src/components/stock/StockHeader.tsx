@@ -17,6 +17,7 @@ interface StockHeaderProps {
     ticker: string;
     currentPrice: number;
     entryPrice: number;
+    entryDate?: string;
     exitPrice?: number;
     exitDate?: string;
     priceChange?: number;
@@ -31,6 +32,7 @@ export function StockHeader({
     ticker,
     currentPrice,
     entryPrice,
+    entryDate,
     exitPrice,
     exitDate,
     priceChange,
@@ -47,8 +49,8 @@ export function StockHeader({
     const changePercent = priceChangePercent ?? ((change / entryPrice) * 100);
     const isPositive = change >= 0;
 
-    // Format exit date if available
-    const formatExitDate = (dateString?: string) => {
+    // Format dates
+    const formatDate = (dateString?: string) => {
         if (!dateString) return null;
         try {
             const date = new Date(dateString);
@@ -62,7 +64,8 @@ export function StockHeader({
         }
     };
 
-    const formattedExitDate = formatExitDate(exitDate);
+    const formattedEntryDate = formatDate(entryDate);
+    const formattedExitDate = formatDate(exitDate);
 
     return (
         <div
@@ -114,6 +117,9 @@ export function StockHeader({
                             {/* Entry Price */}
                             <span className="text-sm text-slate-400">
                                 Entry: <span className="font-mono text-slate-300">₹{entryPrice?.toFixed(2)}</span>
+                                {formattedEntryDate && (
+                                    <span className="ml-2 text-slate-500">({formattedEntryDate})</span>
+                                )}
                             </span>
 
                             {/* Exit Price & Date (only show if position is closed) */}
