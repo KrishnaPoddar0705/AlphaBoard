@@ -1,6 +1,8 @@
 import { useState, useRef } from 'react';
 import { X, Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import SectorDropdown from '../ui/SectorDropdown';
+import TickerInput from '../ui/TickerInput';
 
 interface UploadReportModalProps {
   isOpen: boolean;
@@ -28,7 +30,7 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
   const [file, setFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [sector, setSector] = useState('');
-  const [tickers, setTickers] = useState('');
+  const [tickers, setTickers] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState('');
   const [error, setError] = useState('');
@@ -99,7 +101,7 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
       formData.append('file', file);
       formData.append('title', title.trim());
       formData.append('sector', sector);
-      formData.append('tickers', tickers);
+      formData.append('tickers', tickers.join(','));
 
       // Upload to Edge Function
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
@@ -156,7 +158,7 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
       setFile(null);
       setTitle('');
       setSector('');
-      setTickers('');
+      setTickers([]);
       setError('');
       setUploadStatus('');
       onClose();
@@ -240,37 +242,26 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
             <label className="block text-sm font-medium text-gray-300 mb-2">
               Sector
             </label>
-            <select
+            <SectorDropdown
               value={sector}
-              onChange={(e) => setSector(e.target.value)}
+              onChange={setSector}
+              options={SECTORS}
               disabled={uploading}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500 disabled:opacity-50"
-            >
-              <option value="">Select sector...</option>
-              {SECTORS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+              placeholder="Select sector..."
+            />
           </div>
 
           {/* Tickers */}
           <div>
             <label className="block text-sm font-medium text-gray-300 mb-2">
-              Tickers (comma-separated)
+              Tickers
             </label>
-            <input
-              type="text"
+            <TickerInput
               value={tickers}
-              onChange={(e) => setTickers(e.target.value)}
-              placeholder="e.g., AAPL, MSFT, GOOGL"
+              onChange={setTickers}
               disabled={uploading}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
+              placeholder="e.g., AAPL, MSFT, GOOGL"
             />
-            <p className="text-xs text-gray-500 mt-1">
-              Enter ticker symbols separated by commas
-            </p>
           </div>
 
           {/* Status */}

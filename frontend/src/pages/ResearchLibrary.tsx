@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Loader2 } from 'lucide-react';
+import { Plus, Search, Filter, Loader2, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ReportCard from '../components/research/ReportCard';
 import UploadReportModal from '../components/research/UploadReportModal';
 import RAGSearchBar from '../components/research/RAGSearchBar';
+import SectorDropdown from '../components/ui/SectorDropdown';
+import TickerFilter from '../components/ui/TickerFilter';
 
 interface Report {
   id: string;
@@ -18,6 +20,16 @@ interface Report {
   };
 }
 
+const STATUS_OPTIONS = [
+  'uploading',
+  'uploaded',
+  'indexing',
+  'indexed',
+  'parsing',
+  'parsed',
+  'failed',
+];
+
 export default function ResearchLibrary() {
   const [reports, setReports] = useState<Report[]>([]);
   const [filteredReports, setFilteredReports] = useState<Report[]>([]);
@@ -25,6 +37,8 @@ export default function ResearchLibrary() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [tickerFilter, setTickerFilter] = useState<string[]>([]);
   const [showRAGSearch, setShowRAGSearch] = useState(true);
 
   useEffect(() => {
@@ -33,7 +47,7 @@ export default function ResearchLibrary() {
 
   useEffect(() => {
     filterReports();
-  }, [reports, searchTerm, sectorFilter]);
+  }, [reports, searchTerm, sectorFilter, statusFilter, tickerFilter]);
 
   const fetchReports = async () => {
     try {
@@ -90,10 +104,44 @@ export default function ResearchLibrary() {
       filtered = filtered.filter((report) => report.sector === sectorFilter);
     }
 
+    // Status filter
+    if (statusFilter) {
+      filtered = filtered.filter((report) => report.upload_status === statusFilter);
+    }
+
+    // Ticker filter (show reports that contain any of the selected tickers)
+    if (tickerFilter.length > 0) {
+      filtered = filtered.filter((report) =>
+        report.tickers?.some((ticker) =>
+          tickerFilter.some((filterTicker) =>
+            ticker.toUpperCase() === filterTicker.toUpperCase()
+          )
+        )
+      );
+    }
+
     setFilteredReports(filtered);
   };
 
-  const uniqueSectors = Array.from(new Set(reports.map((r) => r.sector).filter(Boolean)));
+  const uniqueSectors = Array.from(new Set(reports.map((r) => r.sector).filter(Boolean))).sort();
+  
+  // Get all unique tickers from reports
+  const allTickers = Array.from(
+    new Set(
+      reports
+        .flatMap((r) => r.tickers || [])
+        .map((t) => t.toUpperCase())
+    )
+  ).sort();
+
+  const clearAllFilters = () => {
+    setSearchTerm('');
+    setSectorFilter('');
+    setStatusFilter('');
+    setTickerFilter([]);
+  };
+
+  const hasActiveFilters = searchTerm || sectorFilter || statusFilter || tickerFilter.length > 0;
 
   return (
     <div className="space-y-6">
@@ -133,8 +181,8 @@ export default function ResearchLibrary() {
 
       {/* Filters */}
       <div className="glass p-4 rounded-xl border border-white/10">
-        <div className="flex flex-col md:flex-row gap-4">
-          {/* Search */}
+        <div className="space-y-4">
+          {/* First Row: Search */}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -146,46 +194,87 @@ export default function ResearchLibrary() {
             />
           </div>
 
-          {/* Sector Filter */}
-          <div className="md:w-64">
-            <select
-              value={sectorFilter}
-              onChange={(e) => setSectorFilter(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500"
-            >
-              <option value="">All Sectors</option>
-              {uniqueSectors.map((sector) => (
-                <option key={sector} value={sector}>
-                  {sector}
-                </option>
-              ))}
-            </select>
+          {/* Second Row: Sector, Status, and Ticker Filters */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Sector Filter */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-gray-300 mb-2">
+                Sector
+              </label>
+              <SectorDropdown
+                value={sectorFilter}
+                onChange={setSectorFilter}
+                options={uniqueSectors}
+                placeholder="All Sectors"
+              />
+            </div>
+
+            {/* Status Filter */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-gray-300 mb-2">
+                Status
+              </label>
+              <SectorDropdown
+                value={statusFilter}
+                onChange={setStatusFilter}
+                options={STATUS_OPTIONS}
+                placeholder="All Statuses"
+              />
+            </div>
+
+            {/* Ticker Filter */}
+            <div className="relative">
+              <label className="block text-xs font-medium text-gray-300 mb-2">
+                Tickers
+              </label>
+              <TickerFilter
+                value={tickerFilter}
+                onChange={setTickerFilter}
+                options={allTickers}
+                placeholder="Select tickers..."
+              />
+            </div>
           </div>
 
-          {/* Clear Filters */}
-          {(searchTerm || sectorFilter) && (
-            <button
-              onClick={() => {
-                setSearchTerm('');
-                setSectorFilter('');
-              }}
-              className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
-            >
-              Clear
-            </button>
+          {/* Clear Filters Button */}
+          {hasActiveFilters && (
+            <div className="flex justify-end">
+              <button
+                onClick={clearAllFilters}
+                className="px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors flex items-center gap-2"
+              >
+                <X className="w-4 h-4" />
+                Clear All Filters
+              </button>
+            </div>
           )}
         </div>
 
         {/* Stats */}
-        <div className="flex items-center gap-6 mt-4 pt-4 border-t border-white/10">
+        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-white/10">
           <div className="text-sm">
             <span className="text-gray-400">Showing </span>
             <span className="text-white font-semibold">{filteredReports.length}</span>
             <span className="text-gray-400"> of {reports.length} reports</span>
           </div>
-          {sectorFilter && (
-            <div className="text-sm text-gray-400">
-              Filtered by: <span className="text-white">{sectorFilter}</span>
+          {hasActiveFilters && (
+            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-400">
+              <span>Filters:</span>
+              {sectorFilter && (
+                <span className="px-2 py-1 bg-blue-500/20 rounded text-white text-xs">
+                  Sector: {sectorFilter}
+                </span>
+              )}
+              {statusFilter && (
+                <span className="px-2 py-1 bg-purple-500/20 rounded text-white text-xs">
+                  Status: {statusFilter}
+                </span>
+              )}
+              {tickerFilter.length > 0 && (
+                <span className="px-2 py-1 bg-green-500/20 rounded text-white text-xs">
+                  Tickers: {tickerFilter.length}
+                </span>
+              )}
             </div>
           )}
         </div>
