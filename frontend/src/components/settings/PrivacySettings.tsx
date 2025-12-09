@@ -73,33 +73,33 @@ export default function PrivacySettings() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400">Loading privacy settings...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-400">Loading privacy settings...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-900 p-6">
       <div className="max-w-2xl mx-auto">
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+          className="flex items-center gap-2 text-slate-300 hover:text-white mb-6 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
         </button>
 
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Privacy Settings</h1>
+        <h1 className="text-3xl font-bold text-white mb-8">Privacy Settings</h1>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow p-6">
           {success && (
-            <div className="mb-6 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md">
+            <div className="mb-6 bg-green-900/30 border border-green-500/30 text-green-300 px-4 py-3 rounded-md">
               {success}
             </div>
           )}
           {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            <div className="mb-6 bg-red-900/30 border border-red-500/30 text-red-300 px-4 py-3 rounded-md">
               {error}
             </div>
           )}
@@ -109,11 +109,11 @@ export default function PrivacySettings() {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    {isPrivate ? <Lock className="w-5 h-5" /> : <Globe className="w-5 h-5" />}
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    {isPrivate ? <Lock className="w-5 h-5 text-slate-300" /> : <Globe className="w-5 h-5 text-slate-300" />}
                     Profile Visibility
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-slate-300 mt-1">
                     {isPrivate
                       ? 'Your profile and portfolio are private. Only you can see your data.'
                       : 'Your profile and portfolio are public. They will appear in the leaderboard.'}
@@ -127,33 +127,33 @@ export default function PrivacySettings() {
                     disabled={saving}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                 </label>
               </div>
             </div>
 
             {/* Privacy Explanation */}
-            <div className="border-t border-gray-200 pt-6">
-              <h4 className="font-semibold text-gray-900 mb-2">How Privacy Works</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
+            <div className="border-t border-white/10 pt-6">
+              <h4 className="font-semibold text-white mb-2">How Privacy Works</h4>
+              <ul className="space-y-2 text-sm text-slate-300">
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-1">•</span>
+                  <span className="text-blue-400 mt-1">•</span>
                   <span>
-                    <strong>Public Profile:</strong> Your recommendations, portfolio, and performance
+                    <strong className="text-white">Public Profile:</strong> Your recommendations, portfolio, and performance
                     metrics are visible to everyone in the public leaderboard.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-1">•</span>
+                  <span className="text-blue-400 mt-1">•</span>
                   <span>
-                    <strong>Private Profile:</strong> Your data is only visible to you. If you're in
+                    <strong className="text-white">Private Profile:</strong> Your data is only visible to you. If you're in
                     an organization, admins can also view your data.
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-blue-600 mt-1">•</span>
+                  <span className="text-blue-400 mt-1">•</span>
                   <span>
-                    <strong>Organization Members:</strong> If you're part of an organization, your
+                    <strong className="text-white">Organization Members:</strong> If you're part of an organization, your
                     data is always visible to organization admins, regardless of privacy settings.
                   </span>
                 </li>

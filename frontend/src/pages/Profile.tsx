@@ -313,16 +313,16 @@ export default function Profile() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-gray-400">Loading profile...</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-slate-400">Loading profile...</div>
       </div>
     );
   }
 
   if (!profile) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-red-600">Failed to load profile</div>
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="text-red-400">Failed to load profile</div>
       </div>
     );
   }
@@ -331,25 +331,25 @@ export default function Profile() {
   const displayEmail = clerkUser?.emailAddresses?.[0]?.emailAddress || '';
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-slate-900 p-6">
       <div className="max-w-4xl mx-auto">
         {/* Profile Header */}
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden mb-6">
+        <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow-lg overflow-hidden mb-6">
           <div className="bg-gradient-to-r from-blue-600 to-purple-600 h-32"></div>
           <div className="px-6 pb-6 -mt-16">
             <div className="flex items-end justify-between mb-4">
               <div className="flex items-end gap-4">
-                <div className="w-24 h-24 rounded-full bg-white border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
+                <div className="w-24 h-24 rounded-full bg-slate-800 border-4 border-slate-800 shadow-lg flex items-center justify-center overflow-hidden">
                   {profile.avatar_url ? (
                     <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-12 h-12 text-gray-400" />
+                    <User className="w-12 h-12 text-slate-400" />
                   )}
                 </div>
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900">{displayName}</h1>
+                  <h1 className="text-2xl font-bold text-white">{displayName}</h1>
                   {profile.username && (
-                    <p className="text-gray-600 text-sm">@{profile.username}</p>
+                    <p className="text-slate-400 text-sm">@{profile.username}</p>
                   )}
                 </div>
               </div>
@@ -368,110 +368,110 @@ export default function Profile() {
             <div className="space-y-2 mb-4">
               {displayEmail && (
                 <div className="flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-800">{displayEmail}</span>
+                  <Mail className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-200">{displayEmail}</span>
                 </div>
               )}
               {profile.location && (
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-800">{profile.location}</span>
+                  <MapPin className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-200">{profile.location}</span>
                 </div>
               )}
               {profile.website && (
                 <div className="flex items-center gap-2">
-                  <Globe className="w-4 h-4 text-gray-500" />
-                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:text-blue-800 hover:underline font-medium">
+                  <Globe className="w-4 h-4 text-slate-400" />
+                  <a href={profile.website} target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 hover:underline font-medium">
                     {profile.website}
                   </a>
                 </div>
               )}
               {profile.created_at && (
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-800">Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+                  <Calendar className="w-4 h-4 text-slate-400" />
+                  <span className="text-slate-200">Joined {new Date(profile.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
                 </div>
               )}
             </div>
 
             {/* Bio */}
             {profile.bio && !editing && (
-              <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">{profile.bio}</p>
+              <p className="text-slate-200 whitespace-pre-wrap leading-relaxed">{profile.bio}</p>
             )}
 
             {/* Success/Error Messages */}
             {success && (
-              <div className="mt-4 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md font-medium">
+              <div className="mt-4 bg-green-900/30 border border-green-500/30 text-green-300 px-4 py-3 rounded-md font-medium">
                 {success}
               </div>
             )}
             {error && (
-              <div className="mt-4 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md font-medium">
+              <div className="mt-4 bg-red-900/30 border border-red-500/30 text-red-300 px-4 py-3 rounded-md font-medium">
                 {error}
               </div>
             )}
 
             {/* Edit Form */}
             {editing && (
-              <div className="space-y-4 pt-4 border-t border-gray-200">
+              <div className="space-y-4 pt-4 border-t border-white/10">
                 {error && (
-                  <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-md font-medium">
+                  <div className="bg-red-900/30 border border-red-500/30 text-red-300 px-4 py-3 rounded-md font-medium">
                     {error}
                   </div>
                 )}
                 {success && (
-                  <div className="bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-md font-medium">
+                  <div className="bg-green-900/30 border border-green-500/30 text-green-300 px-4 py-3 rounded-md font-medium">
                     {success}
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
                     Full Name
                   </label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400 bg-white"
+                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder:text-slate-400 bg-slate-800/50"
                     placeholder="Your full name"
                     maxLength={100}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
                     Bio
                   </label>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400 bg-white resize-y"
+                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder:text-slate-400 bg-slate-800/50 resize-y"
                     placeholder="Tell us about yourself..."
                     maxLength={500}
                   />
                   {bio.length > 0 && (
-                    <p className="mt-1 text-xs text-gray-500">{bio.length}/500 characters</p>
+                    <p className="mt-1 text-xs text-slate-400">{bio.length}/500 characters</p>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-slate-200 mb-2">
                     Location
                   </label>
                   <input
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder:text-gray-400 bg-white"
+                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-white placeholder:text-slate-400 bg-slate-800/50"
                     placeholder="City, Country"
                     maxLength={100}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="website" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="website" className="block text-sm font-medium text-slate-200 mb-2">
                     Website
                   </label>
                   <input
@@ -479,12 +479,12 @@ export default function Profile() {
                     type="text"
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-gray-900 placeholder:text-gray-400 bg-white"
+                    className="w-full px-3 py-2 border border-white/10 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors text-white placeholder:text-slate-400 bg-slate-800/50"
                     placeholder="https://yourwebsite.com"
                     maxLength={200}
                   />
                   {website && !website.match(/^https?:\/\//) && website.trim() && (
-                    <p className="mt-1 text-xs text-amber-700 font-medium">
+                    <p className="mt-1 text-xs text-amber-400 font-medium">
                       Tip: Include http:// or https:// for the link to work properly
                     </p>
                   )}
@@ -494,7 +494,7 @@ export default function Profile() {
                   <button
                     onClick={handleCancel}
                     disabled={saving}
-                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 disabled:opacity-50"
+                    className="px-4 py-2 text-slate-200 bg-slate-700 rounded-md hover:bg-slate-600 disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -514,11 +514,11 @@ export default function Profile() {
 
         {/* Teams Section */}
         {organization && (
-          <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-gray-600" />
-                <h2 className="text-xl font-bold text-gray-900">Organization Teams</h2>
+                <Users className="w-5 h-5 text-slate-300" />
+                <h2 className="text-xl font-bold text-white">Organization Teams</h2>
               </div>
               <button
                 onClick={() => setShowCreateTeamModal(true)}
@@ -530,10 +530,10 @@ export default function Profile() {
             </div>
 
             {teamsLoading || loadingAllTeams ? (
-              <div className="text-gray-400 text-center py-8">Loading teams...</div>
+              <div className="text-slate-400 text-center py-8">Loading teams...</div>
             ) : allOrgTeams.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-8 text-slate-400">
+                <Users className="w-12 h-12 mx-auto mb-4 text-slate-500" />
                 <p className="mb-4">No teams available yet.</p>
                 <button
                   onClick={() => setShowCreateTeamModal(true)}
@@ -566,14 +566,14 @@ export default function Profile() {
         )}
 
         {!organization && (
-          <div className="bg-white rounded-lg shadow-lg p-6 text-center">
-            <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-            <p className="text-gray-600 mb-4">Join or create an organization to access teams.</p>
+          <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow-lg p-6 text-center">
+            <Users className="w-12 h-12 mx-auto mb-4 text-slate-500" />
+            <p className="text-slate-300 mb-4">Join or create an organization to access teams.</p>
             <div className="flex gap-4 justify-center">
               <a href="/organization/join" className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                 Join Organization
               </a>
-              <a href="/organization/create" className="px-4 py-2 bg-gray-200 text-gray-700 rounded-md hover:bg-gray-300">
+              <a href="/organization/create" className="px-4 py-2 bg-slate-700 text-slate-200 rounded-md hover:bg-slate-600">
                 Create Organization
               </a>
             </div>
@@ -582,13 +582,13 @@ export default function Profile() {
 
         {/* Admin Join Requests Section */}
         {isAdmin && organization && (
-          <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+          <div className="bg-slate-800/50 border border-white/10 rounded-lg shadow-lg p-6 mt-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
-                <Users className="w-5 h-5 text-gray-600" />
-                <h2 className="text-xl font-bold text-gray-900">Pending Join Requests</h2>
+                <Users className="w-5 h-5 text-slate-300" />
+                <h2 className="text-xl font-bold text-white">Pending Join Requests</h2>
                 {adminJoinRequests.length > 0 && (
-                  <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                  <span className="px-2 py-1 text-xs bg-blue-900/50 text-blue-300 rounded-full border border-blue-500/30">
                     {adminJoinRequests.length}
                   </span>
                 )}
@@ -596,10 +596,10 @@ export default function Profile() {
             </div>
 
             {loadingAdminRequests ? (
-              <div className="text-gray-400 text-center py-8">Loading requests...</div>
+              <div className="text-slate-400 text-center py-8">Loading requests...</div>
             ) : adminJoinRequests.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+              <div className="text-center py-8 text-slate-400">
+                <Users className="w-12 h-12 mx-auto mb-4 text-slate-500" />
                 <p>No pending join requests</p>
               </div>
             ) : (
@@ -607,19 +607,19 @@ export default function Profile() {
                 {adminJoinRequests.map((request) => (
                   <div
                     key={request.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                    className="border border-white/10 rounded-lg p-4 hover:bg-slate-700/50 transition-colors bg-slate-800/30"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <span className="font-semibold text-gray-900">{request.username}</span>
-                          <span className="text-sm text-gray-500">wants to join</span>
-                          <span className="font-semibold text-blue-600">{request.teamName}</span>
+                          <span className="font-semibold text-white">{request.username}</span>
+                          <span className="text-sm text-slate-400">wants to join</span>
+                          <span className="font-semibold text-blue-400">{request.teamName}</span>
                         </div>
                         {request.email && (
-                          <div className="text-sm text-gray-500 ml-0">{request.email}</div>
+                          <div className="text-sm text-slate-400 ml-0">{request.email}</div>
                         )}
-                        <div className="text-xs text-gray-400 mt-1">
+                        <div className="text-xs text-slate-500 mt-1">
                           Requested {new Date(request.requestedAt).toLocaleString()}
                         </div>
                       </div>
@@ -668,24 +668,24 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
   const shouldShowMembers = expanded;
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-white/10 rounded-lg overflow-hidden bg-slate-800/30">
       <div className="p-4 flex items-center justify-between">
         <div className="flex-1 cursor-pointer" onClick={() => setExpanded(!expanded)}>
           <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-gray-900">{team.name}</h3>
+            <h3 className="font-semibold text-white">{team.name}</h3>
             {isMember && (
-              <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded">Member</span>
+              <span className="px-2 py-1 text-xs bg-green-900/50 text-green-300 rounded border border-green-500/30">Member</span>
             )}
           </div>
           {team.createdAt && (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-slate-400">
               Created {new Date(team.createdAt).toLocaleDateString()}
             </p>
           )}
         </div>
         <div className="flex items-center gap-2">
           {!loading && (
-            <span className="text-sm text-gray-500">
+            <span className="text-sm text-slate-400">
               {members.length} member{members.length !== 1 ? 's' : ''}
             </span>
           )}
@@ -694,10 +694,10 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
               e.stopPropagation();
               setExpanded(!expanded);
             }}
-            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            className="p-1 hover:bg-slate-700 rounded transition-colors"
             title={expanded ? 'Collapse' : 'Expand'}
           >
-            {expanded ? <X className="w-4 h-4 text-gray-400" /> : <Users className="w-4 h-4 text-gray-400" />}
+            {expanded ? <X className="w-4 h-4 text-slate-400" /> : <Users className="w-4 h-4 text-slate-400" />}
           </button>
           {isMember && onLeave && (
             <button
@@ -705,7 +705,7 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
                 e.stopPropagation();
                 onLeave();
               }}
-              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors flex items-center gap-1"
+              className="px-2 py-1 text-xs text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded transition-colors flex items-center gap-1"
               title="Leave team"
             >
               <LogOut className="w-3 h-3" />
@@ -713,8 +713,8 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
           )}
           {!isMember && (
             hasPendingRequest ? (
-              <span className="px-3 py-1 text-sm bg-amber-50 text-amber-700 rounded-md flex items-center gap-1">
-                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+              <span className="px-3 py-1 text-sm bg-amber-900/50 text-amber-300 rounded-md flex items-center gap-1 border border-amber-500/30">
+                <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse"></span>
                 Request Sent
               </span>
             ) : onJoin ? (
@@ -723,7 +723,7 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
                   e.stopPropagation();
                   onJoin();
                 }}
-                className="px-3 py-1 text-sm bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 flex items-center gap-1 transition-colors"
+                className="px-3 py-1 text-sm bg-blue-900/50 text-blue-300 rounded-md hover:bg-blue-800/50 flex items-center gap-1 transition-colors border border-blue-500/30"
               >
                 <LogIn className="w-3 h-3" />
                 Join
@@ -734,29 +734,29 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
       </div>
 
       {shouldShowMembers && (
-        <div className="border-t border-gray-200 p-4 bg-gray-50">
+        <div className="border-t border-white/10 p-4 bg-slate-800/50">
           {loading ? (
-            <div className="text-gray-400 text-sm text-center py-2">Loading members...</div>
+            <div className="text-slate-400 text-sm text-center py-2">Loading members...</div>
           ) : members.length === 0 ? (
-            <div className="text-gray-500 text-sm text-center py-2">No members yet</div>
+            <div className="text-slate-400 text-sm text-center py-2">No members yet</div>
           ) : (
             <div className="space-y-2">
-              <h4 className="font-medium text-gray-700 mb-2">Members ({members.length})</h4>
+              <h4 className="font-medium text-slate-200 mb-2">Members ({members.length})</h4>
               {members.map((member) => (
-                <div key={member.id} className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200 hover:bg-gray-50 transition-colors">
-                  <div className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
-                    <User className="w-4 h-4 text-gray-500" />
+                <div key={member.id} className="flex items-center gap-2 p-2 bg-slate-700/50 rounded border border-white/10 hover:bg-slate-700 transition-colors">
+                  <div className="w-8 h-8 rounded-full bg-slate-600 flex items-center justify-center flex-shrink-0">
+                    <User className="w-4 h-4 text-slate-300" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-gray-900 truncate">
+                    <div className="font-medium text-sm text-white truncate">
                       {member.profile?.username || 'Unknown User'}
                     </div>
                     {member.profile?.email && (
-                      <div className="text-xs text-gray-500 truncate">{member.profile.email}</div>
+                      <div className="text-xs text-slate-400 truncate">{member.profile.email}</div>
                     )}
                   </div>
                   {member.userId === session?.user?.id && (
-                    <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded flex-shrink-0">You</span>
+                    <span className="px-2 py-1 text-xs bg-blue-900/50 text-blue-300 rounded flex-shrink-0 border border-blue-500/30">You</span>
                   )}
                 </div>
               ))}
