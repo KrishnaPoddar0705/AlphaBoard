@@ -24,8 +24,9 @@ export default function Profile() {
   const { session } = useAuth();
   const { user: clerkUser } = useUser();
   const { organization } = useOrganization();
+  // Get only teams user is a member of (not all org teams)
   const { teams: myTeams, loading: teamsLoading, createTeam, joinTeam, removeMember, refresh: refreshTeams } = useTeams({ 
-    orgId: organization?.id, 
+    orgId: undefined, // Don't pass orgId to get only user's teams
     autoFetch: !!organization?.id 
   });
   const [allOrgTeams, setAllOrgTeams] = useState<any[]>([]);
@@ -443,8 +444,10 @@ export default function Profile() {
             ) : (
               <div className="space-y-3">
                 {allOrgTeams.map((team) => {
+                  // Check if user is a member by comparing team IDs
                   const isMember = myTeams.some((myTeam) => myTeam.id === team.id);
                   const hasPendingRequest = pendingRequests.has(team.id);
+                  
                   return (
                     <TeamCard 
                       key={team.id} 
@@ -540,13 +543,13 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
               <LogOut className="w-3 h-3" />
             </button>
           )}
-          {!isMember && onJoin && (
+          {!isMember && (
             hasPendingRequest ? (
               <span className="px-3 py-1 text-sm bg-amber-50 text-amber-700 rounded-md flex items-center gap-1">
                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
                 Request Sent
               </span>
-            ) : (
+            ) : onJoin ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -557,7 +560,7 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
                 <LogIn className="w-3 h-3" />
                 Join
               </button>
-            )
+            ) : null
           )}
         </div>
       </div>
