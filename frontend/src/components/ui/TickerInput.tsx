@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Search, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import { searchStocks } from '../../lib/api';
 
 interface StockResult {

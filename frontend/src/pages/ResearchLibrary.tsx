@@ -123,7 +123,7 @@ export default function ResearchLibrary() {
     setFilteredReports(filtered);
   };
 
-  const uniqueSectors = Array.from(new Set(reports.map((r) => r.sector).filter(Boolean))).sort();
+  const uniqueSectors = Array.from(new Set(reports.map((r) => r.sector).filter((s): s is string => Boolean(s)))).sort();
   
   // Get all unique tickers from reports
   const allTickers = Array.from(

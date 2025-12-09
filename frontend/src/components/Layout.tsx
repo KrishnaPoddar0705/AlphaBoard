@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useClerk, useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
@@ -10,8 +10,17 @@ export default function Layout() {
     const { user } = useUser();
     const { signOut } = useClerk();
     const navigate = useNavigate();
+    const location = useLocation();
     const [organization, setOrganization] = useState<{ id: string; name: string; role: string } | null>(null);
     const [loadingOrg, setLoadingOrg] = useState(true);
+
+    // Helper function to check if a path is active
+    const isActive = (path: string) => {
+        if (path === '/') {
+            return location.pathname === '/';
+        }
+        return location.pathname.startsWith(path);
+    };
 
     const fetchOrganization = useCallback(async () => {
         if (!user?.id) {
@@ -147,39 +156,60 @@ export default function Layout() {
                                 <span className="text-xl font-bold text-[var(--text-primary)]">AlphaBoard</span>
                             </div>
                             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                                <Link to="/" className="border-indigo-500 text-[var(--text-primary)] inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <Link
+                                    to="/"
+                                    className={`${isActive('/') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                >
                                     <LayoutDashboard className="w-4 h-4 mr-2" />
                                     Dashboard
                                 </Link>
-                                <Link to="/leaderboard" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                <Link
+                                    to="/leaderboard"
+                                    className={`${isActive('/leaderboard') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                >
                                     <Trophy className="w-4 h-4 mr-2" />
                                     Performance Tracker
                                 </Link>
                                 {user?.id && (
-                                    <Link to={`/analyst/${user.id}/performance`} className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    <Link
+                                        to={`/analyst/${user.id}/performance`}
+                                        className={`${isActive('/analyst') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                    >
                                         <BarChart2 className="w-4 h-4 mr-2" />
                                         Performance
                                     </Link>
                                 )}
                                 {user?.id && organization && (
-                                    <Link to="/research" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    <Link
+                                        to="/research"
+                                        className={`${isActive('/research') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                    >
                                         <FileText className="w-4 h-4 mr-2" />
                                         Institutional Memory
                                     </Link>
                                 )}
                                 {organization && organization.role === 'admin' && (
-                                    <Link to="/organization/admin" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                    <Link
+                                        to="/organization/admin"
+                                        className={`${isActive('/organization/admin') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                    >
                                         <Building2 className="w-4 h-4 mr-2" />
                                         Admin Dashboard
                                     </Link>
                                 )}
                                 {!organization && !loadingOrg && user?.id && (
                                     <>
-                                        <Link to="/organization/join" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Link
+                                            to="/organization/join"
+                                            className={`${isActive('/organization/join') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                        >
                                             <Users className="w-4 h-4 mr-2" />
                                             Join Org
                                         </Link>
-                                        <Link to="/organization/create" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Link
+                                            to="/organization/create"
+                                            className={`${isActive('/organization/create') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                        >
                                             <Building2 className="w-4 h-4 mr-2" />
                                             Create Org
                                         </Link>
@@ -187,11 +217,17 @@ export default function Layout() {
                                 )}
                                 {user?.id && (
                                     <>
-                                        <Link to="/profile" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Link
+                                            to="/profile"
+                                            className={`${isActive('/profile') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                        >
                                             <User className="w-4 h-4 mr-2" />
                                             Profile
                                         </Link>
-                                        <Link to="/settings/privacy" className="border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                        <Link
+                                            to="/settings/privacy"
+                                            className={`${isActive('/settings') ? 'border-indigo-500 text-[var(--text-primary)]' : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-indigo-500/50'} inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium transition-colors`}
+                                        >
                                             <Settings className="w-4 h-4 mr-2" />
                                             Settings
                                         </Link>
