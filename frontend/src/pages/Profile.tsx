@@ -489,16 +489,17 @@ export default function Profile() {
 // Team Card Component
 function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team: any; isMember: boolean; hasPendingRequest?: boolean; onJoin?: () => void; onLeave?: () => void }) {
   const { session } = useAuth();
-  const { members, loading } = useTeamMembers(isMember ? team.id : null);
+  // All users can see team members, not just team members
+  const { members, loading } = useTeamMembers(team.id);
   const [expanded, setExpanded] = useState(false);
   
-  // For non-members, we don't need to show members, so don't fetch
-  const shouldShowMembers = isMember && expanded;
+  // Allow expanding to see members for all teams
+  const shouldShowMembers = expanded;
 
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <div className="p-4 flex items-center justify-between">
-        <div className="flex-1 cursor-pointer" onClick={() => isMember && setExpanded(!expanded)}>
+        <div className="flex-1 cursor-pointer" onClick={() => setExpanded(!expanded)}>
           <div className="flex items-center gap-2">
             <h3 className="font-semibold text-gray-900">{team.name}</h3>
             {isMember && (
@@ -512,37 +513,34 @@ function TeamCard({ team, isMember, hasPendingRequest, onJoin, onLeave }: { team
           )}
         </div>
         <div className="flex items-center gap-2">
-          {isMember ? (
-            <>
-              {!loading && (
-                <span className="text-sm text-gray-500">
-                  {members.length} member{members.length !== 1 ? 's' : ''}
-                </span>
-              )}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setExpanded(!expanded);
-                }}
-                className="p-1 hover:bg-gray-100 rounded transition-colors"
-                title={expanded ? 'Collapse' : 'Expand'}
-              >
-                {expanded ? <X className="w-4 h-4 text-gray-400" /> : <Users className="w-4 h-4 text-gray-400" />}
-              </button>
-              {onLeave && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onLeave();
-                  }}
-                  className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors flex items-center gap-1"
-                  title="Leave team"
-                >
-                  <LogOut className="w-3 h-3" />
-                </button>
-              )}
-            </>
-          ) : (
+          {!loading && (
+            <span className="text-sm text-gray-500">
+              {members.length} member{members.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            className="p-1 hover:bg-gray-100 rounded transition-colors"
+            title={expanded ? 'Collapse' : 'Expand'}
+          >
+            {expanded ? <X className="w-4 h-4 text-gray-400" /> : <Users className="w-4 h-4 text-gray-400" />}
+          </button>
+          {isMember && onLeave && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onLeave();
+              }}
+              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded transition-colors flex items-center gap-1"
+              title="Leave team"
+            >
+              <LogOut className="w-3 h-3" />
+            </button>
+          )}
+          {!isMember && (
             hasPendingRequest ? (
               <span className="px-3 py-1 text-sm bg-amber-50 text-amber-700 rounded-md flex items-center gap-1">
                 <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>

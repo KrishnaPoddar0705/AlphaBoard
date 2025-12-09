@@ -124,24 +124,8 @@ serve(async (req) => {
             )
         }
 
-        const isOrgAdmin = membership.role === 'admin'
-
-        // Check if user is team member (if not admin)
-        if (!isOrgAdmin) {
-            const { data: teamMember, error: memberCheckError } = await supabaseAdmin
-                .from('team_members')
-                .select('id')
-                .eq('team_id', teamId)
-                .eq('user_id', userId)
-                .maybeSingle()
-
-            if (memberCheckError || !teamMember) {
-                return new Response(
-                    JSON.stringify({ error: 'User is not a member of this team' }),
-                    { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-                )
-            }
-        }
+        // All org members can view team members (not just team members themselves)
+        // No additional check needed - if user is in the org, they can see team members
 
         // Get team members
         const { data: teamMembersData, error: membersError } = await supabaseAdmin
