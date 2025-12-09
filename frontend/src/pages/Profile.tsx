@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase';
 import { useTeams, useTeamMembers } from '../hooks/useTeams';
 import { useOrganization } from '../hooks/useOrganization';
 import CreateTeamModal from '../components/organization/CreateTeamModal';
-import { getOrgTeams } from '../lib/edgeFunctions';
+import { getOrgTeams, getTeamJoinRequests, approveTeamJoinRequest, rejectTeamJoinRequest, joinTeam as joinTeamFn } from '../lib/edgeFunctions';
 import { User, Edit2, Save, X, Users, Plus, Mail, Calendar, MapPin, Globe, LogIn, LogOut } from 'lucide-react';
 
 interface ProfileData {
@@ -25,13 +25,16 @@ export default function Profile() {
   const { user: clerkUser } = useUser();
   const { organization } = useOrganization();
   // Get only teams user is a member of (not all org teams)
-  const { teams: myTeams, loading: teamsLoading, createTeam, joinTeam, removeMember, refresh: refreshTeams } = useTeams({ 
+  const { teams: myTeams, loading: teamsLoading, createTeam, removeMember, refresh: refreshTeams } = useTeams({ 
     orgId: undefined, // Don't pass orgId to get only user's teams
     autoFetch: !!organization?.id 
   });
   const [allOrgTeams, setAllOrgTeams] = useState<any[]>([]);
   const [loadingAllTeams, setLoadingAllTeams] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminJoinRequests, setAdminJoinRequests] = useState<any[]>([]);
+  const [loadingAdminRequests, setLoadingAdminRequests] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -53,11 +56,18 @@ export default function Profile() {
   }, [session?.user?.id]);
 
   useEffect(() => {
-    if (organization?.id) {
+    if (organization?.id && session?.user?.id) {
+      fetchUserRole();
       fetchAllOrgTeams();
       fetchPendingRequests();
     }
   }, [organization?.id, session?.user?.id]);
+
+  useEffect(() => {
+    if (isAdmin && organization?.id) {
+      fetchAdminJoinRequests();
+    }
+  }, [isAdmin, organization?.id]);
 
   const fetchAllOrgTeams = async () => {
     if (!organization?.id) return;
@@ -87,6 +97,70 @@ export default function Profile() {
       setPendingRequests(requestTeamIds);
     } catch (err) {
       console.error('Error fetching pending requests:', err);
+    }
+  };
+
+  const fetchUserRole = async () => {
+    if (!session?.user?.id || !organization?.id) return;
+    
+    try {
+      const { data: membership } = await supabase
+        .from('user_organization_membership')
+        .select('role')
+        .eq('user_id', session.user.id)
+        .eq('organization_id', organization.id)
+        .single();
+      
+      setIsAdmin(membership?.role === 'admin' || false);
+    } catch (err) {
+      console.error('Error fetching user role:', err);
+      setIsAdmin(false);
+    }
+  };
+
+  const fetchAdminJoinRequests = async () => {
+    if (!isAdmin || !organization?.id) return;
+    
+    try {
+      setLoadingAdminRequests(true);
+      const response = await getTeamJoinRequests(organization.id);
+      setAdminJoinRequests(response.requests || []);
+    } catch (err: any) {
+      console.error('Error fetching admin join requests:', err);
+    } finally {
+      setLoadingAdminRequests(false);
+    }
+  };
+
+  const handleApproveRequest = async (requestId: string) => {
+    try {
+      await approveTeamJoinRequest(requestId);
+      setSuccess('Join request approved!');
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchAdminJoinRequests();
+      await fetchPendingRequests();
+      refreshTeams();
+      fetchAllOrgTeams();
+    } catch (err: any) {
+      setError(err.message || 'Failed to approve request');
+      setTimeout(() => setError(null), 5000);
+    }
+  };
+
+  const handleRejectRequest = async (requestId: string) => {
+    if (!confirm('Are you sure you want to reject this join request?')) {
+      return;
+    }
+    
+    try {
+      await rejectTeamJoinRequest(requestId);
+      setSuccess('Join request rejected.');
+      setTimeout(() => setSuccess(null), 3000);
+      await fetchAdminJoinRequests();
+      await fetchPendingRequests();
+    } catch (err: any) {
+      setError(err.message || 'Failed to reject request');
+      setTimeout(() => setError(null), 5000);
     }
   };
 
@@ -175,17 +249,26 @@ export default function Profile() {
 
   const handleJoinTeam = async (teamId: string) => {
     try {
-      const result = await joinTeam(teamId);
-      if ((result as any).requiresApproval) {
+      // Call joinTeam directly from edgeFunctions (not from useTeams hook)
+      const result = await joinTeamFn(teamId);
+      
+      if (result && typeof result === 'object' && 'requiresApproval' in result && result.requiresApproval) {
         setSuccess('Join request sent! Waiting for admin approval.');
         setTimeout(() => setSuccess(null), 5000);
         await fetchPendingRequests();
+        if (isAdmin) {
+          await fetchAdminJoinRequests();
+        }
       } else {
-        setSuccess((result as any).message || 'Successfully joined team!');
+        const message = result && typeof result === 'object' && 'message' in result ? result.message : 'Successfully joined team!';
+        setSuccess(message);
         setTimeout(() => setSuccess(null), 3000);
         refreshTeams();
         fetchAllOrgTeams();
         await fetchPendingRequests();
+        if (isAdmin) {
+          await fetchAdminJoinRequests();
+        }
       }
     } catch (err: any) {
       setError(err.message || 'Failed to join team');
@@ -476,6 +559,73 @@ export default function Profile() {
                 Create Organization
               </a>
             </div>
+          </div>
+        )}
+
+        {/* Admin Join Requests Section */}
+        {isAdmin && organization && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-2">
+                <Users className="w-5 h-5 text-gray-600" />
+                <h2 className="text-xl font-bold text-gray-900">Pending Join Requests</h2>
+                {adminJoinRequests.length > 0 && (
+                  <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                    {adminJoinRequests.length}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {loadingAdminRequests ? (
+              <div className="text-gray-400 text-center py-8">Loading requests...</div>
+            ) : adminJoinRequests.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                <p>No pending join requests</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {adminJoinRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="font-semibold text-gray-900">{request.username}</span>
+                          <span className="text-sm text-gray-500">wants to join</span>
+                          <span className="font-semibold text-blue-600">{request.teamName}</span>
+                        </div>
+                        {request.email && (
+                          <div className="text-sm text-gray-500 ml-0">{request.email}</div>
+                        )}
+                        <div className="text-xs text-gray-400 mt-1">
+                          Requested {new Date(request.requestedAt).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleApproveRequest(request.id)}
+                          className="px-3 py-1.5 text-sm bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors flex items-center gap-1"
+                        >
+                          <span>✓</span>
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleRejectRequest(request.id)}
+                          className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors flex items-center gap-1"
+                        >
+                          <X className="w-4 h-4" />
+                          Reject
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
