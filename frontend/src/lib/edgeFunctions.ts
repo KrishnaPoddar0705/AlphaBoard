@@ -418,3 +418,229 @@ export async function updateOrganizationSettings(
   return response.json();
 }
 
+// ============================================================================
+// Team Edge Functions
+// ============================================================================
+
+export interface Team {
+  id: string;
+  name: string;
+  orgId: string;
+  createdBy?: string;
+  createdAt?: string;
+}
+
+export interface TeamMember {
+  id: string;
+  userId: string;
+  joinedAt: string;
+  profile: {
+    id: string;
+    username: string | null;
+    email: string | null;
+  } | null;
+}
+
+interface CreateTeamRequest {
+  orgId: string;
+  name: string;
+}
+
+interface CreateTeamResponse {
+  success: boolean;
+  team: Team;
+}
+
+interface TeamMembersResponse {
+  success: boolean;
+  team: Team;
+  members: TeamMember[];
+}
+
+interface TeamsResponse {
+  success: boolean;
+  teams: Team[];
+}
+
+interface VisibleRecommendationsResponse {
+  success: boolean;
+  recommendations: any[];
+}
+
+/**
+ * Create a new team within an organization
+ */
+export async function createTeam(
+  orgId: string,
+  name: string
+): Promise<CreateTeamResponse> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/create-team`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ orgId, name } as CreateTeamRequest),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to create team');
+  }
+
+  return response.json();
+}
+
+/**
+ * Join a team within the user's organization
+ */
+export async function joinTeam(teamId: string): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/join-team`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ teamId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to join team');
+  }
+
+  return response.json();
+}
+
+/**
+ * Add a user to a team (admin or team creator only)
+ */
+export async function addTeamMember(
+  teamId: string,
+  userId: string
+): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/add-team-member`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ teamId, userId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to add team member');
+  }
+
+  return response.json();
+}
+
+/**
+ * Remove a user from a team (admin, team creator, or self)
+ */
+export async function removeTeamMember(
+  teamId: string,
+  userId: string
+): Promise<{ success: boolean; message: string }> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/remove-team-member`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ teamId, userId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to remove team member');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get all members of a team
+ */
+export async function getTeamMembers(teamId: string): Promise<TeamMembersResponse> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/get-team-members?teamId=${teamId}`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to get team members');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get all teams the current user belongs to in their organization
+ */
+export async function getMyTeams(): Promise<TeamsResponse> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/get-my-teams`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to get teams');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get all teams in an organization
+ * Admin: sees all teams
+ * Analyst: sees only teams they belong to
+ */
+export async function getOrgTeams(orgId: string): Promise<TeamsResponse> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/get-org-teams?orgId=${orgId}`, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to get organization teams');
+  }
+
+  return response.json();
+}
+
+/**
+ * Get all recommendations visible to the current user (RLS-enforced)
+ * Optionally filter by teamId and status
+ */
+export async function getVisibleRecommendations(
+  teamId?: string,
+  status?: 'OPEN' | 'CLOSED' | 'WATCHLIST'
+): Promise<VisibleRecommendationsResponse> {
+  const headers = await getAuthHeaders();
+
+  const params = new URLSearchParams();
+  if (teamId) params.append('teamId', teamId);
+  if (status) params.append('status', status);
+
+  const url = `${EDGE_FUNCTION_URL}/get-visible-recommendations${params.toString() ? `?${params.toString()}` : ''}`;
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to get visible recommendations');
+  }
+
+  return response.json();
+}
+

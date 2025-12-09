@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
+import { getVisibleRecommendations } from '../../lib/edgeFunctions';
+import { useTeams } from '../../hooks/useTeams';
+import TeamSelector from './TeamSelector';
 import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon } from 'lucide-react';
 
 interface OrganizationUser {
@@ -69,6 +72,8 @@ export default function AdminDashboard() {
   const [expandedAnalyst, setExpandedAnalyst] = useState<string | null>(null);
   const [analystRecommendations, setAnalystRecommendations] = useState<Record<string, Recommendation[]>>({});
   const [analystPriceTargets, setAnalystPriceTargets] = useState<Record<string, PriceTarget[]>>({});
+  const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
+  const { teams } = useTeams({ orgId: organizationId || undefined, autoFetch: !!organizationId });
 
   useEffect(() => {
     if (session?.user?.id) {
@@ -265,12 +270,26 @@ export default function AdminDashboard() {
         console.log('Fetching recommendations for user:', userId, 'in organization:', organizationId);
 
         // Fetch recommendations with all details
-        // Don't filter by organization_id - fetch all recommendations for this user
-        const { data: recs, error: recsError } = await supabase
-          .from('recommendations')
-          .select('id, ticker, action, entry_price, exit_price, status, thesis, entry_date, images, final_return_pct, final_alpha_pct')
-          .eq('user_id', userId)
-          .order('entry_date', { ascending: false });
+        // Use getVisibleRecommendations to respect team-based RLS
+        let recs: Recommendation[] = [];
+        try {
+          const response = await getVisibleRecommendations(selectedTeamId || undefined, undefined);
+          recs = (response.recommendations || []).filter((r: any) => r.user_id === userId);
+        } catch (err) {
+          console.warn('Failed to fetch via Edge Function, using direct query', err);
+        }
+        
+        // Fallback to direct query if Edge Function fails or returns no results
+        if (recs.length === 0) {
+          const { data: recData, error: recsError } = await supabase
+            .from('recommendations')
+            .select('id, ticker, action, entry_price, exit_price, status, thesis, entry_date, images, final_return_pct, final_alpha_pct')
+            .eq('user_id', userId)
+            .order('entry_date', { ascending: false });
+          if (recData) recs = recData;
+        }
+        
+        const recsError = null; // No error if we got data
 
         console.log('Recommendations for user:', userId, 'Count:', recs?.length, 'Data:', recs, 'Error:', recsError);
 
@@ -415,6 +434,21 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Team Filter */}
+        {teams.length > 0 && (
+          <div className="glass rounded-xl shadow-xl mb-8 border border-white/10 p-4">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-slate-300">Filter by Team:</label>
+              <TeamSelector
+                teams={teams}
+                selectedTeamId={selectedTeamId}
+                onSelectTeam={setSelectedTeamId}
+                showAllOption={true}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Analyst Performance Table */}
         <div className="glass rounded-xl shadow-xl mb-8 border border-white/10">

@@ -15,6 +15,7 @@ import OrganizationSettings from './components/organization/OrganizationSettings
 import PrivacySettings from './components/settings/PrivacySettings';
 import ResearchLibrary from './pages/ResearchLibrary';
 import ReportDetail from './pages/ReportDetail';
+import Profile from './pages/Profile';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -70,6 +71,11 @@ function App() {
           <Route path="/settings/privacy" element={
             <PrivateRoute>
               <PrivacySettings />
+            </PrivateRoute>
+          } />
+          <Route path="/profile" element={
+            <PrivateRoute>
+              <Profile />
             </PrivateRoute>
           } />
           <Route path="/research" element={

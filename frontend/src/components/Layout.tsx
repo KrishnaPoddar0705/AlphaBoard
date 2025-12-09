@@ -186,10 +186,16 @@ export default function Layout() {
                                     </>
                                 )}
                                 {user?.id && (
-                                    <Link to="/settings/privacy" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
-                                        <Settings className="w-4 h-4 mr-2" />
-                                        Settings
-                                    </Link>
+                                    <>
+                                        <Link to="/profile" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                            <User className="w-4 h-4 mr-2" />
+                                            Profile
+                                        </Link>
+                                        <Link to="/settings/privacy" className="border-transparent text-gray-300 hover:text-white hover:border-gray-300 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium">
+                                            <Settings className="w-4 h-4 mr-2" />
+                                            Settings
+                                        </Link>
+                                    </>
                                 )}
                             </div>
                         </div>

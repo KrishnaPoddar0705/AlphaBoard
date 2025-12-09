@@ -19,6 +19,10 @@ import { useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
 import { syncClerkUserToSupabase } from '../lib/clerkSupabaseSync';
 import { searchStocks, getPrice } from '../lib/api';
+import { getVisibleRecommendations } from '../lib/edgeFunctions';
+import { useTeams } from '../hooks/useTeams';
+import { useOrganization } from '../hooks/useOrganization';
+import TeamSelector from '../components/organization/TeamSelector';
 import { Search, AlertCircle, Upload, X, Menu } from 'lucide-react';
 import { StockDetailPanel } from '../components/stock/StockDetailPanel';
 import { IdeaList } from '../components/ideas/IdeaList';
@@ -45,6 +49,9 @@ const MOCK_STOCKS = [
 export default function Dashboard() {
     const { session } = useAuth();
     const { user: clerkUser } = useUser();
+    const { organization } = useOrganization();
+    const { teams } = useTeams({ orgId: organization?.id, autoFetch: !!organization?.id });
+    const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
     const [recommendations, setRecommendations] = useState<any[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [selectedStock, setSelectedStock] = useState<any>(null);
@@ -98,20 +105,34 @@ export default function Dashboard() {
         const userId = session?.user?.id;
         if (!userId) return [];
         try {
-            const { data, error } = await supabase
-                .from('recommendations')
-                .select('*')
-                .eq('user_id', userId)
-                .order('entry_date', { ascending: false });
-
-            if (data) return data;
-            if (error) throw error;
-            return [];
+            // If team is selected, use getVisibleRecommendations with team filter
+            // Otherwise, use direct Supabase query for user's own recommendations
+            if (selectedTeamId) {
+                const response = await getVisibleRecommendations(selectedTeamId, undefined);
+                return response.recommendations || [];
+            } else {
+                // Use getVisibleRecommendations without team filter to get all visible recommendations
+                // This respects RLS policies (own + team members + admin sees all)
+                const response = await getVisibleRecommendations(undefined, undefined);
+                return response.recommendations || [];
+            }
         } catch (err) {
-            console.warn("Could not fetch recommendations from Supabase", err);
+            console.warn("Could not fetch recommendations", err);
+            // Fallback to direct query if Edge Function fails
+            try {
+                const { data, error } = await supabase
+                    .from('recommendations')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('entry_date', { ascending: false });
+                if (data) return data;
+                if (error) throw error;
+            } catch (fallbackErr) {
+                console.warn("Fallback query also failed", fallbackErr);
+            }
             return [];
         }
-    }, [session?.user?.id]);
+    }, [session?.user?.id, selectedTeamId]);
 
     const loadRecommendationsWithPrices = useCallback(async () => {
         const userId = session?.user?.id;
@@ -662,6 +683,20 @@ export default function Dashboard() {
                                     <Settings className="w-4 h-4" />
                                     {showWeightPanel ? 'Hide' : 'Show'} Portfolio Weights
                                 </button>
+                            </div>
+                        )}
+                        {/* Team Filter */}
+                        {organization && teams.length > 0 && (
+                            <div className="mb-4 px-4">
+                                <div className="flex items-center gap-2">
+                                    <label className="text-sm font-medium text-gray-300">Filter by Team:</label>
+                                    <TeamSelector
+                                        teams={teams}
+                                        selectedTeamId={selectedTeamId}
+                                        onSelectTeam={setSelectedTeamId}
+                                        showAllOption={true}
+                                    />
+                                </div>
                             </div>
                         )}
                         <IdeaList
