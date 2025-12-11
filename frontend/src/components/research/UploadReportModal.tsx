@@ -24,6 +24,9 @@ const SECTORS = [
   'Communication Services',
   'Metals & Mining',
   'IT Services',
+  'Automotive',
+  'Defense',
+  'Logistics'
 ];
 
 export default function UploadReportModal({ isOpen, onClose, onSuccess }: UploadReportModalProps) {
@@ -85,15 +88,15 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
     try {
       // Get Supabase session (synced from Clerk authentication)
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      
+
       if (sessionError) {
         throw new Error(`Session error: ${sessionError.message}`);
       }
-      
+
       if (!session) {
         throw new Error('Not authenticated. Please log in first.');
       }
-      
+
       console.log('Session valid, user ID:', session.user?.id);
 
       // Create form data
@@ -132,9 +135,9 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
       }
 
       const result = await response.json();
-      
+
       setUploadStatus('File uploaded! Indexing and parsing...');
-      
+
       console.log('Upload successful:', result);
 
       // Wait a moment to show success message
@@ -187,11 +190,10 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              file
-                ? 'border-green-500/50 bg-green-500/10'
-                : 'border-white/20 hover:border-blue-500/50 hover:bg-blue-500/5'
-            }`}
+            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${file
+              ? 'border-green-500/50 bg-green-500/10'
+              : 'border-white/20 hover:border-blue-500/50 hover:bg-blue-500/5'
+              }`}
           >
             <input
               ref={fileInputRef}
