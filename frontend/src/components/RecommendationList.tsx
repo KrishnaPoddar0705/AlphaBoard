@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, CheckCircle, Trash2, Plus } from 'lucide-react';
+import { TrendingUp, TrendingDown, CheckCircle, Plus } from 'lucide-react';
 
 interface RecommendationListProps {
     recommendations: any[];
@@ -21,7 +21,7 @@ export default function RecommendationList({
     setViewMode,
     handleCloseIdea,
     handlePromoteWatchlist,
-    handleDeleteWatchlist,
+    handleDeleteWatchlist: _handleDeleteWatchlist, // Kept for API compatibility but no longer used
     onNewIdea
 }: RecommendationListProps) {
 
