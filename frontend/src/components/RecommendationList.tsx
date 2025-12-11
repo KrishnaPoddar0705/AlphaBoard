@@ -151,7 +151,7 @@ export default function RecommendationList({
                                                 <div className="flex gap-1">
                                                     <button onClick={(e) => handlePromoteWatchlist(rec, 'BUY', e)} className="text-green-400 hover:bg-green-500/10 p-1 rounded text-xs font-bold">B</button>
                                                     <button onClick={(e) => handlePromoteWatchlist(rec, 'SELL', e)} className="text-red-400 hover:bg-red-500/10 p-1 rounded text-xs font-bold">S</button>
-                                                    <button onClick={(e) => handleDeleteWatchlist(rec, e)} className="text-gray-400 hover:text-red-400 p-1 rounded"><Trash2 className="w-3 h-3" /></button>
+                                                    {/* Delete button removed - watchlist items persist permanently */}
                                                 </div>
                                             )}
                                         </div>

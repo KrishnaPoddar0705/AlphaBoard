@@ -554,23 +554,9 @@ export default function Dashboard() {
 
     const handleDeleteWatchlist = async (rec: any, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!window.confirm(`Remove ${rec.ticker} from watchlist?`)) return;
-
-        try {
-            const { error } = await supabase
-                .from('recommendations')
-                .delete()
-                .eq('id', rec.id)
-                .select();
-
-            if (error) throw error;
-
-            setRecommendations(prev => prev.filter(r => r.id !== rec.id));
-        } catch (err) {
-            console.error("Failed to delete watchlist item", err);
-            // Optimistic
-            setRecommendations(prev => prev.filter(r => r.id !== rec.id));
-        }
+        // Watchlist items persist permanently - deletion disabled
+        // This function is kept for API compatibility but does nothing
+        console.log(`Delete watchlist item disabled - ${rec.ticker} will remain in watchlist`);
     };
 
     const [promoteModalOpen, setPromoteModalOpen] = useState(false);
@@ -605,6 +591,11 @@ export default function Dashboard() {
         setError(null);
         try {
             const entryPrice = promoteRec.current_price || 0;
+            const supabaseUserId = session?.user?.id;
+
+            if (!supabaseUserId) {
+                throw new Error('User not authenticated');
+            }
 
             // Upload images if any
             const imageUrls: string[] = [];
@@ -612,7 +603,7 @@ export default function Dashboard() {
                 for (const file of promoteImages) {
                     const fileExt = file.name.split('.').pop();
                     const fileName = `${Math.random().toString(36).substring(2)}_${Date.now()}.${fileExt}`;
-                    const filePath = `${session?.user?.id}/${fileName}`;
+                    const filePath = `${supabaseUserId}/${fileName}`;
 
                     const { error: uploadError } = await supabase.storage
                         .from('recommendation-images')
@@ -634,34 +625,48 @@ export default function Dashboard() {
             // Combine existing images with new ones
             const allImages = [...(promoteRec.images || []), ...imageUrls];
 
-            const updateData: any = {
-                status: 'OPEN',
+            // Create a NEW recommendation instead of updating the watchlist item
+            // This keeps the watchlist item intact with status 'WATCHLIST'
+            const newRec: any = {
+                user_id: supabaseUserId,
+                ticker: promoteRec.ticker,
                 action: promoteAction,
                 entry_price: entryPrice,
-                entry_date: new Date().toISOString(),
+                current_price: entryPrice,
                 thesis: promoteThesis,
-                images: allImages
+                benchmark_ticker: promoteRec.benchmark_ticker || "^NSEI",
+                entry_date: new Date().toISOString(),
+                status: 'OPEN',
+                images: allImages,
+                price_target: promotePriceTarget ? parseFloat(promotePriceTarget) : null,
+                target_date: promoteTargetDate ? new Date(promoteTargetDate).toISOString() : null
             };
 
-            const { error } = await supabase
-                .from('recommendations')
-                .update(updateData)
-                .eq('id', promoteRec.id);
+            // Use API endpoint to create recommendation
+            try {
+                const { createRecommendation } = await import('../lib/api');
+                await createRecommendation(newRec, supabaseUserId);
+            } catch (apiError: any) {
+                // If API fails, fallback to direct Supabase insert
+                // Remove price_target and target_date for direct insert since they're not in recommendations table
+                const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
+                console.warn('API create failed, using direct insert:', apiError);
+                const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
+                if (sbError) throw sbError;
 
-            if (error) throw error;
-
-            // Create price target if provided
-            if (promotePriceTarget) {
-                try {
-                    const { createPriceTarget } = await import('../lib/api');
-                    await createPriceTarget(
-                        promoteRec.ticker,
-                        parseFloat(promotePriceTarget),
-                        promoteTargetDate ? new Date(promoteTargetDate).toISOString() : null,
-                        session?.user?.id || ''
-                    );
-                } catch (ptError) {
-                    console.warn('Failed to create price target:', ptError);
+                // If we had a price target, create it separately
+                if (price_target) {
+                    try {
+                        const { createPriceTarget } = await import('../lib/api');
+                        await createPriceTarget(
+                            promoteRec.ticker,
+                            price_target,
+                            target_date,
+                            supabaseUserId
+                        );
+                    } catch (ptError) {
+                        console.warn('Failed to create price target in fallback:', ptError);
+                    }
                 }
             }
 

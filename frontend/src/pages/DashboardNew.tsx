@@ -384,14 +384,9 @@ export default function DashboardNew() {
 
     const handleDeleteWatchlist = async (rec: any, e: React.MouseEvent) => {
         e.stopPropagation();
-        if (!window.confirm(`Remove ${rec.ticker} from watchlist?`)) return;
-
-        try {
-            await supabase.from('recommendations').delete().eq('id', rec.id);
-            setRecommendations(prev => prev.filter(r => r.id !== rec.id));
-        } catch (err) {
-            console.error('Failed to delete', err);
-        }
+        // Watchlist items persist permanently - deletion disabled
+        // This function is kept for API compatibility but does nothing
+        console.log(`Delete watchlist item disabled - ${rec.ticker} will remain in watchlist`);
     };
 
     const handlePromoteWatchlist = async (rec: any, actionType: 'BUY' | 'SELL', e: React.MouseEvent) => {
@@ -400,19 +395,24 @@ export default function DashboardNew() {
         if (!window.confirm(`Confirm ${actionType} for ${rec.ticker} at ₹${entryPrice.toFixed(2)}?`)) return;
 
         try {
-            await supabase
-                .from('recommendations')
-                .update({
-                    status: 'OPEN',
-                    action: actionType,
-                    entry_price: entryPrice,
-                    entry_date: new Date().toISOString(),
-                })
-                .eq('id', rec.id);
+            // Create a NEW recommendation instead of updating the watchlist item
+            // This keeps the watchlist item intact with status 'WATCHLIST'
+            const newRec = {
+                user_id: session?.user?.id,
+                ticker: rec.ticker,
+                action: actionType,
+                entry_price: entryPrice,
+                current_price: entryPrice,
+                thesis: rec.thesis || '',
+                benchmark_ticker: rec.benchmark_ticker || '^NSEI',
+                entry_date: new Date().toISOString(),
+                status: 'OPEN',
+                images: rec.images || [],
+            };
 
-            setRecommendations(prev => prev.map(r =>
-                r.id === rec.id ? { ...r, status: 'OPEN', action: actionType, entry_price: entryPrice } : r
-            ));
+            const { error: sbError } = await supabase.from('recommendations').insert([newRec]);
+            if (sbError) throw sbError;
+
             await fetchRecommendations();
         } catch (err) {
             console.error('Failed to promote', err);

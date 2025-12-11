@@ -14,7 +14,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
     Plus, Clock, TrendingUp, TrendingDown,
-    Trash2, ChevronRight, Eye, Mic, X, Loader2
+    ChevronRight, Eye, Mic, X, Loader2
 } from 'lucide-react';
 import { IdeaListItemSkeleton } from '../ui/Skeleton';
 import { getStockSummary, getStockNews, generatePodcast } from '../../lib/api';
@@ -47,7 +47,7 @@ export function IdeaList({
     setViewMode,
     handleCloseIdea,
     handlePromoteWatchlist,
-    handleDeleteWatchlist,
+    handleDeleteWatchlist: _handleDeleteWatchlist, // Kept for API compatibility but no longer used
     onNewIdea,
     isLoading = false,
     isCollapsed: _isCollapsed = false,
@@ -411,7 +411,6 @@ export function IdeaList({
                                     onSelect={() => setSelectedStock(rec)}
                                     onClose={(e) => handleCloseIdea(rec, e)}
                                     onPromote={(action, e) => handlePromoteWatchlist(rec, action, e)}
-                                    onDelete={(e) => handleDeleteWatchlist(rec, e)}
                                 />
                             ))}
                         </div>
@@ -469,7 +468,6 @@ interface IdeaListItemProps {
     onSelect: () => void;
     onClose: (e: React.MouseEvent) => void;
     onPromote: (action: 'BUY' | 'SELL', e: React.MouseEvent) => void;
-    onDelete: (e: React.MouseEvent) => void;
 }
 
 function IdeaListItem({
@@ -480,7 +478,6 @@ function IdeaListItem({
     onSelect,
     onClose,
     onPromote,
-    onDelete,
 }: IdeaListItemProps) {
     const entry = rec.entry_price || 0;
     const isClosed = rec.status === 'CLOSED';
@@ -643,6 +640,7 @@ function IdeaListItem({
                 {/* 
                     Actions column - SELL button moved to Return column.
                     Only watchlist actions remain here.
+                    Delete button removed - watchlist items persist permanently.
                 */}
                 <div className="col-span-1 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
                     {viewMode === 'watchlist' && (
@@ -658,12 +656,6 @@ function IdeaListItem({
                                 className="px-3 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500/20 rounded-lg border border-rose-500/30 transition-colors"
                             >
                                 SELL
-                            </button>
-                            <button
-                                onClick={onDelete}
-                                className="p-1.5 text-[var(--text-secondary)] hover:text-rose-400 hover:bg-rose-500/10 rounded transition-colors"
-                            >
-                                <Trash2 className="w-4 h-4" />
                             </button>
                         </>
                     )}
