@@ -1,1 +1,7 @@
-
+services:
+  - type: static
+    name: AlphaBoard
+    buildCommand: npm run build
+    staticPublishPath: dist
+    # Note: Render static sites may need dashboard configuration for SPA routing
+    # See RENDER_SPA_ROUTING_SETUP.md for dashboard configuration steps
