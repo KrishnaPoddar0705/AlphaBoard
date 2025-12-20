@@ -57,6 +57,20 @@ export interface ParsedReport {
     citations: Array<{ text: string; page: number; source?: string }>;
 }
 
+export interface GraphData {
+    type: 'line' | 'bar' | 'pie' | 'area';
+    title: string;
+    xAxis?: string;
+    yAxis?: string;
+    data: Array<{
+        [key: string]: string | number;
+    }>;
+    series?: Array<{
+        name: string;
+        data: number[];
+    }>;
+}
+
 export interface RAGResponse {
     answer: string;
     citations: Array<{
@@ -67,6 +81,7 @@ export interface RAGResponse {
         source?: string;
     }>;
     relevant_reports: string[];
+    graphs?: GraphData[];
 }
 
 /**
@@ -323,9 +338,94 @@ export async function queryGeminiRAG(
 
         const promptText = `${contextString}
 Query: ${query}
-Please provide a comprehensive answer based on the research reports.
-Include specific citations with page numbers.
-Format as JSON: { "answer": "...", "citations": [{excerpt, page, source}], "relevant_reports": [] }`;
+
+Please provide a comprehensive answer based on the research reports. Format your response using structured markdown for clarity and readability.
+
+FORMATTING REQUIREMENTS:
+1. Use markdown headers (##, ###) to organize sections
+2. Use tables for comparative data (company comparisons, financial metrics, sector analysis)
+   - Example: | Company | Rating | Target Price | Growth % |
+3. Use bullet points (-) and numbered lists (1.) for key points
+4. Use **bold** for emphasis on important terms and numbers
+5. Use *italic* for sector names, company names, or technical terms
+6. **CRITICAL: Include inline citation numbers [1], [2], [3] etc. directly in the answer text after EVERY claim, statistic, or finding**
+   - Example: "Revenue growth is expected to be 15-20%[1] with strong tailwinds from infrastructure projects[2]."
+   - Example: "The sector outlook is positive[1], with EPS growth projected at 12-15%[2]."
+   - **DO NOT omit citations - they must appear in the text as [1], [2], [3], etc.**
+7. Structure data logically with clear sections
+8. When presenting numerical data that would benefit from visualization, include a graph specification in the graphs array
+
+CITATION REQUIREMENTS:
+- **MANDATORY: For each key finding, statistic, forecast, or claim, include a numbered citation [1], [2], [3] etc. directly in the answer text**
+- Number citations sequentially as they appear in your answer (first citation is [1], second is [2], etc.)
+- In the citations array, provide the full excerpt, page number, and source for each numbered citation
+- Format citations array as: [{ "excerpt": "exact quote or key finding", "page": X, "source": "report identifier" }]
+- The citation number in the answer text must correspond to the index in the citations array (1-based)
+- **Every number, forecast, and claim MUST have a citation reference**
+
+GRAPH REQUIREMENTS:
+- When presenting time series data (revenue growth over quarters/years, EPS projections, etc.), include a graph specification
+- When comparing multiple companies/metrics, consider including a bar chart
+- Graph types supported: "line", "bar", "pie", "area"
+- Format graphs array as:
+  [
+    {
+      "type": "line" | "bar" | "pie" | "area",
+      "title": "Chart title",
+      "xAxis": "X-axis label (e.g., 'Quarter', 'Year')",
+      "yAxis": "Y-axis label (e.g., 'Revenue (Rs Cr)', 'EPS Growth %')",
+      "data": [
+        { "x": "Q1 FY26", "y": 1000 },
+        { "x": "Q2 FY26", "y": 1200 }
+      ],
+      "series": [
+        { "name": "Company A", "data": [100, 120, 140] },
+        { "name": "Company B", "data": [80, 100, 120] }
+      ]
+    }
+  ]
+- For line/area charts: use "data" array with x/y pairs OR "series" array for multiple lines
+- For bar charts: use "data" array with category/value pairs
+- For pie charts: use "data" array with name/value pairs
+
+OUTPUT FORMAT:
+Return JSON with:
+{
+  "answer": "Your formatted markdown answer with tables, headers, lists, and inline citation numbers like [1], [2], [3]",
+  "citations": [
+    {
+      "excerpt": "Relevant quote or finding for citation [1]",
+      "page": 10,
+      "source": "Report name or identifier"
+    },
+    {
+      "excerpt": "Relevant quote or finding for citation [2]",
+      "page": 15,
+      "source": "Report name or identifier"
+    }
+  ],
+  "relevant_reports": ["List of report IDs or names"],
+  "graphs": [
+    {
+      "type": "line",
+      "title": "EPS Growth Projection",
+      "xAxis": "Year",
+      "yAxis": "EPS (Rs)",
+      "series": [
+        { "name": "Infosys", "data": [73.1, 80.2] },
+        { "name": "HCL Tech", "data": [70.8, 76.5] }
+      ]
+    }
+  ]
+}
+
+IMPORTANT: 
+- The answer field should contain rich markdown formatting with inline citation numbers [1], [2], [3], etc.
+- **Citations MUST appear in the answer text - do not skip them**
+- Each citation number must correspond to an entry in the citations array (1-based indexing)
+- Use tables for any comparative analysis or structured data
+- Include graphs for time series, comparisons, or distributions when data supports it
+- Never output raw JSON in the answer text - only formatted markdown`;
 
         // Use v1beta REST API for File Search tool support (v1 doesn't support tools)
         const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
@@ -390,6 +490,7 @@ Format as JSON: { "answer": "...", "citations": [{excerpt, page, source}], "rele
             answer: ragResponse.answer || text,
             citations: ragResponse.citations || [],
             relevant_reports: ragResponse.relevant_reports || [],
+            graphs: ragResponse.graphs || [],
         };
 
     } catch (error: any) {

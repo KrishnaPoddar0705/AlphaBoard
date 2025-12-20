@@ -30,6 +30,7 @@ import { usePanelTransition } from '../hooks/useLayout';
 import { Settings } from 'lucide-react';
 import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
 import { setCachedReturn, calculateReturn } from '../lib/returnsCache';
+import toast, { Toaster } from 'react-hot-toast';
 
 // Mock data for fallback
 const MOCK_STOCKS = [
@@ -76,6 +77,8 @@ export default function Dashboard() {
     const [isLoadingPrices, setIsLoadingPrices] = useState(false);
     const [priceTarget, setPriceTarget] = useState<string>('');
     const [targetDate, setTargetDate] = useState<string>('');
+    const [buyPrice, setBuyPrice] = useState<string>('');
+    const [sellPrice, setSellPrice] = useState<string>('');
 
     // Ref for polling interval
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -188,6 +191,83 @@ export default function Dashboard() {
         };
     }, [session?.user?.id, loadRecommendationsWithPrices, startPricePolling]); // Depend on stable function references
 
+    // Check for price alerts and create them if conditions are met
+    const checkAndCreateAlerts = async (rec: any, currentPrice: number) => {
+        if (!session?.user?.id) return;
+
+        try {
+            const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
+
+            // Check BUY price alert (current price <= buy_price)
+            if (rec.buy_price && currentPrice <= rec.buy_price) {
+                // Check if BUY alert already exists for today
+                const { data: existingBuyAlerts } = await supabase
+                    .from('price_alerts')
+                    .select('id')
+                    .eq('recommendation_id', rec.id)
+                    .eq('alert_type', 'BUY')
+                    .gte('created_at', `${today}T00:00:00Z`)
+                    .lt('created_at', `${today}T23:59:59Z`);
+
+                if (!existingBuyAlerts || existingBuyAlerts.length === 0) {
+                    const { error: buyError } = await supabase
+                        .from('price_alerts')
+                        .insert([{
+                            user_id: session.user.id,
+                            recommendation_id: rec.id,
+                            ticker: rec.ticker,
+                            alert_type: 'BUY',
+                            trigger_price: rec.buy_price,
+                            current_price: currentPrice,
+                            message: `${rec.ticker} dropped to ₹${currentPrice.toFixed(2)}, below your BUY price of ₹${rec.buy_price.toFixed(2)}`,
+                        }]);
+
+                    if (!buyError) {
+                        toast.success(`🔔 ${rec.ticker} hit BUY price!`, {
+                            duration: 5000,
+                            icon: '📈',
+                        });
+                    }
+                }
+            }
+
+            // Check SELL price alert (current price >= sell_price)
+            if (rec.sell_price && currentPrice >= rec.sell_price) {
+                // Check if SELL alert already exists for today
+                const { data: existingSellAlerts } = await supabase
+                    .from('price_alerts')
+                    .select('id')
+                    .eq('recommendation_id', rec.id)
+                    .eq('alert_type', 'SELL')
+                    .gte('created_at', `${today}T00:00:00Z`)
+                    .lt('created_at', `${today}T23:59:59Z`);
+
+                if (!existingSellAlerts || existingSellAlerts.length === 0) {
+                    const { error: sellError } = await supabase
+                        .from('price_alerts')
+                        .insert([{
+                            user_id: session.user.id,
+                            recommendation_id: rec.id,
+                            ticker: rec.ticker,
+                            alert_type: 'SELL',
+                            trigger_price: rec.sell_price,
+                            current_price: currentPrice,
+                            message: `${rec.ticker} rose to ₹${currentPrice.toFixed(2)}, above your SELL price of ₹${rec.sell_price.toFixed(2)}`,
+                        }]);
+
+                    if (!sellError) {
+                        toast.success(`🔔 ${rec.ticker} hit SELL price!`, {
+                            duration: 5000,
+                            icon: '📉',
+                        });
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Error checking alerts:', err);
+        }
+    };
+
     const updatePricesForRecommendations = async (currentRecs: any[]) => {
         if (currentRecs.length === 0) {
             setRecommendations([]);
@@ -219,6 +299,11 @@ export default function Dashboard() {
                         rec.action || 'BUY'
                     );
                     setCachedReturn(rec.ticker, entryPrice, returnValue);
+                }
+
+                // Check for price alerts (only for watchlist items with buy_price or sell_price)
+                if (rec.status === 'WATCHLIST' && session?.user?.id) {
+                    checkAndCreateAlerts(rec, cachedPrice);
                 }
 
                 return {
@@ -273,6 +358,11 @@ export default function Dashboard() {
                             rec.action || 'BUY'
                         );
                         setCachedReturn(rec.ticker, entryPrice, returnValue);
+                    }
+
+                    // Check for price alerts (only for watchlist items with buy_price or sell_price)
+                    if (rec.status === 'WATCHLIST' && session?.user?.id) {
+                        checkAndCreateAlerts(rec, newPrice);
                     }
 
                     return {
@@ -434,6 +524,8 @@ export default function Dashboard() {
                 action: isWatchlistAdd ? 'WATCH' : action,
                 entry_price: isWatchlistAdd ? null : priceToUse, // Watchlist items may not have entry price
                 current_price: priceToUse,
+                buy_price: isWatchlistAdd && buyPrice ? parseFloat(buyPrice) : null,
+                sell_price: isWatchlistAdd && sellPrice ? parseFloat(sellPrice) : null,
                 thesis,
                 benchmark_ticker: "^NSEI",
                 entry_date: new Date().toISOString(),
@@ -696,6 +788,8 @@ export default function Dashboard() {
         setSelectedImages([]);
         setPriceTarget('');
         setTargetDate('');
+        setBuyPrice('');
+        setSellPrice('');
     };
 
     if (!session) return (
@@ -706,6 +800,23 @@ export default function Dashboard() {
 
     return (
         <div className="h-[calc(100vh-4rem)] bg-[var(--bg-primary)] overflow-hidden">
+            <Toaster
+                position="top-right"
+                toastOptions={{
+                    duration: 5000,
+                    style: {
+                        background: '#1e293b',
+                        color: '#fff',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                    },
+                    success: {
+                        iconTheme: {
+                            primary: '#10b981',
+                            secondary: '#fff',
+                        },
+                    },
+                }}
+            />
             {/* 12-Column Responsive Grid Layout */}
             <div className="h-full grid grid-cols-12">
                 {/* Left Panel: Idea List or Performance Metrics - 5 columns on desktop */}
@@ -966,6 +1077,47 @@ export default function Dashboard() {
                                             <span>Fetch price by searching...</span>
                                         </div>
                                     )}
+
+                                    {/* Buy Price & Sell Price (for watchlist) */}
+                                    {isWatchlistAdd && (
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">BUY Price</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">₹</span>
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={buyPrice}
+                                                        onChange={(e) => setBuyPrice(e.target.value)}
+                                                        placeholder="Alert when price ≤ BUY"
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                    />
+                                                </div>
+                                                <p className="mt-1 text-xs text-gray-500">Alert when price drops to this level</p>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">SELL Price</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">₹</span>
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={sellPrice}
+                                                        onChange={(e) => setSellPrice(e.target.value)}
+                                                        placeholder="Alert when price ≥ SELL"
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                    />
+                                                </div>
+                                                <p className="mt-1 text-xs text-gray-500">Alert when price rises to this level</p>
+                                            </div>
+                                        </div>
+                                    )}
+
                                     <div>
                                         <label className="block text-sm font-medium text-gray-300 mb-1.5">Thesis / Notes</label>
                                         <textarea

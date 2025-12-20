@@ -287,6 +287,7 @@ serve(async (req) => {
             tickers: r.tickers,
             created_at: r.created_at,
           })),
+        graphs: ragResponse.graphs || [],
         query_time_ms: queryTime,
         total_reports_searched: reports.length,
       }),

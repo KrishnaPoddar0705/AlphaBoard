@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { Search, Loader2, FileText, ExternalLink } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
+import MarkdownAnswer from './MarkdownAnswer';
+import GraphRenderer from './GraphRenderer';
 
 interface Citation {
   excerpt: string;
@@ -19,10 +21,25 @@ interface RelevantReport {
   created_at: string;
 }
 
+interface GraphData {
+  type: 'line' | 'bar' | 'pie' | 'area';
+  title: string;
+  xAxis?: string;
+  yAxis?: string;
+  data?: Array<{
+    [key: string]: string | number;
+  }>;
+  series?: Array<{
+    name: string;
+    data: number[];
+  }>;
+}
+
 interface SearchResult {
   answer: string;
   citations: Citation[];
   relevant_reports: RelevantReport[];
+  graphs?: GraphData[];
   query_time_ms: number;
   total_reports_searched: number;
 }
@@ -40,6 +57,10 @@ export default function RAGSearchBar() {
   const [result, setResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState('');
   const navigate = useNavigate();
+
+  const handleCitationClick = (reportId: string) => {
+    navigate(`/research/${reportId}`);
+  };
 
   const handleSearch = async () => {
     if (!query.trim()) return;
@@ -168,39 +189,90 @@ export default function RAGSearchBar() {
                 {result.total_reports_searched} reports searched in {result.query_time_ms}ms
               </span>
             </div>
-            <div className="prose prose-invert max-w-none">
-              <p className="text-[var(--text-primary)] whitespace-pre-wrap">{result.answer}</p>
+            <div className="markdown-wrapper">
+              <MarkdownAnswer 
+                content={result.answer} 
+                citations={result.citations}
+                onCitationClick={handleCitationClick}
+              />
             </div>
           </div>
+
+          {/* Graphs */}
+          {result.graphs && result.graphs.length > 0 && (
+            <div className="space-y-4">
+              {result.graphs.map((graph, index) => (
+                <GraphRenderer key={index} graph={graph} />
+              ))}
+            </div>
+          )}
 
           {/* Citations */}
           {result.citations && result.citations.length > 0 && (
             <div className="glass p-6 rounded-xl border border-[var(--border-color)]">
-              <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-4">Citations</h3>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)]">
+                  References
+                </h3>
+                <span className="text-sm text-[var(--text-secondary)]">
+                  {result.citations.length} citation{result.citations.length !== 1 ? 's' : ''}
+                </span>
+              </div>
               <div className="space-y-3">
-                {result.citations.map((citation, index) => (
-                  <div
-                    key={index}
-                    className="p-4 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg hover:border-blue-500/50 transition-colors"
-                  >
-                    <p className="text-[var(--text-primary)] text-sm mb-2 italic">"{citation.excerpt}"</p>
-                    <div className="flex items-center justify-between text-xs text-[var(--text-secondary)]">
-                      <div className="flex items-center gap-3">
-                        {citation.page && <span>Page {citation.page}</span>}
-                        {citation.source && <span>{citation.source}</span>}
+                {result.citations.map((citation, index) => {
+                  const citationNumber = index + 1;
+                  return (
+                    <div
+                      key={index}
+                      id={`citation-ref-${citationNumber}`}
+                      className="bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg p-4 hover:border-indigo-500/50 transition-colors"
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* Citation Number */}
+                        <div className="flex-shrink-0">
+                          <div className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-500/20 text-indigo-400 font-semibold text-sm">
+                            {citationNumber}
+                          </div>
+                        </div>
+                        
+                        {/* Citation Content */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[var(--text-primary)] text-sm leading-relaxed mb-2">
+                            {citation.excerpt}
+                          </p>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            {citation.page && (
+                              <span className="inline-flex items-center gap-1 text-xs text-[var(--text-secondary)]">
+                                <span className="px-2 py-1 bg-indigo-500/20 text-indigo-400 rounded">
+                                  Page {citation.page}
+                                </span>
+                              </span>
+                            )}
+                            {citation.title && (
+                              <span className="text-xs text-[var(--text-secondary)] font-medium">
+                                {citation.title}
+                              </span>
+                            )}
+                            {citation.source && !citation.title && (
+                              <span className="text-xs text-[var(--text-secondary)]">
+                                {citation.source}
+                              </span>
+                            )}
+                            {citation.report_id && (
+                              <button
+                                onClick={() => navigate(`/research/${citation.report_id}`)}
+                                className="inline-flex items-center gap-1 text-xs text-indigo-400 hover:text-indigo-300 transition-colors"
+                              >
+                                View Report
+                                <ExternalLink className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      {citation.report_id && (
-                        <button
-                          onClick={() => navigate(`/research/${citation.report_id}`)}
-                          className="flex items-center gap-1 text-indigo-500 hover:text-indigo-600 transition-colors"
-                        >
-                          View Report
-                          <ExternalLink className="w-3 h-3" />
-                        </button>
-                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           )}

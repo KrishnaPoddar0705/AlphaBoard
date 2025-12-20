@@ -4,6 +4,7 @@ import { useClerk, useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
 import { LayoutDashboard, Trophy, LogOut, User, BarChart2, Building2, Settings, Users, FileText } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
+import AlertsDropdown from './AlertsDropdown';
 
 export default function Layout() {
     const { session, loading: authLoading } = useAuth();
@@ -235,7 +236,8 @@ export default function Layout() {
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center">
+                        <div className="flex items-center gap-4">
+                            {user && <AlertsDropdown />}
                             {user ? (
                                 <button
                                     onClick={handleLogout}
