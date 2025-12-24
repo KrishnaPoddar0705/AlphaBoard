@@ -5,6 +5,82 @@ import { useAuth } from '../hooks/useAuth';
 import { getPrice, getLeaderboardPerformance } from '../lib/api';
 import AnalystProfile from '../components/AnalystProfile/AnalystProfile';
 
+// Helper function to calculate user stats from recommendations
+const calculateUserStats = async (recommendations: any[]) => {
+    // Filter out WATCHLIST items - they should not count towards portfolio performance
+    const portfolioRecs = recommendations.filter(r => r.status !== 'WATCHLIST');
+    
+    if (portfolioRecs.length === 0) {
+        return {
+            total_ideas: 0,
+            win_rate: 0,
+            total_return_pct: 0,
+            alpha_pct: 0
+        };
+    }
+
+    // Fetch live prices for OPEN positions
+    const openPositions = portfolioRecs.filter(r => r.status === 'OPEN');
+    const prices: Record<string, number> = {};
+
+    // Batch fetch prices for open positions
+    await Promise.all(openPositions.map(async (rec) => {
+        try {
+            const data = await getPrice(rec.ticker);
+            if (data && data.price) {
+                prices[rec.ticker] = data.price;
+            }
+        } catch (e) {
+            console.warn("Failed to fetch price for leaderboard", rec.ticker);
+        }
+    }));
+
+    const totalIdeas = portfolioRecs.length;
+    
+    // Calculate wins (profitable trades)
+    const wins = portfolioRecs.filter(r => {
+        // Skip if entry_price is missing
+        if (!r.entry_price) return false;
+
+        let currentPrice = r.current_price; // Default to DB value
+        if (r.status === 'OPEN' && prices[r.ticker]) {
+            currentPrice = prices[r.ticker];
+        } else if (r.status === 'CLOSED') {
+            currentPrice = r.exit_price || r.current_price;
+        }
+
+        const ret = ((currentPrice - r.entry_price) / r.entry_price * 100) * (r.action === 'SELL' ? -1 : 1);
+        return ret > 0;
+    }).length;
+
+    // Calculate total return (sum of all returns)
+    const totalReturn = portfolioRecs.reduce((acc, r) => {
+        // Skip if entry_price is missing
+        if (!r.entry_price) return acc;
+
+        let currentPrice = r.current_price;
+        if (r.status === 'OPEN' && prices[r.ticker]) {
+            currentPrice = prices[r.ticker];
+        } else if (r.status === 'CLOSED') {
+            currentPrice = r.exit_price || r.current_price;
+        }
+
+        const ret = ((currentPrice - r.entry_price) / r.entry_price * 100) * (r.action === 'SELL' ? -1 : 1);
+        return acc + ret;
+    }, 0);
+
+    // Calculate alpha (for now, use total return as proxy)
+    // TODO: Calculate proper alpha using benchmark returns if available
+    const alpha = totalReturn;
+
+    return {
+        total_ideas: totalIdeas,
+        win_rate: totalIdeas > 0 ? (wins / totalIdeas) * 100 : 0,
+        total_return_pct: totalReturn,
+        alpha_pct: alpha
+    };
+};
+
 export default function PublicLeaderboard() {
     const { session } = useAuth();
     const [analysts, setAnalysts] = useState<any[]>([]);
@@ -66,65 +142,11 @@ export default function PublicLeaderboard() {
                     .eq('user_id', session.user.id);
 
                 if (recommendations && recommendations.length > 0) {
-                    // Filter out WATCHLIST items - they should not count towards portfolio performance
-                    const portfolioRecs = recommendations.filter(r => r.status !== 'WATCHLIST');
-
-                    if (portfolioRecs.length > 0) {
-                        // Fetch live prices for OPEN positions
-                        const openPositions = portfolioRecs.filter(r => r.status === 'OPEN');
-                        const prices: Record<string, number> = {};
-
-                        // Batch fetch would be better, but simple loop for now
-                        await Promise.all(openPositions.map(async (rec) => {
-                            try {
-                                const data = await getPrice(rec.ticker);
-                                if (data && data.price) {
-                                    prices[rec.ticker] = data.price;
-                                }
-                            } catch (e) {
-                                console.warn("Failed to fetch price for leaderboard", rec.ticker);
-                            }
-                        }));
-
-                        const totalIdeas = portfolioRecs.length;
-                        const wins = portfolioRecs.filter(r => {
-                            // Skip if entry_price is missing
-                            if (!r.entry_price) return false;
-
-                            let currentPrice = r.current_price; // Default to DB value
-                            if (r.status === 'OPEN' && prices[r.ticker]) {
-                                currentPrice = prices[r.ticker];
-                            } else if (r.status === 'CLOSED') {
-                                currentPrice = r.exit_price || r.current_price;
-                            }
-
-                            const ret = ((currentPrice - r.entry_price) / r.entry_price * 100) * (r.action === 'SELL' ? -1 : 1);
-                            return ret > 0;
-                        }).length;
-
-                        const totalReturn = portfolioRecs.reduce((acc, r) => {
-                            // Skip if entry_price is missing
-                            if (!r.entry_price) return acc;
-
-                            let currentPrice = r.current_price;
-                            if (r.status === 'OPEN' && prices[r.ticker]) {
-                                currentPrice = prices[r.ticker];
-                            } else if (r.status === 'CLOSED') {
-                                currentPrice = r.exit_price || r.current_price;
-                            }
-
-                            const ret = ((currentPrice - r.entry_price) / r.entry_price * 100) * (r.action === 'SELL' ? -1 : 1);
-                            return acc + ret;
-                        }, 0);
-
-                        currentUserStats = {
-                            ...currentUserStats,
-                            total_ideas: totalIdeas,
-                            win_rate: totalIdeas > 0 ? (wins / totalIdeas) * 100 : 0,
-                            total_return_pct: totalReturn, // Sum of returns for simplicity
-                            alpha_pct: totalReturn // Using total return as proxy for alpha for now
-                        };
-                    }
+                    const stats = await calculateUserStats(recommendations);
+                    currentUserStats = {
+                        ...currentUserStats,
+                        ...stats
+                    };
                 }
             }
 
@@ -137,34 +159,72 @@ export default function PublicLeaderboard() {
 
             const publicUserIds = publicProfiles?.map(p => p.id) || [];
             
-            // Fetch performance for public users only
+            if (publicUserIds.length === 0) {
+                setAnalysts([]);
+                return;
+            }
+
+            // Create a map of user_id to username
+            const usernameMap = new Map<string, string>();
+            publicProfiles?.forEach(p => {
+                usernameMap.set(p.id, p.username || 'Unknown');
+            });
+
+            // Fetch all recommendations for public users
+            const { data: allRecommendations, error: recsError } = await supabase
+                .from('recommendations')
+                .select('*')
+                .in('user_id', publicUserIds);
+
+            if (recsError) {
+                console.error('Error fetching recommendations:', recsError);
+                setAnalysts([]);
+                return;
+            }
+
+            // Group recommendations by user_id
+            const recommendationsByUser = new Map<string, any[]>();
+            allRecommendations?.forEach(rec => {
+                const userId = rec.user_id;
+                if (!recommendationsByUser.has(userId)) {
+                    recommendationsByUser.set(userId, []);
+                }
+                recommendationsByUser.get(userId)!.push(rec);
+            });
+
+            // Fetch performance table for sharpe_ratio (optional)
             const { data: publicPerformance } = await supabase
                 .from('performance')
-                .select('*, profiles(username)')
-                .in('user_id', publicUserIds.length > 0 ? publicUserIds : ['00000000-0000-0000-0000-000000000000']) // Dummy ID if no public users
-                .order('alpha_pct', { ascending: false });
+                .select('user_id, sharpe_ratio')
+                .in('user_id', publicUserIds);
 
-            // Combine public leaderboard with current user if applicable
+            const sharpeMap = new Map<string, number | null>();
+            publicPerformance?.forEach(p => {
+                sharpeMap.set(p.user_id, p.sharpe_ratio);
+            });
+
             const leaderboardData: any[] = [];
-            
-            // Add public users
-            if (publicPerformance) {
-                publicPerformance.forEach((perf: any) => {
-                    if (perf.profiles) {
-                        leaderboardData.push({
-                            user_id: perf.user_id,
-                            username: perf.profiles.username || 'Unknown',
-                            total_ideas: perf.total_ideas || 0,
-                            win_rate: perf.win_rate || 0,
-                            total_return_pct: perf.total_return_pct || 0,
-                            alpha_pct: perf.alpha_pct || 0,
-                            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${perf.user_id}`
-                        });
-                    }
+
+            // Calculate stats for each user from their recommendations
+            for (const userId of publicUserIds) {
+                const username = usernameMap.get(userId) || 'Unknown';
+                const userRecs = recommendationsByUser.get(userId) || [];
+                
+                const stats = await calculateUserStats(userRecs);
+
+                leaderboardData.push({
+                    user_id: userId,
+                    username: username,
+                    total_ideas: stats.total_ideas,
+                    win_rate: stats.win_rate,
+                    total_return_pct: stats.total_return_pct,
+                    alpha_pct: stats.alpha_pct,
+                    sharpe_ratio: sharpeMap.get(userId) || null,
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
                 });
             }
 
-            // Add current user if they're public or not in org
+            // Add current user if they're public or not in org (and not already in list)
             if (session?.user?.id) {
                 const { data: userProfile } = await supabase
                     .from('profiles')
@@ -176,8 +236,10 @@ export default function PublicLeaderboard() {
                     // User is public, add to leaderboard
                     const existingIndex = leaderboardData.findIndex(a => a.user_id === session.user.id);
                     if (existingIndex >= 0) {
+                        // Update existing entry with current user's calculated stats
                         leaderboardData[existingIndex] = currentUserStats;
                     } else {
+                        // Add current user if not already in list
                         leaderboardData.push(currentUserStats);
                     }
                 }
