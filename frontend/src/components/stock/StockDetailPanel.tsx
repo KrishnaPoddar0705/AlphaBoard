@@ -12,7 +12,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Loader, Newspaper, Mic } from 'lucide-react';
+import { Loader, Newspaper, Mic, Bell, Check, X, Plus, Trash2, Edit2 } from 'lucide-react';
 import { StockHeader } from './StockHeader';
 import { StockTabs } from './StockTabs';
 import type { TabId } from './StockTabs';
@@ -33,6 +33,7 @@ import {
     generatePodcast,
 } from '../../lib/api';
 import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
 import NewsCard from '../NewsCard';
 import PodcastPlayer from '../PodcastPlayer';
 import PodcastList from '../PodcastList';
@@ -69,6 +70,22 @@ export function StockDetailPanel({
     const [endDate, setEndDate] = useState('');
     const [customReturn, setCustomReturn] = useState<number | null>(null);
 
+    // Price alert triggers state (only for watchlist items)
+    interface PriceAlertTrigger {
+        id: string;
+        alert_type: 'BUY' | 'SELL';
+        trigger_price: number;
+        is_active: boolean;
+        created_at: string;
+    }
+    const [alertTriggers, setAlertTriggers] = useState<PriceAlertTrigger[]>([]);
+    const [isLoadingTriggers, setIsLoadingTriggers] = useState(false);
+    const [isSavingTrigger, setIsSavingTrigger] = useState(false);
+    const [newTriggerType, setNewTriggerType] = useState<'BUY' | 'SELL'>('BUY');
+    const [newTriggerPrice, setNewTriggerPrice] = useState<string>('');
+    const [editingTriggerId, setEditingTriggerId] = useState<string | null>(null);
+    const [editingPrice, setEditingPrice] = useState<string>('');
+
     // Data state
     const [data, setData] = useState<any>({
         financials: {},
@@ -101,6 +118,137 @@ export function StockDetailPanel({
         fetchData();
         fetchCompanyName();
     }, [stock.ticker]);
+
+    // Fetch price alert triggers
+    const fetchAlertTriggers = async () => {
+        if (stock.status !== 'WATCHLIST' || !session?.user?.id) return;
+        
+        setIsLoadingTriggers(true);
+        try {
+            const { data, error } = await supabase
+                .from('price_alert_triggers')
+                .select('*')
+                .eq('recommendation_id', stock.id)
+                .eq('is_active', true)
+                .order('trigger_price', { ascending: true });
+
+            if (error) throw error;
+            setAlertTriggers(data || []);
+        } catch (err) {
+            console.error('Failed to fetch alert triggers:', err);
+        } finally {
+            setIsLoadingTriggers(false);
+        }
+    };
+
+    // Fetch triggers when stock changes
+    useEffect(() => {
+        if (stock.status === 'WATCHLIST') {
+            fetchAlertTriggers();
+        }
+    }, [stock.id, stock.status, session?.user?.id]);
+
+    // Handle adding new alert trigger
+    const handleAddTrigger = async () => {
+        if (!session?.user?.id || !newTriggerPrice.trim()) return;
+        
+        const priceValue = parseFloat(newTriggerPrice);
+        if (isNaN(priceValue) || priceValue <= 0) {
+            return;
+        }
+
+        setIsSavingTrigger(true);
+        try {
+            const { error } = await supabase
+                .from('price_alert_triggers')
+                .insert([{
+                    user_id: session.user.id,
+                    recommendation_id: stock.id,
+                    ticker: stock.ticker,
+                    alert_type: newTriggerType,
+                    trigger_price: priceValue,
+                    is_active: true,
+                }]);
+
+            if (error) throw error;
+
+            setNewTriggerPrice('');
+            await fetchAlertTriggers();
+        } catch (err: any) {
+            console.error('Failed to add alert trigger:', err);
+            if (err.code === '23505') {
+                // Unique constraint violation - trigger already exists
+                alert('This alert trigger already exists');
+            }
+        } finally {
+            setIsSavingTrigger(false);
+        }
+    };
+
+    // Handle updating trigger price
+    const handleUpdateTrigger = async (triggerId: string) => {
+        if (!editingPrice.trim()) {
+            setEditingTriggerId(null);
+            return;
+        }
+
+        const priceValue = parseFloat(editingPrice);
+        if (isNaN(priceValue) || priceValue <= 0) {
+            setEditingTriggerId(null);
+            return;
+        }
+
+        setIsSavingTrigger(true);
+        try {
+            const { error } = await supabase
+                .from('price_alert_triggers')
+                .update({ trigger_price: priceValue })
+                .eq('id', triggerId);
+
+            if (error) throw error;
+
+            setEditingTriggerId(null);
+            setEditingPrice('');
+            await fetchAlertTriggers();
+        } catch (err) {
+            console.error('Failed to update trigger:', err);
+        } finally {
+            setIsSavingTrigger(false);
+        }
+    };
+
+    // Handle deleting trigger
+    const handleDeleteTrigger = async (triggerId: string) => {
+        if (!confirm('Are you sure you want to delete this alert trigger?')) return;
+
+        setIsSavingTrigger(true);
+        try {
+            const { error } = await supabase
+                .from('price_alert_triggers')
+                .update({ is_active: false })
+                .eq('id', triggerId);
+
+            if (error) throw error;
+
+            await fetchAlertTriggers();
+        } catch (err) {
+            console.error('Failed to delete trigger:', err);
+        } finally {
+            setIsSavingTrigger(false);
+        }
+    };
+
+    // Start editing a trigger
+    const startEditing = (trigger: PriceAlertTrigger) => {
+        setEditingTriggerId(trigger.id);
+        setEditingPrice(trigger.trigger_price.toString());
+    };
+
+    // Cancel editing
+    const cancelEditing = () => {
+        setEditingTriggerId(null);
+        setEditingPrice('');
+    };
 
     const fetchCompanyName = async () => {
         try {
@@ -335,6 +483,191 @@ export function StockDetailPanel({
                         </div>
                     </Card>
                 </div>
+
+                {/* Price Alerts Section (only for watchlist items) */}
+                {stock.status === 'WATCHLIST' && (
+                    <div className="px-6 py-4 border-b border-[var(--border-color)]">
+                        <Card variant="glass" padding="md">
+                            <div className="flex items-start justify-between gap-4 mb-4">
+                                <div className="flex items-center gap-2">
+                                    <Bell className="w-4 h-4 text-indigo-400" />
+                                    <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+                                        Price Alerts
+                                    </h3>
+                                </div>
+                            </div>
+
+                            {/* Existing Triggers List */}
+                            {isLoadingTriggers ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader className="w-5 h-5 animate-spin text-indigo-400" />
+                                </div>
+                            ) : alertTriggers.length > 0 ? (
+                                <div className="space-y-2 mb-4">
+                                    {alertTriggers.map((trigger) => (
+                                        <div
+                                            key={trigger.id}
+                                            className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:border-indigo-500/50 transition-colors"
+                                        >
+                                            <div className="flex items-center gap-3 flex-1">
+                                                <span className={`px-2 py-1 text-xs font-bold rounded ${
+                                                    trigger.alert_type === 'BUY'
+                                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                                }`}>
+                                                    {trigger.alert_type}
+                                                </span>
+                                                {editingTriggerId === trigger.id ? (
+                                                    <div className="flex items-center gap-2 flex-1">
+                                                        <div className="relative flex-1 max-w-[120px]">
+                                                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">₹</span>
+                                                            <input
+                                                                type="number"
+                                                                step="0.01"
+                                                                value={editingPrice}
+                                                                onChange={(e) => setEditingPrice(e.target.value)}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        handleUpdateTrigger(trigger.id);
+                                                                    } else if (e.key === 'Escape') {
+                                                                        cancelEditing();
+                                                                    }
+                                                                }}
+                                                                autoFocus
+                                                                className="w-full pl-6 pr-2 py-1 text-sm font-mono bg-white/10 border border-indigo-500 rounded text-white focus:outline-none"
+                                                            />
+                                                        </div>
+                                                        <button
+                                                            onClick={() => handleUpdateTrigger(trigger.id)}
+                                                            disabled={isSavingTrigger}
+                                                            className="p-1 text-emerald-400 hover:bg-emerald-500/20 rounded transition-colors disabled:opacity-50"
+                                                            title="Save"
+                                                        >
+                                                            <Check className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={cancelEditing}
+                                                            disabled={isSavingTrigger}
+                                                            className="p-1 text-gray-400 hover:bg-gray-500/20 rounded transition-colors disabled:opacity-50"
+                                                            title="Cancel"
+                                                        >
+                                                            <X className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <span className="text-sm font-mono text-[var(--text-primary)]">
+                                                            ₹{trigger.trigger_price.toFixed(2)}
+                                                        </span>
+                                                        {stock.current_price && (
+                                                            <>
+                                                                {trigger.alert_type === 'BUY' && stock.current_price <= trigger.trigger_price && (
+                                                                    <span className="text-xs text-emerald-400 flex items-center gap-1">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+                                                                        Triggered
+                                                                    </span>
+                                                                )}
+                                                                {trigger.alert_type === 'SELL' && stock.current_price >= trigger.trigger_price && (
+                                                                    <span className="text-xs text-rose-400 flex items-center gap-1">
+                                                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse"></div>
+                                                                        Triggered
+                                                                    </span>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                            {editingTriggerId !== trigger.id && (
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        onClick={() => startEditing(trigger)}
+                                                        className="p-1.5 text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/20 rounded transition-colors"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteTrigger(trigger.id)}
+                                                        disabled={isSavingTrigger}
+                                                        className="p-1.5 text-gray-400 hover:text-rose-400 hover:bg-rose-500/20 rounded transition-colors disabled:opacity-50"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-4 text-sm text-[var(--text-secondary)] mb-4">
+                                    No price alerts set yet. Add one below.
+                                </div>
+                            )}
+
+                            {/* Add New Trigger */}
+                            <div className="border-t border-white/10 pt-4">
+                                <div className="flex items-end gap-2">
+                                    <div className="flex-1">
+                                        <label className="block text-xs font-medium text-[var(--text-secondary)] mb-2">
+                                            Add New Alert
+                                        </label>
+                                        <div className="flex gap-2">
+                                            <select
+                                                value={newTriggerType}
+                                                onChange={(e) => setNewTriggerType(e.target.value as 'BUY' | 'SELL')}
+                                                className="px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                            >
+                                                <option value="BUY">BUY</option>
+                                                <option value="SELL">SELL</option>
+                                            </select>
+                                            <div className="relative flex-1">
+                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₹</span>
+                                                <input
+                                                    type="number"
+                                                    step="0.01"
+                                                    value={newTriggerPrice}
+                                                    onChange={(e) => setNewTriggerPrice(e.target.value)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            handleAddTrigger();
+                                                        }
+                                                    }}
+                                                    placeholder="Enter price"
+                                                    className="w-full pl-8 pr-4 py-2 bg-white/5 border border-white/10 rounded-lg
+                                                             text-white placeholder-gray-500 focus:outline-none focus:ring-2 
+                                                             focus:ring-indigo-500/50 focus:border-indigo-500 transition-all"
+                                                />
+                                            </div>
+                                        </div>
+                                        <p className="mt-1.5 text-xs text-[var(--text-secondary)]">
+                                            {newTriggerType === 'BUY'
+                                                ? 'Get notified when price drops to or below this level'
+                                                : 'Get notified when price rises to or above this level'}
+                                        </p>
+                                    </div>
+                                    <button
+                                        onClick={handleAddTrigger}
+                                        disabled={isSavingTrigger || !newTriggerPrice.trim()}
+                                        className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-500 
+                                                 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed
+                                                 flex items-center gap-2 h-fit"
+                                    >
+                                        {isSavingTrigger ? (
+                                            <Loader className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                            <>
+                                                <Plus className="w-4 h-4" />
+                                                Add
+                                            </>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+                        </Card>
+                    </div>
+                )}
 
                 {/* Price Target Timeline Section */}
                 <div className="px-6 py-4 border-b border-[var(--border-color)]">

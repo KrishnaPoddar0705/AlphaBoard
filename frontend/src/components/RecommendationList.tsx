@@ -1,5 +1,5 @@
 import React from 'react';
-import { TrendingUp, TrendingDown, CheckCircle, Plus } from 'lucide-react';
+import { CheckCircle, Plus } from 'lucide-react';
 
 interface RecommendationListProps {
     recommendations: any[];
@@ -128,11 +128,10 @@ export default function RecommendationList({
                                     <td className="px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-sm text-white/70">
                                         {hasCurrentPrice ? `₹${current.toFixed(2)}` : '-'}
                                     </td>
-                                    <td className={`px-3 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium ${ret >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                                    <td className={`px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-right text-sm font-medium ${ret >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                                         {viewMode !== 'watchlist' ? (
-                                            <div className="flex items-center justify-end gap-1">
-                                                {ret >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                                {Math.abs(ret).toFixed(2)}%
+                                            <div className="flex items-center justify-end">
+                                                <span className="font-mono">{ret >= 0 ? '+' : ''}{ret.toFixed(2)}%</span>
                                             </div>
                                         ) : '-'}
                                     </td>

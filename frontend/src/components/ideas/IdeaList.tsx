@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-    Plus, Clock, TrendingUp, TrendingDown,
+    Plus, Clock, TrendingUp,
     ChevronRight, Eye, Mic, X, Loader2
 } from 'lucide-react';
 import { IdeaListItemSkeleton } from '../ui/Skeleton';
@@ -388,21 +388,21 @@ export function IdeaList({
                     <div>
                         {/* Table Header */}
                         <div className="px-6 py-3 bg-[var(--card-bg)] border-b border-[var(--border-color)] sticky top-0 z-10">
-                            <div className="grid grid-cols-12 gap-3 items-center">
-                                <div className="col-span-3 px-3 text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Ticker</div>
-                                <div className="col-span-2 px-3 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
+                            <div className="grid grid-cols-12 gap-2 items-center">
+                                <div className="col-span-3 px-4 text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Ticker</div>
+                                <div className="col-span-2 px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
                                     {viewMode === 'watchlist' ? 'Current Price' : 'Entry'}
                                 </div>
                                 {viewMode === 'watchlist' && (
                                     <>
-                                        <div className="col-span-2 px-3 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">BUY Price</div>
-                                        <div className="col-span-2 px-3 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">SELL Price</div>
+                                        <div className="col-span-2 px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">BUY Price</div>
+                                        <div className="col-span-2 px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">SELL Price</div>
                                     </>
                                 )}
                                 {viewMode !== 'watchlist' && (
-                                    <div className="col-span-2 px-3 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Current Price</div>
+                                    <div className="col-span-2 px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Current Price</div>
                                 )}
-                                <div className={`px-3 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider ${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-3'}`}>Return</div>
+                                <div className={`px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider ${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-4'}`}>Return</div>
                                 <div className={`${viewMode === 'watchlist' ? 'col-span-1' : 'col-span-1'}`}></div>
                             </div>
                         </div>
@@ -524,16 +524,16 @@ function IdeaListItem({
             <div className="grid grid-cols-12 gap-2 items-center">
                 {/* Ticker & Action */}
                 {/* 
-                    Reduced column width from col-span-5 to col-span-3 for watchlist.
-                    Added overflow-hidden and min-w-0 to prevent overflow.
-                    All text elements use truncate to ensure no overflow.
+                    Improved padding and spacing for better visibility.
+                    Kept truncate for company name to prevent overflow while ensuring ticker is always visible.
+                    Adjusted column span to accommodate larger return column.
                 */}
-                <div className={`px-3 min-w-0 ${viewMode === 'watchlist' ? 'col-span-3' : 'col-span-4'}`}>
+                <div className={`px-4 py-2 ${viewMode === 'watchlist' ? 'col-span-3' : 'col-span-3'}`}>
                     <div className="flex items-center gap-2">
                         <span className="text-[var(--text-primary)] font-semibold text-sm">{rec.ticker}</span>
                     </div>
                     {companyName && (
-                        <div className="text-xs text-[var(--text-secondary)] mt-0.5 truncate block min-w-0">
+                        <div className="text-xs text-[var(--text-secondary)] mt-0.5 truncate block">
                             {companyName}
                         </div>
                     )}
@@ -555,11 +555,10 @@ function IdeaListItem({
 
                 {/* Entry Price / Current Price */}
                 {/* 
-                    Reduced column width maintained at col-span-2.
-                    Added overflow-hidden and min-w-0 to prevent overflow.
-                    Text uses truncate to ensure numbers are always visible.
+                    Improved padding and spacing for better visibility.
+                    Removed overflow-hidden to ensure content is always visible.
                 */}
-                <div className="col-span-2 px-3 text-right">
+                <div className="col-span-2 px-4 py-2 text-right">
                     {viewMode === 'watchlist' ? (
                         <span className="text-sm text-[var(--text-primary)] font-mono">
                             {current ? `₹${current.toFixed(2)}` : '-'}
@@ -573,11 +572,11 @@ function IdeaListItem({
 
                 {/* Current Price */}
                 {/* 
-                    Added overflow-hidden and min-w-0 to prevent overflow.
-                    Text uses truncate to ensure numbers are always visible.
+                    Improved padding and spacing for better visibility.
+                    Removed overflow-hidden to ensure content is always visible.
                 */}
                 {viewMode !== 'watchlist' && (
-                    <div className="col-span-2 px-3 text-right min-w-0 overflow-hidden">
+                    <div className="col-span-2 px-4 py-2 text-right">
                         <span className="text-sm text-[var(--text-primary)] font-mono">
                             {current ? `₹${current.toFixed(2)}` : '-'}
                         </span>
@@ -587,7 +586,7 @@ function IdeaListItem({
                 {/* BUY Price & SELL Price (for watchlist) */}
                 {viewMode === 'watchlist' && (
                     <>
-                        <div className="col-span-2 px-3 text-right min-w-0 overflow-hidden">
+                        <div className="col-span-2 px-4 py-2 text-right">
                             <span className={`text-sm font-mono ${rec.buy_price
                                 ? current && current <= rec.buy_price
                                     ? 'text-emerald-400 font-bold'
@@ -597,7 +596,7 @@ function IdeaListItem({
                                 {rec.buy_price ? `₹${rec.buy_price.toFixed(2)}` : '-'}
                             </span>
                         </div>
-                        <div className="col-span-2 px-3 text-right min-w-0 overflow-hidden">
+                        <div className="col-span-2 px-4 py-2 text-right">
                             <span className={`text-sm font-mono ${rec.sell_price
                                 ? current && current >= rec.sell_price
                                     ? 'text-rose-400 font-bold'
@@ -612,36 +611,26 @@ function IdeaListItem({
 
                 {/* Return */}
                 {/* 
-                    Flex container with whitespace-nowrap prevents text wrapping and ensures
-                    the percentage value and SELL badge never overlap.
-                    justify-end aligns content to the right, gap-2 provides spacing between elements.
-                    Increased column width (col-span-3) to accommodate SELL button on the right.
-                    Added overflow-hidden and min-w-0 to prevent overflow.
+                    Increased column width to col-span-4 for non-watchlist to accommodate return value and SELL button.
+                    Added proper left padding to ensure return value is never cut off.
+                    Flex container with whitespace-nowrap prevents text wrapping.
                 */}
-                <div className={`px-3 text-right min-w-0 overflow-hidden ${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-3'}`}>
+                <div className={`pl-6 pr-4 py-2 text-right ${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-4'}`}>
                     {viewMode !== 'watchlist' ? (
-                        <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-3 whitespace-nowrap">
                             {/* 
-                                Percentage value wrapped in flex-shrink-0 to prevent compression.
-                                This ensures the percentage text (e.g., "102.57%") is always fully visible
-                                and never gets truncated or overlapped by adjacent elements.
+                                Percentage value with flex-shrink-0 to prevent compression.
+                                Added min-w-0 to parent and proper padding to ensure full visibility.
                             */}
                             <div className={`
-                                inline-flex items-center gap-1 text-sm font-semibold flex-shrink-0
+                                inline-flex items-center text-sm font-semibold flex-shrink-0
                                 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}
                             `}>
-                                {isPositive ? (
-                                    <TrendingUp className="w-3 h-3 flex-shrink-0" />
-                                ) : (
-                                    <TrendingDown className="w-3 h-3 flex-shrink-0" />
-                                )}
-                                <span className="font-mono">{Math.abs(ret).toFixed(2)}%</span>
+                                <span className="font-mono whitespace-nowrap">{isPositive ? '+' : ''}{ret.toFixed(2)}%</span>
                             </div>
                             {/* 
-                                SELL/BUY button - 25% smaller, appears only on hover.
-                                Positioned to the right of the percentage text.
-                                Reduced padding: px-3→px-2.25 (25% smaller), py-1.5→py-1.125 (25% smaller).
-                                Reduced font size: text-xs→text-[10px] (approximately 25% smaller).
+                                SELL/BUY button - appears only on hover.
+                                Positioned to the right with adequate gap to prevent overlap.
                             */}
                             {viewMode === 'active' && (
                                 <button
@@ -650,7 +639,7 @@ function IdeaListItem({
                                         onClose(e);
                                     }}
                                     className={`
-                                        px-[9px] py-[4.5px] text-[10px] font-bold rounded-md transition-all whitespace-nowrap flex-shrink-0
+                                        px-2.5 py-1.5 text-[10px] font-bold rounded-md transition-all whitespace-nowrap flex-shrink-0
                                         opacity-0 group-hover:opacity-100
                                         ${rec.action === 'BUY'
                                             ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/30'

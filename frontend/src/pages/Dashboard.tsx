@@ -658,6 +658,7 @@ export default function Dashboard() {
     const [promoteImages, setPromoteImages] = useState<File[]>([]);
     const [promotePriceTarget, setPromotePriceTarget] = useState<string>('');
     const [promoteTargetDate, setPromoteTargetDate] = useState<string>('');
+    const [promoteEntryPrice, setPromoteEntryPrice] = useState<string>('');
     const promoteFileInputRef = useRef<HTMLInputElement>(null);
 
     const handlePromoteWatchlist = async (rec: any, actionType: 'BUY' | 'SELL', e: React.MouseEvent) => {
@@ -669,6 +670,7 @@ export default function Dashboard() {
         setPromoteImages([]);
         setPromotePriceTarget('');
         setPromoteTargetDate('');
+        setPromoteEntryPrice(rec.current_price ? rec.current_price.toFixed(2) : '');
         setPromoteModalOpen(true);
     };
 
@@ -682,7 +684,12 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
         try {
-            const entryPrice = promoteRec.current_price || 0;
+            const entryPrice = promoteEntryPrice ? parseFloat(promoteEntryPrice) : (promoteRec.current_price || 0);
+            if (isNaN(entryPrice) || entryPrice <= 0) {
+                setError('Please enter a valid entry price');
+                setLoading(false);
+                return;
+            }
             const supabaseUserId = session?.user?.id;
 
             if (!supabaseUserId) {
@@ -1221,6 +1228,7 @@ export default function Dashboard() {
                                     onClick={() => {
                                         setPromoteModalOpen(false);
                                         setPromoteRec(null);
+                                        setPromoteEntryPrice('');
                                         setError(null);
                                     }}
                                     className="text-gray-400 hover:text-white transition-colors"
@@ -1247,13 +1255,15 @@ export default function Dashboard() {
                                         <span className="text-gray-400 sm:text-sm">₹</span>
                                     </div>
                                     <input
-                                        type="text"
-                                        value={promoteRec.current_price ? `₹${promoteRec.current_price.toFixed(2)}` : 'N/A'}
-                                        disabled
-                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-gray-400 sm:text-sm"
+                                        type="number"
+                                        step="0.01"
+                                        value={promoteEntryPrice}
+                                        onChange={(e) => setPromoteEntryPrice(e.target.value)}
+                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                        placeholder={promoteRec.current_price ? promoteRec.current_price.toFixed(2) : '0.00'}
                                     />
                                 </div>
-                                <p className="mt-1 text-xs text-gray-500">Using current market price as entry price</p>
+                                <p className="mt-1 text-xs text-gray-500">Using current market price ({promoteRec.current_price ? `₹${promoteRec.current_price.toFixed(2)}` : 'N/A'}) as default. You can change it.</p>
                             </div>
 
                             <div>
@@ -1352,6 +1362,7 @@ export default function Dashboard() {
                                     onClick={() => {
                                         setPromoteModalOpen(false);
                                         setPromoteRec(null);
+                                        setPromoteEntryPrice('');
                                         setError(null);
                                     }}
                                     className="px-4 py-2 text-sm text-gray-300 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 transition-colors"
