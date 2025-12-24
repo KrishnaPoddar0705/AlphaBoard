@@ -29,11 +29,11 @@ serve(async (req) => {
 
     try {
         console.log('[check-price-alerts] Starting price alert check...')
-        
+
         // Initialize Supabase Admin client
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
         const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        
+
         if (!supabaseUrl || !supabaseServiceKey) {
             throw new Error('Missing Supabase configuration')
         }
@@ -74,10 +74,10 @@ serve(async (req) => {
 
         // Step 3: Get unique list of tickers to check
         const tickerSet = new Set<string>()
-        
+
         triggers?.forEach((t: PriceAlertTrigger) => tickerSet.add(t.ticker))
         legacyAlerts?.forEach((l: LegacyAlert) => tickerSet.add(l.ticker))
-        
+
         const uniqueTickers = Array.from(tickerSet)
         console.log(`[check-price-alerts] Checking ${uniqueTickers.length} unique tickers`)
 
@@ -91,7 +91,7 @@ serve(async (req) => {
         // Step 4: Fetch current prices for all tickers
         console.log('[check-price-alerts] Fetching current prices...')
         const priceMap = new Map<string, PriceData>()
-        
+
         // Batch fetch prices (with rate limiting)
         for (const ticker of uniqueTickers) {
             try {
@@ -319,7 +319,7 @@ serve(async (req) => {
 
                 // Send email via SMTP
                 const emailResult = await sendEmailViaSMTP({
-                    from: Deno.env.get('SMTP_FROM') || 'noreply@alphaboard.onrender.com',
+                    from: Deno.env.get('SMTP_FROM') || 'noreply@theunicornlabs.com',
                     to: userEmail,
                     subject: `🔔 ${alert.ticker} Alert: ${alert.alert_type} Price Triggered`,
                     html: emailHTML,
@@ -377,7 +377,7 @@ serve(async (req) => {
     } catch (error) {
         console.error('[check-price-alerts] Error:', error)
         return new Response(
-            JSON.stringify({ 
+            JSON.stringify({
                 error: 'Failed to check price alerts',
                 details: error instanceof Error ? error.message : 'Unknown error'
             }),

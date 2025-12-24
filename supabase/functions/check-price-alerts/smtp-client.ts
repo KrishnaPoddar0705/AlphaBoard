@@ -1,6 +1,9 @@
 // SMTP Client for sending emails via Supabase SMTP
 // Uses Deno's built-in capabilities to send emails via SMTP
 
+// @ts-ignore - Deno npm imports don't have built-in type declarations
+import { Resend } from 'npm:resend@3.2.0';
+
 interface SMTPConfig {
     host: string;
     port: number;
@@ -26,7 +29,7 @@ interface EmailOptions {
  */
 export async function sendEmailViaSMTP(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
     try {
-        const smtpFrom = Deno.env.get('SMTP_FROM') || 'noreply@alphaboard.onrender.com'
+        const smtpFrom = Deno.env.get('SMTP_FROM') || 'onboarding@resend.dev'
         
         // Try Resend API first (recommended for Edge Functions)
         const resendApiKey = Deno.env.get('RESEND_API_KEY')
@@ -81,6 +84,7 @@ export async function sendEmailViaSMTP(options: EmailOptions): Promise<{ success
 
 /**
  * Send email via Resend API (recommended for Edge Functions)
+ * Uses Resend SDK for Deno
  */
 async function sendViaResend(
     options: EmailOptions, 
@@ -88,28 +92,32 @@ async function sendViaResend(
     fromEmail: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
-        const response = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                from: options.from || fromEmail,
-                to: options.to,
-                subject: options.subject,
-                html: options.html,
-                text: options.text || options.html.replace(/<[^>]*>/g, ''),
-            }),
+        const resend = new Resend(apiKey)
+        
+        console.log('[SMTP] Sending email via Resend to:', options.to)
+        console.log('[SMTP] From:', options.from || fromEmail)
+        console.log('[SMTP] Subject:', options.subject)
+        
+        const result = await resend.emails.send({
+            from: options.from || fromEmail,
+            to: Array.isArray(options.to) ? options.to : [options.to],
+            subject: options.subject,
+            html: options.html,
+            text: options.text || options.html.replace(/<[^>]*>/g, ''),
         })
 
-        if (!response.ok) {
-            const errorData = await response.text()
-            throw new Error(`Resend API error: ${response.status} - ${errorData}`)
+        console.log('[SMTP] Resend result:', JSON.stringify(result))
+
+        if (result.error) {
+            console.error('[SMTP] Resend API error:', result.error)
+            throw new Error(`Resend API error: ${result.error.message || JSON.stringify(result.error)}`)
         }
 
-        const result = await response.json()
-        console.log('[SMTP] Email sent via Resend:', result.id)
+        if (!result.data) {
+            throw new Error('Resend API returned no data')
+        }
+
+        console.log('[SMTP] Email sent via Resend successfully:', result.data.id)
         return { success: true }
     } catch (error) {
         console.error('[SMTP] Resend error:', error)
