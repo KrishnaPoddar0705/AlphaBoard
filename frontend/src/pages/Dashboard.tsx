@@ -198,7 +198,61 @@ export default function Dashboard() {
         try {
             const today = new Date().toISOString().split('T')[0]; // Get today's date in YYYY-MM-DD format
 
-            // Check BUY price alert (current price <= buy_price)
+            // Check new price_alert_triggers table (multiple triggers per stock)
+            if (rec.status === 'WATCHLIST') {
+                const { data: triggers } = await supabase
+                    .from('price_alert_triggers')
+                    .select('*')
+                    .eq('recommendation_id', rec.id)
+                    .eq('is_active', true);
+
+                if (triggers && triggers.length > 0) {
+                    for (const trigger of triggers) {
+                        let isTriggered = false;
+                        if (trigger.alert_type === 'BUY' && currentPrice <= trigger.trigger_price) {
+                            isTriggered = true;
+                        } else if (trigger.alert_type === 'SELL' && currentPrice >= trigger.trigger_price) {
+                            isTriggered = true;
+                        }
+
+                        if (isTriggered) {
+                            // Check if alert already exists for today
+                            const { data: existingAlert } = await supabase
+                                .from('price_alerts')
+                                .select('id')
+                                .eq('recommendation_id', rec.id)
+                                .eq('alert_type', trigger.alert_type)
+                                .eq('trigger_price', trigger.trigger_price)
+                                .gte('created_at', `${today}T00:00:00Z`)
+                                .lt('created_at', `${today}T23:59:59Z`)
+                                .maybeSingle();
+
+                            if (!existingAlert) {
+                                const { error: alertError } = await supabase
+                                    .from('price_alerts')
+                                    .insert([{
+                                        user_id: session.user.id,
+                                        recommendation_id: rec.id,
+                                        ticker: rec.ticker,
+                                        alert_type: trigger.alert_type,
+                                        trigger_price: trigger.trigger_price,
+                                        current_price: currentPrice,
+                                        message: `${rec.ticker} ${trigger.alert_type === 'BUY' ? 'dropped to' : 'rose to'} ₹${currentPrice.toFixed(2)}, ${trigger.alert_type === 'BUY' ? 'below' : 'above'} your ${trigger.alert_type} price of ₹${trigger.trigger_price.toFixed(2)}`,
+                                    }]);
+
+                                if (!alertError) {
+                                    toast.success(`🔔 ${rec.ticker} hit ${trigger.alert_type} price (₹${trigger.trigger_price.toFixed(2)})!`, {
+                                        duration: 5000,
+                                        icon: trigger.alert_type === 'BUY' ? '📈' : '📉',
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Check legacy BUY price alert (current price <= buy_price)
             if (rec.buy_price && currentPrice <= rec.buy_price) {
                 // Check if BUY alert already exists for today
                 const { data: existingBuyAlerts } = await supabase
@@ -231,7 +285,7 @@ export default function Dashboard() {
                 }
             }
 
-            // Check SELL price alert (current price >= sell_price)
+            // Check legacy SELL price alert (current price >= sell_price)
             if (rec.sell_price && currentPrice >= rec.sell_price) {
                 // Check if SELL alert already exists for today
                 const { data: existingSellAlerts } = await supabase
