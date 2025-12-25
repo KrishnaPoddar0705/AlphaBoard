@@ -68,6 +68,7 @@ async def verify_link_code(
         VerifyLinkCodeResponse with success status
     """
     ab_client = None
+    wa_client = None
     
     try:
         ab_client = AlphaBoardClient(settings)
@@ -78,6 +79,35 @@ async def verify_link_code(
         )
         
         if result.get("success"):
+            # Send WhatsApp confirmation message
+            try:
+                wa_client = WhatsAppClient(settings)
+                phone = result.get("phone")
+                if phone:
+                    # Get user's name from profiles if available
+                    profile_result = ab_client.supabase.table("profiles") \
+                        .select("username, full_name") \
+                        .eq("id", request.supabase_user_id) \
+                        .execute()
+                    
+                    username = "there"
+                    if profile_result.data and len(profile_result.data) > 0:
+                        profile = profile_result.data[0]
+                        username = profile.get("full_name") or profile.get("username") or "there"
+                    
+                    confirmation_msg = (
+                        f"🎉 *Account Connected Successfully!*\n\n"
+                        f"Hey {username}! Your WhatsApp is now linked to your AlphaBoard account.\n\n"
+                        f"✅ Your watchlist and recommendations will sync automatically\n"
+                        f"✅ Type *my watchlist* to see your stocks\n"
+                        f"✅ Type *my recs* to see your recommendations\n\n"
+                        f"Happy investing! 📈"
+                    )
+                    await wa_client.send_text_message(phone, confirmation_msg)
+            except Exception as wa_error:
+                logger.error(f"Failed to send WhatsApp confirmation: {wa_error}")
+                # Don't fail the whole request if WhatsApp message fails
+            
             return VerifyLinkCodeResponse(
                 success=True,
                 message="Account linked successfully! Your WhatsApp is now connected.",
@@ -99,6 +129,8 @@ async def verify_link_code(
     finally:
         if ab_client:
             await ab_client.close()
+        if wa_client:
+            await wa_client.close()
 
 
 @api_router.get("/whatsapp/account-status/{supabase_user_id}", response_model=AccountStatusResponse)

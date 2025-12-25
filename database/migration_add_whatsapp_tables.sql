@@ -7,10 +7,11 @@
 -- ============================================================================
 
 -- Maps WhatsApp phone numbers to AlphaBoard users
+-- Note: supabase_user_id is TEXT because Clerk user IDs are strings (e.g., "user_xxxxx")
 CREATE TABLE IF NOT EXISTS public.whatsapp_users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     phone TEXT UNIQUE NOT NULL,                     -- E.164 format (e.g., +919876543210)
-    supabase_user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    supabase_user_id TEXT,                          -- Clerk user ID (string, not UUID)
     display_name TEXT,
     is_daily_subscriber BOOLEAN DEFAULT TRUE,       -- Subscribed to daily market close reports
     onboarding_completed BOOLEAN DEFAULT FALSE,
@@ -92,70 +93,78 @@ ALTER TABLE public.whatsapp_recommendations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.whatsapp_podcast_requests ENABLE ROW LEVEL SECURITY;
 
 -- ============================================================================
--- 6. RLS POLICIES
+-- 6. RLS POLICIES (Drop existing first to avoid conflicts)
 -- ============================================================================
 
 -- WhatsApp users: Service role has full access (for bot operations)
 -- Users can view their own data if linked to a Supabase account
+DROP POLICY IF EXISTS "Service role has full access to whatsapp_users" ON public.whatsapp_users;
 CREATE POLICY "Service role has full access to whatsapp_users"
     ON public.whatsapp_users
     FOR ALL
     USING (TRUE)
     WITH CHECK (TRUE);
 
+DROP POLICY IF EXISTS "Users can view their linked whatsapp account" ON public.whatsapp_users;
 CREATE POLICY "Users can view their linked whatsapp account"
     ON public.whatsapp_users
     FOR SELECT
-    USING (auth.uid() = supabase_user_id);
+    USING (auth.uid()::TEXT = supabase_user_id);
 
 -- WhatsApp watchlist
+DROP POLICY IF EXISTS "Service role has full access to whatsapp_watchlist" ON public.whatsapp_watchlist;
 CREATE POLICY "Service role has full access to whatsapp_watchlist"
     ON public.whatsapp_watchlist
     FOR ALL
     USING (TRUE)
     WITH CHECK (TRUE);
 
+DROP POLICY IF EXISTS "Users can view their linked whatsapp watchlist" ON public.whatsapp_watchlist;
 CREATE POLICY "Users can view their linked whatsapp watchlist"
     ON public.whatsapp_watchlist
     FOR SELECT
     USING (
         EXISTS (
             SELECT 1 FROM public.whatsapp_users wu
-            WHERE wu.id = whatsapp_user_id AND wu.supabase_user_id = auth.uid()
+            WHERE wu.id = whatsapp_user_id AND wu.supabase_user_id = auth.uid()::TEXT
         )
     );
 
 -- WhatsApp recommendations
+DROP POLICY IF EXISTS "Service role has full access to whatsapp_recommendations" ON public.whatsapp_recommendations;
 CREATE POLICY "Service role has full access to whatsapp_recommendations"
     ON public.whatsapp_recommendations
     FOR ALL
     USING (TRUE)
     WITH CHECK (TRUE);
 
+DROP POLICY IF EXISTS "Users can view their linked whatsapp recommendations" ON public.whatsapp_recommendations;
 CREATE POLICY "Users can view their linked whatsapp recommendations"
     ON public.whatsapp_recommendations
     FOR SELECT
     USING (
         EXISTS (
             SELECT 1 FROM public.whatsapp_users wu
-            WHERE wu.id = whatsapp_user_id AND wu.supabase_user_id = auth.uid()
+            WHERE wu.id = whatsapp_user_id AND wu.supabase_user_id = auth.uid()::TEXT
         )
     );
 
 -- WhatsApp podcast requests
+DROP POLICY IF EXISTS "Service role has full access to whatsapp_podcast_requests" ON public.whatsapp_podcast_requests;
 CREATE POLICY "Service role has full access to whatsapp_podcast_requests"
     ON public.whatsapp_podcast_requests
     FOR ALL
     USING (TRUE)
     WITH CHECK (TRUE);
 
+DROP POLICY IF EXISTS "Users can view their linked podcast requests" ON public.whatsapp_podcast_requests;
 CREATE POLICY "Users can view their linked podcast requests"
     ON public.whatsapp_podcast_requests
     FOR SELECT
     USING (
         EXISTS (
             SELECT 1 FROM public.whatsapp_users wu
-            WHERE wu.id = whatsapp_user_id AND wu.supabase_user_id = auth.uid()
+            WHERE wu.id = whatsapp_user_id AND wu.supabase_user_id = auth.uid()::TEXT
         )
     );
 
@@ -183,13 +192,14 @@ CREATE TRIGGER update_whatsapp_users_updated_at
 -- ============================================================================
 
 -- Temporary codes for linking WhatsApp accounts to AlphaBoard accounts
+-- Note: linked_supabase_user_id is TEXT because Clerk user IDs are strings (e.g., "user_xxxxx")
 CREATE TABLE IF NOT EXISTS public.whatsapp_link_codes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     whatsapp_user_id UUID NOT NULL REFERENCES public.whatsapp_users(id) ON DELETE CASCADE,
     code TEXT UNIQUE NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     used_at TIMESTAMPTZ,
-    linked_supabase_user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    linked_supabase_user_id TEXT,  -- Clerk user ID (string, not UUID)
     created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
 );
 
@@ -201,6 +211,7 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_link_codes_expires ON public.whatsapp_li
 -- RLS
 ALTER TABLE public.whatsapp_link_codes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Service role has full access to whatsapp_link_codes" ON public.whatsapp_link_codes;
 CREATE POLICY "Service role has full access to whatsapp_link_codes"
     ON public.whatsapp_link_codes
     FOR ALL

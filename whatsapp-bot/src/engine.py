@@ -291,11 +291,41 @@ class MessageEngine:
             )
     
     async def _handle_show_watchlist(self, phone: str, user_id: str) -> None:
-        """Handle show watchlist command."""
+        """Handle show watchlist command. Shows both WhatsApp and AlphaBoard watchlist if linked."""
         try:
-            watchlist = await self.ab_client.list_watchlist(user_id)
+            # Get WhatsApp watchlist
+            wa_watchlist = await self.ab_client.list_watchlist(user_id)
             
-            if not watchlist:
+            # Check if account is linked to get AlphaBoard watchlist too
+            account_status = await self.ab_client.get_user_account_status(user_id)
+            ab_watchlist = []
+            
+            if account_status.get("is_linked") and account_status.get("supabase_user_id"):
+                ab_watchlist = await self.ab_client.get_alphaboard_watchlist(account_status["supabase_user_id"])
+            
+            # Combine watchlists (dedupe by ticker)
+            all_tickers = {}
+            
+            # Add WhatsApp watchlist items
+            for item in wa_watchlist:
+                ticker = item["ticker"]
+                all_tickers[ticker] = {
+                    "ticker": ticker,
+                    "note": item.get("note", ""),
+                    "source": "whatsapp"
+                }
+            
+            # Add AlphaBoard watchlist items (with WATCHLIST status)
+            for item in ab_watchlist:
+                ticker = item.get("ticker", "")
+                if ticker and ticker not in all_tickers:
+                    all_tickers[ticker] = {
+                        "ticker": ticker,
+                        "note": item.get("thesis", "")[:50] if item.get("thesis") else "",
+                        "source": "alphaboard"
+                    }
+            
+            if not all_tickers:
                 await self.wa_client.send_text_message(
                     phone,
                     Templates.EMPTY_WATCHLIST
@@ -303,18 +333,28 @@ class MessageEngine:
                 return
             
             # Format watchlist
-            lines = ["📋 *Your Watchlist*\n"]
-            for i, item in enumerate(watchlist[:10], 1):
+            watchlist_items = list(all_tickers.values())
+            is_linked = account_status.get("is_linked", False)
+            
+            if is_linked:
+                lines = ["📋 *Your AlphaBoard Watchlist*\n"]
+            else:
+                lines = ["📋 *Your Watchlist*\n"]
+            
+            for i, item in enumerate(watchlist_items[:15], 1):
                 ticker = item["ticker"]
                 note = item.get("note", "")
-                line = f"{i}. *{ticker}*"
+                source_icon = "🌐" if item.get("source") == "alphaboard" else "📱"
+                line = f"{i}. *{ticker}* {source_icon}"
                 if note:
                     line += f" – {note}"
                 lines.append(line)
             
-            if len(watchlist) > 10:
-                lines.append(f"\n... and {len(watchlist) - 10} more")
+            if len(watchlist_items) > 15:
+                lines.append(f"\n... and {len(watchlist_items) - 15} more")
             
+            if is_linked:
+                lines.append("\n📱 = Added via WhatsApp | 🌐 = From AlphaBoard")
             lines.append("\n💡 Send \"add TCS - note\" to add more stocks.")
             
             await self.wa_client.send_text_message(phone, "\n".join(lines))
@@ -352,30 +392,88 @@ class MessageEngine:
             )
     
     async def _handle_show_recommendations(self, phone: str, user_id: str) -> None:
-        """Handle show recommendations command."""
+        """Handle show recommendations command. Shows both WhatsApp and AlphaBoard recs if linked."""
         try:
-            recs = await self.ab_client.list_recent_recommendations(user_id, days=30)
+            # Get WhatsApp recommendations
+            wa_recs = await self.ab_client.list_recent_recommendations(user_id, days=90)
             
-            if not recs:
+            # Check if account is linked to get AlphaBoard recommendations too
+            account_status = await self.ab_client.get_user_account_status(user_id)
+            ab_recs = []
+            
+            if account_status.get("is_linked") and account_status.get("supabase_user_id"):
+                ab_recs = await self.ab_client.get_alphaboard_recommendations(account_status["supabase_user_id"])
+            
+            # Combine recommendations
+            all_recs = []
+            seen_tickers = set()
+            
+            # Add AlphaBoard recs first (more authoritative)
+            for rec in ab_recs:
+                ticker = rec.get("ticker", "")
+                if ticker:
+                    seen_tickers.add(ticker)
+                    all_recs.append({
+                        "ticker": ticker,
+                        "price": rec.get("entry_price"),
+                        "thesis": rec.get("thesis", ""),
+                        "status": rec.get("status", "OPEN"),
+                        "source": "alphaboard",
+                        "action": rec.get("action", "BUY")
+                    })
+            
+            # Add WhatsApp recs that aren't already in AlphaBoard
+            for rec in wa_recs:
+                ticker = rec.get("ticker", "")
+                if ticker and ticker not in seen_tickers:
+                    all_recs.append({
+                        "ticker": ticker,
+                        "price": rec.get("price"),
+                        "thesis": rec.get("thesis", ""),
+                        "status": "OPEN",
+                        "source": "whatsapp",
+                        "action": "BUY"
+                    })
+            
+            if not all_recs:
                 await self.wa_client.send_text_message(
                     phone,
-                    "📊 You haven't added any recommendations recently.\n\n"
+                    "📊 You haven't added any recommendations yet.\n\n"
                     "💡 Try: *rec INFY @ 1650 long term bet*"
                 )
                 return
             
-            lines = ["📊 *Your Recent Recommendations*\n"]
-            for i, rec in enumerate(recs[:10], 1):
+            is_linked = account_status.get("is_linked", False)
+            if is_linked:
+                lines = ["📊 *Your AlphaBoard Recommendations*\n"]
+            else:
+                lines = ["📊 *Your Recent Recommendations*\n"]
+            
+            for i, rec in enumerate(all_recs[:10], 1):
                 ticker = rec["ticker"]
                 price = rec.get("price")
                 thesis = rec.get("thesis", "")
+                status = rec.get("status", "OPEN")
+                source_icon = "🌐" if rec.get("source") == "alphaboard" else "📱"
                 
-                line = f"{i}. *{ticker}*"
+                # Status emoji
+                status_emoji = "🟢" if status == "OPEN" else "🔵" if status == "CLOSED" else "⚪"
+                
+                line = f"{i}. {status_emoji} *{rec.get('action', 'BUY')} {ticker}* {source_icon}"
                 if price:
                     line += f" @ ₹{price:,.0f}"
                 if thesis:
                     line += f"\n   _{thesis[:50]}{'...' if len(thesis) > 50 else ''}_"
                 lines.append(line)
+            
+            if len(all_recs) > 10:
+                lines.append(f"\n... and {len(all_recs) - 10} more")
+            
+            if is_linked:
+                lines.append("\n📱 = Added via WhatsApp | 🌐 = From AlphaBoard")
+                lines.append("🟢 = Open | 🔵 = Closed")
+            
+            lines.append("\n💡 Send \"rec TCS @ 3500 thesis\" to add more.")
             
             await self.wa_client.send_text_message(phone, "\n".join(lines))
             
