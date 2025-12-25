@@ -117,8 +117,25 @@ class MessageEngine:
         text_lower = text.lower()
         
         # Check for menu/help commands
-        if text_lower in ("help", "menu", "hi", "hello", "start", "signup", "hey", "?"):
+        if text_lower in ("help", "menu", "hi", "hello", "start", "hey", "?"):
             await self.wa_client.send_main_menu(phone)
+            return
+        
+        # Check for signup/connect commands
+        if text_lower in ("signup", "sign up", "register", "create account"):
+            await self._handle_signup(phone, user_id)
+            return
+        
+        if text_lower in ("connect", "link", "link account", "connect account", "signin", "sign in", "login"):
+            await self._handle_connect_account(phone, user_id)
+            return
+        
+        if text_lower in ("account", "my account", "account status", "status"):
+            await self._handle_account_status(phone, user_id)
+            return
+        
+        if text_lower in ("unlink", "unlink account", "disconnect", "disconnect account"):
+            await self._handle_unlink_account(phone, user_id)
             return
         
         # Check for watchlist view
@@ -230,6 +247,15 @@ class MessageEngine:
                 phone,
                 Templates.HELP_MESSAGE
             )
+        
+        elif reply_id == "menu_connect_account":
+            await self._handle_connect_account(phone, user_id)
+        
+        elif reply_id == "menu_account_status":
+            await self._handle_account_status(phone, user_id)
+        
+        elif reply_id == "menu_signup":
+            await self._handle_signup(phone, user_id)
         
         else:
             # Unknown interactive reply
@@ -482,6 +508,110 @@ class MessageEngine:
             
         except Exception as e:
             logger.error(f"Error fetching ticker info: {e}")
+            await self._send_error_message(phone)
+    
+    # =========================================================================
+    # Account Linking Handlers
+    # =========================================================================
+    
+    async def _handle_signup(self, phone: str, user_id: str) -> None:
+        """Handle signup command - show signup info."""
+        try:
+            # Check if already linked
+            status = await self.ab_client.get_user_account_status(user_id)
+            
+            if status.get("is_linked"):
+                username = status.get("username", "your account")
+                await self.wa_client.send_text_message(
+                    phone,
+                    Templates.ACCOUNT_ALREADY_LINKED.format(username=username)
+                )
+            else:
+                await self.wa_client.send_text_message(
+                    phone,
+                    Templates.SIGNUP_PROMPT
+                )
+                
+        except AlphaBoardClientError as e:
+            logger.error(f"Error in signup handler: {e}")
+            await self.wa_client.send_text_message(phone, Templates.SIGNUP_PROMPT)
+    
+    async def _handle_connect_account(self, phone: str, user_id: str) -> None:
+        """Handle connect account command - generate link code."""
+        try:
+            # Check if already linked
+            status = await self.ab_client.get_user_account_status(user_id)
+            
+            if status.get("is_linked"):
+                username = status.get("username", "your account")
+                await self.wa_client.send_text_message(
+                    phone,
+                    Templates.ACCOUNT_ALREADY_LINKED.format(username=username)
+                )
+                return
+            
+            # Generate link code
+            code = await self.ab_client.generate_link_code(user_id)
+            
+            await self.wa_client.send_text_message(
+                phone,
+                Templates.CONNECT_ACCOUNT_CODE.format(code=code)
+            )
+            
+        except AlphaBoardClientError as e:
+            logger.error(f"Error generating link code: {e}")
+            await self._send_error_message(phone)
+    
+    async def _handle_account_status(self, phone: str, user_id: str) -> None:
+        """Handle account status command."""
+        try:
+            status = await self.ab_client.get_user_account_status(user_id)
+            
+            if status.get("is_linked"):
+                username = status.get("username") or status.get("full_name") or "your account"
+                await self.wa_client.send_text_message(
+                    phone,
+                    Templates.ACCOUNT_ALREADY_LINKED.format(username=username)
+                )
+            else:
+                await self.wa_client.send_text_message(
+                    phone,
+                    Templates.ACCOUNT_NOT_LINKED
+                )
+                
+        except AlphaBoardClientError as e:
+            logger.error(f"Error getting account status: {e}")
+            await self._send_error_message(phone)
+    
+    async def _handle_unlink_account(self, phone: str, user_id: str) -> None:
+        """Handle unlink account command."""
+        try:
+            # Check if linked
+            status = await self.ab_client.get_user_account_status(user_id)
+            
+            if not status.get("is_linked"):
+                await self.wa_client.send_text_message(
+                    phone,
+                    Templates.ACCOUNT_NOT_LINKED
+                )
+                return
+            
+            # Unlink the account
+            self.ab_client.supabase.table("whatsapp_users") \
+                .update({
+                    "supabase_user_id": None,
+                    "onboarding_completed": False
+                }) \
+                .eq("id", user_id) \
+                .execute()
+            
+            await self.wa_client.send_text_message(
+                phone,
+                Templates.ACCOUNT_UNLINKED
+            )
+            
+        except Exception as e:
+            logger.error(f"Error unlinking account: {e}")
             await self._send_error_message(phone)
     
     # =========================================================================

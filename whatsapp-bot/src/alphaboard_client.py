@@ -178,6 +178,303 @@ class AlphaBoardClient:
             raise AlphaBoardClientError(f"Database error: {str(e)}")
     
     # =========================================================================
+    # Account Linking Operations
+    # =========================================================================
+    
+    async def generate_link_code(self, whatsapp_user_id: str) -> str:
+        """
+        Generate a 6-digit code for linking WhatsApp to AlphaBoard account.
+        Code expires in 10 minutes.
+        
+        Args:
+            whatsapp_user_id: WhatsApp user ID
+            
+        Returns:
+            6-digit link code
+        """
+        import random
+        import string
+        
+        try:
+            # Generate random 6-digit alphanumeric code (uppercase for readability)
+            code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            
+            # Delete any existing unused codes for this user
+            self.supabase.table("whatsapp_link_codes") \
+                .delete() \
+                .eq("whatsapp_user_id", whatsapp_user_id) \
+                .is_("used_at", "null") \
+                .execute()
+            
+            # Create new code (expires in 10 minutes)
+            expires_at = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+            
+            result = self.supabase.table("whatsapp_link_codes") \
+                .insert({
+                    "whatsapp_user_id": whatsapp_user_id,
+                    "code": code,
+                    "expires_at": expires_at,
+                    "created_at": datetime.utcnow().isoformat()
+                }) \
+                .execute()
+            
+            if result.data and len(result.data) > 0:
+                logger.info(f"Generated link code for user {whatsapp_user_id}")
+                return code
+            
+            raise AlphaBoardClientError("Failed to generate link code")
+            
+        except Exception as e:
+            logger.error(f"Error generating link code: {e}")
+            raise AlphaBoardClientError(f"Database error: {str(e)}")
+    
+    async def verify_link_code(self, code: str, supabase_user_id: str) -> Dict[str, Any]:
+        """
+        Verify a link code and connect the accounts.
+        Called from AlphaBoard web app when user enters the code.
+        
+        Args:
+            code: 6-digit link code
+            supabase_user_id: AlphaBoard/Supabase user ID to link to
+            
+        Returns:
+            Result dict with success status and WhatsApp user info
+        """
+        try:
+            # Find the code
+            result = self.supabase.table("whatsapp_link_codes") \
+                .select("*, whatsapp_users(*)") \
+                .eq("code", code.upper()) \
+                .is_("used_at", "null") \
+                .gte("expires_at", datetime.utcnow().isoformat()) \
+                .execute()
+            
+            if not result.data or len(result.data) == 0:
+                return {"success": False, "error": "Invalid or expired code"}
+            
+            link_record = result.data[0]
+            whatsapp_user_id = link_record["whatsapp_user_id"]
+            
+            # Mark code as used
+            self.supabase.table("whatsapp_link_codes") \
+                .update({
+                    "used_at": datetime.utcnow().isoformat(),
+                    "linked_supabase_user_id": supabase_user_id
+                }) \
+                .eq("id", link_record["id"]) \
+                .execute()
+            
+            # Link the WhatsApp user to the Supabase user
+            await self.link_supabase_user(whatsapp_user_id, supabase_user_id)
+            
+            # Sync watchlist and recommendations
+            await self.sync_watchlist_to_alphaboard(whatsapp_user_id, supabase_user_id)
+            await self.sync_recommendations_to_alphaboard(whatsapp_user_id, supabase_user_id)
+            
+            logger.info(f"Successfully linked WhatsApp user {whatsapp_user_id} to Supabase user {supabase_user_id}")
+            
+            return {
+                "success": True,
+                "whatsapp_user_id": whatsapp_user_id,
+                "phone": link_record.get("whatsapp_users", {}).get("phone", "")
+            }
+            
+        except Exception as e:
+            logger.error(f"Error verifying link code: {e}")
+            raise AlphaBoardClientError(f"Database error: {str(e)}")
+    
+    async def get_user_account_status(self, whatsapp_user_id: str) -> Dict[str, Any]:
+        """
+        Get the account linking status for a WhatsApp user.
+        
+        Args:
+            whatsapp_user_id: WhatsApp user ID
+            
+        Returns:
+            Status dict with is_linked, profile info, etc.
+        """
+        try:
+            result = self.supabase.table("whatsapp_users") \
+                .select("*, profiles:supabase_user_id(id, username, full_name)") \
+                .eq("id", whatsapp_user_id) \
+                .execute()
+            
+            if not result.data or len(result.data) == 0:
+                return {"is_linked": False, "user_found": False}
+            
+            user = result.data[0]
+            is_linked = user.get("supabase_user_id") is not None
+            profile = user.get("profiles") or {}
+            
+            return {
+                "is_linked": is_linked,
+                "user_found": True,
+                "whatsapp_user_id": whatsapp_user_id,
+                "supabase_user_id": user.get("supabase_user_id"),
+                "username": profile.get("username"),
+                "full_name": profile.get("full_name"),
+                "phone": user.get("phone")
+            }
+            
+        except Exception as e:
+            logger.error(f"Error getting account status: {e}")
+            return {"is_linked": False, "error": str(e)}
+    
+    async def sync_watchlist_to_alphaboard(self, whatsapp_user_id: str, supabase_user_id: str) -> int:
+        """
+        Sync WhatsApp watchlist items to AlphaBoard recommendations (as WATCH action).
+        
+        Args:
+            whatsapp_user_id: WhatsApp user ID
+            supabase_user_id: Supabase/AlphaBoard user ID
+            
+        Returns:
+            Number of items synced
+        """
+        try:
+            # Get WhatsApp watchlist
+            watchlist = await self.list_watchlist(whatsapp_user_id)
+            
+            if not watchlist:
+                return 0
+            
+            synced_count = 0
+            for item in watchlist:
+                ticker = item["ticker"]
+                note = item.get("note", "")
+                
+                # Check if already exists in AlphaBoard recommendations
+                existing = self.supabase.table("recommendations") \
+                    .select("id") \
+                    .eq("user_id", supabase_user_id) \
+                    .eq("ticker", ticker) \
+                    .eq("status", "WATCHLIST") \
+                    .execute()
+                
+                if existing.data and len(existing.data) > 0:
+                    continue  # Already exists
+                
+                # Add to AlphaBoard as WATCH item
+                rec_data = {
+                    "user_id": supabase_user_id,
+                    "ticker": ticker,
+                    "action": "WATCH",
+                    "status": "WATCHLIST",
+                    "thesis": f"Added via WhatsApp. {note}" if note else "Added via WhatsApp",
+                    "entry_date": datetime.utcnow().isoformat()
+                }
+                
+                self.supabase.table("recommendations").insert(rec_data).execute()
+                synced_count += 1
+            
+            logger.info(f"Synced {synced_count} watchlist items from WhatsApp to AlphaBoard")
+            return synced_count
+            
+        except Exception as e:
+            logger.error(f"Error syncing watchlist: {e}")
+            return 0
+    
+    async def sync_recommendations_to_alphaboard(self, whatsapp_user_id: str, supabase_user_id: str) -> int:
+        """
+        Sync WhatsApp recommendations to AlphaBoard recommendations.
+        
+        Args:
+            whatsapp_user_id: WhatsApp user ID
+            supabase_user_id: Supabase/AlphaBoard user ID
+            
+        Returns:
+            Number of recommendations synced
+        """
+        try:
+            # Get WhatsApp recommendations
+            recs = await self.list_recent_recommendations(whatsapp_user_id, days=365)
+            
+            if not recs:
+                return 0
+            
+            synced_count = 0
+            for rec in recs:
+                ticker = rec["ticker"]
+                price = rec.get("price")
+                thesis = rec.get("thesis", "")
+                
+                # Add to AlphaBoard
+                rec_data = {
+                    "user_id": supabase_user_id,
+                    "ticker": ticker,
+                    "action": "BUY",
+                    "status": "OPEN",
+                    "entry_price": price,
+                    "thesis": f"{thesis} (via WhatsApp)" if thesis else "Added via WhatsApp",
+                    "entry_date": rec.get("created_at", datetime.utcnow().isoformat())
+                }
+                
+                result = self.supabase.table("recommendations").insert(rec_data).execute()
+                
+                if result.data and len(result.data) > 0:
+                    # Link the WhatsApp recommendation to the AlphaBoard recommendation
+                    self.supabase.table("whatsapp_recommendations") \
+                        .update({"recommendation_id": result.data[0]["id"]}) \
+                        .eq("id", rec["id"]) \
+                        .execute()
+                    synced_count += 1
+            
+            logger.info(f"Synced {synced_count} recommendations from WhatsApp to AlphaBoard")
+            return synced_count
+            
+        except Exception as e:
+            logger.error(f"Error syncing recommendations: {e}")
+            return 0
+    
+    async def get_alphaboard_watchlist(self, supabase_user_id: str) -> List[Dict[str, Any]]:
+        """
+        Get user's AlphaBoard watchlist (recommendations with WATCHLIST status).
+        
+        Args:
+            supabase_user_id: Supabase/AlphaBoard user ID
+            
+        Returns:
+            List of watchlist items from AlphaBoard
+        """
+        try:
+            result = self.supabase.table("recommendations") \
+                .select("*") \
+                .eq("user_id", supabase_user_id) \
+                .eq("status", "WATCHLIST") \
+                .order("entry_date", desc=True) \
+                .execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching AlphaBoard watchlist: {e}")
+            return []
+    
+    async def get_alphaboard_recommendations(self, supabase_user_id: str) -> List[Dict[str, Any]]:
+        """
+        Get user's AlphaBoard recommendations (OPEN status).
+        
+        Args:
+            supabase_user_id: Supabase/AlphaBoard user ID
+            
+        Returns:
+            List of open recommendations from AlphaBoard
+        """
+        try:
+            result = self.supabase.table("recommendations") \
+                .select("*") \
+                .eq("user_id", supabase_user_id) \
+                .eq("status", "OPEN") \
+                .order("entry_date", desc=True) \
+                .execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching AlphaBoard recommendations: {e}")
+            return []
+    
+    # =========================================================================
     # Watchlist Operations
     # =========================================================================
     

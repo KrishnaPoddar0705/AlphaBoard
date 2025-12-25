@@ -6,6 +6,7 @@ Administrative endpoints for monitoring and management.
 import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, BackgroundTasks
+from pydantic import BaseModel
 
 from .config import Settings, get_settings
 from .schemas import HealthCheckResponse, AdminRecommendationsResponse
@@ -16,6 +17,229 @@ from .tasks.daily_close_job import send_daily_close_to_all_subscribed
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+# API router for web app integration (non-admin)
+api_router = APIRouter(prefix="/api", tags=["api"])
+
+
+# ============================================================================
+# Request/Response Models for API
+# ============================================================================
+
+class VerifyLinkCodeRequest(BaseModel):
+    """Request model for verifying a link code."""
+    code: str
+    supabase_user_id: str
+
+
+class VerifyLinkCodeResponse(BaseModel):
+    """Response model for link code verification."""
+    success: bool
+    message: str
+    phone: Optional[str] = None
+    whatsapp_user_id: Optional[str] = None
+
+
+class AccountStatusResponse(BaseModel):
+    """Response model for account status."""
+    is_linked: bool
+    whatsapp_phone: Optional[str] = None
+    username: Optional[str] = None
+    full_name: Optional[str] = None
+
+
+# ============================================================================
+# API Endpoints (for AlphaBoard Web App)
+# ============================================================================
+
+@api_router.post("/whatsapp/verify-link-code", response_model=VerifyLinkCodeResponse)
+async def verify_link_code(
+    request: VerifyLinkCodeRequest,
+    settings: Settings = Depends(get_settings)
+):
+    """
+    Verify a WhatsApp link code and connect accounts.
+    Called from AlphaBoard web app when user enters the 6-digit code.
+    
+    Args:
+        request: Contains code and supabase_user_id
+        
+    Returns:
+        VerifyLinkCodeResponse with success status
+    """
+    ab_client = None
+    
+    try:
+        ab_client = AlphaBoardClient(settings)
+        
+        result = await ab_client.verify_link_code(
+            code=request.code.upper().strip(),
+            supabase_user_id=request.supabase_user_id
+        )
+        
+        if result.get("success"):
+            return VerifyLinkCodeResponse(
+                success=True,
+                message="Account linked successfully! Your WhatsApp is now connected.",
+                phone=result.get("phone"),
+                whatsapp_user_id=result.get("whatsapp_user_id")
+            )
+        else:
+            return VerifyLinkCodeResponse(
+                success=False,
+                message=result.get("error", "Invalid or expired code. Please try again.")
+            )
+            
+    except Exception as e:
+        logger.error(f"Error verifying link code: {e}")
+        return VerifyLinkCodeResponse(
+            success=False,
+            message="An error occurred. Please try again."
+        )
+    finally:
+        if ab_client:
+            await ab_client.close()
+
+
+@api_router.get("/whatsapp/account-status/{supabase_user_id}", response_model=AccountStatusResponse)
+async def get_account_status(
+    supabase_user_id: str,
+    settings: Settings = Depends(get_settings)
+):
+    """
+    Check if a Supabase user has a linked WhatsApp account.
+    Called from AlphaBoard web app to show link status.
+    
+    Args:
+        supabase_user_id: AlphaBoard/Supabase user ID
+        
+    Returns:
+        AccountStatusResponse with link status
+    """
+    ab_client = None
+    
+    try:
+        ab_client = AlphaBoardClient(settings)
+        
+        # Find WhatsApp user linked to this Supabase user
+        result = ab_client.supabase.table("whatsapp_users") \
+            .select("phone, display_name, profiles:supabase_user_id(username, full_name)") \
+            .eq("supabase_user_id", supabase_user_id) \
+            .execute()
+        
+        if result.data and len(result.data) > 0:
+            user = result.data[0]
+            profile = user.get("profiles") or {}
+            return AccountStatusResponse(
+                is_linked=True,
+                whatsapp_phone=user.get("phone"),
+                username=profile.get("username"),
+                full_name=profile.get("full_name")
+            )
+        
+        return AccountStatusResponse(is_linked=False)
+        
+    except Exception as e:
+        logger.error(f"Error getting account status: {e}")
+        return AccountStatusResponse(is_linked=False)
+    finally:
+        if ab_client:
+            await ab_client.close()
+
+
+@api_router.post("/whatsapp/unlink/{supabase_user_id}")
+async def unlink_whatsapp_account(
+    supabase_user_id: str,
+    settings: Settings = Depends(get_settings)
+):
+    """
+    Unlink WhatsApp account from Supabase user.
+    Called from AlphaBoard web app settings.
+    
+    Args:
+        supabase_user_id: AlphaBoard/Supabase user ID
+        
+    Returns:
+        Status message
+    """
+    ab_client = None
+    
+    try:
+        ab_client = AlphaBoardClient(settings)
+        
+        # Update WhatsApp user to remove link
+        result = ab_client.supabase.table("whatsapp_users") \
+            .update({
+                "supabase_user_id": None,
+                "onboarding_completed": False
+            }) \
+            .eq("supabase_user_id", supabase_user_id) \
+            .execute()
+        
+        if result.data and len(result.data) > 0:
+            return {
+                "success": True,
+                "message": "WhatsApp account unlinked successfully."
+            }
+        
+        return {
+            "success": False,
+            "message": "No linked WhatsApp account found."
+        }
+        
+    except Exception as e:
+        logger.error(f"Error unlinking account: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if ab_client:
+            await ab_client.close()
+
+
+@api_router.get("/whatsapp/watchlist/{supabase_user_id}")
+async def get_synced_watchlist(
+    supabase_user_id: str,
+    settings: Settings = Depends(get_settings)
+):
+    """
+    Get WhatsApp watchlist items for a linked user.
+    Can be used to show WhatsApp-added items in web app.
+    
+    Args:
+        supabase_user_id: AlphaBoard/Supabase user ID
+        
+    Returns:
+        List of watchlist items from WhatsApp
+    """
+    ab_client = None
+    
+    try:
+        ab_client = AlphaBoardClient(settings)
+        
+        # Get WhatsApp user ID
+        wa_user = ab_client.supabase.table("whatsapp_users") \
+            .select("id") \
+            .eq("supabase_user_id", supabase_user_id) \
+            .execute()
+        
+        if not wa_user.data or len(wa_user.data) == 0:
+            return {"items": [], "message": "No linked WhatsApp account"}
+        
+        whatsapp_user_id = wa_user.data[0]["id"]
+        
+        # Get watchlist
+        watchlist = await ab_client.list_watchlist(whatsapp_user_id)
+        
+        return {
+            "items": watchlist,
+            "count": len(watchlist)
+        }
+        
+    except Exception as e:
+        logger.error(f"Error getting synced watchlist: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if ab_client:
+            await ab_client.close()
 
 
 def verify_admin_key(

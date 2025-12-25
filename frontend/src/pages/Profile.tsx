@@ -7,6 +7,7 @@ import { useOrganization } from '../hooks/useOrganization';
 import CreateTeamModal from '../components/organization/CreateTeamModal';
 import { getOrgTeams, getTeamJoinRequests, approveTeamJoinRequest, rejectTeamJoinRequest, joinTeam as joinTeamFn } from '../lib/edgeFunctions';
 import { User, Edit2, Save, X, Users, Plus, Mail, Calendar, MapPin, Globe, LogIn, LogOut } from 'lucide-react';
+import WhatsAppConnect from '../components/settings/WhatsAppConnect';
 
 interface ProfileData {
   id: string;
@@ -510,6 +511,11 @@ export default function Profile() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* WhatsApp Integration Section */}
+        <div className="mb-6">
+          <WhatsAppConnect />
         </div>
 
         {/* Teams Section */}

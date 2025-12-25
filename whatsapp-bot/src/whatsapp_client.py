@@ -308,8 +308,18 @@ class WhatsAppClient:
                 ]
             },
             {
-                "title": "Help",
+                "title": "Account",
                 "rows": [
+                    {
+                        "id": "menu_connect_account",
+                        "title": "🔗 Connect Account",
+                        "description": "Link to AlphaBoard web app"
+                    },
+                    {
+                        "id": "menu_account_status",
+                        "title": "Account Status",
+                        "description": "Check your account link"
+                    },
                     {
                         "id": "menu_help",
                         "title": "Help & Commands",

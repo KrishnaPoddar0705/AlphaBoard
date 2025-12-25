@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 
 from .config import get_settings
 from .webhook import router as webhook_router
-from .admin import router as admin_router
+from .admin import router as admin_router, api_router
 
 # Configure logging
 settings = get_settings()
@@ -90,6 +90,7 @@ async def health():
 # Include routers
 app.include_router(webhook_router)
 app.include_router(admin_router)
+app.include_router(api_router)  # API endpoints for web app integration
 
 
 # CLI entry point

@@ -205,6 +205,88 @@ Here's what you can do:
 Type *menu* to get started!"""
     
     # =========================================================================
+    # Account Linking Messages
+    # =========================================================================
+    
+    CONNECT_ACCOUNT_INTRO = """🔗 *Connect Your AlphaBoard Account*
+
+Link your WhatsApp to your AlphaBoard web account to:
+• ✅ Sync your watchlist across devices
+• ✅ See your recommendations in the app
+• ✅ Track performance on the web dashboard
+• ✅ Access all your data anywhere
+
+Reply *connect* to get started!"""
+    
+    CONNECT_ACCOUNT_CODE = """🔐 *Your Link Code*
+
+Your one-time code is:
+
+*{code}*
+
+*To connect your account:*
+1️⃣ Open AlphaBoard web app
+2️⃣ Go to Settings → Connect WhatsApp
+3️⃣ Enter this code: *{code}*
+
+⏰ This code expires in *10 minutes*
+
+_Don't have an AlphaBoard account? Sign up at alphaboard.theunicornlabs.com_"""
+    
+    ACCOUNT_LINKED_SUCCESS = """🎉 *Account Connected!*
+
+Your WhatsApp is now linked to your AlphaBoard account (*{username}*)!
+
+✅ Your watchlist has been synced
+✅ Your recommendations are linked
+
+You can now:
+• Add stocks here and see them in the web app
+• View your full portfolio performance online
+• Get personalized daily reports
+
+Type *menu* to continue!"""
+    
+    ACCOUNT_ALREADY_LINKED = """✅ *Account Already Connected*
+
+Your WhatsApp is linked to: *{username}*
+
+Your watchlist and recommendations sync automatically between WhatsApp and the web app.
+
+💡 Want to unlink? Type *unlink account*"""
+    
+    ACCOUNT_NOT_LINKED = """ℹ️ *Account Not Connected*
+
+Your WhatsApp is not linked to an AlphaBoard web account.
+
+Connecting gives you:
+• Full portfolio dashboard
+• Performance tracking
+• Cross-device sync
+
+Type *connect* to link your account!"""
+    
+    ACCOUNT_UNLINKED = """🔓 *Account Unlinked*
+
+Your WhatsApp has been disconnected from your AlphaBoard account.
+
+Your WhatsApp watchlist and recommendations remain here, but won't sync to the web app.
+
+Type *connect* anytime to link again!"""
+    
+    SIGNUP_PROMPT = """🚀 *Sign Up for AlphaBoard*
+
+Create your free account at:
+👉 *alphaboard.theunicornlabs.com*
+
+After signing up:
+1️⃣ Type *connect* here
+2️⃣ Enter the code in the web app
+3️⃣ Your data syncs automatically!
+
+Already have an account? Type *connect* now!"""
+    
+    # =========================================================================
     # Format Helpers
     # =========================================================================
     

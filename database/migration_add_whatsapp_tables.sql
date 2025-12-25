@@ -179,7 +179,36 @@ CREATE TRIGGER update_whatsapp_users_updated_at
     EXECUTE FUNCTION public.update_whatsapp_users_updated_at();
 
 -- ============================================================================
--- 8. NOTIFY SUPABASE TO RELOAD SCHEMA
+-- 8. CREATE WHATSAPP_LINK_CODES TABLE
+-- ============================================================================
+
+-- Temporary codes for linking WhatsApp accounts to AlphaBoard accounts
+CREATE TABLE IF NOT EXISTS public.whatsapp_link_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    whatsapp_user_id UUID NOT NULL REFERENCES public.whatsapp_users(id) ON DELETE CASCADE,
+    code TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL,
+    used_at TIMESTAMPTZ,
+    linked_supabase_user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- Indexes
+CREATE INDEX IF NOT EXISTS idx_whatsapp_link_codes_code ON public.whatsapp_link_codes(code);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_link_codes_user ON public.whatsapp_link_codes(whatsapp_user_id);
+CREATE INDEX IF NOT EXISTS idx_whatsapp_link_codes_expires ON public.whatsapp_link_codes(expires_at);
+
+-- RLS
+ALTER TABLE public.whatsapp_link_codes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Service role has full access to whatsapp_link_codes"
+    ON public.whatsapp_link_codes
+    FOR ALL
+    USING (TRUE)
+    WITH CHECK (TRUE);
+
+-- ============================================================================
+-- 9. NOTIFY SUPABASE TO RELOAD SCHEMA
 -- ============================================================================
 
 NOTIFY pgrst, 'reload schema';
