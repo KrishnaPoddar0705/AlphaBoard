@@ -268,22 +268,37 @@ class WhatsAppClient:
         """
         sections = [
             {
-                "title": "Portfolio Actions",
+                "title": "Add Ideas",
                 "rows": [
                     {
-                        "id": "menu_add_watchlist",
-                        "title": "Add to Watchlist",
-                        "description": "Add a stock to track"
+                        "id": "menu_add_recommendation",
+                        "title": "📈 Add Recommendation",
+                        "description": "Log a BUY/SELL pick"
                     },
                     {
-                        "id": "menu_add_recommendation",
-                        "title": "Add Recommendation",
-                        "description": "Log a stock pick"
+                        "id": "menu_add_watchlist",
+                        "title": "👀 Add to Watchlist",
+                        "description": "Track a stock without buying"
+                    },
+                    {
+                        "id": "menu_set_alert",
+                        "title": "🔔 Set Price Alert",
+                        "description": "Get notified at target price"
+                    }
+                ]
+            },
+            {
+                "title": "My Portfolio",
+                "rows": [
+                    {
+                        "id": "menu_my_recs",
+                        "title": "📊 My Recommendations",
+                        "description": "View your active picks"
                     },
                     {
                         "id": "menu_show_watchlist",
-                        "title": "My Watchlist",
-                        "description": "View your tracked stocks"
+                        "title": "📋 My Watchlist",
+                        "description": "View tracked stocks"
                     }
                 ]
             },
@@ -292,17 +307,17 @@ class WhatsAppClient:
                 "rows": [
                     {
                         "id": "menu_market_close",
-                        "title": "Market Close",
-                        "description": "Today's market summary"
+                        "title": "📉 Market Summary",
+                        "description": "Today's market close"
                     },
                     {
                         "id": "menu_news",
-                        "title": "Latest News",
+                        "title": "📰 Latest News",
                         "description": "Get stock news"
                     },
                     {
                         "id": "menu_podcast",
-                        "title": "Request Podcast",
+                        "title": "🎧 Request Podcast",
                         "description": "Generate audio summary"
                     }
                 ]
@@ -316,13 +331,8 @@ class WhatsAppClient:
                         "description": "Link to AlphaBoard web app"
                     },
                     {
-                        "id": "menu_account_status",
-                        "title": "Account Status",
-                        "description": "Check your account link"
-                    },
-                    {
                         "id": "menu_help",
-                        "title": "Help & Commands",
+                        "title": "❓ Help & Commands",
                         "description": "See available commands"
                     }
                 ]
@@ -331,12 +341,124 @@ class WhatsAppClient:
         
         return await self.send_interactive_list(
             to=to,
-            body_text="Welcome to AlphaBoard! 📈\n\nWhat would you like to do?",
+            body_text="Welcome to AlphaBoard! 📈\n\nTrack your stock picks and beat the market.",
             button_text="Open Menu",
             sections=sections,
             header_text="AlphaBoard Menu",
-            footer_text="Reply 'help' anytime for commands"
+            footer_text="Reply 'help' anytime"
         )
+    
+    async def send_action_selector(self, to: str) -> Dict[str, Any]:
+        """
+        Send action type selector for recommendation.
+        """
+        buttons = [
+            {"id": "action_buy", "title": "📈 BUY"},
+            {"id": "action_sell", "title": "📉 SELL"},
+            {"id": "action_watch", "title": "👀 WATCH"}
+        ]
+        
+        return await self.send_interactive_buttons(
+            to=to,
+            body_text="What type of recommendation?\n\n• *BUY* - You're buying this stock\n• *SELL* - You're shorting/selling\n• *WATCH* - Add to watchlist with alerts",
+            buttons=buttons,
+            header_text="Add Recommendation"
+        )
+    
+    async def send_ticker_prompt(self, to: str, action: str) -> Dict[str, Any]:
+        """
+        Prompt for ticker and price input.
+        """
+        action_upper = action.upper()
+        if action_upper == "WATCH":
+            message = (
+                f"📊 *Adding to Watchlist*\n\n"
+                f"Send the stock ticker:\n\n"
+                f"Examples:\n"
+                f"• TCS\n"
+                f"• RELIANCE\n"
+                f"• INFY.NS"
+            )
+        else:
+            message = (
+                f"📊 *New {action_upper} Recommendation*\n\n"
+                f"Send ticker and entry price:\n\n"
+                f"Examples:\n"
+                f"• TCS @ 3500\n"
+                f"• RELIANCE @ 1550\n"
+                f"• INFY (we'll use current price)"
+            )
+        
+        return await self.send_text_message(to, message)
+    
+    async def send_thesis_prompt(self, to: str, ticker: str, action: str, price: Optional[float]) -> Dict[str, Any]:
+        """
+        Prompt for thesis/notes with skip option.
+        """
+        price_str = f" @ ₹{price:,.0f}" if price else ""
+        
+        buttons = [
+            {"id": "thesis_skip", "title": "Skip"},
+        ]
+        
+        message = (
+            f"✅ *{action.upper()} {ticker}*{price_str}\n\n"
+            f"Add your investment thesis/notes:\n\n"
+            f"_(Or tap Skip to save without notes)_"
+        )
+        
+        return await self.send_interactive_buttons(
+            to=to,
+            body_text=message,
+            buttons=buttons,
+            header_text="Add Notes"
+        )
+    
+    async def send_alert_prompt(self, to: str) -> Dict[str, Any]:
+        """
+        Prompt for price alert setup.
+        """
+        message = (
+            "🔔 *Set Price Alert*\n\n"
+            "Send ticker with target price:\n\n"
+            "Examples:\n"
+            "• TCS below 3400\n"
+            "• RELIANCE above 1600\n"
+            "• INFY @ 1500 (alerts both ways)"
+        )
+        
+        return await self.send_text_message(to, message)
+    
+    async def send_recommendation_confirmation(
+        self,
+        to: str,
+        ticker: str,
+        action: str,
+        price: Optional[float],
+        thesis: Optional[str],
+        synced_to_app: bool = False
+    ) -> Dict[str, Any]:
+        """
+        Send confirmation after adding recommendation.
+        """
+        price_str = f" @ ₹{price:,.2f}" if price else ""
+        
+        lines = [
+            f"📈 *Logged your recommendation:*\n",
+            f"*{action.upper()} {ticker}*{price_str}",
+        ]
+        
+        if thesis:
+            lines.append(f"\n📝 _{thesis}_")
+        
+        lines.append("\n✅ We'll track this in AlphaBoard!")
+        
+        if synced_to_app:
+            lines.append("🌐 Synced to your AlphaBoard web app")
+        else:
+            lines.append("\n💡 Connect your account to sync: type *connect*")
+        
+        return await self.send_text_message(to, "\n".join(lines))
     
     async def mark_message_read(self, message_id: str) -> Dict[str, Any]:
         """

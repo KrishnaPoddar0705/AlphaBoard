@@ -43,9 +43,20 @@ class AlphaBoardClient:
         self.api_key = settings.ALPHABOARD_API_KEY
         
         # Initialize Supabase client for direct DB access
+        # Using service role key to bypass RLS
+        service_key = settings.SUPABASE_SERVICE_ROLE_KEY
+        
+        # Debug: Log key type (first 20 chars only for security)
+        key_prefix = service_key[:20] if service_key else "NOT_SET"
+        is_service_key = service_key and "service_role" in service_key if service_key else False
+        logger.info(f"Initializing Supabase client with key prefix: {key_prefix}... (is_service_key: {is_service_key})")
+        
+        if not service_key or "eyJ" not in service_key:
+            logger.error("SUPABASE_SERVICE_ROLE_KEY may not be set correctly!")
+        
         self.supabase: SupabaseClient = create_client(
             settings.SUPABASE_URL,
-            settings.SUPABASE_SERVICE_ROLE_KEY
+            service_key
         )
         
         # Initialize HTTP client for AlphaBoard API calls
@@ -671,42 +682,99 @@ class AlphaBoardClient:
         user_id: str,
         ticker: str,
         price: Optional[float] = None,
-        thesis: Optional[str] = None
+        thesis: Optional[str] = None,
+        action: str = "BUY"
     ) -> Dict[str, Any]:
         """
-        Add a stock recommendation.
+        Add a stock recommendation. Syncs to public.recommendations if user is linked.
         
         Args:
             user_id: WhatsApp user ID
             ticker: Stock ticker symbol
-            price: Target/entry price
+            price: Entry price
             thesis: Investment thesis
+            action: BUY, SELL, or WATCH
             
         Returns:
-            Created recommendation dict
+            Dict with recommendation data and sync status
         """
         ticker_upper = ticker.upper().strip()
+        action_upper = action.upper().strip()
+        
+        # Validate action
+        if action_upper not in ("BUY", "SELL", "WATCH"):
+            action_upper = "BUY"
+        
+        # Map action to status for public.recommendations
+        status = "WATCHLIST" if action_upper == "WATCH" else "OPEN"
         
         try:
-            rec_data = {
+            # 1. Add to whatsapp_recommendations table
+            wa_rec_data = {
                 "whatsapp_user_id": user_id,
                 "ticker": ticker_upper,
                 "price": price,
                 "thesis": thesis,
+                "action": action_upper,
                 "source": "whatsapp",
                 "created_at": datetime.utcnow().isoformat()
             }
             
-            result = self.supabase.table("whatsapp_recommendations") \
-                .insert(rec_data) \
+            wa_result = self.supabase.table("whatsapp_recommendations") \
+                .insert(wa_rec_data) \
                 .execute()
             
-            if result.data and len(result.data) > 0:
-                logger.info(f"Added recommendation for {ticker_upper} from user {user_id}")
-                return result.data[0]
+            if not wa_result.data or len(wa_result.data) == 0:
+                raise AlphaBoardClientError("Failed to add to WhatsApp recommendations")
             
-            raise AlphaBoardClientError("Failed to add recommendation")
+            wa_rec = wa_result.data[0]
+            synced_to_app = False
             
+            # 2. Check if user is linked and sync to public.recommendations
+            account_status = await self.get_user_account_status(user_id)
+            
+            if account_status.get("is_linked") and account_status.get("supabase_user_id"):
+                clerk_user_id = account_status["supabase_user_id"]
+                
+                # Get Supabase UUID
+                actual_user_id = await self._get_supabase_uuid(clerk_user_id)
+                
+                if actual_user_id:
+                    try:
+                        # Add to public.recommendations
+                        pub_rec_data = {
+                            "user_id": actual_user_id,
+                            "ticker": ticker_upper,
+                            "action": action_upper,
+                            "entry_price": price,
+                            "status": status,
+                            "thesis": f"{thesis} (via WhatsApp)" if thesis else "Added via WhatsApp",
+                            "entry_date": datetime.utcnow().isoformat()
+                        }
+                        
+                        pub_result = self.supabase.table("recommendations") \
+                            .insert(pub_rec_data) \
+                            .execute()
+                        
+                        if pub_result.data and len(pub_result.data) > 0:
+                            # Link WhatsApp rec to public rec
+                            self.supabase.table("whatsapp_recommendations") \
+                                .update({"recommendation_id": pub_result.data[0]["id"]}) \
+                                .eq("id", wa_rec["id"]) \
+                                .execute()
+                            synced_to_app = True
+                            logger.info(f"Synced recommendation {ticker_upper} to public.recommendations")
+                    except Exception as sync_error:
+                        logger.warning(f"Could not sync to public.recommendations: {sync_error}")
+            
+            logger.info(f"Added recommendation for {ticker_upper} from user {user_id} (synced: {synced_to_app})")
+            return {
+                **wa_rec,
+                "synced_to_app": synced_to_app
+            }
+            
+        except AlphaBoardClientError:
+            raise
         except Exception as e:
             logger.error(f"Error adding recommendation: {e}")
             raise AlphaBoardClientError(f"Database error: {str(e)}")

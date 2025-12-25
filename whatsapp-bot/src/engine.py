@@ -13,6 +13,7 @@ from .whatsapp_client import WhatsAppClient
 from .alphaboard_client import AlphaBoardClient, AlphaBoardClientError
 from .services.templates import Templates
 from .services.market_reports import MarketReportService
+from .conversation_state import state_manager, ConversationFlow
 
 logger = logging.getLogger(__name__)
 
@@ -116,9 +117,33 @@ class MessageEngine:
         text = text.strip()
         text_lower = text.lower()
         
+        # Check for cancel command first
+        if text_lower in ("cancel", "exit", "quit", "stop"):
+            if state_manager.is_in_flow(user_id):
+                state_manager.cancel_flow(user_id)
+                await self.wa_client.send_text_message(phone, "❌ Cancelled. Type *menu* to start over.")
+            else:
+                await self.wa_client.send_main_menu(phone)
+            return
+        
+        # Check if user is in a conversation flow
+        if state_manager.is_in_flow(user_id):
+            await self._handle_conversation_flow(phone, user_id, text)
+            return
+        
         # Check for menu/help commands
         if text_lower in ("help", "menu", "hi", "hello", "start", "hey", "?"):
             await self.wa_client.send_main_menu(phone)
+            return
+        
+        # Check for quick add rec command
+        if text_lower in ("add", "new", "rec", "recommend", "add rec", "new rec"):
+            await self._start_recommendation_flow(phone, user_id)
+            return
+        
+        # Check for alert command
+        if text_lower in ("alert", "set alert", "alerts", "price alert"):
+            await self._start_alert_flow(phone, user_id)
             return
         
         # Check for signup/connect commands
@@ -153,7 +178,7 @@ class MessageEngine:
             await self._handle_market_close(phone, user_id)
             return
         
-        # Check for add to watchlist
+        # Check for add to watchlist pattern
         for pattern in self.ADD_WATCHLIST_PATTERNS:
             match = pattern.match(text)
             if match:
@@ -162,14 +187,14 @@ class MessageEngine:
                 await self._handle_add_watchlist(phone, user_id, ticker, note)
                 return
         
-        # Check for recommendation
+        # Check for quick recommendation pattern (rec TCS @ 320 thesis)
         match = self.REC_PATTERN.match(text)
         if match:
             ticker = match.group(1).upper()
             price_str = match.group(2)
             price = float(price_str) if price_str else None
             thesis = match.group(3).strip() if match.group(3) else None
-            await self._handle_add_recommendation(phone, user_id, ticker, price, thesis)
+            await self._handle_add_recommendation_complete(phone, user_id, ticker, "BUY", price, thesis)
             return
         
         # Check for podcast request
@@ -211,21 +236,38 @@ class MessageEngine:
             reply_id: Interactive reply ID
             reply_title: Interactive reply title
         """
+        # Handle action selection for recommendation flow
+        if reply_id.startswith("action_"):
+            action = reply_id.replace("action_", "").upper()
+            await self._handle_action_selected(phone, user_id, action)
+            return
+        
+        # Handle thesis skip
+        if reply_id == "thesis_skip":
+            await self._handle_thesis_skip(phone, user_id)
+            return
+        
         # Map interactive IDs to actions
         if reply_id == "menu_add_watchlist":
+            # Start watchlist flow
+            state_manager.start_flow(user_id, ConversationFlow.ADD_WATCHLIST)
             await self.wa_client.send_text_message(
                 phone,
-                Templates.ADD_WATCHLIST_PROMPT
+                "👀 *Add to Watchlist*\n\nSend the stock ticker:\n\nExamples:\n• TCS\n• RELIANCE\n• INFY.NS"
             )
         
         elif reply_id == "menu_add_recommendation":
-            await self.wa_client.send_text_message(
-                phone,
-                Templates.ADD_RECOMMENDATION_PROMPT
-            )
+            # Start recommendation flow with action selector
+            await self._start_recommendation_flow(phone, user_id)
+        
+        elif reply_id == "menu_set_alert":
+            await self._start_alert_flow(phone, user_id)
         
         elif reply_id == "menu_show_watchlist":
             await self._handle_show_watchlist(phone, user_id)
+        
+        elif reply_id == "menu_my_recs":
+            await self._handle_show_recommendations(phone, user_id)
         
         elif reply_id == "menu_market_close":
             await self._handle_market_close(phone, user_id)
@@ -363,6 +405,197 @@ class MessageEngine:
             logger.error(f"Error fetching watchlist: {e}")
             await self._send_error_message(phone)
     
+    async def _start_recommendation_flow(self, phone: str, user_id: str) -> None:
+        """Start the interactive recommendation flow."""
+        state_manager.start_flow(user_id, ConversationFlow.ADD_RECOMMENDATION)
+        await self.wa_client.send_action_selector(phone)
+    
+    async def _start_alert_flow(self, phone: str, user_id: str) -> None:
+        """Start the price alert flow."""
+        state_manager.start_flow(user_id, ConversationFlow.SET_ALERT)
+        await self.wa_client.send_alert_prompt(phone)
+    
+    async def _handle_action_selected(self, phone: str, user_id: str, action: str) -> None:
+        """Handle action (BUY/SELL/WATCH) selection."""
+        context = state_manager.get_context(user_id)
+        
+        if context.flow != ConversationFlow.ADD_RECOMMENDATION:
+            # Not in a flow, start one
+            state_manager.start_flow(user_id, ConversationFlow.ADD_RECOMMENDATION)
+            context = state_manager.get_context(user_id)
+        
+        state_manager.advance_step(user_id, {"action": action})
+        await self.wa_client.send_ticker_prompt(phone, action)
+    
+    async def _handle_thesis_skip(self, phone: str, user_id: str) -> None:
+        """Handle thesis skip and complete flow."""
+        context = state_manager.get_context(user_id)
+        
+        if context.flow == ConversationFlow.ADD_RECOMMENDATION:
+            data = state_manager.complete_flow(user_id)
+            await self._handle_add_recommendation_complete(
+                phone, user_id,
+                data.get("ticker", ""),
+                data.get("action", "BUY"),
+                data.get("price"),
+                None  # No thesis
+            )
+    
+    async def _handle_conversation_flow(self, phone: str, user_id: str, text: str) -> None:
+        """Handle input during a conversation flow."""
+        context = state_manager.get_context(user_id)
+        
+        if context.flow == ConversationFlow.ADD_RECOMMENDATION:
+            await self._handle_recommendation_flow_input(phone, user_id, text, context)
+        elif context.flow == ConversationFlow.ADD_WATCHLIST:
+            await self._handle_watchlist_flow_input(phone, user_id, text, context)
+        elif context.flow == ConversationFlow.SET_ALERT:
+            await self._handle_alert_flow_input(phone, user_id, text, context)
+        else:
+            state_manager.cancel_flow(user_id)
+            await self._send_fallback_help(phone)
+    
+    async def _handle_recommendation_flow_input(
+        self, phone: str, user_id: str, text: str, context
+    ) -> None:
+        """Handle input during recommendation flow."""
+        step = context.step
+        
+        if step == 2:
+            # Waiting for ticker (and optional price)
+            parsed = self._parse_ticker_price(text)
+            if not parsed:
+                await self.wa_client.send_text_message(
+                    phone,
+                    "❌ Couldn't understand that. Send ticker like:\n• TCS @ 3500\n• RELIANCE\n\nOr type *cancel* to exit."
+                )
+                return
+            
+            ticker, price = parsed
+            action = context.data.get("action", "BUY")
+            
+            state_manager.advance_step(user_id, {"ticker": ticker, "price": price})
+            
+            # Ask for thesis
+            await self.wa_client.send_thesis_prompt(phone, ticker, action, price)
+        
+        elif step == 3:
+            # Waiting for thesis
+            thesis = text.strip() if text.strip().lower() not in ("skip", "none", "-") else None
+            data = state_manager.complete_flow(user_id)
+            
+            await self._handle_add_recommendation_complete(
+                phone, user_id,
+                data.get("ticker", ""),
+                data.get("action", "BUY"),
+                data.get("price"),
+                thesis
+            )
+    
+    async def _handle_watchlist_flow_input(
+        self, phone: str, user_id: str, text: str, context
+    ) -> None:
+        """Handle input during watchlist flow."""
+        parsed = self._parse_ticker_price(text)
+        if not parsed:
+            await self.wa_client.send_text_message(
+                phone,
+                "❌ Couldn't understand that. Send a ticker like:\n• TCS\n• RELIANCE\n\nOr type *cancel* to exit."
+            )
+            return
+        
+        ticker, _ = parsed
+        state_manager.complete_flow(user_id)
+        
+        await self._handle_add_watchlist(phone, user_id, ticker, None)
+    
+    async def _handle_alert_flow_input(
+        self, phone: str, user_id: str, text: str, context
+    ) -> None:
+        """Handle input during alert flow."""
+        # Parse alert: "TCS below 3400" or "RELIANCE above 1600"
+        alert_pattern = re.compile(
+            r'^([A-Z0-9.]+)\s*(below|above|@|at)?\s*(\d+(?:\.\d+)?)$',
+            re.IGNORECASE
+        )
+        match = alert_pattern.match(text.strip())
+        
+        if not match:
+            await self.wa_client.send_text_message(
+                phone,
+                "❌ Couldn't understand that. Try:\n• TCS below 3400\n• RELIANCE above 1600\n\nOr type *cancel* to exit."
+            )
+            return
+        
+        ticker = match.group(1).upper()
+        direction = (match.group(2) or "at").lower()
+        price = float(match.group(3))
+        
+        state_manager.complete_flow(user_id)
+        
+        # For now, add as watchlist with note about alert
+        alert_note = f"Alert: {direction} ₹{price:,.0f}"
+        await self._handle_add_watchlist(phone, user_id, ticker, alert_note)
+        
+        await self.wa_client.send_text_message(
+            phone,
+            f"🔔 Alert set for *{ticker}* {direction} ₹{price:,.0f}\n\n"
+            f"We'll notify you when the price hits your target!"
+        )
+    
+    def _parse_ticker_price(self, text: str) -> Optional[Tuple[str, Optional[float]]]:
+        """Parse ticker and optional price from text."""
+        text = text.strip()
+        
+        # Pattern: TICKER @ PRICE or TICKER at PRICE or just TICKER
+        pattern = re.compile(
+            r'^([A-Z0-9.]+)(?:\s*[@at]+\s*(\d+(?:\.\d+)?))?',
+            re.IGNORECASE
+        )
+        match = pattern.match(text)
+        
+        if not match:
+            return None
+        
+        ticker = match.group(1).upper()
+        
+        # Validate ticker format
+        if not re.match(r'^[A-Z]{2,15}(?:\.[A-Z]{2})?$', ticker):
+            return None
+        
+        price_str = match.group(2)
+        price = float(price_str) if price_str else None
+        
+        return (ticker, price)
+    
+    async def _handle_add_recommendation_complete(
+        self,
+        phone: str,
+        user_id: str,
+        ticker: str,
+        action: str,
+        price: Optional[float],
+        thesis: Optional[str]
+    ) -> None:
+        """Complete adding a recommendation with all details."""
+        try:
+            result = await self.ab_client.add_recommendation(
+                user_id, ticker, price, thesis, action
+            )
+            
+            synced = result.get("synced_to_app", False)
+            
+            await self.wa_client.send_recommendation_confirmation(
+                phone, ticker, action, price, thesis, synced
+            )
+            
+        except AlphaBoardClientError as e:
+            logger.error(f"Error adding recommendation: {e}")
+            await self.wa_client.send_text_message(
+                phone,
+                f"❌ Couldn't log recommendation for {ticker}. Please try again."
+            )
+    
     async def _handle_add_recommendation(
         self,
         phone: str,
@@ -371,25 +604,8 @@ class MessageEngine:
         price: Optional[float],
         thesis: Optional[str]
     ) -> None:
-        """Handle add recommendation command."""
-        try:
-            await self.ab_client.add_recommendation(user_id, ticker, price, thesis)
-            
-            response = f"📈 Logged your recommendation:\n\n*BUY {ticker}*"
-            if price:
-                response += f" @ ₹{price:,.2f}"
-            if thesis:
-                response += f"\n\n📝 Thesis: {thesis}"
-            response += "\n\n✅ We'll track this in AlphaBoard!"
-            
-            await self.wa_client.send_text_message(phone, response)
-            
-        except AlphaBoardClientError as e:
-            logger.error(f"Error adding recommendation: {e}")
-            await self.wa_client.send_text_message(
-                phone,
-                f"❌ Couldn't log recommendation for {ticker}. Please try again."
-            )
+        """Handle add recommendation command (legacy, defaults to BUY)."""
+        await self._handle_add_recommendation_complete(phone, user_id, ticker, "BUY", price, thesis)
     
     async def _handle_show_recommendations(self, phone: str, user_id: str) -> None:
         """Handle show recommendations command. Shows both WhatsApp and AlphaBoard recs if linked."""
