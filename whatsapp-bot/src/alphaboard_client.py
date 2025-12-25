@@ -46,13 +46,23 @@ class AlphaBoardClient:
         # Using service role key to bypass RLS
         service_key = settings.SUPABASE_SERVICE_ROLE_KEY
         
-        # Debug: Log key type (first 20 chars only for security)
-        key_prefix = service_key[:20] if service_key else "NOT_SET"
-        is_service_key = service_key and "service_role" in service_key if service_key else False
-        logger.info(f"Initializing Supabase client with key prefix: {key_prefix}... (is_service_key: {is_service_key})")
-        
-        if not service_key or "eyJ" not in service_key:
-            logger.error("SUPABASE_SERVICE_ROLE_KEY may not be set correctly!")
+        # Debug: Log key status (only first 10 chars for security)
+        if service_key:
+            key_prefix = service_key[:15] if len(service_key) > 15 else "TOO_SHORT"
+            key_length = len(service_key)
+            logger.info(f"Supabase key loaded: {key_prefix}... (length: {key_length})")
+            
+            # Both formats are valid:
+            # - Legacy JWT: starts with 'eyJ'
+            # - New secret: starts with 'sb_secret_'
+            if service_key.startswith("eyJ"):
+                logger.info("Using legacy JWT format for Supabase key")
+            elif service_key.startswith("sb_secret_"):
+                logger.info("Using new secret API key format for Supabase")
+            else:
+                logger.warning("SUPABASE_SERVICE_ROLE_KEY format not recognized. Expected 'eyJ...' or 'sb_secret_...'")
+        else:
+            logger.error("SUPABASE_SERVICE_ROLE_KEY is not set!")
         
         self.supabase: SupabaseClient = create_client(
             settings.SUPABASE_URL,
@@ -921,19 +931,57 @@ class AlphaBoardClient:
             Podcast response with script and audio
         """
         try:
+            # First, fetch news for the ticker (required for podcast generation)
+            news = await self.get_news_for_ticker(ticker)
+            
+            if not news:
+                # Try fetching from database directly as fallback
+                # Try different ticker formats (.NS, .BO, base)
+                ticker_variants = [ticker]
+                base_ticker = ticker.replace('.NS', '').replace('.BO', '')
+                if not ticker.endswith('.NS'):
+                    ticker_variants.append(f"{base_ticker}.NS")
+                if not ticker.endswith('.BO'):
+                    ticker_variants.append(f"{base_ticker}.BO")
+                if base_ticker != ticker:
+                    ticker_variants.append(base_ticker)
+                
+                try:
+                    result = self.supabase.table("news_articles") \
+                        .select("*") \
+                        .in_("ticker", ticker_variants) \
+                        .order("published_at", desc=True) \
+                        .limit(10) \
+                        .execute()
+                    news = result.data if result.data else []
+                except Exception as e:
+                    logger.warning(f"Could not fetch news from DB: {e}")
+            
+            if not news:
+                logger.warning(f"No news found for {ticker}, podcast may be limited")
+                # Create a minimal news item so API doesn't fail
+                news = [{
+                    "headline": f"Latest updates on {company_name}",
+                    "summary_tldr": f"Recent market activity for {ticker}",
+                    "published_at": datetime.utcnow().isoformat(),
+                    "sentiment": "neutral"
+                }]
+            
             url = f"{self.api_base_url}/api/podcast/generate"
             payload = {
                 "type": "single-stock",
                 "ticker": ticker,
                 "companyName": company_name,
-                "news": []  # Will fetch news internally
+                "news": news
             }
             
-            response = await self._http_client.post(url, json=payload)
+            logger.info(f"Generating podcast for {ticker} with {len(news)} news articles")
+            
+            response = await self._http_client.post(url, json=payload, timeout=60.0)
             
             if response.status_code != 200:
-                logger.error(f"Podcast API error: {response.status_code}")
-                return {"error": True, "status_code": response.status_code}
+                logger.error(f"Podcast API error: {response.status_code}, response: {response.text}")
+                return {"error": True, "status_code": response.status_code, "detail": response.text}
             
             return response.json()
             
@@ -1080,26 +1128,33 @@ class AlphaBoardClient:
         message: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Create a price alert for a stock.
+        Create a price alert trigger for a stock.
         
         Args:
             whatsapp_user_id: WhatsApp user ID
             ticker: Stock ticker
-            alert_type: 'above' or 'below'
+            alert_type: 'above'/'SELL' or 'below'/'BUY'
             trigger_price: Price at which to trigger alert
-            message: Optional custom message
+            message: Optional custom message (not used in triggers table)
             
         Returns:
             Created alert dict with sync status
         """
         ticker_upper = ticker.upper().strip()
-        alert_type_lower = alert_type.lower()
+        alert_type_input = alert_type.lower()
         
-        if alert_type_lower not in ("above", "below"):
-            alert_type_lower = "below"
+        # Convert to BUY/SELL format
+        # below = BUY (alert when price drops below - good time to buy)
+        # above = SELL (alert when price rises above - good time to sell)
+        if alert_type_input in ("below", "buy"):
+            db_alert_type = "BUY"
+        elif alert_type_input in ("above", "sell"):
+            db_alert_type = "SELL"
+        else:
+            db_alert_type = "BUY"  # Default to BUY
         
         try:
-            result = {"synced_to_app": False, "ticker": ticker_upper, "alert_type": alert_type_lower}
+            result = {"synced_to_app": False, "ticker": ticker_upper, "alert_type": db_alert_type}
             
             # Check if user is linked
             account_status = await self.get_user_account_status(whatsapp_user_id)
@@ -1109,25 +1164,52 @@ class AlphaBoardClient:
                 actual_user_id = await self._get_supabase_uuid(clerk_user_id)
                 
                 if actual_user_id:
-                    # Create alert in public.price_alerts
-                    alert_data = {
-                        "user_id": actual_user_id,
-                        "ticker": ticker_upper,
-                        "alert_type": alert_type_lower,
-                        "trigger_price": trigger_price,
-                        "message": message or f"Price alert: {ticker_upper} {alert_type_lower} ₹{trigger_price:,.0f}",
-                        "is_read": False,
-                        "email_sent": False
-                    }
-                    
-                    alert_result = self.supabase.table("price_alerts") \
-                        .insert(alert_data) \
+                    # First, find or create a WATCHLIST recommendation for this ticker
+                    rec_result = self.supabase.table("recommendations") \
+                        .select("id") \
+                        .eq("user_id", actual_user_id) \
+                        .eq("ticker", ticker_upper) \
+                        .eq("status", "WATCHLIST") \
+                        .limit(1) \
                         .execute()
                     
-                    if alert_result.data and len(alert_result.data) > 0:
-                        result["synced_to_app"] = True
-                        result["alert_id"] = alert_result.data[0].get("id")
-                        logger.info(f"Created price alert for {ticker_upper} {alert_type_lower} {trigger_price}")
+                    recommendation_id = None
+                    if rec_result.data and len(rec_result.data) > 0:
+                        recommendation_id = rec_result.data[0]["id"]
+                    else:
+                        # Create a WATCHLIST entry
+                        new_rec = self.supabase.table("recommendations") \
+                            .insert({
+                                "user_id": actual_user_id,
+                                "ticker": ticker_upper,
+                                "action": "WATCH",
+                                "status": "WATCHLIST",
+                                "entry_date": datetime.utcnow().isoformat()
+                            }) \
+                            .execute()
+                        if new_rec.data and len(new_rec.data) > 0:
+                            recommendation_id = new_rec.data[0]["id"]
+                    
+                    if recommendation_id:
+                        # Create alert in public.price_alert_triggers
+                        alert_data = {
+                            "user_id": actual_user_id,
+                            "recommendation_id": recommendation_id,
+                            "ticker": ticker_upper,
+                            "alert_type": db_alert_type,
+                            "trigger_price": trigger_price,
+                            "is_active": True
+                        }
+                        
+                        alert_result = self.supabase.table("price_alert_triggers") \
+                            .insert(alert_data) \
+                            .execute()
+                        
+                        if alert_result.data and len(alert_result.data) > 0:
+                            result["synced_to_app"] = True
+                            result["alert_id"] = alert_result.data[0].get("id")
+                            result["recommendation_id"] = recommendation_id
+                            logger.info(f"Created price alert for {ticker_upper} {db_alert_type} {trigger_price}")
             
             if not result.get("synced_to_app"):
                 logger.warning(f"Could not sync price alert - user not linked")
@@ -1140,13 +1222,13 @@ class AlphaBoardClient:
     
     async def get_user_price_alerts(self, whatsapp_user_id: str) -> List[Dict[str, Any]]:
         """
-        Get all active price alerts for a user.
+        Get all active price alert triggers for a user.
         
         Args:
             whatsapp_user_id: WhatsApp user ID
             
         Returns:
-            List of price alerts
+            List of price alert triggers
         """
         try:
             account_status = await self.get_user_account_status(whatsapp_user_id)
@@ -1160,10 +1242,11 @@ class AlphaBoardClient:
             if not actual_user_id:
                 return []
             
-            result = self.supabase.table("price_alerts") \
+            # Fetch from price_alert_triggers (user-set alerts)
+            result = self.supabase.table("price_alert_triggers") \
                 .select("*") \
                 .eq("user_id", actual_user_id) \
-                .eq("is_read", False) \
+                .eq("is_active", True) \
                 .order("created_at", desc=True) \
                 .execute()
             
@@ -1172,6 +1255,249 @@ class AlphaBoardClient:
         except Exception as e:
             logger.error(f"Error fetching price alerts: {e}")
             return []
+    
+    # =========================================================================
+    # Admin Operations (Organization/Team Tracking)
+    # =========================================================================
+    
+    async def check_user_is_admin(self, whatsapp_user_id: str) -> Dict[str, Any]:
+        """
+        Check if the linked user has admin/manager role in their organization.
+        
+        Args:
+            whatsapp_user_id: WhatsApp user ID
+            
+        Returns:
+            Dict with is_admin, organization_id, role
+        """
+        try:
+            account_status = await self.get_user_account_status(whatsapp_user_id)
+            
+            if not account_status.get("is_linked") or not account_status.get("supabase_user_id"):
+                return {"is_admin": False, "reason": "Account not linked"}
+            
+            clerk_user_id = account_status["supabase_user_id"]
+            actual_user_id = await self._get_supabase_uuid(clerk_user_id)
+            
+            if not actual_user_id:
+                return {"is_admin": False, "reason": "User not found"}
+            
+            # Get user's profile with organization info
+            result = self.supabase.table("profiles") \
+                .select("id, username, role, organization_id") \
+                .eq("id", actual_user_id) \
+                .limit(1) \
+                .execute()
+            
+            if not result.data or len(result.data) == 0:
+                return {"is_admin": False, "reason": "Profile not found"}
+            
+            profile = result.data[0]
+            role = profile.get("role", "analyst")
+            org_id = profile.get("organization_id")
+            
+            # Also check user_organization_membership for admin role
+            is_org_admin = False
+            if org_id:
+                membership_result = self.supabase.table("user_organization_membership") \
+                    .select("role") \
+                    .eq("user_id", actual_user_id) \
+                    .eq("organization_id", org_id) \
+                    .limit(1) \
+                    .execute()
+                
+                if membership_result.data and len(membership_result.data) > 0:
+                    is_org_admin = membership_result.data[0].get("role") == "admin"
+            
+            # Admin = manager role in profile OR admin role in membership
+            is_admin = role == "manager" or is_org_admin
+            
+            return {
+                "is_admin": is_admin,
+                "role": role,
+                "organization_id": org_id,
+                "user_id": actual_user_id,
+                "username": profile.get("username")
+            }
+            
+        except Exception as e:
+            logger.error(f"Error checking admin status: {e}")
+            return {"is_admin": False, "reason": str(e)}
+    
+    async def get_organization_teams(self, organization_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all teams in an organization.
+        
+        Args:
+            organization_id: Organization UUID
+            
+        Returns:
+            List of teams
+        """
+        try:
+            result = self.supabase.table("teams") \
+                .select("id, name") \
+                .eq("org_id", organization_id) \
+                .order("name") \
+                .execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching teams: {e}")
+            return []
+    
+    async def get_team_members(self, team_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all members of a team with their profiles.
+        
+        Args:
+            team_id: Team UUID
+            
+        Returns:
+            List of team members with profile info
+        """
+        try:
+            # Get team memberships
+            tm_result = self.supabase.table("team_members") \
+                .select("user_id") \
+                .eq("team_id", team_id) \
+                .execute()
+            
+            if not tm_result.data:
+                return []
+            
+            user_ids = [m["user_id"] for m in tm_result.data]
+            
+            # Get profiles for these users
+            profiles_result = self.supabase.table("profiles") \
+                .select("id, username, full_name, role") \
+                .in_("id", user_ids) \
+                .execute()
+            
+            members = []
+            if profiles_result.data:
+                for profile in profiles_result.data:
+                    members.append({
+                        "user_id": profile.get("id"),
+                        "role": profile.get("role", "analyst"),
+                        "username": profile.get("username"),
+                        "full_name": profile.get("full_name")
+                    })
+            
+            return members
+            
+        except Exception as e:
+            logger.error(f"Error fetching team members: {e}")
+            return []
+    
+    async def get_organization_members(self, organization_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all members of an organization.
+        
+        Args:
+            organization_id: Organization UUID
+            
+        Returns:
+            List of organization members
+        """
+        try:
+            result = self.supabase.table("profiles") \
+                .select("id, username, full_name, role") \
+                .eq("organization_id", organization_id) \
+                .order("username") \
+                .execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching organization members: {e}")
+            return []
+    
+    async def get_analyst_recommendations_detailed(
+        self,
+        analyst_user_id: str,
+        status: str = "OPEN"
+    ) -> List[Dict[str, Any]]:
+        """
+        Get detailed recommendations for an analyst with all fields.
+        
+        Args:
+            analyst_user_id: Analyst's Supabase UUID
+            status: OPEN, CLOSED, or WATCHLIST
+            
+        Returns:
+            List of recommendations with full details
+        """
+        try:
+            query = self.supabase.table("recommendations") \
+                .select("*") \
+                .eq("user_id", analyst_user_id) \
+                .order("entry_date", desc=True)
+            
+            if status:
+                query = query.eq("status", status)
+            
+            result = query.limit(20).execute()
+            
+            recs = []
+            if result.data:
+                for rec in result.data:
+                    entry_price = rec.get("entry_price")
+                    current_price = rec.get("current_price")
+                    target_price = rec.get("target_price")
+                    
+                    # Calculate return
+                    return_pct = None
+                    if entry_price and current_price and entry_price > 0:
+                        return_pct = ((current_price - entry_price) / entry_price) * 100
+                    
+                    recs.append({
+                        "ticker": rec.get("ticker"),
+                        "action": rec.get("action", "BUY"),
+                        "status": rec.get("status"),
+                        "entry_price": entry_price,
+                        "current_price": current_price,
+                        "target_price": target_price,
+                        "stop_loss": rec.get("stop_loss"),
+                        "entry_date": rec.get("entry_date"),
+                        "exit_date": rec.get("exit_date"),
+                        "exit_price": rec.get("exit_price"),
+                        "return_pct": return_pct,
+                        "final_return_pct": rec.get("final_return_pct"),
+                        "thesis": rec.get("thesis")
+                    })
+            
+            return recs
+            
+        except Exception as e:
+            logger.error(f"Error fetching analyst recommendations: {e}")
+            return []
+    
+    async def get_analyst_performance(self, analyst_user_id: str) -> Dict[str, Any]:
+        """
+        Get performance stats for an analyst.
+        
+        Args:
+            analyst_user_id: Analyst's Supabase UUID
+            
+        Returns:
+            Performance stats
+        """
+        try:
+            result = self.supabase.table("performance") \
+                .select("*") \
+                .eq("user_id", analyst_user_id) \
+                .limit(1) \
+                .execute()
+            
+            if result.data and len(result.data) > 0:
+                return result.data[0]
+            return {}
+            
+        except Exception as e:
+            logger.error(f"Error fetching analyst performance: {e}")
+            return {}
     
     # =========================================================================
     # Health Check

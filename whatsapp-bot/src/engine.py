@@ -178,6 +178,11 @@ class MessageEngine:
             await self._handle_show_recommendations(phone, user_id, show_closed=True)
             return
         
+        # Check for admin track command
+        if text_lower in ("track", "track position", "track positions", "analyst", "team performance"):
+            await self._handle_admin_track_start(phone, user_id)
+            return
+        
         # Check for market close
         if text_lower in ("market close", "market", "today summary", "daily report", "summary"):
             await self._handle_market_close(phone, user_id)
@@ -304,6 +309,30 @@ class MessageEngine:
         elif reply_id == "menu_signup":
             await self._handle_signup(phone, user_id)
         
+        elif reply_id == "menu_track_analyst":
+            await self._handle_admin_track_start(phone, user_id)
+        
+        elif reply_id.startswith("team_"):
+            # Team selected in track analyst flow
+            team_id = reply_id.replace("team_", "")
+            await self._handle_team_selected(phone, user_id, team_id)
+        
+        elif reply_id.startswith("analyst_"):
+            # Analyst selected in track analyst flow
+            analyst_id = reply_id.replace("analyst_", "")
+            await self._handle_analyst_selected(phone, user_id, analyst_id)
+        
+        elif reply_id == "track_all_org":
+            await self._handle_track_all_organization(phone, user_id)
+        
+        elif reply_id.startswith("analyst_status_"):
+            # View OPEN/CLOSED for analyst
+            parts = reply_id.replace("analyst_status_", "").split("_", 1)
+            if len(parts) == 2:
+                status = parts[0].upper()  # OPEN or CLOSED
+                analyst_id = parts[1]
+                await self._handle_show_analyst_recs(phone, user_id, analyst_id, status)
+        
         else:
             # Unknown interactive reply
             await self._send_fallback_help(phone)
@@ -346,63 +375,113 @@ class MessageEngine:
             # Check if account is linked to get AlphaBoard watchlist too
             account_status = await self.ab_client.get_user_account_status(user_id)
             ab_watchlist = []
+            price_alerts = {}
             
             if account_status.get("is_linked") and account_status.get("supabase_user_id"):
                 ab_watchlist = await self.ab_client.get_alphaboard_watchlist(account_status["supabase_user_id"])
+                # Get price alerts for the user
+                alerts_list = await self.ab_client.get_user_price_alerts(user_id)
+                for alert in alerts_list:
+                    ticker = alert.get("ticker", "")
+                    if ticker:
+                        price_alerts[ticker] = alert
             
             # Combine watchlists (dedupe by ticker)
-            all_tickers = {}
+            all_items = {}
             
             # Add WhatsApp watchlist items
             for item in wa_watchlist:
                 ticker = item["ticker"]
-                all_tickers[ticker] = {
+                created_at = item.get("created_at", "")
+                date_str = created_at[:10] if created_at else ""
+                all_items[ticker] = {
                     "ticker": ticker,
                     "note": item.get("note", ""),
+                    "date_added": date_str,
+                    "entry_price": None,
+                    "current_price": None,
                     "source": "whatsapp"
                 }
             
-            # Add AlphaBoard watchlist items (with WATCHLIST status)
+            # Add AlphaBoard watchlist items (with WATCHLIST status) - has more data
             for item in ab_watchlist:
                 ticker = item.get("ticker", "")
-                if ticker and ticker not in all_tickers:
-                    all_tickers[ticker] = {
+                if not ticker:
+                    continue
+                entry_date = item.get("entry_date", "")
+                date_str = entry_date[:10] if entry_date else ""
+                entry_price = item.get("entry_price")
+                current_price = item.get("current_price")
+                
+                # Merge or add
+                if ticker in all_items:
+                    # Update with richer data from AlphaBoard
+                    all_items[ticker].update({
+                        "entry_price": entry_price,
+                        "current_price": current_price,
+                        "date_added": date_str or all_items[ticker]["date_added"]
+                    })
+                else:
+                    all_items[ticker] = {
                         "ticker": ticker,
-                        "note": item.get("thesis", "")[:50] if item.get("thesis") else "",
+                        "note": "",
+                        "date_added": date_str,
+                        "entry_price": entry_price,
+                        "current_price": current_price,
                         "source": "alphaboard"
                     }
             
-            if not all_tickers:
+            if not all_items:
                 await self.wa_client.send_text_message(
                     phone,
                     Templates.EMPTY_WATCHLIST
                 )
                 return
             
-            # Format watchlist
-            watchlist_items = list(all_tickers.values())
-            is_linked = account_status.get("is_linked", False)
+            # Format watchlist with new layout
+            watchlist_items = list(all_items.values())
             
-            if is_linked:
-                lines = ["📋 *Your AlphaBoard Watchlist*\n"]
-            else:
-                lines = ["📋 *Your Watchlist*\n"]
+            lines = ["📋 *Your Watchlist*\n"]
             
             for i, item in enumerate(watchlist_items[:15], 1):
                 ticker = item["ticker"]
-                note = item.get("note", "")
-                source_icon = "🌐" if item.get("source") == "alphaboard" else "📱"
-                line = f"{i}. *{ticker}* {source_icon}"
-                if note:
-                    line += f" – {note}"
+                date_added = item.get("date_added", "")
+                entry_price = item.get("entry_price")
+                current_price = item.get("current_price")
+                
+                # Build line: Ticker
+                line = f"{i}. *{ticker}*"
+                
+                # Date Added
+                if date_added:
+                    line += f"\n   📅 {date_added}"
+                
+                # Prices and Return
+                if entry_price and current_price:
+                    return_pct = ((current_price - entry_price) / entry_price) * 100
+                    ret_emoji = "🟢" if return_pct >= 0 else "🔴"
+                    line += f"\n   ₹{entry_price:,.0f} → ₹{current_price:,.0f} | {ret_emoji} {return_pct:+.1f}%"
+                elif entry_price:
+                    line += f"\n   Entry: ₹{entry_price:,.0f}"
+                elif current_price:
+                    line += f"\n   CMP: ₹{current_price:,.0f}"
+                
+                # Price Alert
+                if ticker in price_alerts:
+                    alert = price_alerts[ticker]
+                    alert_type = alert.get("alert_type", "")
+                    trigger_price = alert.get("trigger_price")
+                    if trigger_price:
+                        # BUY = alert when below, SELL = alert when above
+                        direction = "below" if alert_type == "BUY" else "above"
+                        line += f"\n   🔔 {direction} ₹{float(trigger_price):,.0f}"
+                
                 lines.append(line)
             
             if len(watchlist_items) > 15:
                 lines.append(f"\n... and {len(watchlist_items) - 15} more")
             
-            if is_linked:
-                lines.append("\n📱 = Added via WhatsApp | 🌐 = From AlphaBoard")
-            lines.append("\n💡 Send \"add TCS - note\" to add more stocks.")
+            lines.append("\n💡 *add TCS* to add | *alert TCS* to set price alert")
             
             await self.wa_client.send_text_message(phone, "\n".join(lines))
             
@@ -1063,6 +1142,328 @@ class MessageEngine:
         except Exception as e:
             logger.error(f"Error unlinking account: {e}")
             await self._send_error_message(phone)
+    
+    # =========================================================================
+    # Admin Tracking Handlers
+    # =========================================================================
+    
+    async def _handle_admin_track_start(self, phone: str, user_id: str) -> None:
+        """Handle admin track command - check if user is admin and show options."""
+        try:
+            admin_status = await self.ab_client.check_user_is_admin(user_id)
+            
+            if not admin_status.get("is_admin"):
+                reason = admin_status.get("reason", "You need admin/manager access")
+                await self.wa_client.send_text_message(
+                    phone,
+                    f"🔒 *Admin Access Required*\n\n"
+                    f"This feature is only available to organization admins.\n"
+                    f"Reason: {reason}\n\n"
+                    f"Contact your organization manager for access."
+                )
+                return
+            
+            org_id = admin_status.get("organization_id")
+            
+            if not org_id:
+                await self.wa_client.send_text_message(
+                    phone,
+                    "⚠️ You don't seem to be part of an organization yet.\n"
+                    "Please set up your organization in the AlphaBoard web app first."
+                )
+                return
+            
+            # Store org_id in conversation state
+            state_manager.start_flow(
+                user_id,
+                ConversationFlow.TRACK_ANALYST,
+                {"organization_id": org_id, "admin_user_id": admin_status.get("user_id")}
+            )
+            
+            # Get teams in organization
+            teams = await self.ab_client.get_organization_teams(org_id)
+            
+            if teams:
+                # Show team selection
+                sections = [{
+                    "title": "Select Team",
+                    "rows": [
+                        {
+                            "id": f"team_{team['id']}",
+                            "title": team["name"][:24],
+                            "description": (team.get("description") or "View team analysts")[:72]
+                        }
+                        for team in teams[:10]
+                    ]
+                }]
+                
+                # Add "All Organization" option
+                sections[0]["rows"].insert(0, {
+                    "id": "track_all_org",
+                    "title": "📊 All Analysts",
+                    "description": "View all analysts in organization"
+                })
+                
+                await self.wa_client.send_interactive_list(
+                    phone,
+                    body_text="📈 *Analyst Performance Tracking*\n\nSelect a team to view analyst positions or choose 'All Analysts' to see everyone.",
+                    button_text="Select Team",
+                    sections=sections,
+                    header_text="Track Positions"
+                )
+            else:
+                # No teams, show all members
+                await self._handle_track_all_organization(phone, user_id)
+                
+        except Exception as e:
+            logger.error(f"Error starting admin track: {e}")
+            await self._send_error_message(phone)
+    
+    async def _handle_team_selected(self, phone: str, user_id: str, team_id: str) -> None:
+        """Handle team selection in track flow."""
+        try:
+            context = state_manager.get_context(user_id)
+            
+            if context.flow != ConversationFlow.TRACK_ANALYST:
+                await self._send_fallback_help(phone)
+                return
+            
+            # Get team members
+            members = await self.ab_client.get_team_members(team_id)
+            
+            if not members:
+                await self.wa_client.send_text_message(
+                    phone,
+                    "📭 No analysts found in this team."
+                )
+                state_manager.cancel_flow(user_id)
+                return
+            
+            # Store team_id
+            state_manager.advance_step(user_id, {"team_id": team_id})
+            
+            # Show analyst selection
+            sections = [{
+                "title": "Select Analyst",
+                "rows": [
+                    {
+                        "id": f"analyst_{member['user_id']}",
+                        "title": (member.get("full_name") or member.get("username") or "Unknown")[:24],
+                        "description": f"Role: {member.get('role', 'analyst')}"[:72]
+                    }
+                    for member in members[:10]
+                ]
+            }]
+            
+            await self.wa_client.send_interactive_list(
+                phone,
+                body_text="👤 *Select Analyst*\n\nChoose an analyst to view their positions.",
+                button_text="Select Analyst",
+                sections=sections,
+                header_text="Team Analysts"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error handling team selection: {e}")
+            await self._send_error_message(phone)
+    
+    async def _handle_track_all_organization(self, phone: str, user_id: str) -> None:
+        """Show all analysts in organization."""
+        try:
+            context = state_manager.get_context(user_id)
+            org_id = context.data.get("organization_id")
+            
+            if not org_id:
+                # Try to get org_id again
+                admin_status = await self.ab_client.check_user_is_admin(user_id)
+                org_id = admin_status.get("organization_id")
+            
+            if not org_id:
+                await self.wa_client.send_text_message(
+                    phone,
+                    "⚠️ Organization not found. Please try again."
+                )
+                return
+            
+            members = await self.ab_client.get_organization_members(org_id)
+            
+            if not members:
+                await self.wa_client.send_text_message(
+                    phone,
+                    "📭 No analysts found in your organization."
+                )
+                state_manager.cancel_flow(user_id)
+                return
+            
+            # Show all analysts
+            sections = [{
+                "title": "All Analysts",
+                "rows": [
+                    {
+                        "id": f"analyst_{member['id']}",
+                        "title": (member.get("full_name") or member.get("username") or "Unknown")[:24],
+                        "description": f"Role: {member.get('role', 'analyst')}"[:72]
+                    }
+                    for member in members[:10]
+                ]
+            }]
+            
+            await self.wa_client.send_interactive_list(
+                phone,
+                body_text=f"👥 *Organization Analysts* ({len(members)})\n\nSelect an analyst to view their positions.",
+                button_text="Select Analyst",
+                sections=sections,
+                header_text="All Analysts"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error showing all organization analysts: {e}")
+            await self._send_error_message(phone)
+    
+    async def _handle_analyst_selected(self, phone: str, user_id: str, analyst_id: str) -> None:
+        """Handle analyst selection - show position type options."""
+        try:
+            context = state_manager.get_context(user_id)
+            state_manager.advance_step(user_id, {"analyst_id": analyst_id})
+            
+            # Show OPEN/CLOSED selection
+            await self.wa_client.send_interactive_buttons(
+                phone,
+                body_text="📊 *Select Position Type*\n\nWhat positions do you want to view?",
+                buttons=[
+                    {"id": f"analyst_status_OPEN_{analyst_id}", "title": "📈 Open Positions"},
+                    {"id": f"analyst_status_CLOSED_{analyst_id}", "title": "📉 Closed (History)"},
+                    {"id": f"analyst_status_ALL_{analyst_id}", "title": "📋 All Positions"}
+                ]
+            )
+            
+        except Exception as e:
+            logger.error(f"Error handling analyst selection: {e}")
+            await self._send_error_message(phone)
+    
+    async def _handle_show_analyst_recs(
+        self,
+        phone: str,
+        user_id: str,
+        analyst_id: str,
+        status: str
+    ) -> None:
+        """Show analyst recommendations in detailed format."""
+        try:
+            # Get analyst profile
+            profile_result = self.ab_client.supabase.table("profiles") \
+                .select("username, full_name") \
+                .eq("id", analyst_id) \
+                .limit(1) \
+                .execute()
+            
+            analyst_name = "Analyst"
+            if profile_result.data and len(profile_result.data) > 0:
+                profile = profile_result.data[0]
+                analyst_name = profile.get("full_name") or profile.get("username") or "Analyst"
+            
+            # Get recommendations
+            status_filter = None if status == "ALL" else status
+            recs = await self.ab_client.get_analyst_recommendations_detailed(analyst_id, status_filter)
+            
+            # Get performance stats
+            performance = await self.ab_client.get_analyst_performance(analyst_id)
+            
+            if not recs:
+                await self.wa_client.send_text_message(
+                    phone,
+                    f"📭 *{analyst_name}*\n\nNo {status.lower()} positions found."
+                )
+                state_manager.cancel_flow(user_id)
+                return
+            
+            # Build detailed output
+            status_label = "All" if status == "ALL" else status.capitalize()
+            lines = [
+                f"👤 *{analyst_name}* - {status_label} Positions\n"
+            ]
+            
+            # Performance summary if available
+            if performance:
+                win_rate = performance.get("win_rate")
+                total_return = performance.get("total_return_pct")
+                total_ideas = performance.get("total_ideas")
+                
+                perf_line = ""
+                if total_ideas:
+                    perf_line += f"📊 {total_ideas} ideas"
+                if win_rate is not None:
+                    perf_line += f" | Win: {win_rate:.0f}%"
+                if total_return is not None:
+                    emoji = "🟢" if total_return >= 0 else "🔴"
+                    perf_line += f" | {emoji} {total_return:+.1f}%"
+                if perf_line:
+                    lines.append(perf_line + "\n")
+            
+            lines.append("─" * 20 + "\n")
+            
+            # Table header explanation
+            lines.append("*Entry* → *CMP* | *Return* | *Target*\n")
+            
+            for i, rec in enumerate(recs[:15], 1):
+                ticker = rec.get("ticker", "???")
+                action = rec.get("action", "BUY")
+                entry_price = rec.get("entry_price")
+                current_price = rec.get("current_price")
+                target_price = rec.get("target_price")
+                return_pct = rec.get("return_pct")
+                entry_date = rec.get("entry_date", "")[:10]  # YYYY-MM-DD
+                rec_status = rec.get("status", "OPEN")
+                
+                # Action emoji
+                action_emoji = "🟢" if action == "BUY" else "🔴" if action == "SELL" else "👀"
+                
+                # Build line
+                line = f"{i}. {action_emoji} *{action} {ticker}*"
+                
+                # Date
+                if entry_date:
+                    line += f"\n   📅 {entry_date}"
+                
+                # Prices
+                if entry_price:
+                    line += f"\n   ₹{entry_price:,.0f}"
+                    if current_price:
+                        line += f" → ₹{current_price:,.0f}"
+                
+                # Return
+                if return_pct is not None:
+                    ret_emoji = "🟢" if return_pct >= 0 else "🔴"
+                    line += f" | {ret_emoji} {return_pct:+.1f}%"
+                elif rec.get("final_return_pct") is not None:
+                    final_ret = rec["final_return_pct"]
+                    ret_emoji = "🟢" if final_ret >= 0 else "🔴"
+                    line += f" | {ret_emoji} {final_ret:+.1f}% (final)"
+                
+                # Target
+                if target_price:
+                    line += f"\n   🎯 Target: ₹{target_price:,.0f}"
+                
+                # Status indicator for closed
+                if rec_status == "CLOSED":
+                    exit_price = rec.get("exit_price")
+                    if exit_price:
+                        line += f"\n   ❌ Exited @ ₹{exit_price:,.0f}"
+                
+                lines.append(line + "\n")
+            
+            if len(recs) > 15:
+                lines.append(f"\n... and {len(recs) - 15} more positions")
+            
+            # End flow
+            state_manager.cancel_flow(user_id)
+            
+            await self.wa_client.send_text_message(phone, "\n".join(lines))
+            
+        except Exception as e:
+            logger.error(f"Error showing analyst recs: {e}")
+            await self._send_error_message(phone)
+            state_manager.cancel_flow(user_id)
     
     # =========================================================================
     # Helper Methods

@@ -18,6 +18,7 @@ class ConversationFlow(Enum):
     ADD_RECOMMENDATION = "add_recommendation"
     ADD_WATCHLIST = "add_watchlist"
     SET_ALERT = "set_alert"
+    TRACK_ANALYST = "track_analyst"
 
 
 @dataclass

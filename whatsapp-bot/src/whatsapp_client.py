@@ -431,6 +431,11 @@ class WhatsAppClient:
                         "description": "Link to AlphaBoard web app"
                     },
                     {
+                        "id": "menu_track_analyst",
+                        "title": "📊 Track Analyst",
+                        "description": "Admin: View team performance"
+                    },
+                    {
                         "id": "menu_help",
                         "title": "❓ Help & Commands",
                         "description": "See available commands"
