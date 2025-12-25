@@ -97,14 +97,18 @@ async def handle_webhook(
                 # Process messages
                 if value.messages:
                     for message in value.messages:
+                        logger.info(f"Processing message from {message.from_phone[:6]}***, type={message.type}")
                         parsed = parse_incoming_message(message, phone_number_id)
                         if parsed:
+                            logger.info(f"Parsed message: type={parsed.message_type}, text={parsed.text_body[:50] if parsed.text_body else 'N/A'}")
                             # Process message in background to return 200 quickly
                             background_tasks.add_task(
                                 process_message_async,
                                 parsed,
                                 settings
                             )
+                        else:
+                            logger.warning(f"Failed to parse message of type: {message.type}")
         
         return WebhookResponse()
         
@@ -114,12 +118,12 @@ async def handle_webhook(
         return WebhookResponse()
 
 
-def parse_incoming_message(message: dict, phone_number_id: str) -> Optional[ParsedMessage]:
+def parse_incoming_message(message, phone_number_id: str) -> Optional[ParsedMessage]:
     """
     Parse incoming WhatsApp message into normalized format.
     
     Args:
-        message: Raw message dict from webhook
+        message: WhatsAppMessage Pydantic model or dict from webhook
         phone_number_id: Phone number ID from metadata
         
     Returns:
@@ -127,11 +131,24 @@ def parse_incoming_message(message: dict, phone_number_id: str) -> Optional[Pars
     """
     try:
         from datetime import datetime
+        from .schemas import WhatsAppMessage
         
-        message_type = message.get("type", "")
-        sender_phone = message.get("from", "")
-        timestamp_str = message.get("timestamp", "")
-        message_id = message.get("id", "")
+        # Handle both Pydantic model and dict
+        if isinstance(message, WhatsAppMessage):
+            message_type = message.type
+            sender_phone = message.from_phone
+            timestamp_str = message.timestamp
+            message_id = message.message_id
+            text_obj = message.text
+            interactive_obj = message.interactive
+        else:
+            # Fallback for dict (shouldn't happen but just in case)
+            message_type = message.get("type", "")
+            sender_phone = message.get("from", "")
+            timestamp_str = message.get("timestamp", "")
+            message_id = message.get("id", "")
+            text_obj = message.get("text")
+            interactive_obj = message.get("interactive")
         
         # Parse timestamp
         try:
@@ -141,7 +158,10 @@ def parse_incoming_message(message: dict, phone_number_id: str) -> Optional[Pars
         
         # Parse based on message type
         if message_type == "text":
-            text_body = message.get("text", {}).get("body", "")
+            if text_obj:
+                text_body = text_obj.body if hasattr(text_obj, 'body') else text_obj.get("body", "")
+            else:
+                text_body = ""
             return ParsedMessage(
                 sender_phone=sender_phone,
                 message_type="text",
@@ -152,38 +172,51 @@ def parse_incoming_message(message: dict, phone_number_id: str) -> Optional[Pars
             )
         
         elif message_type == "interactive":
-            interactive = message.get("interactive", {})
-            interactive_type = interactive.get("type", "")
-            
-            if interactive_type == "button_reply":
-                reply = interactive.get("button_reply", {})
-                return ParsedMessage(
-                    sender_phone=sender_phone,
-                    message_type="interactive_button",
-                    interactive_id=reply.get("id", ""),
-                    interactive_title=reply.get("title", ""),
-                    phone_number_id=phone_number_id,
-                    timestamp=timestamp,
-                    raw_message_id=message_id
-                )
-            
-            elif interactive_type == "list_reply":
-                reply = interactive.get("list_reply", {})
-                return ParsedMessage(
-                    sender_phone=sender_phone,
-                    message_type="interactive_list",
-                    interactive_id=reply.get("id", ""),
-                    interactive_title=reply.get("title", ""),
-                    phone_number_id=phone_number_id,
-                    timestamp=timestamp,
-                    raw_message_id=message_id
-                )
+            if interactive_obj:
+                if hasattr(interactive_obj, 'type'):
+                    # Pydantic model
+                    interactive_type = interactive_obj.type
+                    button_reply = interactive_obj.button_reply
+                    list_reply = interactive_obj.list_reply
+                else:
+                    # Dict
+                    interactive_type = interactive_obj.get("type", "")
+                    button_reply = interactive_obj.get("button_reply")
+                    list_reply = interactive_obj.get("list_reply")
+                
+                if interactive_type == "button_reply" and button_reply:
+                    reply_id = button_reply.id if hasattr(button_reply, 'id') else button_reply.get("id", "")
+                    reply_title = button_reply.title if hasattr(button_reply, 'title') else button_reply.get("title", "")
+                    return ParsedMessage(
+                        sender_phone=sender_phone,
+                        message_type="interactive_button",
+                        interactive_id=reply_id,
+                        interactive_title=reply_title,
+                        phone_number_id=phone_number_id,
+                        timestamp=timestamp,
+                        raw_message_id=message_id
+                    )
+                
+                elif interactive_type == "list_reply" and list_reply:
+                    reply_id = list_reply.id if hasattr(list_reply, 'id') else list_reply.get("id", "")
+                    reply_title = list_reply.title if hasattr(list_reply, 'title') else list_reply.get("title", "")
+                    return ParsedMessage(
+                        sender_phone=sender_phone,
+                        message_type="interactive_list",
+                        interactive_id=reply_id,
+                        interactive_title=reply_title,
+                        phone_number_id=phone_number_id,
+                        timestamp=timestamp,
+                        raw_message_id=message_id
+                    )
         
         logger.debug(f"Unsupported message type: {message_type}")
         return None
         
     except Exception as e:
         logger.error(f"Error parsing message: {e}")
+        import traceback
+        traceback.print_exc()
         return None
 
 

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlphaBoard</title>
+  <script>
+    // Immediate 404 handler - runs before React loads
+    // If the server returns a 404 HTML page, this script will redirect to index.html
+    // so React Router can handle the routing client-side
+    (function () {
+      // Check if we're on a route that might cause 404
+      const path = window.location.pathname;
+      const isStaticAsset = /\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|json|html)$/i.test(path);
+
+      // If not root, not index.html, and not a static asset, check for 404
+      if (path !== '/' && path !== '/index.html' && !isStaticAsset) {
+        // Try to detect if we got a 404 page
+        // If document.body contains "Not Found" or similar, redirect to index.html
+        const check404 = () => {
+          const bodyText = document.body ? document.body.innerText.toLowerCase() : '';
+          const is404Page = bodyText.includes('not found') ||
+            bodyText.includes('404') ||
+            document.title.toLowerCase().includes('not found');
+
+          if (is404Page) {
+            // Redirect to index.html with the original path
+            // React Router will then handle the routing
+            const search = window.location.search;
+            const hash = window.location.hash;
+            window.location.replace('/index.html' + search + hash);
+          }
+        };
+
+        // Check immediately and after a short delay
+        check404();
+        setTimeout(check404, 100);
+      }
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+  <script>
+    // Register service worker for offline and routing support
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {
+          // Service worker registration failed, that's okay
+        });
+      });
+    }
+  </script>
+</body>
+
+</html>

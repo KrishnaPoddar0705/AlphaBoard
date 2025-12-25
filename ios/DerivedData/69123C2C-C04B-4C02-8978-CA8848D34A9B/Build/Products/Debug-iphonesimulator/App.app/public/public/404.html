@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AlphaBoard</title>
+  <script>
+    // Immediate redirect: If 404.html is served, redirect to index.html
+    // This ensures React Router can handle the routing client-side
+    (function() {
+      const currentPath = window.location.pathname;
+      const search = window.location.search;
+      const hash = window.location.hash;
+      
+      // Redirect to index.html - React Router will handle the routing
+      // Use replace to avoid adding to history
+      if (currentPath !== '/index.html' && currentPath !== '/') {
+        window.location.replace('/index.html' + search + hash);
+      }
+    })();
+  </script>
+</head>
+
+<body>
+  <div id="root">
+    <div style="display: flex; align-items: center; justify-content: center; height: 100vh; font-family: system-ui; color: #666;">
+      <div style="text-align: center;">
+        <p>Redirecting...</p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
+</html>
+

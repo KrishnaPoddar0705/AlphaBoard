@@ -29,6 +29,9 @@ class WhatsAppInteractive(BaseModel):
     type: str  # "button_reply" or "list_reply"
     button_reply: Optional[WhatsAppInteractiveReply] = None
     list_reply: Optional[WhatsAppInteractiveReply] = None
+    
+    class Config:
+        extra = "ignore"
 
 
 class WhatsAppMessage(BaseModel):
@@ -42,18 +45,25 @@ class WhatsAppMessage(BaseModel):
     
     class Config:
         populate_by_name = True
+        extra = "ignore"  # Ignore extra fields like context, errors, etc.
 
 
 class WhatsAppContact(BaseModel):
     """Contact information from WhatsApp."""
     wa_id: str
     profile: Optional[Dict[str, Any]] = None
+    
+    class Config:
+        extra = "ignore"  # Ignore extra fields from WhatsApp
 
 
 class WhatsAppMetadata(BaseModel):
     """Metadata from WhatsApp webhook."""
     display_phone_number: str
     phone_number_id: str
+    
+    class Config:
+        extra = "ignore"
 
 
 class WhatsAppValue(BaseModel):
@@ -62,6 +72,11 @@ class WhatsAppValue(BaseModel):
     metadata: WhatsAppMetadata
     contacts: Optional[List[WhatsAppContact]] = None
     messages: Optional[List[WhatsAppMessage]] = None
+    statuses: Optional[List[Dict[str, Any]]] = None  # Message status updates
+    errors: Optional[List[Dict[str, Any]]] = None
+    
+    class Config:
+        extra = "ignore"
 
 
 class WhatsAppChange(BaseModel):
