@@ -85,16 +85,26 @@ async def verify_link_code(
                 phone = result.get("phone")
                 if phone:
                     # Get user's name from profiles if available
+                    # Need to translate Clerk ID to Supabase UUID first
                     username = "there"
                     try:
-                        profile_result = ab_client.supabase.table("profiles") \
-                            .select("username, full_name") \
-                            .eq("id", request.supabase_user_id) \
+                        # Look up Supabase UUID from clerk_user_mapping
+                        mapping_result = ab_client.supabase.table("clerk_user_mapping") \
+                            .select("supabase_user_id") \
+                            .eq("clerk_user_id", request.supabase_user_id) \
+                            .single() \
                             .execute()
                         
-                        if profile_result.data and len(profile_result.data) > 0:
-                            profile = profile_result.data[0]
-                            username = profile.get("full_name") or profile.get("username") or "there"
+                        if mapping_result.data:
+                            actual_user_id = mapping_result.data.get("supabase_user_id")
+                            profile_result = ab_client.supabase.table("profiles") \
+                                .select("username, full_name") \
+                                .eq("id", actual_user_id) \
+                                .execute()
+                            
+                            if profile_result.data and len(profile_result.data) > 0:
+                                profile = profile_result.data[0]
+                                username = profile.get("full_name") or profile.get("username") or "there"
                     except Exception as profile_err:
                         logger.warning(f"Could not fetch profile for confirmation: {profile_err}")
                         # Continue with generic greeting
@@ -166,20 +176,29 @@ async def get_account_status(
         if result.data and len(result.data) > 0:
             user = result.data[0]
             
-            # Fetch profile separately
+            # Fetch profile separately - need to translate Clerk ID to Supabase UUID first
             username = None
             full_name = None
             try:
-                profile_result = ab_client.supabase.table("profiles") \
-                    .select("username, full_name") \
-                    .eq("id", supabase_user_id) \
+                # Look up Supabase UUID from clerk_user_mapping
+                mapping_result = ab_client.supabase.table("clerk_user_mapping") \
+                    .select("supabase_user_id") \
+                    .eq("clerk_user_id", supabase_user_id) \
+                    .single() \
                     .execute()
-                if profile_result.data and len(profile_result.data) > 0:
-                    profile = profile_result.data[0]
-                    username = profile.get("username")
-                    full_name = profile.get("full_name")
-            except Exception:
-                pass  # Ignore profile fetch errors
+                
+                if mapping_result.data:
+                    actual_user_id = mapping_result.data.get("supabase_user_id")
+                    profile_result = ab_client.supabase.table("profiles") \
+                        .select("username, full_name") \
+                        .eq("id", actual_user_id) \
+                        .execute()
+                    if profile_result.data and len(profile_result.data) > 0:
+                        profile = profile_result.data[0]
+                        username = profile.get("username")
+                        full_name = profile.get("full_name")
+            except Exception as profile_err:
+                logger.warning(f"Could not fetch profile for {supabase_user_id}: {profile_err}")
             
             return AccountStatusResponse(
                 is_linked=True,

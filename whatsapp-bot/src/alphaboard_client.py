@@ -316,15 +316,19 @@ class AlphaBoardClient:
             is_linked = supabase_user_id is not None and supabase_user_id != ""
             
             # Fetch profile separately if linked
+            # Need to translate Clerk ID to Supabase UUID first
             profile = {}
             if is_linked:
                 try:
-                    profile_result = self.supabase.table("profiles") \
-                        .select("id, username, full_name") \
-                        .eq("id", supabase_user_id) \
-                        .execute()
-                    if profile_result.data and len(profile_result.data) > 0:
-                        profile = profile_result.data[0]
+                    # Look up Supabase UUID from clerk_user_mapping
+                    actual_user_id = await self._get_supabase_uuid(supabase_user_id)
+                    if actual_user_id:
+                        profile_result = self.supabase.table("profiles") \
+                            .select("id, username, full_name") \
+                            .eq("id", actual_user_id) \
+                            .execute()
+                        if profile_result.data and len(profile_result.data) > 0:
+                            profile = profile_result.data[0]
                 except Exception as profile_err:
                     logger.warning(f"Could not fetch profile: {profile_err}")
             
@@ -348,12 +352,18 @@ class AlphaBoardClient:
         
         Args:
             whatsapp_user_id: WhatsApp user ID
-            supabase_user_id: Supabase/AlphaBoard user ID
+            supabase_user_id: Clerk user ID (will be translated to Supabase UUID)
             
         Returns:
             Number of items synced
         """
         try:
+            # Translate Clerk user ID to Supabase UUID
+            actual_user_id = await self._get_supabase_uuid(supabase_user_id)
+            if not actual_user_id:
+                logger.warning(f"Cannot sync watchlist: No Supabase UUID found for Clerk user ID: {supabase_user_id}")
+                return 0
+            
             # Get WhatsApp watchlist
             watchlist = await self.list_watchlist(whatsapp_user_id)
             
@@ -368,7 +378,7 @@ class AlphaBoardClient:
                 # Check if already exists in AlphaBoard recommendations
                 existing = self.supabase.table("recommendations") \
                     .select("id") \
-                    .eq("user_id", supabase_user_id) \
+                    .eq("user_id", actual_user_id) \
                     .eq("ticker", ticker) \
                     .eq("status", "WATCHLIST") \
                     .execute()
@@ -378,7 +388,7 @@ class AlphaBoardClient:
                 
                 # Add to AlphaBoard as WATCH item
                 rec_data = {
-                    "user_id": supabase_user_id,
+                    "user_id": actual_user_id,
                     "ticker": ticker,
                     "action": "WATCH",
                     "status": "WATCHLIST",
@@ -402,12 +412,18 @@ class AlphaBoardClient:
         
         Args:
             whatsapp_user_id: WhatsApp user ID
-            supabase_user_id: Supabase/AlphaBoard user ID
+            supabase_user_id: Clerk user ID (will be translated to Supabase UUID)
             
         Returns:
             Number of recommendations synced
         """
         try:
+            # Translate Clerk user ID to Supabase UUID
+            actual_user_id = await self._get_supabase_uuid(supabase_user_id)
+            if not actual_user_id:
+                logger.warning(f"Cannot sync recommendations: No Supabase UUID found for Clerk user ID: {supabase_user_id}")
+                return 0
+            
             # Get WhatsApp recommendations
             recs = await self.list_recent_recommendations(whatsapp_user_id, days=365)
             
@@ -422,7 +438,7 @@ class AlphaBoardClient:
                 
                 # Add to AlphaBoard
                 rec_data = {
-                    "user_id": supabase_user_id,
+                    "user_id": actual_user_id,
                     "ticker": ticker,
                     "action": "BUY",
                     "status": "OPEN",
@@ -453,15 +469,21 @@ class AlphaBoardClient:
         Get user's AlphaBoard watchlist (recommendations with WATCHLIST status).
         
         Args:
-            supabase_user_id: Supabase/AlphaBoard user ID
+            supabase_user_id: Clerk user ID (will be translated to Supabase UUID)
             
         Returns:
             List of watchlist items from AlphaBoard
         """
         try:
+            # First, translate Clerk user ID to Supabase UUID via clerk_user_mapping
+            actual_user_id = await self._get_supabase_uuid(supabase_user_id)
+            if not actual_user_id:
+                logger.warning(f"No Supabase UUID found for Clerk user ID: {supabase_user_id}")
+                return []
+            
             result = self.supabase.table("recommendations") \
                 .select("*") \
-                .eq("user_id", supabase_user_id) \
+                .eq("user_id", actual_user_id) \
                 .eq("status", "WATCHLIST") \
                 .order("entry_date", desc=True) \
                 .execute()
@@ -477,15 +499,21 @@ class AlphaBoardClient:
         Get user's AlphaBoard recommendations (OPEN status).
         
         Args:
-            supabase_user_id: Supabase/AlphaBoard user ID
+            supabase_user_id: Clerk user ID (will be translated to Supabase UUID)
             
         Returns:
             List of open recommendations from AlphaBoard
         """
         try:
+            # First, translate Clerk user ID to Supabase UUID via clerk_user_mapping
+            actual_user_id = await self._get_supabase_uuid(supabase_user_id)
+            if not actual_user_id:
+                logger.warning(f"No Supabase UUID found for Clerk user ID: {supabase_user_id}")
+                return []
+            
             result = self.supabase.table("recommendations") \
                 .select("*") \
-                .eq("user_id", supabase_user_id) \
+                .eq("user_id", actual_user_id) \
                 .eq("status", "OPEN") \
                 .order("entry_date", desc=True) \
                 .execute()
@@ -495,6 +523,31 @@ class AlphaBoardClient:
         except Exception as e:
             logger.error(f"Error fetching AlphaBoard recommendations: {e}")
             return []
+    
+    async def _get_supabase_uuid(self, clerk_user_id: str) -> Optional[str]:
+        """
+        Translate a Clerk user ID to the corresponding Supabase UUID.
+        
+        Args:
+            clerk_user_id: Clerk user ID (e.g., 'user_36bj63lgP94TGXgDg0DnkW7qvOx')
+            
+        Returns:
+            Supabase UUID string or None if not found
+        """
+        try:
+            result = self.supabase.table("clerk_user_mapping") \
+                .select("supabase_user_id") \
+                .eq("clerk_user_id", clerk_user_id) \
+                .single() \
+                .execute()
+            
+            if result.data:
+                return result.data.get("supabase_user_id")
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error looking up Supabase UUID for Clerk ID {clerk_user_id}: {e}")
+            return None
     
     # =========================================================================
     # Watchlist Operations
