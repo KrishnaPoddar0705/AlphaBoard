@@ -92,11 +92,11 @@ async def verify_link_code(
                         mapping_result = ab_client.supabase.table("clerk_user_mapping") \
                             .select("supabase_user_id") \
                             .eq("clerk_user_id", request.supabase_user_id) \
-                            .single() \
+                            .limit(1) \
                             .execute()
                         
-                        if mapping_result.data:
-                            actual_user_id = mapping_result.data.get("supabase_user_id")
+                        if mapping_result.data and len(mapping_result.data) > 0:
+                            actual_user_id = mapping_result.data[0].get("supabase_user_id")
                             profile_result = ab_client.supabase.table("profiles") \
                                 .select("username, full_name") \
                                 .eq("id", actual_user_id) \
@@ -184,11 +184,11 @@ async def get_account_status(
                 mapping_result = ab_client.supabase.table("clerk_user_mapping") \
                     .select("supabase_user_id") \
                     .eq("clerk_user_id", supabase_user_id) \
-                    .single() \
+                    .limit(1) \
                     .execute()
                 
-                if mapping_result.data:
-                    actual_user_id = mapping_result.data.get("supabase_user_id")
+                if mapping_result.data and len(mapping_result.data) > 0:
+                    actual_user_id = mapping_result.data[0].get("supabase_user_id")
                     profile_result = ab_client.supabase.table("profiles") \
                         .select("username, full_name") \
                         .eq("id", actual_user_id) \

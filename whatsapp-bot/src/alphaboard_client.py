@@ -538,11 +538,13 @@ class AlphaBoardClient:
             result = self.supabase.table("clerk_user_mapping") \
                 .select("supabase_user_id") \
                 .eq("clerk_user_id", clerk_user_id) \
-                .single() \
+                .limit(1) \
                 .execute()
             
-            if result.data:
-                return result.data.get("supabase_user_id")
+            if result.data and len(result.data) > 0:
+                return result.data[0].get("supabase_user_id")
+            
+            logger.warning(f"No clerk_user_mapping found for Clerk ID: {clerk_user_id}")
             return None
             
         except Exception as e:
