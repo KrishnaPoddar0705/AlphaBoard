@@ -958,32 +958,31 @@ class MessageEngine:
                 )
                 return
             
-            # Format news summary with links
+            # Format news - headline is the clickable link
             lines = [f"📰 *Latest News: {ticker}*\n"]
             
             for article in news[:5]:
-                headline = article.get("headline", "")[:80]
-                summary = article.get("summary_tldr", "")[:120]
+                headline = article.get("headline", "")[:70]
+                summary = article.get("summary_tldr", "")[:100]
                 sentiment = article.get("sentiment", "neutral")
                 source_url = article.get("source_url", "")
-                source = article.get("source", "")
                 
                 emoji = "🟢" if sentiment == "positive" else "🔴" if sentiment == "negative" else "⚪"
                 
-                # Format: emoji headline
-                lines.append(f"{emoji} *{headline}*")
-                
-                # Summary on new line
-                if summary:
-                    lines.append(f"_{summary}_")
-                
-                # Link on separate line
+                # Put URL right after headline so it becomes clickable
                 if source_url:
-                    lines.append(f"🔗 {source_url}\n")
+                    lines.append(f"{emoji} {source_url}")
+                    lines.append(f"*{headline}*")
+                else:
+                    lines.append(f"{emoji} *{headline}*")
+                
+                # Brief summary
+                if summary:
+                    lines.append(f"_{summary}_\n")
                 else:
                     lines.append("")
             
-            lines.append(f"🎧 Send *podcast {ticker}* for audio summary")
+            lines.append(f"🎧 *podcast {ticker}* for audio summary")
             
             await self.wa_client.send_text_message(phone, "\n".join(lines))
             

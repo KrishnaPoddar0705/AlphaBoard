@@ -190,34 +190,39 @@ class WhatsAppClient:
             API response
         """
         try:
+            logger.info(f"Uploading audio ({len(audio_bytes)} bytes) for {to[:6]}***")
+            
             # Step 1: Upload media to WhatsApp
             upload_url = f"https://graph.facebook.com/{self.api_version}/{self.phone_number_id}/media"
             
             # Use multipart form data for upload
-            import io
+            # WhatsApp expects: file, type, messaging_product
             files = {
-                'file': (filename, io.BytesIO(audio_bytes), 'audio/mpeg'),
+                'file': (filename, audio_bytes, 'audio/mpeg'),
+                'type': (None, 'audio/mpeg'),
                 'messaging_product': (None, 'whatsapp'),
-                'type': (None, 'audio/mpeg')
             }
             
             # Need to use a different request without JSON content-type
             upload_response = await self._client.post(
                 upload_url,
                 files=files,
-                headers={"Authorization": f"Bearer {self.access_token}"}
+                headers={"Authorization": f"Bearer {self.access_token}"},
+                timeout=60.0
             )
             
             if upload_response.status_code != 200:
                 logger.error(f"Media upload failed: {upload_response.status_code} - {upload_response.text}")
-                return {"error": True, "message": "Upload failed"}
+                return {"error": True, "message": f"Upload failed: {upload_response.text[:200]}"}
             
             upload_data = upload_response.json()
             media_id = upload_data.get("id")
             
             if not media_id:
-                logger.error("No media_id in upload response")
-                return {"error": True, "message": "No media ID"}
+                logger.error(f"No media_id in upload response: {upload_data}")
+                return {"error": True, "message": "No media ID returned"}
+            
+            logger.info(f"Media uploaded successfully, ID: {media_id}")
             
             # Step 2: Send audio using media_id
             payload = {
@@ -230,11 +235,18 @@ class WhatsAppClient:
                 }
             }
             
-            logger.info(f"Sending uploaded audio to {to[:6]}***")
-            return await self._send_request(payload)
+            logger.info(f"Sending audio message to {to[:6]}***")
+            result = await self._send_request(payload)
+            
+            if result.get("error"):
+                logger.error(f"Failed to send audio: {result}")
+            else:
+                logger.info(f"Audio sent successfully")
+            
+            return result
             
         except Exception as e:
-            logger.error(f"Error uploading and sending audio: {e}")
+            logger.error(f"Error uploading and sending audio: {e}", exc_info=True)
             return {"error": True, "message": str(e)}
     
     async def send_interactive_buttons(
