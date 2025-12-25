@@ -366,9 +366,10 @@ class WhatsAppClient:
         Returns:
             API response
         """
+        # WhatsApp limit: max 10 rows total across all sections
         sections = [
             {
-                "title": "Add Ideas",
+                "title": "Quick Actions",
                 "rows": [
                     {
                         "id": "menu_add_recommendation",
@@ -378,17 +379,17 @@ class WhatsAppClient:
                     {
                         "id": "menu_add_watchlist",
                         "title": "👀 Add to Watchlist",
-                        "description": "Track a stock without buying"
+                        "description": "Track a stock"
                     },
                     {
                         "id": "menu_set_alert",
                         "title": "🔔 Set Price Alert",
-                        "description": "Get notified at target price"
+                        "description": "Get price notifications"
                     }
                 ]
             },
             {
-                "title": "My Portfolio",
+                "title": "Portfolio & Market",
                 "rows": [
                     {
                         "id": "menu_my_recs",
@@ -399,26 +400,11 @@ class WhatsAppClient:
                         "id": "menu_show_watchlist",
                         "title": "📋 My Watchlist",
                         "description": "View tracked stocks"
-                    }
-                ]
-            },
-            {
-                "title": "Market Info",
-                "rows": [
-                    {
-                        "id": "menu_market_close",
-                        "title": "📉 Market Summary",
-                        "description": "Today's market close"
                     },
                     {
                         "id": "menu_news",
-                        "title": "📰 Latest News",
-                        "description": "Get stock news"
-                    },
-                    {
-                        "id": "menu_podcast",
-                        "title": "🎧 Request Podcast",
-                        "description": "Generate audio summary"
+                        "title": "📰 News & Podcast",
+                        "description": "Type: news TCS"
                     }
                 ]
             },
@@ -428,17 +414,17 @@ class WhatsAppClient:
                     {
                         "id": "menu_connect_account",
                         "title": "🔗 Connect Account",
-                        "description": "Link to AlphaBoard web app"
+                        "description": "Link to web app"
                     },
                     {
                         "id": "menu_track_analyst",
                         "title": "📊 Track Analyst",
-                        "description": "Admin: View team performance"
+                        "description": "Admin only"
                     },
                     {
                         "id": "menu_help",
-                        "title": "❓ Help & Commands",
-                        "description": "See available commands"
+                        "title": "❓ Help",
+                        "description": "Commands & tips"
                     }
                 ]
             }

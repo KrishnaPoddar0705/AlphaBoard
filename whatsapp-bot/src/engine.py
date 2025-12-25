@@ -1184,7 +1184,7 @@ class MessageEngine:
             teams = await self.ab_client.get_organization_teams(org_id)
             
             if teams:
-                # Show team selection
+                # Show team selection (max 9 teams + 1 "All" = 10 rows limit)
                 sections = [{
                     "title": "Select Team",
                     "rows": [
@@ -1193,15 +1193,15 @@ class MessageEngine:
                             "title": team["name"][:24],
                             "description": (team.get("description") or "View team analysts")[:72]
                         }
-                        for team in teams[:10]
+                        for team in teams[:9]
                     ]
                 }]
                 
-                # Add "All Organization" option
+                # Add "All Organization" option at the top
                 sections[0]["rows"].insert(0, {
                     "id": "track_all_org",
                     "title": "📊 All Analysts",
-                    "description": "View all analysts in organization"
+                    "description": "View all analysts in org"
                 })
                 
                 await self.wa_client.send_interactive_list(
