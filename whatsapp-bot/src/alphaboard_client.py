@@ -241,9 +241,9 @@ class AlphaBoardClient:
             Result dict with success status and WhatsApp user info
         """
         try:
-            # Find the code
+            # Find the code (without join since FK was removed)
             result = self.supabase.table("whatsapp_link_codes") \
-                .select("*, whatsapp_users(*)") \
+                .select("*") \
                 .eq("code", code.upper()) \
                 .is_("used_at", "null") \
                 .gte("expires_at", datetime.utcnow().isoformat()) \
@@ -254,6 +254,14 @@ class AlphaBoardClient:
             
             link_record = result.data[0]
             whatsapp_user_id = link_record["whatsapp_user_id"]
+            
+            # Fetch the WhatsApp user separately
+            wa_user_result = self.supabase.table("whatsapp_users") \
+                .select("*") \
+                .eq("id", whatsapp_user_id) \
+                .execute()
+            
+            wa_user = wa_user_result.data[0] if wa_user_result.data else {}
             
             # Mark code as used
             self.supabase.table("whatsapp_link_codes") \
@@ -276,7 +284,7 @@ class AlphaBoardClient:
             return {
                 "success": True,
                 "whatsapp_user_id": whatsapp_user_id,
-                "phone": link_record.get("whatsapp_users", {}).get("phone", "")
+                "phone": wa_user.get("phone", "")
             }
             
         except Exception as e:
@@ -294,8 +302,9 @@ class AlphaBoardClient:
             Status dict with is_linked, profile info, etc.
         """
         try:
+            # Fetch WhatsApp user (without join since FK was removed)
             result = self.supabase.table("whatsapp_users") \
-                .select("*, profiles:supabase_user_id(id, username, full_name)") \
+                .select("*") \
                 .eq("id", whatsapp_user_id) \
                 .execute()
             
@@ -303,14 +312,27 @@ class AlphaBoardClient:
                 return {"is_linked": False, "user_found": False}
             
             user = result.data[0]
-            is_linked = user.get("supabase_user_id") is not None
-            profile = user.get("profiles") or {}
+            supabase_user_id = user.get("supabase_user_id")
+            is_linked = supabase_user_id is not None and supabase_user_id != ""
+            
+            # Fetch profile separately if linked
+            profile = {}
+            if is_linked:
+                try:
+                    profile_result = self.supabase.table("profiles") \
+                        .select("id, username, full_name") \
+                        .eq("id", supabase_user_id) \
+                        .execute()
+                    if profile_result.data and len(profile_result.data) > 0:
+                        profile = profile_result.data[0]
+                except Exception as profile_err:
+                    logger.warning(f"Could not fetch profile: {profile_err}")
             
             return {
                 "is_linked": is_linked,
                 "user_found": True,
                 "whatsapp_user_id": whatsapp_user_id,
-                "supabase_user_id": user.get("supabase_user_id"),
+                "supabase_user_id": supabase_user_id,
                 "username": profile.get("username"),
                 "full_name": profile.get("full_name"),
                 "phone": user.get("phone")

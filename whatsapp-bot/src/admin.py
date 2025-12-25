@@ -85,15 +85,19 @@ async def verify_link_code(
                 phone = result.get("phone")
                 if phone:
                     # Get user's name from profiles if available
-                    profile_result = ab_client.supabase.table("profiles") \
-                        .select("username, full_name") \
-                        .eq("id", request.supabase_user_id) \
-                        .execute()
-                    
                     username = "there"
-                    if profile_result.data and len(profile_result.data) > 0:
-                        profile = profile_result.data[0]
-                        username = profile.get("full_name") or profile.get("username") or "there"
+                    try:
+                        profile_result = ab_client.supabase.table("profiles") \
+                            .select("username, full_name") \
+                            .eq("id", request.supabase_user_id) \
+                            .execute()
+                        
+                        if profile_result.data and len(profile_result.data) > 0:
+                            profile = profile_result.data[0]
+                            username = profile.get("full_name") or profile.get("username") or "there"
+                    except Exception as profile_err:
+                        logger.warning(f"Could not fetch profile for confirmation: {profile_err}")
+                        # Continue with generic greeting
                     
                     confirmation_msg = (
                         f"🎉 *Account Connected Successfully!*\n\n"
@@ -153,20 +157,35 @@ async def get_account_status(
     try:
         ab_client = AlphaBoardClient(settings)
         
-        # Find WhatsApp user linked to this Supabase user
+        # Find WhatsApp user linked to this Supabase user (without FK join)
         result = ab_client.supabase.table("whatsapp_users") \
-            .select("phone, display_name, profiles:supabase_user_id(username, full_name)") \
+            .select("phone, display_name") \
             .eq("supabase_user_id", supabase_user_id) \
             .execute()
         
         if result.data and len(result.data) > 0:
             user = result.data[0]
-            profile = user.get("profiles") or {}
+            
+            # Fetch profile separately
+            username = None
+            full_name = None
+            try:
+                profile_result = ab_client.supabase.table("profiles") \
+                    .select("username, full_name") \
+                    .eq("id", supabase_user_id) \
+                    .execute()
+                if profile_result.data and len(profile_result.data) > 0:
+                    profile = profile_result.data[0]
+                    username = profile.get("username")
+                    full_name = profile.get("full_name")
+            except Exception:
+                pass  # Ignore profile fetch errors
+            
             return AccountStatusResponse(
                 is_linked=True,
                 whatsapp_phone=user.get("phone"),
-                username=profile.get("username"),
-                full_name=profile.get("full_name")
+                username=username or user.get("display_name"),
+                full_name=full_name
             )
         
         return AccountStatusResponse(is_linked=False)
