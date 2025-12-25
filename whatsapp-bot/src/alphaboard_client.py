@@ -535,6 +535,35 @@ class AlphaBoardClient:
             logger.error(f"Error fetching AlphaBoard recommendations: {e}")
             return []
     
+    async def get_alphaboard_closed_recommendations(self, supabase_user_id: str) -> List[Dict[str, Any]]:
+        """
+        Get user's closed AlphaBoard recommendations (History).
+        
+        Args:
+            supabase_user_id: Clerk user ID (will be translated to Supabase UUID)
+            
+        Returns:
+            List of closed recommendations from AlphaBoard
+        """
+        try:
+            actual_user_id = await self._get_supabase_uuid(supabase_user_id)
+            if not actual_user_id:
+                return []
+            
+            result = self.supabase.table("recommendations") \
+                .select("*") \
+                .eq("user_id", actual_user_id) \
+                .eq("status", "CLOSED") \
+                .order("exit_date", desc=True) \
+                .limit(20) \
+                .execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching closed recommendations: {e}")
+            return []
+    
     async def _get_supabase_uuid(self, clerk_user_id: str) -> Optional[str]:
         """
         Translate a Clerk user ID to the corresponding Supabase UUID.
@@ -748,7 +777,7 @@ class AlphaBoardClient:
                             "action": action_upper,
                             "entry_price": price,
                             "status": status,
-                            "thesis": f"{thesis} (via WhatsApp)" if thesis else "Added via WhatsApp",
+                            "thesis": thesis if thesis else None,
                             "entry_date": datetime.utcnow().isoformat()
                         }
                         
@@ -1037,6 +1066,112 @@ class AlphaBoardClient:
         except Exception as e:
             logger.error(f"Error toggling subscription: {e}")
             raise AlphaBoardClientError(f"Database error: {str(e)}")
+    
+    # =========================================================================
+    # Price Alert Operations
+    # =========================================================================
+    
+    async def create_price_alert(
+        self,
+        whatsapp_user_id: str,
+        ticker: str,
+        alert_type: str,
+        trigger_price: float,
+        message: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Create a price alert for a stock.
+        
+        Args:
+            whatsapp_user_id: WhatsApp user ID
+            ticker: Stock ticker
+            alert_type: 'above' or 'below'
+            trigger_price: Price at which to trigger alert
+            message: Optional custom message
+            
+        Returns:
+            Created alert dict with sync status
+        """
+        ticker_upper = ticker.upper().strip()
+        alert_type_lower = alert_type.lower()
+        
+        if alert_type_lower not in ("above", "below"):
+            alert_type_lower = "below"
+        
+        try:
+            result = {"synced_to_app": False, "ticker": ticker_upper, "alert_type": alert_type_lower}
+            
+            # Check if user is linked
+            account_status = await self.get_user_account_status(whatsapp_user_id)
+            
+            if account_status.get("is_linked") and account_status.get("supabase_user_id"):
+                clerk_user_id = account_status["supabase_user_id"]
+                actual_user_id = await self._get_supabase_uuid(clerk_user_id)
+                
+                if actual_user_id:
+                    # Create alert in public.price_alerts
+                    alert_data = {
+                        "user_id": actual_user_id,
+                        "ticker": ticker_upper,
+                        "alert_type": alert_type_lower,
+                        "trigger_price": trigger_price,
+                        "message": message or f"Price alert: {ticker_upper} {alert_type_lower} ₹{trigger_price:,.0f}",
+                        "is_read": False,
+                        "email_sent": False
+                    }
+                    
+                    alert_result = self.supabase.table("price_alerts") \
+                        .insert(alert_data) \
+                        .execute()
+                    
+                    if alert_result.data and len(alert_result.data) > 0:
+                        result["synced_to_app"] = True
+                        result["alert_id"] = alert_result.data[0].get("id")
+                        logger.info(f"Created price alert for {ticker_upper} {alert_type_lower} {trigger_price}")
+            
+            if not result.get("synced_to_app"):
+                logger.warning(f"Could not sync price alert - user not linked")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"Error creating price alert: {e}")
+            raise AlphaBoardClientError(f"Database error: {str(e)}")
+    
+    async def get_user_price_alerts(self, whatsapp_user_id: str) -> List[Dict[str, Any]]:
+        """
+        Get all active price alerts for a user.
+        
+        Args:
+            whatsapp_user_id: WhatsApp user ID
+            
+        Returns:
+            List of price alerts
+        """
+        try:
+            account_status = await self.get_user_account_status(whatsapp_user_id)
+            
+            if not account_status.get("is_linked") or not account_status.get("supabase_user_id"):
+                return []
+            
+            clerk_user_id = account_status["supabase_user_id"]
+            actual_user_id = await self._get_supabase_uuid(clerk_user_id)
+            
+            if not actual_user_id:
+                return []
+            
+            result = self.supabase.table("price_alerts") \
+                .select("*") \
+                .eq("user_id", actual_user_id) \
+                .eq("is_read", False) \
+                .order("created_at", desc=True) \
+                .execute()
+            
+            return result.data if result.data else []
+            
+        except Exception as e:
+            logger.error(f"Error fetching price alerts: {e}")
+            return []
     
     # =========================================================================
     # Health Check

@@ -137,6 +137,106 @@ class WhatsAppClient:
         logger.info(f"Sending template '{template_name}' to {to[:6]}***")
         return await self._send_request(payload)
     
+    async def send_audio_from_url(
+        self,
+        to: str,
+        audio_url: str,
+        caption: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Send an audio file from URL to a WhatsApp user.
+        
+        Args:
+            to: Recipient phone number in E.164 format
+            audio_url: Public URL of the audio file (must be accessible)
+            caption: Optional caption for the audio
+            
+        Returns:
+            API response
+        """
+        audio_payload = {
+            "link": audio_url
+        }
+        
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to,
+            "type": "audio",
+            "audio": audio_payload
+        }
+        
+        logger.info(f"Sending audio from URL to {to[:6]}***")
+        return await self._send_request(payload)
+    
+    async def upload_and_send_audio(
+        self,
+        to: str,
+        audio_bytes: bytes,
+        filename: str = "podcast.mp3",
+        caption: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Upload audio bytes and send to WhatsApp user.
+        Uses WhatsApp Media API to upload first, then send.
+        
+        Args:
+            to: Recipient phone number in E.164 format
+            audio_bytes: Audio file bytes (MP3)
+            filename: Filename for the upload
+            caption: Optional caption
+            
+        Returns:
+            API response
+        """
+        try:
+            # Step 1: Upload media to WhatsApp
+            upload_url = f"https://graph.facebook.com/{self.api_version}/{self.phone_number_id}/media"
+            
+            # Use multipart form data for upload
+            import io
+            files = {
+                'file': (filename, io.BytesIO(audio_bytes), 'audio/mpeg'),
+                'messaging_product': (None, 'whatsapp'),
+                'type': (None, 'audio/mpeg')
+            }
+            
+            # Need to use a different request without JSON content-type
+            upload_response = await self._client.post(
+                upload_url,
+                files=files,
+                headers={"Authorization": f"Bearer {self.access_token}"}
+            )
+            
+            if upload_response.status_code != 200:
+                logger.error(f"Media upload failed: {upload_response.status_code} - {upload_response.text}")
+                return {"error": True, "message": "Upload failed"}
+            
+            upload_data = upload_response.json()
+            media_id = upload_data.get("id")
+            
+            if not media_id:
+                logger.error("No media_id in upload response")
+                return {"error": True, "message": "No media ID"}
+            
+            # Step 2: Send audio using media_id
+            payload = {
+                "messaging_product": "whatsapp",
+                "recipient_type": "individual",
+                "to": to,
+                "type": "audio",
+                "audio": {
+                    "id": media_id
+                }
+            }
+            
+            logger.info(f"Sending uploaded audio to {to[:6]}***")
+            return await self._send_request(payload)
+            
+        except Exception as e:
+            logger.error(f"Error uploading and sending audio: {e}")
+            return {"error": True, "message": str(e)}
+    
     async def send_interactive_buttons(
         self,
         to: str,
@@ -441,22 +541,21 @@ class WhatsAppClient:
         """
         Send confirmation after adding recommendation.
         """
-        price_str = f" @ ₹{price:,.2f}" if price else ""
+        price_str = f" @ ₹{price:,.0f}" if price else ""
         
         lines = [
-            f"📈 *Logged your recommendation:*\n",
-            f"*{action.upper()} {ticker}*{price_str}",
+            f"✅ *{action.upper()} {ticker}*{price_str}",
         ]
         
         if thesis:
-            lines.append(f"\n📝 _{thesis}_")
-        
-        lines.append("\n✅ We'll track this in AlphaBoard!")
+            lines.append(f"📝 _{thesis}_")
         
         if synced_to_app:
-            lines.append("🌐 Synced to your AlphaBoard web app")
+            lines.append("\n🌐 Synced to AlphaBoard app!")
+            lines.append("📊 Type *my recs* to see all positions")
         else:
-            lines.append("\n💡 Connect your account to sync: type *connect*")
+            lines.append("\n⚠️ Not synced to web app")
+            lines.append("💡 Type *connect* to link your account")
         
         return await self.send_text_message(to, "\n".join(lines))
     

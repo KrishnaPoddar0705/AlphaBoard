@@ -169,8 +169,13 @@ class MessageEngine:
             return
         
         # Check for recommendations view
-        if text_lower in ("my recs", "my recommendations", "recommendations", "show recs"):
-            await self._handle_show_recommendations(phone, user_id)
+        if text_lower in ("my recs", "my recommendations", "recommendations", "show recs", "recs"):
+            await self._handle_show_recommendations(phone, user_id, show_closed=False)
+            return
+        
+        # Check for history/closed positions view
+        if text_lower in ("history", "closed", "closed recs", "pnl", "full pnl"):
+            await self._handle_show_recommendations(phone, user_id, show_closed=True)
             return
         
         # Check for market close
@@ -513,7 +518,7 @@ class MessageEngine:
         self, phone: str, user_id: str, text: str, context
     ) -> None:
         """Handle input during alert flow."""
-        # Parse alert: "TCS below 3400" or "RELIANCE above 1600"
+        # Parse alert: "TCS below 3400" or "RELIANCE above 1600" or "TCS @ 3400"
         alert_pattern = re.compile(
             r'^([A-Z0-9.]+)\s*(below|above|@|at)?\s*(\d+(?:\.\d+)?)$',
             re.IGNORECASE
@@ -528,20 +533,46 @@ class MessageEngine:
             return
         
         ticker = match.group(1).upper()
-        direction = (match.group(2) or "at").lower()
+        direction_raw = (match.group(2) or "below").lower()
         price = float(match.group(3))
+        
+        # Map @ and at to "below" (alert when price drops to level)
+        direction = "below" if direction_raw in ("@", "at", "below") else "above"
         
         state_manager.complete_flow(user_id)
         
-        # For now, add as watchlist with note about alert
-        alert_note = f"Alert: {direction} ₹{price:,.0f}"
-        await self._handle_add_watchlist(phone, user_id, ticker, alert_note)
-        
-        await self.wa_client.send_text_message(
-            phone,
-            f"🔔 Alert set for *{ticker}* {direction} ₹{price:,.0f}\n\n"
-            f"We'll notify you when the price hits your target!"
-        )
+        try:
+            # Create price alert in the proper table
+            result = await self.ab_client.create_price_alert(
+                whatsapp_user_id=user_id,
+                ticker=ticker,
+                alert_type=direction,
+                trigger_price=price
+            )
+            
+            if result.get("synced_to_app"):
+                await self.wa_client.send_text_message(
+                    phone,
+                    f"🔔 *Alert Created!*\n\n"
+                    f"*{ticker}* {direction} ₹{price:,.0f}\n\n"
+                    f"✅ Synced to AlphaBoard app\n"
+                    f"📲 You'll get a WhatsApp message when triggered!"
+                )
+            else:
+                await self.wa_client.send_text_message(
+                    phone,
+                    f"⚠️ *Alert Saved Locally*\n\n"
+                    f"*{ticker}* {direction} ₹{price:,.0f}\n\n"
+                    f"❌ Not synced - please *connect* your account first\n"
+                    f"Type *connect* to link your AlphaBoard account."
+                )
+                
+        except AlphaBoardClientError as e:
+            logger.error(f"Error creating alert: {e}")
+            await self.wa_client.send_text_message(
+                phone,
+                f"❌ Couldn't create alert. Please try again."
+            )
     
     def _parse_ticker_price(self, text: str) -> Optional[Tuple[str, Optional[float]]]:
         """Parse ticker and optional price from text."""
@@ -607,89 +638,125 @@ class MessageEngine:
         """Handle add recommendation command (legacy, defaults to BUY)."""
         await self._handle_add_recommendation_complete(phone, user_id, ticker, "BUY", price, thesis)
     
-    async def _handle_show_recommendations(self, phone: str, user_id: str) -> None:
-        """Handle show recommendations command. Shows both WhatsApp and AlphaBoard recs if linked."""
+    async def _handle_show_recommendations(self, phone: str, user_id: str, show_closed: bool = False) -> None:
+        """Handle show recommendations command. Shows OPEN recs by default."""
         try:
-            # Get WhatsApp recommendations
-            wa_recs = await self.ab_client.list_recent_recommendations(user_id, days=90)
-            
-            # Check if account is linked to get AlphaBoard recommendations too
+            # Check if account is linked to get AlphaBoard recommendations
             account_status = await self.ab_client.get_user_account_status(user_id)
             ab_recs = []
             
             if account_status.get("is_linked") and account_status.get("supabase_user_id"):
-                ab_recs = await self.ab_client.get_alphaboard_recommendations(account_status["supabase_user_id"])
+                if show_closed:
+                    ab_recs = await self.ab_client.get_alphaboard_closed_recommendations(
+                        account_status["supabase_user_id"]
+                    )
+                else:
+                    ab_recs = await self.ab_client.get_alphaboard_recommendations(
+                        account_status["supabase_user_id"]
+                    )
             
-            # Combine recommendations
+            # Also get WhatsApp-only recs if not showing closed
+            wa_recs = []
+            if not show_closed:
+                wa_recs = await self.ab_client.list_recent_recommendations(user_id, days=90)
+            
+            # Combine recommendations (dedupe by ticker for open positions)
             all_recs = []
             seen_tickers = set()
             
-            # Add AlphaBoard recs first (more authoritative)
+            # Add AlphaBoard recs first (has current_price)
             for rec in ab_recs:
                 ticker = rec.get("ticker", "")
                 if ticker:
                     seen_tickers.add(ticker)
+                    entry_price = rec.get("entry_price")
+                    current_price = rec.get("current_price")
+                    
+                    # Calculate return
+                    return_pct = None
+                    if entry_price and current_price and entry_price > 0:
+                        return_pct = ((current_price - entry_price) / entry_price) * 100
+                    
                     all_recs.append({
                         "ticker": ticker,
-                        "price": rec.get("entry_price"),
-                        "thesis": rec.get("thesis", ""),
+                        "entry_price": entry_price,
+                        "current_price": current_price,
+                        "return_pct": return_pct,
+                        "final_return_pct": rec.get("final_return_pct"),
                         "status": rec.get("status", "OPEN"),
-                        "source": "alphaboard",
-                        "action": rec.get("action", "BUY")
+                        "action": rec.get("action", "BUY"),
+                        "entry_date": rec.get("entry_date")
                     })
             
-            # Add WhatsApp recs that aren't already in AlphaBoard
-            for rec in wa_recs:
-                ticker = rec.get("ticker", "")
-                if ticker and ticker not in seen_tickers:
-                    all_recs.append({
-                        "ticker": ticker,
-                        "price": rec.get("price"),
-                        "thesis": rec.get("thesis", ""),
-                        "status": "OPEN",
-                        "source": "whatsapp",
-                        "action": "BUY"
-                    })
+            # Add WhatsApp recs that aren't synced (only for open view)
+            if not show_closed:
+                for rec in wa_recs:
+                    ticker = rec.get("ticker", "")
+                    if ticker and ticker not in seen_tickers:
+                        all_recs.append({
+                            "ticker": ticker,
+                            "entry_price": rec.get("price"),
+                            "current_price": None,
+                            "return_pct": None,
+                            "status": "OPEN",
+                            "action": rec.get("action", "BUY"),
+                            "source": "whatsapp_only"
+                        })
             
             if not all_recs:
-                await self.wa_client.send_text_message(
-                    phone,
-                    "📊 You haven't added any recommendations yet.\n\n"
-                    "💡 Try: *rec INFY @ 1650 long term bet*"
-                )
+                if show_closed:
+                    await self.wa_client.send_text_message(
+                        phone,
+                        "📊 No closed positions yet.\n\nType *my recs* to see open positions."
+                    )
+                else:
+                    await self.wa_client.send_text_message(
+                        phone,
+                        "📊 No active recommendations.\n\n"
+                        "💡 Type *add* to create your first pick!"
+                    )
                 return
             
+            # Build formatted message
             is_linked = account_status.get("is_linked", False)
-            if is_linked:
-                lines = ["📊 *Your AlphaBoard Recommendations*\n"]
+            
+            if show_closed:
+                lines = ["📊 *Closed Positions (History)*\n"]
             else:
-                lines = ["📊 *Your Recent Recommendations*\n"]
+                lines = ["📊 *Active Recommendations*\n"]
             
             for i, rec in enumerate(all_recs[:10], 1):
                 ticker = rec["ticker"]
-                price = rec.get("price")
-                thesis = rec.get("thesis", "")
-                status = rec.get("status", "OPEN")
-                source_icon = "🌐" if rec.get("source") == "alphaboard" else "📱"
+                entry = rec.get("entry_price")
+                cmp = rec.get("current_price")
+                return_pct = rec.get("return_pct") or rec.get("final_return_pct")
+                action = rec.get("action", "BUY")
                 
-                # Status emoji
-                status_emoji = "🟢" if status == "OPEN" else "🔵" if status == "CLOSED" else "⚪"
+                # Format: BUY TICKER @ Entry | CMP | Return%
+                line = f"{i}. *{action} {ticker}*"
                 
-                line = f"{i}. {status_emoji} *{rec.get('action', 'BUY')} {ticker}* {source_icon}"
-                if price:
-                    line += f" @ ₹{price:,.0f}"
-                if thesis:
-                    line += f"\n   _{thesis[:50]}{'...' if len(thesis) > 50 else ''}_"
+                if entry:
+                    line += f"\n   Entry ₹{entry:,.0f}"
+                    if cmp:
+                        line += f" → CMP ₹{cmp:,.0f}"
+                    if return_pct is not None:
+                        sign = "+" if return_pct >= 0 else ""
+                        emoji = "🟢" if return_pct >= 0 else "🔴"
+                        line += f" | {emoji} {sign}{return_pct:.1f}%"
+                
+                # Note if not synced
+                if rec.get("source") == "whatsapp_only":
+                    line += "\n   _(not synced - connect account)_"
+                
                 lines.append(line)
             
             if len(all_recs) > 10:
-                lines.append(f"\n... and {len(all_recs) - 10} more")
+                lines.append(f"\n_...and {len(all_recs) - 10} more_")
             
-            if is_linked:
-                lines.append("\n📱 = Added via WhatsApp | 🌐 = From AlphaBoard")
-                lines.append("🟢 = Open | 🔵 = Closed")
-            
-            lines.append("\n💡 Send \"rec TCS @ 3500 thesis\" to add more.")
+            # Footer
+            if not show_closed:
+                lines.append("\n📜 Type *history* to see closed positions")
+            lines.append("➕ Type *add* to log a new recommendation")
             
             await self.wa_client.send_text_message(phone, "\n".join(lines))
             
@@ -711,34 +778,92 @@ class MessageEngine:
             )
     
     async def _handle_podcast_request(self, phone: str, user_id: str, topic: str) -> None:
-        """Handle podcast request command."""
+        """Handle podcast request command - generate and send audio."""
         try:
-            # Create podcast request
-            await self.ab_client.request_podcast(user_id, topic)
-            
             # Check if topic looks like a ticker
             if self.TICKER_PATTERN.match(topic):
                 ticker = topic.upper()
-                response = (
-                    f"🎧 *Podcast Request Queued*\n\n"
-                    f"We're generating a podcast for *{ticker}*.\n\n"
-                    f"You'll be notified when it's ready in AlphaBoard. "
-                    f"This usually takes 1-2 minutes."
+                
+                # Send "generating" message first
+                await self.wa_client.send_text_message(
+                    phone,
+                    f"🎧 *Generating podcast for {ticker}...*\n\n"
+                    f"This takes about 30 seconds. Please wait."
                 )
+                
+                # Get company name for the ticker
+                from .alphaboard_client import AlphaBoardClient
+                company_name = ticker.replace('.NS', '').replace('.BO', '')
+                
+                # Generate podcast via API
+                result = await self.ab_client.generate_podcast_via_api(ticker, company_name)
+                
+                if result.get("error"):
+                    await self.wa_client.send_text_message(
+                        phone,
+                        f"❌ Couldn't generate podcast for {ticker}. Please try again."
+                    )
+                    return
+                
+                # Get audio and script
+                audio_base64 = result.get("audioBase64")
+                script = result.get("script", "")
+                title = result.get("podcastTitle", f"Quick Take: {ticker}")
+                key_points = result.get("keyPoints", [])
+                
+                # Send script/summary first
+                summary_lines = [f"🎙️ *{title}*\n"]
+                if key_points:
+                    summary_lines.append("📝 *Key Points:*")
+                    for point in key_points[:3]:
+                        summary_lines.append(f"• {point}")
+                
+                await self.wa_client.send_text_message(phone, "\n".join(summary_lines))
+                
+                # Send audio if available
+                if audio_base64:
+                    import base64
+                    audio_bytes = base64.b64decode(audio_base64)
+                    
+                    # Upload and send audio
+                    audio_result = await self.wa_client.upload_and_send_audio(
+                        phone,
+                        audio_bytes,
+                        filename=f"{ticker}_podcast.mp3"
+                    )
+                    
+                    if audio_result.get("error"):
+                        logger.warning(f"Could not send audio: {audio_result}")
+                        await self.wa_client.send_text_message(
+                            phone,
+                            "⚠️ Audio couldn't be sent. Here's the script:\n\n"
+                            f"_{script[:500]}{'...' if len(script) > 500 else ''}_"
+                        )
+                else:
+                    # No audio, send script
+                    await self.wa_client.send_text_message(
+                        phone,
+                        f"📜 *Script:*\n\n_{script[:800]}{'...' if len(script) > 800 else ''}_"
+                    )
+                
+                # Log the request
+                await self.ab_client.request_podcast(user_id, ticker)
+                
             else:
-                response = (
-                    f"🎧 *Podcast Request Queued*\n\n"
-                    f"Topic: _{topic}_\n\n"
-                    f"You'll be notified when it's ready in AlphaBoard."
+                # Not a ticker - could be portfolio request
+                await self.wa_client.send_text_message(
+                    phone,
+                    f"🎧 To generate a podcast, send:\n\n"
+                    f"• *podcast TCS* - for a single stock\n"
+                    f"• *podcast portfolio* - for your full portfolio\n\n"
+                    f"Example: podcast RELIANCE"
                 )
             
-            await self.wa_client.send_text_message(phone, response)
-            
-        except AlphaBoardClientError as e:
-            logger.error(f"Error creating podcast request: {e}")
+        except Exception as e:
+            logger.error(f"Error generating podcast: {e}")
             await self.wa_client.send_text_message(
                 phone,
-                "❌ Couldn't queue podcast request. Please try again."
+                "❌ Couldn't generate podcast. Please try again later."
             )
     
     async def _handle_news_request(self, phone: str, user_id: str, ticker: str) -> None:
@@ -754,21 +879,32 @@ class MessageEngine:
                 )
                 return
             
-            # Format news summary
+            # Format news summary with links
             lines = [f"📰 *Latest News: {ticker}*\n"]
             
             for article in news[:5]:
-                headline = article.get("headline", "")[:100]
-                summary = article.get("summary_tldr", "")[:150]
+                headline = article.get("headline", "")[:80]
+                summary = article.get("summary_tldr", "")[:120]
                 sentiment = article.get("sentiment", "neutral")
+                source_url = article.get("source_url", "")
+                source = article.get("source", "")
                 
                 emoji = "🟢" if sentiment == "positive" else "🔴" if sentiment == "negative" else "⚪"
                 
+                # Format: emoji headline
                 lines.append(f"{emoji} *{headline}*")
+                
+                # Summary on new line
                 if summary:
-                    lines.append(f"_{summary}_\n")
+                    lines.append(f"_{summary}_")
+                
+                # Link on separate line
+                if source_url:
+                    lines.append(f"🔗 {source_url}\n")
+                else:
+                    lines.append("")
             
-            lines.append("💡 Send \"podcast " + ticker + "\" for an audio summary.")
+            lines.append(f"🎧 Send *podcast {ticker}* for audio summary")
             
             await self.wa_client.send_text_message(phone, "\n".join(lines))
             
