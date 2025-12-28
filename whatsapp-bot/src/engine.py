@@ -1453,22 +1453,102 @@ class MessageEngine:
                 state_manager.cancel_flow(user_id)
                 return
             
-            # Get recommendations
+            # Get recommendations - DIRECT query to public.recommendations
             status_filter = None if status == "ALL" else status
+            logger.info(f"Fetching recommendations with status filter: {status_filter}")
+            
+            # Try direct query first as fallback
             recs = await self.ab_client.get_analyst_recommendations_detailed(analyst_id, status_filter)
             
             logger.info(f"Retrieved {len(recs)} recommendations for analyst {analyst_id}")
+            
+            # If no results, try direct query without going through the method
+            if not recs:
+                logger.warning("No recommendations from method, trying direct query...")
+                try:
+                    # Ensure headers are set
+                    service_key = getattr(self.ab_client, '_service_key', None)
+                    if service_key and service_key.startswith("sb_secret_"):
+                        self.ab_client._ensure_headers_set(service_key)
+                    
+                    # Direct query to recommendations table
+                    direct_result = self.ab_client.supabase.table("recommendations") \
+                        .select("*") \
+                        .eq("user_id", analyst_id) \
+                        .order("entry_date", desc=True) \
+                        .limit(50) \
+                        .execute()
+                    
+                    if direct_result.data:
+                        logger.info(f"Direct query returned {len(direct_result.data)} recommendations")
+                        # Convert to expected format
+                        recs = []
+                        for rec in direct_result.data:
+                            # Apply status filter if needed
+                            if status_filter and rec.get("status") != status_filter:
+                                continue
+                            
+                            entry_price = rec.get("entry_price")
+                            current_price = rec.get("current_price")
+                            return_pct = None
+                            if entry_price and current_price and entry_price > 0:
+                                return_pct = ((current_price - entry_price) / entry_price) * 100
+                            
+                            recs.append({
+                                "ticker": rec.get("ticker"),
+                                "action": rec.get("action", "BUY"),
+                                "status": rec.get("status"),
+                                "entry_price": entry_price,
+                                "current_price": current_price,
+                                "target_price": rec.get("target_price"),
+                                "stop_loss": rec.get("stop_loss"),
+                                "entry_date": rec.get("entry_date"),
+                                "exit_date": rec.get("exit_date"),
+                                "exit_price": rec.get("exit_price"),
+                                "return_pct": return_pct,
+                                "final_return_pct": rec.get("final_return_pct"),
+                                "thesis": rec.get("thesis")
+                            })
+                        logger.info(f"Converted {len(recs)} recommendations after status filter")
+                except Exception as direct_error:
+                    logger.error(f"Direct query also failed: {direct_error}", exc_info=True)
             
             # Get performance stats
             performance = await self.ab_client.get_analyst_performance(analyst_id)
             
             if not recs:
                 status_label = status.lower() if status != "ALL" else "positions"
-                await self.wa_client.send_text_message(
-                    phone,
-                    f"📭 *{analyst_name}*\n\nNo {status_label} found.\n\n"
-                    f"This analyst may not have any {status_label} yet."
-                )
+                # Check if analyst has ANY recommendations
+                try:
+                    any_recs = self.ab_client.supabase.table("recommendations") \
+                        .select("status, ticker") \
+                        .eq("user_id", analyst_id) \
+                        .limit(5) \
+                        .execute()
+                    
+                    if any_recs.data:
+                        statuses = set([r.get("status") for r in any_recs.data])
+                        await self.wa_client.send_text_message(
+                            phone,
+                            f"📭 *{analyst_name}*\n\n"
+                            f"No {status_label} found.\n\n"
+                            f"Available statuses: {', '.join(statuses)}\n"
+                            f"Try selecting a different position type."
+                        )
+                    else:
+                        await self.wa_client.send_text_message(
+                            phone,
+                            f"📭 *{analyst_name}*\n\n"
+                            f"No recommendations found in database.\n\n"
+                            f"This analyst may not have created any positions yet."
+                        )
+                except Exception as check_error:
+                    logger.error(f"Error checking for any recommendations: {check_error}")
+                    await self.wa_client.send_text_message(
+                        phone,
+                        f"📭 *{analyst_name}*\n\nNo {status_label} found."
+                    )
+                
                 state_manager.cancel_flow(user_id)
                 return
             
@@ -1499,6 +1579,8 @@ class MessageEngine:
             
             # Table header explanation
             lines.append("*Entry* → *CMP* | *Return* | *Target*\n")
+            
+            logger.info(f"Building message for {len(recs)} recommendations")
             
             for i, rec in enumerate(recs[:15], 1):
                 ticker = rec.get("ticker", "???")
@@ -1550,14 +1632,23 @@ class MessageEngine:
             if len(recs) > 15:
                 lines.append(f"\n... and {len(recs) - 15} more positions")
             
-            # End flow
-            state_manager.cancel_flow(user_id)
+            # Send message FIRST, then cancel flow
+            message_text = "\n".join(lines)
+            logger.info(f"Sending recommendations message ({len(message_text)} chars)")
+            await self.wa_client.send_text_message(phone, message_text)
             
-            await self.wa_client.send_text_message(phone, "\n".join(lines))
+            # End flow AFTER sending message
+            state_manager.cancel_flow(user_id)
+            logger.info(f"Flow cancelled for user {user_id}")
             
         except Exception as e:
-            logger.error(f"Error showing analyst recs: {e}")
-            await self._send_error_message(phone)
+            logger.error(f"Error showing analyst recs: {e}", exc_info=True)
+            await self.wa_client.send_text_message(
+                phone,
+                f"❌ *Error*\n\nFailed to retrieve recommendations.\n\n"
+                f"Error: {str(e)[:100]}\n\n"
+                f"Please try again or contact support."
+            )
             state_manager.cancel_flow(user_id)
     
     # =========================================================================

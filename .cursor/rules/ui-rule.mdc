@@ -1,0 +1,50 @@
+---
+description: Mobile UI UX Design
+alwaysApply: false
+---
+PROJECT: AlphaBoard — stock-research and analyst recommendation dashboard
+
+Primary directive:
+- All UI and layout changes must be **mobile-first**, then scale upward.
+
+Development expectations:
+- Use React + TypeScript + TailwindCSS.
+- Respect existing design tokens, colors, and theme.
+- Conversions of tables → mobile cards MUST NOT break desktop views.
+- For responsive conversions:
+  - Use stacked vertical layout on `< md`
+  - Hide / collapse panels using `hidden md:block`
+  - Use tabs, accordions, or bottom sheets for secondary content
+
+Component rules:
+- Any UI refactor must remain **modular**:
+  - Extract `MobileNavBar`, `IdeaListCardMobile`, etc where needed.
+  - Never dump >300 LOC in a single component; break it up.
+
+Refactor rules:
+- Before large changes, Cursor must propose a plan and wait for approval.
+- Cursor must output:
+  - list of files it will change
+  - summary of UI UX improvements
+  - risk notes (if any)
+
+Diff formatting rules:
+- Use unified diff (`diff`) or copy-paste component replacements
+- Annotate lines you add/remove when unclear
+- Never hide important code changes
+
+Behavior rules:
+- Cursor must treat mobile UX as THE priority:
+  - shrink headers, remove wasted space
+  - ensure above-the-fold content shows key metrics immediately
+  - ensure interactive controls are thumb-reachable
+- Cursor must test viewport visually (via explanation) after changes:
+  - e.g., “On 390px width, result = no horizontal scroll”
+
+Forbidden:
+- No random rewrites or redesigns without approval
+- No new libraries added without explicit user permission
+- No altering backend logic / recommendation math
+
+If uncertain:
+- Cursor must ask: “Confirm before applying?” and wait.

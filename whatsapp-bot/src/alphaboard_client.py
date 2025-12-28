@@ -53,7 +53,7 @@ class AlphaBoardClient:
             headers=headers
         )
         
-            # Initialize Supabase client for direct DB access
+        # Initialize Supabase client for direct DB access
         # Using service role key to bypass RLS
         service_key = settings.SUPABASE_SERVICE_ROLE_KEY
         self._service_key = service_key  # Store for later use in queries
@@ -81,11 +81,11 @@ class AlphaBoardClient:
         # The Python client should automatically handle both JWT and new secret key formats
         try:
             # Create the client first
-            self.supabase: SupabaseClient = create_client(
-                settings.SUPABASE_URL,
-                service_key
-            )
-            
+        self.supabase: SupabaseClient = create_client(
+            settings.SUPABASE_URL,
+            service_key
+        )
+        
             # For new secret key format, we MUST manually set apikey header
             # The Supabase Python client doesn't automatically set it for sb_secret_ format
             if service_key.startswith("sb_secret_"):
@@ -220,7 +220,7 @@ class AlphaBoardClient:
     async def close(self):
         """Close the HTTP client."""
         if hasattr(self, '_http_client') and self._http_client:
-            await self._http_client.aclose()
+        await self._http_client.aclose()
     
     # =========================================================================
     # User Management
@@ -1442,9 +1442,9 @@ class AlphaBoardClient:
             profile_result = self.supabase.table("profiles") \
                 .select("id, username, role, organization_id") \
                 .eq("id", actual_user_id) \
-                .limit(1) \
-                .execute()
-            
+                    .limit(1) \
+                    .execute()
+                
             profile = {}
             profile_role = "analyst"
             if profile_result.data and len(profile_result.data) > 0:
@@ -1632,7 +1632,7 @@ class AlphaBoardClient:
             
             logger.info(f"Found analyst profile: {profile_check.data[0].get('username')}")
             
-            # Build query with explicit error handling
+            # Build query with explicit error handling - DIRECT query to public.recommendations
             result = None
             try:
                 # Store service_key for header patching
@@ -1647,22 +1647,44 @@ class AlphaBoardClient:
                     except:
                         pass
                 
-                # Ensure headers are set before query (for new secret format)
+                # CRITICAL: Ensure headers are set before EVERY query (for new secret format)
                 if service_key and service_key.startswith("sb_secret_"):
                     self._ensure_headers_set(service_key)
+                    logger.info("Headers ensured before recommendations query")
                 
-                query = self.supabase.table("recommendations") \
-                    .select("*") \
-                    .eq("user_id", analyst_user_id) \
-                    .order("entry_date", desc=True)
+                # Direct query to public.recommendations table
+                logger.info(f"Querying public.recommendations table for user_id={analyst_user_id}, status={status}")
                 
+                # Build query step by step for better debugging
+                base_query = self.supabase.table("recommendations")
+                select_query = base_query.select("*")
+                user_query = select_query.eq("user_id", analyst_user_id)
+                
+                # Apply status filter if provided
                 if status:
-                    query = query.eq("status", status)
+                    filtered_query = user_query.eq("status", status)
+                    logger.info(f"Filtering by status: {status}")
+                    ordered_query = filtered_query.order("entry_date", desc=True)
                 else:
-                    # If status is None (ALL), don't filter by status
-                    pass
+                    logger.info("No status filter - fetching all recommendations")
+                    ordered_query = user_query.order("entry_date", desc=True)
                 
-                result = query.limit(50).execute()  # Increased limit to get more results
+                # Limit results
+                final_query = ordered_query.limit(50)
+                
+                # Execute query
+                logger.info(f"Executing query: recommendations WHERE user_id={analyst_user_id} AND status={status if status else 'ALL'}")
+                result = final_query.execute()
+                
+                # Log result
+                if result.data:
+                    logger.info(f"✅ Query executed successfully, got {len(result.data)} recommendations")
+                    # Log sample data for debugging
+                    if len(result.data) > 0:
+                        sample = result.data[0]
+                        logger.info(f"Sample recommendation: ticker={sample.get('ticker')}, status={sample.get('status')}, user_id={sample.get('user_id')}")
+                else:
+                    logger.warning(f"⚠️ Query executed but returned no data")
                 
                 # Check for errors in the response
                 if hasattr(result, 'error') and result.error:
@@ -1686,12 +1708,12 @@ class AlphaBoardClient:
                     self._ensure_headers_set(service_key)
                     try:
                         # Retry with headers set
-                        query = self.supabase.table("recommendations") \
-                            .select("*") \
-                            .eq("user_id", analyst_user_id) \
-                            .order("entry_date", desc=True)
-                        if status:
-                            query = query.eq("status", status)
+            query = self.supabase.table("recommendations") \
+                .select("*") \
+                .eq("user_id", analyst_user_id) \
+                .order("entry_date", desc=True)
+            if status:
+                query = query.eq("status", status)
                         result = query.limit(50).execute()
                         logger.info(f"Retry query returned {len(result.data) if result.data else 0} recommendations")
                     except Exception as retry_error:
