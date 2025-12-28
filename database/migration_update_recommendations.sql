@@ -16,3 +16,4 @@ ALTER TABLE public.recommendations ADD CONSTRAINT recommendations_status_check C
 NOTIFY pgrst, 'reload schema';
 
 
+

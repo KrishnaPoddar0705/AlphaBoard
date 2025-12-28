@@ -180,6 +180,8 @@ class WhatsAppClient:
         Upload audio bytes and send to WhatsApp user.
         Uses WhatsApp Media API to upload first, then send.
         
+        Based on: https://developers.facebook.com/docs/whatsapp/cloud-api/reference/media
+        
         Args:
             to: Recipient phone number in E.164 format
             audio_bytes: Audio file bytes (MP3)
@@ -192,28 +194,36 @@ class WhatsAppClient:
         try:
             logger.info(f"Uploading audio ({len(audio_bytes)} bytes) for {to[:6]}***")
             
-            # Step 1: Upload media to WhatsApp
+            # Step 1: Upload media to WhatsApp Cloud API
             upload_url = f"https://graph.facebook.com/{self.api_version}/{self.phone_number_id}/media"
             
-            # Use multipart form data for upload
-            # WhatsApp expects: file, type, messaging_product
-            files = {
-                'file': (filename, audio_bytes, 'audio/mpeg'),
-                'type': (None, 'audio/mpeg'),
-                'messaging_product': (None, 'whatsapp'),
+            # Per WhatsApp docs: multipart/form-data with file, type, messaging_product
+            # Use data dict for form fields and files dict for file upload
+            data = {
+                'messaging_product': 'whatsapp',
+                'type': 'audio/mpeg'
             }
             
-            # Need to use a different request without JSON content-type
-            upload_response = await self._client.post(
-                upload_url,
-                files=files,
-                headers={"Authorization": f"Bearer {self.access_token}"},
-                timeout=60.0
-            )
+            files = {
+                'file': (filename, audio_bytes, 'audio/mpeg')
+            }
+            
+            # Create a fresh client for upload to avoid content-type conflicts
+            import httpx
+            async with httpx.AsyncClient(timeout=120.0) as upload_client:
+                upload_response = await upload_client.post(
+                    upload_url,
+                    data=data,
+                    files=files,
+                    headers={"Authorization": f"Bearer {self.access_token}"}
+                )
+            
+            logger.info(f"Upload response: {upload_response.status_code}")
             
             if upload_response.status_code != 200:
-                logger.error(f"Media upload failed: {upload_response.status_code} - {upload_response.text}")
-                return {"error": True, "message": f"Upload failed: {upload_response.text[:200]}"}
+                error_text = upload_response.text[:500]
+                logger.error(f"Media upload failed: {upload_response.status_code} - {error_text}")
+                return {"error": True, "message": f"Upload failed: {error_text}"}
             
             upload_data = upload_response.json()
             media_id = upload_data.get("id")
@@ -224,7 +234,7 @@ class WhatsAppClient:
             
             logger.info(f"Media uploaded successfully, ID: {media_id}")
             
-            # Step 2: Send audio using media_id
+            # Step 2: Send audio message using media_id
             payload = {
                 "messaging_product": "whatsapp",
                 "recipient_type": "individual",
@@ -241,7 +251,7 @@ class WhatsAppClient:
             if result.get("error"):
                 logger.error(f"Failed to send audio: {result}")
             else:
-                logger.info(f"Audio sent successfully")
+                logger.info(f"Audio sent successfully to {to[:6]}***")
             
             return result
             

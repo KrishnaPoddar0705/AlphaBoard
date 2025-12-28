@@ -901,29 +901,52 @@ class MessageEngine:
                 
                 # Send audio if available
                 if audio_base64:
-                    import base64
-                    audio_bytes = base64.b64decode(audio_base64)
-                    
-                    # Upload and send audio
-                    audio_result = await self.wa_client.upload_and_send_audio(
-                        phone,
-                        audio_bytes,
-                        filename=f"{ticker}_podcast.mp3"
-                    )
-                    
-                    if audio_result.get("error"):
-                        logger.warning(f"Could not send audio: {audio_result}")
+                    try:
+                        import base64
+                        audio_bytes = base64.b64decode(audio_base64)
+                        logger.info(f"Decoded audio: {len(audio_bytes)} bytes")
+                        
+                        if len(audio_bytes) < 1000:
+                            logger.warning(f"Audio too small: {len(audio_bytes)} bytes")
+                            raise ValueError("Audio file too small")
+                        
+                        # Upload and send audio
+                        audio_result = await self.wa_client.upload_and_send_audio(
+                            phone,
+                            audio_bytes,
+                            filename=f"{ticker}_podcast.mp3"
+                        )
+                        
+                        if audio_result.get("error"):
+                            logger.warning(f"Could not send audio: {audio_result}")
+                            # Fallback: send script text
+                            if script:
+                                await self.wa_client.send_text_message(
+                                    phone,
+                                    f"🎙️ *Podcast Script:*\n\n_{script[:600]}{'...' if len(script) > 600 else ''}_"
+                                )
+                        else:
+                            logger.info("Audio sent successfully!")
+                    except Exception as audio_err:
+                        logger.error(f"Audio processing error: {audio_err}")
+                        if script:
+                            await self.wa_client.send_text_message(
+                                phone,
+                                f"🎙️ *Podcast Script:*\n\n_{script[:600]}{'...' if len(script) > 600 else ''}_"
+                            )
+                else:
+                    # No audio available - send script as text
+                    logger.warning("No audio in podcast response")
+                    if script:
                         await self.wa_client.send_text_message(
                             phone,
-                            "⚠️ Audio couldn't be sent. Here's the script:\n\n"
-                            f"_{script[:500]}{'...' if len(script) > 500 else ''}_"
+                            f"📜 *Script:*\n\n_{script[:800]}{'...' if len(script) > 800 else ''}_"
                         )
-                else:
-                    # No audio, send script
-                    await self.wa_client.send_text_message(
-                        phone,
-                        f"📜 *Script:*\n\n_{script[:800]}{'...' if len(script) > 800 else ''}_"
-                    )
+                    else:
+                        await self.wa_client.send_text_message(
+                            phone,
+                            "⚠️ Podcast generated but no audio or script available."
+                        )
                 
                 # Log the request
                 await self.ab_client.request_podcast(user_id, ticker)
@@ -945,6 +968,18 @@ class MessageEngine:
                 "❌ Couldn't generate podcast. Please try again later."
             )
     
+    async def _shorten_url(self, url: str) -> str:
+        """Shorten a URL using TinyURL API."""
+        try:
+            import httpx
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                response = await client.get(f"https://tinyurl.com/api-create.php?url={url}")
+                if response.status_code == 200:
+                    return response.text.strip()
+        except Exception as e:
+            logger.warning(f"URL shortening failed: {e}")
+        return url  # Return original if shortening fails
+    
     async def _handle_news_request(self, phone: str, user_id: str, ticker: str) -> None:
         """Handle news request command."""
         try:
@@ -958,31 +993,34 @@ class MessageEngine:
                 )
                 return
             
-            # Format news - headline is the clickable link
+            # Format news with AI summaries and short links
             lines = [f"📰 *Latest News: {ticker}*\n"]
             
-            for article in news[:5]:
-                headline = article.get("headline", "")[:70]
+            for i, article in enumerate(news[:5], 1):
+                headline = article.get("headline", "")[:65]
                 summary = article.get("summary_tldr", "")[:100]
                 sentiment = article.get("sentiment", "neutral")
                 source_url = article.get("source_url", "")
                 
                 emoji = "🟢" if sentiment == "positive" else "🔴" if sentiment == "negative" else "⚪"
                 
-                # Put URL right after headline so it becomes clickable
-                if source_url:
-                    lines.append(f"{emoji} {source_url}")
-                    lines.append(f"*{headline}*")
-                else:
-                    lines.append(f"{emoji} *{headline}*")
+                # Shorten URL
+                short_url = await self._shorten_url(source_url) if source_url else ""
                 
-                # Brief summary
+                # Clean formatted entry
+                lines.append(f"{emoji} *{headline}*")
+                
+                # AI summary
                 if summary:
-                    lines.append(f"_{summary}_\n")
+                    lines.append(f"   _{summary}_")
+                
+                # Short link
+                if short_url:
+                    lines.append(f"   🔗 {short_url}\n")
                 else:
                     lines.append("")
             
-            lines.append(f"🎧 *podcast {ticker}* for audio summary")
+            lines.append(f"🎧 Send *podcast {ticker}* for audio summary")
             
             await self.wa_client.send_text_message(phone, "\n".join(lines))
             

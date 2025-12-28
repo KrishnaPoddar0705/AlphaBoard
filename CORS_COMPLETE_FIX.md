@@ -370,3 +370,4 @@ supabase/functions/
 
 **✨ All CORS issues resolved! Your Edge Functions should now work perfectly from the production frontend. ✨**
 
+
