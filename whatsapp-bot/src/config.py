@@ -4,8 +4,113 @@ Uses pydantic BaseSettings for environment variable loading and validation.
 """
 
 from functools import lru_cache
-from typing import Literal
+from typing import Literal, Set
 from pydantic_settings import BaseSettings
+
+
+# =============================================================================
+# Credible News Sources Whitelist
+# Only news from these domains will be shown with links
+# =============================================================================
+
+CREDIBLE_NEWS_SOURCES: Set[str] = {
+    # Indian Markets
+    "economictimes.indiatimes.com",
+    "moneycontrol.com",
+    "livemint.com",
+    "business-standard.com",
+    "financialexpress.com",
+    "ndtvprofit.com",
+    "zeebiz.com",
+    "businesstoday.in",
+    "thehindubusinessline.com",
+    "bseindia.com",
+    "nseindia.com",
+    "screener.in",
+    "tijorifinance.com",
+    "valueresearchonline.com",
+    
+    # US/Global Markets
+    "reuters.com",
+    "bloomberg.com",
+    "wsj.com",
+    "cnbc.com",
+    "marketwatch.com",
+    "seekingalpha.com",
+    "fool.com",
+    "finance.yahoo.com",
+    "investors.com",
+    "barrons.com",
+    "ft.com",
+    "benzinga.com",
+    "investopedia.com",
+    "thestreet.com",
+    "kiplinger.com",
+    "morningstar.com",
+    
+    # News Agencies
+    "apnews.com",
+    "news.google.com",  # Only if redirects to credible source
+}
+
+# Mapping of domain to display name
+NEWS_SOURCE_NAMES = {
+    "economictimes.indiatimes.com": "Economic Times",
+    "moneycontrol.com": "Moneycontrol",
+    "livemint.com": "Mint",
+    "business-standard.com": "Business Standard",
+    "financialexpress.com": "Financial Express",
+    "ndtvprofit.com": "NDTV Profit",
+    "zeebiz.com": "Zee Business",
+    "businesstoday.in": "Business Today",
+    "thehindubusinessline.com": "Hindu Business Line",
+    "reuters.com": "Reuters",
+    "bloomberg.com": "Bloomberg",
+    "wsj.com": "Wall Street Journal",
+    "cnbc.com": "CNBC",
+    "marketwatch.com": "MarketWatch",
+    "seekingalpha.com": "Seeking Alpha",
+    "fool.com": "Motley Fool",
+    "finance.yahoo.com": "Yahoo Finance",
+    "investors.com": "Investor's Business Daily",
+    "barrons.com": "Barron's",
+    "ft.com": "Financial Times",
+    "benzinga.com": "Benzinga",
+    "morningstar.com": "Morningstar",
+}
+
+
+def get_source_from_url(url: str) -> tuple[bool, str, str]:
+    """
+    Check if URL is from a credible source and extract source info.
+    
+    Args:
+        url: The news article URL
+        
+    Returns:
+        Tuple of (is_credible, source_name, domain)
+    """
+    if not url:
+        return False, "", ""
+    
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse(url)
+        domain = parsed.netloc.lower()
+        
+        # Remove www. prefix
+        if domain.startswith("www."):
+            domain = domain[4:]
+        
+        # Check if domain matches any credible source
+        for credible_domain in CREDIBLE_NEWS_SOURCES:
+            if credible_domain in domain or domain.endswith(credible_domain):
+                source_name = NEWS_SOURCE_NAMES.get(credible_domain, credible_domain.split('.')[0].title())
+                return True, source_name, domain
+        
+        return False, "", domain
+    except Exception:
+        return False, "", ""
 
 
 class Settings(BaseSettings):

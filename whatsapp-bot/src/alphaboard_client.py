@@ -10,7 +10,7 @@ from uuid import UUID
 import httpx
 from supabase import create_client, Client as SupabaseClient
 
-from .config import Settings
+from .config import Settings, get_source_from_url
 from .schemas import (
     WhatsAppUser,
     WatchlistItem,
@@ -1282,39 +1282,56 @@ class AlphaBoardClient:
             if not actual_user_id:
                 return {"is_admin": False, "reason": "User not found"}
             
-            # Get user's profile with organization info
-            result = self.supabase.table("profiles") \
+            # First check user_organization_membership (source of truth for org membership)
+            membership_result = self.supabase.table("user_organization_membership") \
+                .select("organization_id, role") \
+                .eq("user_id", actual_user_id) \
+                .limit(1) \
+                .execute()
+            
+            org_id = None
+            membership_role = None
+            is_org_admin = False
+            
+            if membership_result.data and len(membership_result.data) > 0:
+                membership = membership_result.data[0]
+                org_id = membership.get("organization_id")
+                membership_role = membership.get("role")
+                is_org_admin = membership_role == "admin"
+            
+            # Get user's profile for additional info
+            profile_result = self.supabase.table("profiles") \
                 .select("id, username, role, organization_id") \
                 .eq("id", actual_user_id) \
                 .limit(1) \
                 .execute()
             
-            if not result.data or len(result.data) == 0:
-                return {"is_admin": False, "reason": "Profile not found"}
-            
-            profile = result.data[0]
-            role = profile.get("role", "analyst")
-            org_id = profile.get("organization_id")
-            
-            # Also check user_organization_membership for admin role
-            is_org_admin = False
-            if org_id:
-                membership_result = self.supabase.table("user_organization_membership") \
-                    .select("role") \
-                    .eq("user_id", actual_user_id) \
-                    .eq("organization_id", org_id) \
-                    .limit(1) \
-                    .execute()
-                
-                if membership_result.data and len(membership_result.data) > 0:
-                    is_org_admin = membership_result.data[0].get("role") == "admin"
+            profile = {}
+            profile_role = "analyst"
+            if profile_result.data and len(profile_result.data) > 0:
+                profile = profile_result.data[0]
+                profile_role = profile.get("role", "analyst")
+                # Sync organization_id to profile if it's missing but exists in membership
+                if not profile.get("organization_id") and org_id:
+                    try:
+                        self.supabase.table("profiles") \
+                            .update({"organization_id": org_id}) \
+                            .eq("id", actual_user_id) \
+                            .execute()
+                        logger.info(f"Synced organization_id {org_id} to profile for user {actual_user_id}")
+                    except Exception as sync_err:
+                        logger.warning(f"Could not sync organization_id to profile: {sync_err}")
             
             # Admin = manager role in profile OR admin role in membership
-            is_admin = role == "manager" or is_org_admin
+            is_admin = profile_role == "manager" or is_org_admin
+            
+            # Use org_id from membership if available, fallback to profile
+            if not org_id:
+                org_id = profile.get("organization_id")
             
             return {
                 "is_admin": is_admin,
-                "role": role,
+                "role": membership_role or profile_role,
                 "organization_id": org_id,
                 "user_id": actual_user_id,
                 "username": profile.get("username")
@@ -1402,13 +1419,44 @@ class AlphaBoardClient:
             List of organization members
         """
         try:
-            result = self.supabase.table("profiles") \
-                .select("id, username, full_name, role") \
+            # Get members from user_organization_membership (source of truth)
+            membership_result = self.supabase.table("user_organization_membership") \
+                .select("user_id, role") \
                 .eq("organization_id", organization_id) \
+                .execute()
+            
+            if not membership_result.data:
+                return []
+            
+            # Get user IDs
+            user_ids = [m["user_id"] for m in membership_result.data]
+            
+            # Get profiles for these users
+            profiles_result = self.supabase.table("profiles") \
+                .select("id, username, full_name, role") \
+                .in_("id", user_ids) \
                 .order("username") \
                 .execute()
             
-            return result.data if result.data else []
+            # Combine membership role with profile data
+            members = []
+            if profiles_result.data:
+                # Create a map of user_id -> membership_role
+                role_map = {m["user_id"]: m.get("role", "analyst") for m in membership_result.data}
+                
+                for profile in profiles_result.data:
+                    user_id = profile.get("id")
+                    # Use membership role if available, otherwise profile role
+                    member_role = role_map.get(user_id, profile.get("role", "analyst"))
+                    members.append({
+                        "id": user_id,
+                        "user_id": user_id,  # Add for consistency with other methods
+                        "username": profile.get("username"),
+                        "full_name": profile.get("full_name"),
+                        "role": member_role
+                    })
+            
+            return members
             
         except Exception as e:
             logger.error(f"Error fetching organization members: {e}")
@@ -1534,4 +1582,36 @@ class AlphaBoardClient:
         except Exception as e:
             logger.error(f"Database health check failed: {e}")
             return False
+    
+    # =========================================================================
+    # News Source Validation
+    # =========================================================================
+    
+    @staticmethod
+    def is_credible_source(url: str) -> bool:
+        """
+        Check if a news URL is from a credible financial news source.
+        
+        Args:
+            url: News article URL
+            
+        Returns:
+            True if from credible source, False otherwise
+        """
+        is_credible, _, _ = get_source_from_url(url)
+        return is_credible
+    
+    @staticmethod
+    def get_source_name(url: str) -> str:
+        """
+        Get display name for a news source URL.
+        
+        Args:
+            url: News article URL
+            
+        Returns:
+            Source display name or 'Unknown'
+        """
+        _, source_name, domain = get_source_from_url(url)
+        return source_name or domain or "Unknown"
 

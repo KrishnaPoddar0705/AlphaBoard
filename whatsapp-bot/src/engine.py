@@ -968,20 +968,10 @@ class MessageEngine:
                 "❌ Couldn't generate podcast. Please try again later."
             )
     
-    async def _shorten_url(self, url: str) -> str:
-        """Shorten a URL using TinyURL API."""
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"https://tinyurl.com/api-create.php?url={url}")
-                if response.status_code == 200:
-                    return response.text.strip()
-        except Exception as e:
-            logger.warning(f"URL shortening failed: {e}")
-        return url  # Return original if shortening fails
-    
     async def _handle_news_request(self, phone: str, user_id: str, ticker: str) -> None:
-        """Handle news request command."""
+        """Handle news request command with credible source filtering."""
+        from .config import get_source_from_url
+        
         try:
             news = await self.ab_client.get_news_for_ticker(ticker)
             
@@ -993,32 +983,56 @@ class MessageEngine:
                 )
                 return
             
-            # Format news with AI summaries and short links
+            # Filter and format news from credible sources only
             lines = [f"📰 *Latest News: {ticker}*\n"]
+            credible_count = 0
             
-            for i, article in enumerate(news[:5], 1):
-                headline = article.get("headline", "")[:65]
-                summary = article.get("summary_tldr", "")[:100]
+            for article in news:
+                if credible_count >= 5:
+                    break
+                    
+                headline = article.get("headline", "")
+                summary = article.get("summary_tldr", "")
                 sentiment = article.get("sentiment", "neutral")
                 source_url = article.get("source_url", "")
                 
+                # Check if source is credible
+                is_credible, source_name, domain = get_source_from_url(source_url)
+                
+                # Skip non-credible sources
+                if not is_credible and source_url:
+                    # Still include if we don't have enough credible ones
+                    if credible_count >= 3:
+                        continue
+                    source_name = article.get("source", domain or "News")
+                
+                credible_count += 1
+                
+                # Sentiment emoji
                 emoji = "🟢" if sentiment == "positive" else "🔴" if sentiment == "negative" else "⚪"
                 
-                # Shorten URL
-                short_url = await self._shorten_url(source_url) if source_url else ""
-                
-                # Clean formatted entry
-                lines.append(f"{emoji} *{headline}*")
+                # Format: emoji + headline (truncated)
+                lines.append(f"{emoji} *{headline[:60]}*")
                 
                 # AI summary
                 if summary:
-                    lines.append(f"   _{summary}_")
+                    lines.append(f"   _{summary[:100]}_")
                 
-                # Short link
-                if short_url:
-                    lines.append(f"   🔗 {short_url}\n")
+                # Source name (not URL) - cleaner and safer
+                if source_name:
+                    lines.append(f"   📍 {source_name}\n")
                 else:
                     lines.append("")
+            
+            if credible_count == 0:
+                # No credible news found - show generic message
+                await self.wa_client.send_text_message(
+                    phone,
+                    f"📰 *{ticker}*\n\n"
+                    f"No verified news available at the moment.\n\n"
+                    f"🎧 Send *podcast {ticker}* for an AI-generated summary."
+                )
+                return
             
             lines.append(f"🎧 Send *podcast {ticker}* for audio summary")
             
