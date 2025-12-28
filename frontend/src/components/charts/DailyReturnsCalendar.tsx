@@ -51,7 +51,7 @@ export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data
         const minVal = Math.min(...values);
         const maxVal = Math.max(...values);
         const absMax = Math.max(Math.abs(minVal), Math.abs(maxVal));
-        
+
         // Make the scale symmetric around zero for better color mapping
         // This ensures zero is always in the middle of the color scale
         return {
@@ -99,11 +99,11 @@ export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data
                         itemDirection: 'right-to-left'
                     }
                 ]}
-                tooltip={({ day, value }) => {
+                tooltip={({ day }) => {
                     // Always show the return value from our data map (includes 0 for missing)
                     const returnValue = dataMap.get(day) ?? 0;
                     const numValue = Number(returnValue);
-                    
+
                     return (
                         <div className="bg-gray-900 border border-white/20 rounded-lg px-3 py-2 text-sm">
                             <strong className="text-white">{day}</strong>

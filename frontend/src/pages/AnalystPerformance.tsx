@@ -367,7 +367,7 @@ export default function AnalystPerformance() {
             return matrixData;
         }
 
-        // For daily/weekly, group by month and calculate appropriately
+        // For weekly, group by month and calculate appropriately
         const matrixData: Array<{ year: number; month: number; return_pct: number }> = [];
         const returnsByMonth: Record<string, number[]> = {};
 
@@ -395,17 +395,8 @@ export default function AnalystPerformance() {
 
         Object.entries(returnsByMonth).forEach(([key, returns]) => {
             const [year, month] = key.split('-').map(Number);
-            let monthlyReturn: number;
-            
-            if (returnsMatrixPeriod === 'day') {
-                // For daily returns, compound them to get monthly return
-                // Formula: (1 + r1/100) * (1 + r2/100) * ... - 1
-                const compounded = returns.reduce((acc, r) => acc * (1 + r / 100), 1) - 1;
-                monthlyReturn = compounded * 100;
-            } else {
-                // For weekly returns, average them
-                monthlyReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-            }
+            // For weekly returns, average them
+            const monthlyReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
             
             matrixData.push({
                 year,
