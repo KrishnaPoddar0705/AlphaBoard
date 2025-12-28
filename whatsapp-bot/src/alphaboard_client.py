@@ -1716,9 +1716,11 @@ class AlphaBoardClient:
             List of recommendations with full details
         """
         try:
-            logger.info(f"Fetching recommendations for analyst {analyst_user_id} with status filter: {status}")
+            logger.info(f"🔍 [RECOMMENDATIONS] Starting fetch for analyst Supabase UUID: {analyst_user_id}")
+            logger.info(f"🔍 [RECOMMENDATIONS] Status filter: {status}")
             
             # First verify the analyst exists
+            logger.info(f"🔍 [RECOMMENDATIONS] Step 1: Verifying analyst exists in public.profiles")
             profile_check = self.supabase.table("profiles") \
                 .select("id, username") \
                 .eq("id", analyst_user_id) \
@@ -1726,10 +1728,11 @@ class AlphaBoardClient:
                 .execute()
             
             if not profile_check.data or len(profile_check.data) == 0:
-                logger.warning(f"Analyst {analyst_user_id} not found in profiles table")
+                logger.error(f"❌ [RECOMMENDATIONS] Analyst {analyst_user_id} NOT FOUND in profiles table")
                 return []
             
-            logger.info(f"Found analyst profile: {profile_check.data[0].get('username')}")
+            analyst_username = profile_check.data[0].get('username', 'Unknown')
+            logger.info(f"✅ [RECOMMENDATIONS] Analyst verified: {analyst_username} (UUID: {analyst_user_id})")
             
             # Build query with explicit error handling - DIRECT query to public.recommendations
             result = None
@@ -1749,10 +1752,11 @@ class AlphaBoardClient:
                 # CRITICAL: Ensure headers are set before EVERY query (for new secret format)
                 if service_key and service_key.startswith("sb_secret_"):
                     self._ensure_headers_set(service_key)
-                    logger.info("Headers ensured before recommendations query")
+                    logger.info("🔍 [RECOMMENDATIONS] Headers ensured before query")
                 
                 # Direct query to public.recommendations table
-                logger.info(f"Querying public.recommendations table for user_id={analyst_user_id}, status={status}")
+                logger.info(f"🔍 [RECOMMENDATIONS] Step 2: Building query for public.recommendations")
+                logger.info(f"🔍 [RECOMMENDATIONS] Query params: user_id={analyst_user_id}, status={status}")
                 
                 # Build query step by step for better debugging
                 base_query = self.supabase.table("recommendations")
@@ -1762,28 +1766,30 @@ class AlphaBoardClient:
                 # Apply status filter if provided
                 if status:
                     filtered_query = user_query.eq("status", status)
-                    logger.info(f"Filtering by status: {status}")
+                    logger.info(f"🔍 [RECOMMENDATIONS] Applied status filter: {status}")
                     ordered_query = filtered_query.order("entry_date", desc=True)
                 else:
-                    logger.info("No status filter - fetching all recommendations")
+                    logger.info(f"🔍 [RECOMMENDATIONS] No status filter - fetching all recommendations")
                     ordered_query = user_query.order("entry_date", desc=True)
                 
                 # Limit results
                 final_query = ordered_query.limit(50)
                 
                 # Execute query
-                logger.info(f"Executing query: recommendations WHERE user_id={analyst_user_id} AND status={status if status else 'ALL'}")
+                logger.info(f"🔍 [RECOMMENDATIONS] Step 3: Executing query")
+                logger.info(f"🔍 [RECOMMENDATIONS] SQL equivalent: SELECT * FROM recommendations WHERE user_id='{analyst_user_id}' AND status='{status if status else 'ALL'}' ORDER BY entry_date DESC LIMIT 50")
                 result = final_query.execute()
                 
                 # Log result
                 if result.data:
-                    logger.info(f"✅ Query executed successfully, got {len(result.data)} recommendations")
+                    logger.info(f"✅ [RECOMMENDATIONS] Query SUCCESS - returned {len(result.data)} recommendations")
                     # Log sample data for debugging
                     if len(result.data) > 0:
                         sample = result.data[0]
-                        logger.info(f"Sample recommendation: ticker={sample.get('ticker')}, status={sample.get('status')}, user_id={sample.get('user_id')}")
+                        logger.info(f"🔍 [RECOMMENDATIONS] Sample: ticker={sample.get('ticker')}, status={sample.get('status')}, user_id={sample.get('user_id')}")
                 else:
-                    logger.warning(f"⚠️ Query executed but returned no data")
+                    logger.warning(f"⚠️ [RECOMMENDATIONS] Query executed but returned NO DATA")
+                    logger.warning(f"⚠️ [RECOMMENDATIONS] This means no recommendations exist for user_id={analyst_user_id} with status={status if status else 'ANY'}")
                 
                 # Check for errors in the response
                 if hasattr(result, 'error') and result.error:
@@ -1882,11 +1888,11 @@ class AlphaBoardClient:
                         "thesis": rec.get("thesis")
                     })
             
-            logger.info(f"Returning {len(recs)} formatted recommendations")
+            logger.info(f"✅ [RECOMMENDATIONS] Returning {len(recs)} formatted recommendations for Supabase UUID: {analyst_user_id}")
             return recs
             
         except Exception as e:
-            logger.error(f"Error fetching analyst recommendations: {e}", exc_info=True)
+            logger.error(f"❌ [RECOMMENDATIONS] Error fetching analyst recommendations for UUID {analyst_user_id}: {e}", exc_info=True)
             return []
     
     async def get_analyst_performance(self, analyst_user_id: str) -> Dict[str, Any]:

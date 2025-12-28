@@ -1410,17 +1410,17 @@ class MessageEngine:
         This method queries public.recommendations directly using the analyst's Supabase UUID.
         """
         try:
-            logger.info(f"Showing recommendations for analyst {analyst_id}, status: {status}")
+            logger.info(f"🔍 [TRACK ANALYST] Starting flow - analyst_id={analyst_id}, status={status}, whatsapp_user_id={user_id}")
             
             # CRITICAL: Verify analyst_id is a valid Supabase UUID format
             # UUID format: 8-4-4-4-12 hex characters
             import re
             uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
             if not uuid_pattern.match(analyst_id):
-                logger.error(f"Invalid analyst_id format: {analyst_id}. Expected Supabase UUID.")
+                logger.error(f"❌ [TRACK ANALYST] Invalid analyst_id format: {analyst_id}. Expected Supabase UUID.")
                 await self.wa_client.send_text_message(
                     phone,
-                    "❌ *Error*\n\nInvalid analyst ID format. Please try selecting the analyst again."
+                    "❌ *Error*\n\nInvalid analyst ID format.\n\nPlease try selecting the analyst again."
                 )
                 state_manager.cancel_flow(user_id)
                 return
@@ -1428,15 +1428,27 @@ class MessageEngine:
             # Verify admin still has access and get organization context
             context = state_manager.get_context(user_id)
             admin_org_id = context.data.get("organization_id") if context else None
+            logger.info(f"🔍 [TRACK ANALYST] Admin org_id: {admin_org_id}")
             
             # Get analyst profile from public.profiles table (NOT whatsapp_users)
             # This confirms the analyst_id is a valid Supabase UUID
-            logger.info(f"Looking up analyst in public.profiles table with UUID: {analyst_id}")
-            profile_result = self.ab_client.supabase.table("profiles") \
-                .select("id, username, full_name, organization_id") \
-                .eq("id", analyst_id) \
-                .limit(1) \
-                .execute()
+            logger.info(f"🔍 [TRACK ANALYST] Querying public.profiles table for UUID: {analyst_id}")
+            try:
+                profile_result = self.ab_client.supabase.table("profiles") \
+                    .select("id, username, full_name, organization_id") \
+                    .eq("id", analyst_id) \
+                    .limit(1) \
+                    .execute()
+                
+                logger.info(f"🔍 [TRACK ANALYST] Profile query result: {len(profile_result.data) if profile_result.data else 0} rows")
+            except Exception as profile_error:
+                logger.error(f"❌ [TRACK ANALYST] Error querying profiles table: {profile_error}", exc_info=True)
+                await self.wa_client.send_text_message(
+                    phone,
+                    "❌ *Error*\n\nFailed to fetch analyst profile.\n\nPlease try again or contact support."
+                )
+                state_manager.cancel_flow(user_id)
+                return
             
             analyst_name = "Analyst"
             analyst_org_id = None
@@ -1447,12 +1459,15 @@ class MessageEngine:
                 analyst_supabase_uuid = profile.get("id")  # This is the Supabase UUID
                 analyst_name = profile.get("full_name") or profile.get("username") or "Analyst"
                 analyst_org_id = profile.get("organization_id")
-                logger.info(f"✅ Found analyst profile: {analyst_name} (UUID: {analyst_supabase_uuid}), org_id: {analyst_org_id}")
+                logger.info(f"✅ [TRACK ANALYST] Found analyst: {analyst_name} | UUID: {analyst_supabase_uuid} | org_id: {analyst_org_id}")
             else:
-                logger.error(f"❌ Analyst profile not found in public.profiles for UUID: {analyst_id}")
+                logger.error(f"❌ [TRACK ANALYST] Analyst profile NOT FOUND in public.profiles for UUID: {analyst_id}")
                 await self.wa_client.send_text_message(
                     phone,
-                    "❌ *Error*\n\nAnalyst not found. Please try selecting the analyst again."
+                    f"❌ *Analyst Not Found*\n\n"
+                    f"Could not find analyst profile in database.\n\n"
+                    f"Analyst ID: {analyst_id[:8]}...\n\n"
+                    f"Please try selecting the analyst again."
                 )
                 state_manager.cancel_flow(user_id)
                 return
@@ -1483,18 +1498,21 @@ class MessageEngine:
             # Get recommendations - DIRECT query to public.recommendations using Supabase UUID
             # DO NOT query whatsapp_users table - recommendations are in public.recommendations
             status_filter = None if status == "ALL" else status
-            logger.info(f"Fetching recommendations from public.recommendations for Supabase UUID: {analyst_supabase_uuid}, status: {status_filter}")
+            logger.info(f"🔍 [TRACK ANALYST] Fetching recommendations from public.recommendations")
+            logger.info(f"🔍 [TRACK ANALYST] Supabase User ID: {analyst_supabase_uuid}")
+            logger.info(f"🔍 [TRACK ANALYST] Status filter: {status_filter}")
             
             recs = []
             try:
                 # Query public.recommendations directly using the analyst's Supabase UUID
+                logger.info(f"🔍 [TRACK ANALYST] Calling get_analyst_recommendations_detailed(user_id={analyst_supabase_uuid}, status={status_filter})")
                 recs = await self.ab_client.get_analyst_recommendations_detailed(analyst_supabase_uuid, status_filter)
-                logger.info(f"✅ Retrieved {len(recs)} recommendations for analyst {analyst_supabase_uuid}")
+                logger.info(f"✅ [TRACK ANALYST] Retrieved {len(recs)} recommendations for analyst {analyst_supabase_uuid}")
             except AlphaBoardClientError as e:
-                logger.error(f"Failed to get recommendations: {e}")
+                logger.error(f"❌ [TRACK ANALYST] AlphaBoardClientError getting recommendations: {e}", exc_info=True)
                 # Fall through to direct query fallback
             except Exception as e:
-                logger.error(f"Unexpected error getting recommendations: {e}", exc_info=True)
+                logger.error(f"❌ [TRACK ANALYST] Unexpected error getting recommendations: {e}", exc_info=True)
                 # Fall through to direct query fallback
             
             # If no results, try direct query without going through the method
@@ -1554,39 +1572,55 @@ class MessageEngine:
             performance = await self.ab_client.get_analyst_performance(analyst_supabase_uuid)
             
             if not recs:
+                logger.warning(f"⚠️ [TRACK ANALYST] No recommendations found for analyst {analyst_supabase_uuid}")
                 status_label = status.lower() if status != "ALL" else "positions"
+                
                 # Check if analyst has ANY recommendations in public.recommendations
                 try:
-                    logger.info(f"Checking for any recommendations for Supabase UUID: {analyst_supabase_uuid}")
+                    logger.info(f"🔍 [TRACK ANALYST] Checking for ANY recommendations for Supabase UUID: {analyst_supabase_uuid}")
                     any_recs = self.ab_client.supabase.table("recommendations") \
                         .select("status, ticker") \
                         .eq("user_id", analyst_supabase_uuid) \
-                        .limit(5) \
+                        .limit(10) \
                         .execute()
                     
-                    if any_recs.data:
-                        statuses = set([r.get("status") for r in any_recs.data])
+                    logger.info(f"🔍 [TRACK ANALYST] Any recommendations check returned: {len(any_recs.data) if any_recs.data else 0} rows")
+                    
+                    if any_recs.data and len(any_recs.data) > 0:
+                        statuses = set([r.get("status") for r in any_recs.data if r.get("status")])
+                        tickers = [r.get("ticker") for r in any_recs.data[:5]]
+                        logger.info(f"🔍 [TRACK ANALYST] Analyst has recommendations with statuses: {statuses}, sample tickers: {tickers}")
+                        
+                        status_list = ', '.join(sorted(statuses)) if statuses else 'None'
                         await self.wa_client.send_text_message(
                             phone,
                             f"📭 *{analyst_name}*\n\n"
-                            f"No {status_label} found.\n\n"
-                            f"Available statuses: {', '.join(statuses)}\n"
+                            f"No {status_label} positions found.\n\n"
+                            f"Available statuses: {status_list}\n\n"
                             f"Try selecting a different position type."
                         )
                     else:
+                        logger.warning(f"⚠️ [TRACK ANALYST] Analyst {analyst_supabase_uuid} has NO recommendations at all in database")
                         await self.wa_client.send_text_message(
                             phone,
                             f"📭 *{analyst_name}*\n\n"
                             f"No recommendations found in database.\n\n"
-                            f"This analyst may not have created any positions yet."
+                            f"This analyst may not have created any positions yet.\n\n"
+                            f"Supabase User ID: {analyst_supabase_uuid}"
                         )
                 except Exception as check_error:
-                    logger.error(f"Error checking for any recommendations: {check_error}")
+                    logger.error(f"❌ [TRACK ANALYST] Error checking for any recommendations: {check_error}", exc_info=True)
                     await self.wa_client.send_text_message(
                         phone,
-                        f"📭 *{analyst_name}*\n\nNo {status_label} found."
+                        f"❌ *Error*\n\n"
+                        f"Failed to check recommendations.\n\n"
+                        f"Analyst: {analyst_name}\n"
+                        f"Supabase User ID: {analyst_supabase_uuid}\n\n"
+                        f"Please try again or contact support."
                     )
                 
+                # ALWAYS cancel flow after sending message
+                logger.info(f"🔍 [TRACK ANALYST] Cancelling flow for user {user_id}")
                 state_manager.cancel_flow(user_id)
                 return
             
@@ -1672,13 +1706,14 @@ class MessageEngine:
             
             # Send message FIRST, then cancel flow
             message_text = "\n".join(lines)
-            logger.info(f"Sending recommendations message ({len(message_text)} chars)")
+            logger.info(f"🔍 [TRACK ANALYST] Sending recommendations message ({len(message_text)} chars, {len(recs)} recommendations)")
+            logger.info(f"🔍 [TRACK ANALYST] Analyst Supabase UUID: {analyst_supabase_uuid}")
             
             try:
                 await self.wa_client.send_text_message(phone, message_text)
-                logger.info(f"Successfully sent recommendations message to {phone}")
+                logger.info(f"✅ [TRACK ANALYST] Successfully sent recommendations message to {phone}")
             except Exception as send_error:
-                logger.error(f"Failed to send message: {send_error}", exc_info=True)
+                logger.error(f"❌ [TRACK ANALYST] Failed to send message: {send_error}", exc_info=True)
                 # Still cancel flow even if message send fails
                 # Try to send error message
                 try:
@@ -1690,23 +1725,45 @@ class MessageEngine:
                     pass  # If we can't send error message, just log it
             
             # ALWAYS cancel flow after sending (or attempting to send) message
+            logger.info(f"🔍 [TRACK ANALYST] Cancelling flow for user {user_id}")
             state_manager.cancel_flow(user_id)
-            logger.info(f"Flow cancelled for user {user_id}")
+            logger.info(f"✅ [TRACK ANALYST] Flow completed and cancelled for user {user_id}")
             
         except Exception as e:
-            logger.error(f"Error showing analyst recs: {e}", exc_info=True)
+            logger.error(f"❌ [TRACK ANALYST] Exception in _handle_show_analyst_recs: {e}", exc_info=True)
             error_msg = str(e)
+            
             # Provide user-friendly error message
             if "apikey" in error_msg.lower() or "api key" in error_msg.lower() or "unauthorized" in error_msg.lower():
-                user_error = "❌ *Authentication Error*\n\nFailed to authenticate with database.\n\nPlease contact support."
-            elif "not found" in error_msg.lower():
-                user_error = f"❌ *Not Found*\n\nAnalyst or recommendations not found.\n\nPlease verify the analyst ID and try again."
+                user_error = (
+                    "❌ *Authentication Error*\n\n"
+                    "Failed to authenticate with database.\n\n"
+                    "Please contact support."
+                )
+            elif "not found" in error_msg.lower() or "profile not found" in error_msg.lower():
+                user_error = (
+                    f"❌ *Analyst Not Found*\n\n"
+                    f"Could not find analyst profile.\n\n"
+                    f"Analyst ID: {analyst_id[:20] if 'analyst_id' in locals() else 'Unknown'}...\n\n"
+                    f"Please try selecting the analyst again."
+                )
             else:
-                user_error = f"❌ *Error*\n\nFailed to retrieve recommendations.\n\nError: {error_msg[:100]}\n\nPlease try again or contact support."
+                user_error = (
+                    f"❌ *Error*\n\n"
+                    f"Failed to retrieve recommendations.\n\n"
+                    f"Error: {error_msg[:80]}\n\n"
+                    f"Please try again or contact support."
+                )
             
-            await self.wa_client.send_text_message(phone, user_error)
+            try:
+                await self.wa_client.send_text_message(phone, user_error)
+            except Exception as send_err:
+                logger.error(f"❌ [TRACK ANALYST] Failed to send error message: {send_err}")
+            
+            # ALWAYS cancel flow on error
+            logger.info(f"🔍 [TRACK ANALYST] Cancelling flow after error for user {user_id}")
             state_manager.cancel_flow(user_id)
-            logger.info(f"Flow cancelled after error for user {user_id}")
+            logger.info(f"✅ [TRACK ANALYST] Flow cancelled after error")
     
     # =========================================================================
     # Helper Methods
