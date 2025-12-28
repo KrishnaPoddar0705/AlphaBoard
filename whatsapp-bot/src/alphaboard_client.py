@@ -83,11 +83,11 @@ class AlphaBoardClient:
             # For new secret key format, we need to pass it differently
             # The Supabase Python client expects a JWT token, but sb_secret_ format is not a JWT
             # So we'll create the client and then patch headers
-        self.supabase: SupabaseClient = create_client(
-            settings.SUPABASE_URL,
-            service_key
-        )
-        
+            self.supabase: SupabaseClient = create_client(
+                settings.SUPABASE_URL,
+                service_key
+            )
+            
             # Store the service key for header patching
             self._service_key = service_key
         
