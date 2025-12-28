@@ -80,40 +80,62 @@ class AlphaBoardClient:
         # Create Supabase client
         # The Python client should automatically handle both JWT and new secret key formats
         try:
-            # Create the client first
-            self.supabase: SupabaseClient = create_client(
-                settings.SUPABASE_URL,
-                service_key
-            )
+            # For new secret key format, we need to pass it differently
+            # The Supabase Python client expects a JWT token, but sb_secret_ format is not a JWT
+            # So we'll create the client and then patch headers
+        self.supabase: SupabaseClient = create_client(
+            settings.SUPABASE_URL,
+            service_key
+        )
         
-            # For new secret key format, we MUST manually set apikey header
+            # Store the service key for header patching
+            self._service_key = service_key
+        
+            # For new secret key format (sb_secret_...), we MUST manually set apikey header
             # The Supabase Python client doesn't automatically set it for sb_secret_ format
+            # We'll ALWAYS patch headers and monkey-patch to ensure headers are set on every query
             if service_key.startswith("sb_secret_"):
-                logger.info("New secret key format detected - patching headers")
-                self._patch_supabase_headers(service_key)
+                logger.info("New secret key format detected - patching headers and monkey-patching table method")
+            else:
+                logger.info("Legacy JWT key format detected - still patching headers to ensure compatibility")
+            
+            # ALWAYS patch headers and monkey-patch to ensure headers on every query
+            # This is critical for new secret format and helps with legacy format too
+            self._patch_supabase_headers(service_key)
+            self._monkey_patch_table_method(service_key)
             
             # Test the connection by making a simple query
             try:
+                # Ensure headers are set before test query
+                if service_key.startswith("sb_secret_"):
+                    self._ensure_headers_set(service_key)
+                
                 test_result = self.supabase.table("profiles").select("id").limit(1).execute()
                 if test_result.data is not None:
-                    logger.info("Supabase client initialized and connection verified")
+                    logger.info("✅ Supabase client initialized and connection verified")
                 else:
-                    logger.warning("Supabase client initialized but test query returned no data")
+                    logger.warning("⚠️ Supabase client initialized but test query returned no data")
             except Exception as test_error:
                 error_str = str(test_error).lower()
-                if "apikey" in error_str or "api key" in error_str:
-                    logger.error("API key error during connection test - attempting to patch headers")
+                if "apikey" in error_str or "api key" in error_str or "401" in error_str or "unauthorized" in error_str:
+                    logger.error(f"❌ API key error during connection test: {test_error}")
+                    logger.error("Attempting to patch headers and retry...")
                     # Try to patch headers as fallback
                     self._patch_supabase_headers(service_key)
-                    # Retry test
+                    self._monkey_patch_table_method(service_key)
+                    # Retry test with headers ensured
                     try:
+                        self._ensure_headers_set(service_key)
                         test_result = self.supabase.table("profiles").select("id").limit(1).execute()
                         if test_result.data is not None:
-                            logger.info("Supabase client verified after header patch")
+                            logger.info("✅ Supabase client verified after header patch")
+                        else:
+                            logger.error("❌ Test query still returns no data after header patch")
                     except Exception as retry_error:
-                        logger.error(f"Still failing after header patch: {retry_error}")
+                        logger.error(f"❌ Still failing after header patch: {retry_error}")
+                        logger.error("⚠️ CRITICAL: Supabase client may not work correctly. Check SUPABASE_SERVICE_ROLE_KEY format.")
                 else:
-                    logger.warning(f"Connection test failed: {test_error}")
+                    logger.warning(f"⚠️ Connection test failed: {test_error}")
                 
         except Exception as e:
             logger.error(f"Failed to initialize Supabase client: {e}", exc_info=True)
@@ -174,19 +196,58 @@ class AlphaBoardClient:
     def _monkey_patch_table_method(self, service_key: str) -> None:
         """Monkey-patch the table method to ensure headers on each request."""
         try:
+            # Store service key for use in patched methods
+            if not hasattr(self, '_service_key'):
+                self._service_key = service_key
+            
             original_table = self.supabase.table
             
             def patched_table(table_name: str):
                 table = original_table(table_name)
-                # Store original execute if it exists
+                
+                # The query builder methods (select, insert, update, etc.) return new objects
+                # We need to patch the execute method on the final query builder object
+                # So we'll patch methods that return query builders to also patch their execute
+                
+                # Store original methods
+                original_methods = {}
+                for method_name in ['select', 'insert', 'update', 'delete', 'upsert', 'eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'like', 'ilike', 'is_', 'in_', 'contains', 'contained_by', 'range_', 'limit', 'order', 'single']:
+                    if hasattr(table, method_name):
+                        original_methods[method_name] = getattr(table, method_name)
+                
+                # Patch each method to return a query builder with patched execute
+                for method_name, original_method in original_methods.items():
+                    def make_patched_method(orig_method, method_name):
+                        def patched_method(*args, **kwargs):
+                            # Call original method to get query builder
+                            query_builder = orig_method(*args, **kwargs)
+                            
+                            # Patch execute on the returned query builder
+                            if hasattr(query_builder, 'execute'):
+                                original_execute = query_builder.execute
+                                
+                                def execute_with_headers(*exec_args, **exec_kwargs):
+                                    # Ensure headers are set before each execute
+                                    current_key = getattr(self, '_service_key', service_key)
+                                    if current_key:
+                                        self._ensure_headers_set(current_key)
+                                    return original_execute(*exec_args, **exec_kwargs)
+                                
+                                query_builder.execute = execute_with_headers
+                            
+                            return query_builder
+                        return patched_method
+                    
+                    setattr(table, method_name, make_patched_method(original_method, method_name))
+                
+                # Also patch execute directly on table if it exists
                 if hasattr(table, 'execute'):
                     original_execute = table.execute
-                    
                     def execute_with_headers(*args, **kwargs):
-                        # Ensure headers are set before each execute
-                        self._ensure_headers_set(service_key)
+                        current_key = getattr(self, '_service_key', service_key)
+                        if current_key:
+                            self._ensure_headers_set(current_key)
                         return original_execute(*args, **kwargs)
-                    
                     table.execute = execute_with_headers
                 
                 return table
@@ -194,14 +255,18 @@ class AlphaBoardClient:
             self.supabase.table = patched_table
             logger.info("✅ Monkey-patched table method to ensure headers on each request")
         except Exception as e:
-            logger.error(f"❌ Failed to monkey-patch table method: {e}")
+            logger.error(f"❌ Failed to monkey-patch table method: {e}", exc_info=True)
     
     def _ensure_headers_set(self, service_key: str) -> None:
         """Ensure headers are set on the Supabase client before making requests."""
         try:
             if hasattr(self.supabase, 'rest'):
                 rest_client = self.supabase.rest
-                # Try postgrest path first (most common)
+                
+                # Try multiple paths to set headers
+                patched = False
+                
+                # Path 1: rest.postgrest.session.headers (most common)
                 if hasattr(rest_client, 'postgrest'):
                     postgrest = rest_client.postgrest
                     if hasattr(postgrest, 'session'):
@@ -209,18 +274,47 @@ class AlphaBoardClient:
                         if hasattr(session, 'headers'):
                             session.headers['apikey'] = service_key
                             session.headers['Authorization'] = f'Bearer {service_key}'
-                            return
-                # Fallback to direct headers
-                if hasattr(rest_client, 'headers'):
+                            patched = True
+                            logger.debug("Set headers via rest.postgrest.session.headers")
+                
+                # Path 2: rest.headers (direct)
+                if not patched and hasattr(rest_client, 'headers'):
                     rest_client.headers['apikey'] = service_key
                     rest_client.headers['Authorization'] = f'Bearer {service_key}'
-        except Exception:
-            pass  # Silently fail if we can't set headers
+                    patched = True
+                    logger.debug("Set headers via rest.headers")
+                
+                # Path 3: Try to access httpx client directly
+                if not patched:
+                    try:
+                        # The postgrest client uses httpx under the hood
+                        if hasattr(rest_client, 'postgrest'):
+                            postgrest = rest_client.postgrest
+                            if hasattr(postgrest, 'session'):
+                                session = postgrest.session
+                                # Try to get httpx client
+                                if hasattr(session, '_client') or hasattr(session, 'client'):
+                                    httpx_client = getattr(session, '_client', None) or getattr(session, 'client', None)
+                                    if httpx_client and hasattr(httpx_client, 'headers'):
+                                        # Set default headers on httpx client
+                                        if not hasattr(httpx_client.headers, 'update'):
+                                            httpx_client.headers = {}
+                                        httpx_client.headers['apikey'] = service_key
+                                        httpx_client.headers['Authorization'] = f'Bearer {service_key}'
+                                        patched = True
+                                        logger.debug("Set headers via httpx client")
+                    except Exception as httpx_error:
+                        logger.debug(f"Could not access httpx client: {httpx_error}")
+                
+                if not patched:
+                    logger.warning("⚠️ Could not set headers - query may fail")
+        except Exception as e:
+            logger.error(f"Error ensuring headers are set: {e}", exc_info=True)
     
     async def close(self):
         """Close the HTTP client."""
         if hasattr(self, '_http_client') and self._http_client:
-            await self._http_client.aclose()
+        await self._http_client.aclose()
     
     # =========================================================================
     # User Management
@@ -238,6 +332,11 @@ class AlphaBoardClient:
         """
         # Normalize phone number (remove + prefix if present)
         normalized_phone = phone.lstrip("+")
+        
+        # Ensure headers are set before query (critical for new secret key format)
+        service_key = getattr(self, '_service_key', None)
+        if service_key and service_key.startswith("sb_secret_"):
+            self._ensure_headers_set(service_key)
         
         try:
             # Try to find existing user
@@ -1718,12 +1817,12 @@ class AlphaBoardClient:
                         self._ensure_headers_set(service_key)
                     try:
                         # Retry with headers set
-                        query = self.supabase.table("recommendations") \
-                            .select("*") \
-                            .eq("user_id", analyst_user_id) \
-                            .order("entry_date", desc=True)
-                        if status:
-                            query = query.eq("status", status)
+            query = self.supabase.table("recommendations") \
+                .select("*") \
+                .eq("user_id", analyst_user_id) \
+                .order("entry_date", desc=True)
+            if status:
+                query = query.eq("status", status)
                         result = query.limit(50).execute()
                         logger.info(f"Retry query returned {len(result.data) if result.data else 0} recommendations")
                     except Exception as retry_error:
