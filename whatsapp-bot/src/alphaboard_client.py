@@ -68,24 +68,17 @@ class AlphaBoardClient:
         # Create Supabase client
         # The Python client should automatically handle both JWT and new secret key formats
         try:
-            # For new secret key format (sb_secret_...), ensure it's passed correctly
-            # The create_client function should handle apikey header automatically
+            # Create the client first
             self.supabase: SupabaseClient = create_client(
                 settings.SUPABASE_URL,
                 service_key
             )
             
-            # For new secret key format, manually ensure apikey header is set
-            # The Supabase Python client should do this automatically, but we'll verify
+            # For new secret key format, we MUST manually set apikey header
+            # The Supabase Python client doesn't automatically set it for sb_secret_ format
             if service_key.startswith("sb_secret_"):
-                # Try to set headers manually if the client supports it
-                if hasattr(self.supabase, 'rest') and hasattr(self.supabase.rest, 'headers'):
-                    # Ensure apikey header is set
-                    if 'apikey' not in self.supabase.rest.headers:
-                        self.supabase.rest.headers['apikey'] = service_key
-                    if 'Authorization' not in self.supabase.rest.headers:
-                        self.supabase.rest.headers['Authorization'] = f'Bearer {service_key}'
-                    logger.info("Manually set apikey headers for new secret key format")
+                logger.info("New secret key format detected - patching headers")
+                self._patch_supabase_headers(service_key)
             
             # Test the connection by making a simple query
             try:
@@ -97,9 +90,16 @@ class AlphaBoardClient:
             except Exception as test_error:
                 error_str = str(test_error).lower()
                 if "apikey" in error_str or "api key" in error_str:
-                    logger.error("API key error during connection test - check SUPABASE_SERVICE_ROLE_KEY")
-                    # Try to manually patch headers if possible
-                    logger.warning("Attempting to manually configure headers...")
+                    logger.error("API key error during connection test - attempting to patch headers")
+                    # Try to patch headers as fallback
+                    self._patch_supabase_headers(service_key)
+                    # Retry test
+                    try:
+                        test_result = self.supabase.table("profiles").select("id").limit(1).execute()
+                        if test_result.data is not None:
+                            logger.info("Supabase client verified after header patch")
+                    except Exception as retry_error:
+                        logger.error(f"Still failing after header patch: {retry_error}")
                 else:
                     logger.warning(f"Connection test failed: {test_error}")
                 
@@ -107,6 +107,103 @@ class AlphaBoardClient:
             logger.error(f"Failed to initialize Supabase client: {e}", exc_info=True)
             # Re-raise to prevent silent failures
             raise AlphaBoardClientError(f"Failed to initialize Supabase client: {str(e)}")
+    
+    def _patch_supabase_headers(self, service_key: str) -> None:
+        """Patch Supabase client headers to ensure apikey is set for new secret format."""
+        try:
+            # The Supabase Python client uses postgrest-py under the hood
+            # We need to patch the session headers at the right level
+            if hasattr(self.supabase, 'rest'):
+                rest_client = self.supabase.rest
+                
+                # Try multiple paths to access the underlying HTTP session
+                patched = False
+                
+                # Path 1: rest.postgrest.session.headers
+                if hasattr(rest_client, 'postgrest'):
+                    postgrest = rest_client.postgrest
+                    if hasattr(postgrest, 'session'):
+                        session = postgrest.session
+                        if hasattr(session, 'headers'):
+                            session.headers['apikey'] = service_key
+                            session.headers['Authorization'] = f'Bearer {service_key}'
+                            logger.info("✅ Patched headers via rest.postgrest.session.headers")
+                            patched = True
+                
+                # Path 2: rest.headers (direct)
+                if not patched and hasattr(rest_client, 'headers'):
+                    rest_client.headers['apikey'] = service_key
+                    rest_client.headers['Authorization'] = f'Bearer {service_key}'
+                    logger.info("✅ Patched headers via rest.headers")
+                    patched = True
+                
+                # Path 3: rest.session.headers
+                if not patched and hasattr(rest_client, 'session'):
+                    session = rest_client.session
+                    if hasattr(session, 'headers'):
+                        session.headers['apikey'] = service_key
+                        session.headers['Authorization'] = f'Bearer {service_key}'
+                        logger.info("✅ Patched headers via rest.session.headers")
+                        patched = True
+                
+                if not patched:
+                    logger.warning("⚠️ Could not find headers to patch - may need to update Supabase client")
+                    # Try to monkey-patch the table method as fallback
+                    self._monkey_patch_table_method(service_key)
+            else:
+                logger.warning("⚠️ Supabase client has no 'rest' attribute")
+                self._monkey_patch_table_method(service_key)
+                
+        except Exception as patch_error:
+            logger.error(f"❌ Error patching Supabase headers: {patch_error}", exc_info=True)
+            # Fallback to monkey-patching
+            self._monkey_patch_table_method(service_key)
+    
+    def _monkey_patch_table_method(self, service_key: str) -> None:
+        """Monkey-patch the table method to ensure headers on each request."""
+        try:
+            original_table = self.supabase.table
+            
+            def patched_table(table_name: str):
+                table = original_table(table_name)
+                # Store original execute if it exists
+                if hasattr(table, 'execute'):
+                    original_execute = table.execute
+                    
+                    def execute_with_headers(*args, **kwargs):
+                        # Ensure headers are set before each execute
+                        self._ensure_headers_set(service_key)
+                        return original_execute(*args, **kwargs)
+                    
+                    table.execute = execute_with_headers
+                
+                return table
+            
+            self.supabase.table = patched_table
+            logger.info("✅ Monkey-patched table method to ensure headers on each request")
+        except Exception as e:
+            logger.error(f"❌ Failed to monkey-patch table method: {e}")
+    
+    def _ensure_headers_set(self, service_key: str) -> None:
+        """Ensure headers are set on the Supabase client before making requests."""
+        try:
+            if hasattr(self.supabase, 'rest'):
+                rest_client = self.supabase.rest
+                # Try postgrest path first (most common)
+                if hasattr(rest_client, 'postgrest'):
+                    postgrest = rest_client.postgrest
+                    if hasattr(postgrest, 'session'):
+                        session = postgrest.session
+                        if hasattr(session, 'headers'):
+                            session.headers['apikey'] = service_key
+                            session.headers['Authorization'] = f'Bearer {service_key}'
+                            return
+                # Fallback to direct headers
+                if hasattr(rest_client, 'headers'):
+                    rest_client.headers['apikey'] = service_key
+                    rest_client.headers['Authorization'] = f'Bearer {service_key}'
+        except Exception:
+            pass  # Silently fail if we can't set headers
         
         # Initialize HTTP client for AlphaBoard API calls
         headers = {"Content-Type": "application/json"}
