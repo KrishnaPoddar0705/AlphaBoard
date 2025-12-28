@@ -1478,6 +1478,22 @@ class AlphaBoardClient:
             List of recommendations with full details
         """
         try:
+            logger.info(f"Fetching recommendations for analyst {analyst_user_id} with status filter: {status}")
+            
+            # First verify the analyst exists
+            profile_check = self.supabase.table("profiles") \
+                .select("id, username") \
+                .eq("id", analyst_user_id) \
+                .limit(1) \
+                .execute()
+            
+            if not profile_check.data or len(profile_check.data) == 0:
+                logger.warning(f"Analyst {analyst_user_id} not found in profiles table")
+                return []
+            
+            logger.info(f"Found analyst profile: {profile_check.data[0].get('username')}")
+            
+            # Build query
             query = self.supabase.table("recommendations") \
                 .select("*") \
                 .eq("user_id", analyst_user_id) \
@@ -1487,6 +1503,23 @@ class AlphaBoardClient:
                 query = query.eq("status", status)
             
             result = query.limit(20).execute()
+            
+            logger.info(f"Query returned {len(result.data) if result.data else 0} recommendations")
+            
+            # If no results with status filter, check if analyst has any recommendations at all
+            if (not result.data or len(result.data) == 0) and status:
+                logger.info(f"No {status} recommendations found, checking if analyst has any recommendations...")
+                all_recs_check = self.supabase.table("recommendations") \
+                    .select("status") \
+                    .eq("user_id", analyst_user_id) \
+                    .limit(5) \
+                    .execute()
+                
+                if all_recs_check.data:
+                    statuses = [r.get("status") for r in all_recs_check.data]
+                    logger.info(f"Analyst has recommendations with statuses: {set(statuses)}")
+                else:
+                    logger.info(f"Analyst has no recommendations at all")
             
             recs = []
             if result.data:
@@ -1516,10 +1549,11 @@ class AlphaBoardClient:
                         "thesis": rec.get("thesis")
                     })
             
+            logger.info(f"Returning {len(recs)} formatted recommendations")
             return recs
             
         except Exception as e:
-            logger.error(f"Error fetching analyst recommendations: {e}")
+            logger.error(f"Error fetching analyst recommendations: {e}", exc_info=True)
             return []
     
     async def get_analyst_performance(self, analyst_user_id: str) -> Dict[str, Any]:

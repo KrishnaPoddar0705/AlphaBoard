@@ -327,11 +327,16 @@ class MessageEngine:
         
         elif reply_id.startswith("analyst_status_"):
             # View OPEN/CLOSED for analyst
+            # Format: analyst_status_{STATUS}_{analyst_id}
             parts = reply_id.replace("analyst_status_", "").split("_", 1)
             if len(parts) == 2:
-                status = parts[0].upper()  # OPEN or CLOSED
+                status = parts[0].upper()  # OPEN, CLOSED, or ALL
                 analyst_id = parts[1]
+                logger.info(f"User selected to view {status} positions for analyst {analyst_id}")
                 await self._handle_show_analyst_recs(phone, user_id, analyst_id, status)
+            else:
+                logger.error(f"Invalid analyst_status format: {reply_id}")
+                await self._send_error_message(phone)
         
         else:
             # Unknown interactive reply
@@ -1401,29 +1406,68 @@ class MessageEngine:
     ) -> None:
         """Show analyst recommendations in detailed format."""
         try:
-            # Get analyst profile
+            logger.info(f"Showing recommendations for analyst {analyst_id}, status: {status}")
+            
+            # Verify admin still has access and get organization context
+            context = state_manager.get_context(user_id)
+            admin_org_id = context.data.get("organization_id") if context else None
+            
+            # Get analyst profile and verify they're in the same organization
             profile_result = self.ab_client.supabase.table("profiles") \
-                .select("username, full_name") \
+                .select("username, full_name, organization_id") \
                 .eq("id", analyst_id) \
                 .limit(1) \
                 .execute()
             
             analyst_name = "Analyst"
+            analyst_org_id = None
+            
             if profile_result.data and len(profile_result.data) > 0:
                 profile = profile_result.data[0]
                 analyst_name = profile.get("full_name") or profile.get("username") or "Analyst"
+                analyst_org_id = profile.get("organization_id")
+                logger.info(f"Found analyst profile: {analyst_name}, org_id: {analyst_org_id}")
+            else:
+                logger.warning(f"Analyst profile not found for ID: {analyst_id}")
+            
+            # Also check membership table for organization
+            if not analyst_org_id:
+                membership_result = self.ab_client.supabase.table("user_organization_membership") \
+                    .select("organization_id") \
+                    .eq("user_id", analyst_id) \
+                    .limit(1) \
+                    .execute()
+                
+                if membership_result.data and len(membership_result.data) > 0:
+                    analyst_org_id = membership_result.data[0].get("organization_id")
+                    logger.info(f"Found analyst organization from membership: {analyst_org_id}")
+            
+            # Verify analyst is in admin's organization
+            if admin_org_id and analyst_org_id and admin_org_id != analyst_org_id:
+                logger.warning(f"Analyst {analyst_id} (org: {analyst_org_id}) not in admin's org: {admin_org_id}")
+                await self.wa_client.send_text_message(
+                    phone,
+                    f"⚠️ *Access Denied*\n\n"
+                    f"This analyst is not in your organization."
+                )
+                state_manager.cancel_flow(user_id)
+                return
             
             # Get recommendations
             status_filter = None if status == "ALL" else status
             recs = await self.ab_client.get_analyst_recommendations_detailed(analyst_id, status_filter)
             
+            logger.info(f"Retrieved {len(recs)} recommendations for analyst {analyst_id}")
+            
             # Get performance stats
             performance = await self.ab_client.get_analyst_performance(analyst_id)
             
             if not recs:
+                status_label = status.lower() if status != "ALL" else "positions"
                 await self.wa_client.send_text_message(
                     phone,
-                    f"📭 *{analyst_name}*\n\nNo {status.lower()} positions found."
+                    f"📭 *{analyst_name}*\n\nNo {status_label} found.\n\n"
+                    f"This analyst may not have any {status_label} yet."
                 )
                 state_manager.cancel_flow(user_id)
                 return
