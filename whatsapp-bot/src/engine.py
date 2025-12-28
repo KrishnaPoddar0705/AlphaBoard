@@ -1457,10 +1457,17 @@ class MessageEngine:
             status_filter = None if status == "ALL" else status
             logger.info(f"Fetching recommendations with status filter: {status_filter}")
             
-            # Try direct query first as fallback
-            recs = await self.ab_client.get_analyst_recommendations_detailed(analyst_id, status_filter)
-            
-            logger.info(f"Retrieved {len(recs)} recommendations for analyst {analyst_id}")
+            recs = []
+            try:
+                # Try direct query first
+                recs = await self.ab_client.get_analyst_recommendations_detailed(analyst_id, status_filter)
+                logger.info(f"Retrieved {len(recs)} recommendations for analyst {analyst_id}")
+            except AlphaBoardClientError as e:
+                logger.error(f"Failed to get recommendations: {e}")
+                # Fall through to direct query fallback
+            except Exception as e:
+                logger.error(f"Unexpected error getting recommendations: {e}", exc_info=True)
+                # Fall through to direct query fallback
             
             # If no results, try direct query without going through the method
             if not recs:
@@ -1635,21 +1642,40 @@ class MessageEngine:
             # Send message FIRST, then cancel flow
             message_text = "\n".join(lines)
             logger.info(f"Sending recommendations message ({len(message_text)} chars)")
-            await self.wa_client.send_text_message(phone, message_text)
             
-            # End flow AFTER sending message
+            try:
+                await self.wa_client.send_text_message(phone, message_text)
+                logger.info(f"Successfully sent recommendations message to {phone}")
+            except Exception as send_error:
+                logger.error(f"Failed to send message: {send_error}", exc_info=True)
+                # Still cancel flow even if message send fails
+                # Try to send error message
+                try:
+                    await self.wa_client.send_text_message(
+                        phone,
+                        f"❌ *Error*\n\nFailed to send recommendations.\n\nPlease try again."
+                    )
+                except:
+                    pass  # If we can't send error message, just log it
+            
+            # ALWAYS cancel flow after sending (or attempting to send) message
             state_manager.cancel_flow(user_id)
             logger.info(f"Flow cancelled for user {user_id}")
             
         except Exception as e:
             logger.error(f"Error showing analyst recs: {e}", exc_info=True)
-            await self.wa_client.send_text_message(
-                phone,
-                f"❌ *Error*\n\nFailed to retrieve recommendations.\n\n"
-                f"Error: {str(e)[:100]}\n\n"
-                f"Please try again or contact support."
-            )
+            error_msg = str(e)
+            # Provide user-friendly error message
+            if "apikey" in error_msg.lower() or "api key" in error_msg.lower() or "unauthorized" in error_msg.lower():
+                user_error = "❌ *Authentication Error*\n\nFailed to authenticate with database.\n\nPlease contact support."
+            elif "not found" in error_msg.lower():
+                user_error = f"❌ *Not Found*\n\nAnalyst or recommendations not found.\n\nPlease verify the analyst ID and try again."
+            else:
+                user_error = f"❌ *Error*\n\nFailed to retrieve recommendations.\n\nError: {error_msg[:100]}\n\nPlease try again or contact support."
+            
+            await self.wa_client.send_text_message(phone, user_error)
             state_manager.cancel_flow(user_id)
+            logger.info(f"Flow cancelled after error for user {user_id}")
     
     # =========================================================================
     # Helper Methods

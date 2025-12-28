@@ -1701,9 +1701,21 @@ class AlphaBoardClient:
             except Exception as query_error:
                 logger.error(f"Error executing recommendations query: {query_error}", exc_info=True)
                 error_str = str(query_error).lower()
-                if "apikey" in error_str or "api key" in error_str:
+                error_type = type(query_error).__name__
+                
+                # Check for API key errors in various forms
+                is_api_key_error = (
+                    "apikey" in error_str or 
+                    "api key" in error_str or
+                    "unauthorized" in error_str or
+                    "401" in error_str or
+                    "authentication" in error_str
+                )
+                
+                if is_api_key_error:
                     logger.error("API key authentication failed - ensuring headers are set and retrying")
-                    self._ensure_headers_set(service_key)
+                    if service_key:
+                        self._ensure_headers_set(service_key)
                     try:
                         # Retry with headers set
                         query = self.supabase.table("recommendations") \
@@ -1715,10 +1727,13 @@ class AlphaBoardClient:
                         result = query.limit(50).execute()
                         logger.info(f"Retry query returned {len(result.data) if result.data else 0} recommendations")
                     except Exception as retry_error:
-                        logger.error(f"Retry also failed: {retry_error}")
-                        return []
+                        logger.error(f"Retry also failed: {retry_error}", exc_info=True)
+                        # Re-raise to let caller know query failed
+                        raise AlphaBoardClientError(f"Failed to query recommendations after retry: {retry_error}")
                 else:
-                    return []
+                    # For other errors, log and re-raise so caller knows query failed
+                    logger.error(f"Query failed with {error_type}: {query_error}")
+                    raise AlphaBoardClientError(f"Failed to query recommendations: {query_error}")
             
             # If no results with status filter, check if analyst has any recommendations at all
             if (not result or not result.data or len(result.data) == 0) and status:
