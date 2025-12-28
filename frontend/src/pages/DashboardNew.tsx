@@ -24,7 +24,7 @@ import { usePanelWidth, usePanelTransition } from '../hooks/useLayout';
 import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
 import { setCachedReturn, calculateReturn, getReturnFromCacheOrCalculate } from '../lib/returnsCache';
 import { getRollingPortfolioReturns } from '../lib/api';
-import toast, { Toaster } from 'react-hot-toast';
+import { Toaster } from 'react-hot-toast';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { getStockSummary } from '../lib/api';
 import { WeeklyReturnsChart } from '../components/charts/WeeklyReturnsChart';
@@ -622,12 +622,9 @@ export default function DashboardNew() {
                                         message: `${rec.ticker} ${trigger.alert_type === 'BUY' ? 'dropped to' : 'rose to'} ${currency}${currentPrice.toFixed(2)}, ${trigger.alert_type === 'BUY' ? 'below' : 'above'} your ${trigger.alert_type} price of ${currency}${trigger.trigger_price.toFixed(2)}`,
                                     }]);
 
+                                // Toast notification removed - alerts still created in database
                                 if (!alertError) {
-                                    const currency = !rec.ticker.includes('.NS') && !rec.ticker.includes('.BO') ? '$' : '₹';
-                                    toast.success(`🔔 ${rec.ticker} hit ${trigger.alert_type} price (${currency}${trigger.trigger_price.toFixed(2)})!`, {
-                                        duration: 5000,
-                                        icon: trigger.alert_type === 'BUY' ? '📈' : '📉',
-                                    });
+                                    // Alert created silently
                                 }
                             }
                         }
@@ -660,11 +657,9 @@ export default function DashboardNew() {
                             message: `${rec.ticker} dropped to ${currency}${currentPrice.toFixed(2)}, below your BUY price of ${currency}${rec.buy_price.toFixed(2)}`,
                         }]);
 
+                    // Toast notification removed - alerts still created in database
                     if (!buyError) {
-                        toast.success(`🔔 ${rec.ticker} hit BUY price!`, {
-                            duration: 5000,
-                            icon: '📈',
-                        });
+                        // Alert created silently
                     }
                 }
             }
@@ -694,11 +689,9 @@ export default function DashboardNew() {
                             message: `${rec.ticker} rose to ${currency}${currentPrice.toFixed(2)}, above your SELL price of ${currency}${rec.sell_price.toFixed(2)}`,
                         }]);
 
+                    // Toast notification removed - alerts still created in database
                     if (!sellError) {
-                        toast.success(`🔔 ${rec.ticker} hit SELL price!`, {
-                            duration: 5000,
-                            icon: '📉',
-                        });
+                        // Alert created silently
                     }
                 }
             }
