@@ -194,9 +194,9 @@ export default function TickerFilter({
         {/* Selected Tickers Display */}
         {value.length > 0 && (
           <div className="flex flex-wrap gap-1.5 mb-2">
-            {value.map((ticker) => (
+            {value.map((ticker, index) => (
               <motion.div
-                key={ticker}
+                key={`${ticker}-${index}`}
                 initial={{ scale: 0, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}

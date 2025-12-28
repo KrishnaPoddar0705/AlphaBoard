@@ -332,8 +332,8 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                 ) : isManualMode ? (
                     /* Manual Input Mode */
                     <div className="space-y-2">
-                        {weights.map((w) => (
-                            <div key={w.ticker} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                        {weights.map((w, index) => (
+                            <div key={`${w.ticker}-${index}`} className="flex items-center gap-3 p-3 rounded-lg bg-white/5 border border-white/10">
                                 <div className="flex-1">
                                     <div className="text-sm font-semibold text-white">{w.ticker}</div>
                                 </div>
@@ -370,9 +370,9 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                 ) : (
                     /* Slider Mode */
                     <div className="space-y-3">
-                        {weights.map((w) => (
+                        {weights.map((w, index) => (
                             <WeightSliderRow
-                                key={w.ticker}
+                                key={`${w.ticker}-${index}`}
                                 ticker={w.ticker}
                                 weight={w.weight}
                                 positionValue={0} // Not needed for this view

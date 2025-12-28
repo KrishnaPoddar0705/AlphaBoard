@@ -108,13 +108,13 @@ export function MobileBottomNav({ viewMode, onViewModeChange, counts }: MobileBo
                        flex items-center justify-around h-16 shadow-lg"
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-            {navItems.map((item) => {
+            {navItems.map((item, index) => {
                 const Icon = item.icon;
                 const active = isActive(item.matchPath || item.to);
 
                 return (
                     <Link
-                        key={item.to}
+                        key={`${item.label}-${index}`}
                         to={item.to}
                         className={`
                             relative flex flex-col items-center justify-center gap-1 flex-1 h-full

@@ -2,6 +2,7 @@ import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getAnalystPerformance, getRollingPortfolioReturns } from '../lib/api';
 import { MonthlyReturnsHeatmap } from '../components/charts/MonthlyReturnsHeatmap';
+import { DailyReturnsCalendar } from '../components/charts/DailyReturnsCalendar';
 import { WeeklyReturnsChart } from '../components/charts/WeeklyReturnsChart';
 import { IdeasAddedChart } from '../components/charts/IdeasAddedChart';
 import { PortfolioAllocationDonut } from '../components/charts/PortfolioAllocationDonut';
@@ -16,11 +17,11 @@ export default function AnalystPerformance() {
     const [loading, setLoading] = useState(true);
     const [performanceData, setPerformanceData] = useState<any>(null);
     const [recommendations, setRecommendations] = useState<any[]>([]);
-    const [portfolioReturns, setPortfolioReturns] = useState<Array<{ week: string; return: number; cumulativeReturn?: number; count?: number }>>([]);
-    const [portfolioReturnsPeriod, setPortfolioReturnsPeriod] = useState<'day' | 'week' | 'month'>('week');
+    const [portfolioReturns, setPortfolioReturns] = useState<Array<{ week: string; date?: string; return: number; cumulativeReturn?: number; count?: number }>>([]);
+    const [portfolioReturnsPeriod, setPortfolioReturnsPeriod] = useState<'day' | 'week' | 'month'>('day');
     const [portfolioReturnsLoading, setPortfolioReturnsLoading] = useState(false);
     const [ideasAddedPeriod, setIdeasAddedPeriod] = useState<'day' | 'week' | 'month'>('week');
-    const [returnsMatrixPeriod, setReturnsMatrixPeriod] = useState<'day' | 'week' | 'month'>('month');
+    const [returnsMatrixPeriod, setReturnsMatrixPeriod] = useState<'day' | 'week' | 'month'>('day');
 
     // Refs to prevent concurrent calls
     const fetchingRecommendations = useRef(false);
@@ -106,6 +107,7 @@ export default function AnalystPerformance() {
 
                         return {
                             week: label,
+                            date: date.toISOString().split('T')[0], // Store ISO date string for calendar
                             return: typeof point.value === 'number' ? point.value : 0, // Already in percentage from backend
                             cumulativeReturn: (data.cumulative && data.cumulative[index] && typeof data.cumulative[index].value === 'number')
                                 ? data.cumulative[index].value
@@ -295,9 +297,27 @@ export default function AnalystPerformance() {
         return { winRate, profitableWeeks, totalTrades };
     }, [recommendations, portfolioReturns]);
 
+    // Create calendar data for daily returns
+    // Missing values are treated as 0, but 0 values are filtered out in the calendar component to show as blank
+    const calendarData = useMemo(() => {
+        if (!portfolioReturns || portfolioReturns.length === 0 || returnsMatrixPeriod !== 'day') return [];
+        
+        return portfolioReturns
+            .filter(point => point.date) // Only include points with date
+            .map(point => ({
+                day: point.date!,
+                value: point.return ?? 0 // Ensure missing values are 0
+            }));
+    }, [portfolioReturns, returnsMatrixPeriod]);
+
     // Create returns matrix heatmap data based on selected period
     const returnsMatrixData = useMemo(() => {
         if (!portfolioReturns || portfolioReturns.length === 0) return [];
+
+        // For daily view, use calendar instead of matrix
+        if (returnsMatrixPeriod === 'day') {
+            return [];
+        }
 
         // For monthly view, group by year-month
         if (returnsMatrixPeriod === 'month') {
@@ -347,8 +367,7 @@ export default function AnalystPerformance() {
             return matrixData;
         }
 
-        // For daily/weekly, we'll still use monthly format but aggregate differently
-        // Group all returns by their month
+        // For daily/weekly, group by month and calculate appropriately
         const matrixData: Array<{ year: number; month: number; return_pct: number }> = [];
         const returnsByMonth: Record<string, number[]> = {};
 
@@ -376,11 +395,22 @@ export default function AnalystPerformance() {
 
         Object.entries(returnsByMonth).forEach(([key, returns]) => {
             const [year, month] = key.split('-').map(Number);
-            const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+            let monthlyReturn: number;
+            
+            if (returnsMatrixPeriod === 'day') {
+                // For daily returns, compound them to get monthly return
+                // Formula: (1 + r1/100) * (1 + r2/100) * ... - 1
+                const compounded = returns.reduce((acc, r) => acc * (1 + r / 100), 1) - 1;
+                monthlyReturn = compounded * 100;
+            } else {
+                // For weekly returns, average them
+                monthlyReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+            }
+            
             matrixData.push({
                 year,
                 month,
-                return_pct: avgReturn
+                return_pct: monthlyReturn
             });
         });
 
@@ -503,19 +533,6 @@ export default function AnalystPerformance() {
                     </div>
                 )}
 
-                {/* Yearly Returns - Portfolio Return Bar Chart */}
-                <div className="bg-white/5 rounded-lg p-6 border border-white/10 mb-6">
-                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-                        <TrendingUp className="w-5 h-5" />
-                        Yearly Returns
-                    </h3>
-                    {portfolioReturns.length > 0 ? (
-                        <WeeklyReturnsChart data={portfolioReturns} height={300} />
-                    ) : (
-                        <div className="text-gray-400 text-center py-8">No yearly data available</div>
-                    )}
-                </div>
-
                 {/* Returns Matrix - Heatmap */}
                 <div className="bg-white/5 rounded-lg p-6 border border-white/10 mb-6">
                     <div className="flex items-center justify-between mb-4">
@@ -530,7 +547,13 @@ export default function AnalystPerformance() {
                             <option value="month">Month</option>
                         </select>
                     </div>
-                    {returnsMatrixData.length > 0 ? (
+                    {returnsMatrixPeriod === 'day' ? (
+                        calendarData.length > 0 ? (
+                            <DailyReturnsCalendar data={calendarData} />
+                        ) : (
+                            <div className="text-gray-400 text-center py-8">No daily returns data available</div>
+                        )
+                    ) : returnsMatrixData.length > 0 ? (
                         <MonthlyReturnsHeatmap data={returnsMatrixData} />
                     ) : (
                         <div className="text-gray-400 text-center py-8">No returns matrix data available</div>

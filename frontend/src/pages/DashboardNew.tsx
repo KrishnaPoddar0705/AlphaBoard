@@ -101,7 +101,7 @@ export default function DashboardNew() {
     const [companyNames, setCompanyNames] = useState<Record<string, string>>({});
     const [ideasAddedPeriod, setIdeasAddedPeriod] = useState<'day' | 'week' | 'month'>('week');
     const [topPerformersPeriod, setTopPerformersPeriod] = useState<'day' | 'week' | 'month'>('week');
-    const [portfolioReturnsPeriod, setPortfolioReturnsPeriod] = useState<'day' | 'week' | 'month'>('week');
+    const [portfolioReturnsPeriod, setPortfolioReturnsPeriod] = useState<'day' | 'week' | 'month'>('day');
     const [portfolioReturnsLoading, setPortfolioReturnsLoading] = useState(false);
 
     // Panel transition hook

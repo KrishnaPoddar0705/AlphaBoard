@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { getAnalystPerformance, getPortfolioAllocation } from '../lib/api';
-import { YearlyBarChart } from './charts/YearlyBarChart';
 import { MonthlyReturnsHeatmap } from './charts/MonthlyReturnsHeatmap';
 import { PortfolioAllocationPie } from './charts/PortfolioAllocationPie';
 import { PnLDistribution } from './charts/PnLDistribution';
@@ -102,16 +101,6 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ userId }
                         {metrics.avg_risk_score?.toFixed(1) || '0.0'}
                     </div>
                 </div>
-            </div>
-
-            {/* Yearly Performance Chart */}
-            <div className="bg-white/5 rounded-lg p-6 border border-white/10">
-                <h3 className="text-lg font-semibold text-white mb-4">Yearly Performance</h3>
-                {performanceData.yearly_returns && performanceData.yearly_returns.length > 0 ? (
-                    <YearlyBarChart data={performanceData.yearly_returns} />
-                ) : (
-                    <div className="text-gray-400 text-center py-8">No yearly data available</div>
-                )}
             </div>
 
             {/* Monthly Returns Heatmap */}

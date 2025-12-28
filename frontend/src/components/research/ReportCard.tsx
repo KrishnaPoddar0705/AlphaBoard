@@ -65,9 +65,9 @@ export default function ReportCard({ report }: ReportCardProps) {
 
         {report.tickers && report.tickers.length > 0 && (
           <div className="flex flex-wrap gap-1">
-            {report.tickers.slice(0, 5).map((ticker) => (
+            {report.tickers.slice(0, 5).map((ticker, index) => (
               <span
-                key={ticker}
+                key={`${ticker}-${index}`}
                 className="px-2 py-1 bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded text-xs text-[var(--text-primary)]"
               >
                 {ticker}
