@@ -23,6 +23,7 @@ import { IdeaCardMobile } from '../components/ideas/IdeaCardMobile';
 import { usePanelWidth, usePanelTransition } from '../hooks/useLayout';
 import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
 import { setCachedReturn, calculateReturn, getReturnFromCacheOrCalculate } from '../lib/returnsCache';
+import { getRollingPortfolioReturns } from '../lib/api';
 import toast, { Toaster } from 'react-hot-toast';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { getStockSummary } from '../lib/api';
@@ -101,6 +102,7 @@ export default function DashboardNew() {
     const [ideasAddedPeriod, setIdeasAddedPeriod] = useState<'day' | 'week' | 'month'>('week');
     const [topPerformersPeriod, setTopPerformersPeriod] = useState<'day' | 'week' | 'month'>('week');
     const [portfolioReturnsPeriod, setPortfolioReturnsPeriod] = useState<'day' | 'week' | 'month'>('week');
+    const [portfolioReturnsLoading, setPortfolioReturnsLoading] = useState(false);
 
     // Panel transition hook
     const { shouldRender: shouldRenderDetail, isAnimating: isDetailAnimating } = usePanelTransition(!!selectedStock);
@@ -371,6 +373,8 @@ export default function DashboardNew() {
         setSearchResults([]);
         setHasSearched(false);
         setCurrentPrice(null);
+        // Clear entry price when selecting a new stock
+        setEntryPrice('');
 
         // Determine market from symbol
         const isUS = !symbol.includes('.NS') && !symbol.includes('.BO');
@@ -379,10 +383,8 @@ export default function DashboardNew() {
         try {
             const data = await getPrice(symbol);
             setCurrentPrice(data.price);
-            // Set entry price to current price but allow user to edit
-            if (!entryPrice || entryPrice === '0' || entryPrice === '') {
-                setEntryPrice(data.price.toString());
-            }
+            // Set entry price to current price
+            setEntryPrice(data.price.toString());
         } catch (e) {
             console.error('Failed to get price', e);
         }
@@ -607,6 +609,7 @@ export default function DashboardNew() {
                                 .maybeSingle();
 
                             if (!existingAlert) {
+                                const currency = !rec.ticker.includes('.NS') && !rec.ticker.includes('.BO') ? '$' : '₹';
                                 const { error: alertError } = await supabase
                                     .from('price_alerts')
                                     .insert([{
@@ -616,11 +619,12 @@ export default function DashboardNew() {
                                         alert_type: trigger.alert_type,
                                         trigger_price: trigger.trigger_price,
                                         current_price: currentPrice,
-                                        message: `${rec.ticker} ${trigger.alert_type === 'BUY' ? 'dropped to' : 'rose to'} ₹${currentPrice.toFixed(2)}, ${trigger.alert_type === 'BUY' ? 'below' : 'above'} your ${trigger.alert_type} price of ₹${trigger.trigger_price.toFixed(2)}`,
+                                        message: `${rec.ticker} ${trigger.alert_type === 'BUY' ? 'dropped to' : 'rose to'} ${currency}${currentPrice.toFixed(2)}, ${trigger.alert_type === 'BUY' ? 'below' : 'above'} your ${trigger.alert_type} price of ${currency}${trigger.trigger_price.toFixed(2)}`,
                                     }]);
 
                                 if (!alertError) {
-                                    toast.success(`🔔 ${rec.ticker} hit ${trigger.alert_type} price (₹${trigger.trigger_price.toFixed(2)})!`, {
+                                    const currency = !rec.ticker.includes('.NS') && !rec.ticker.includes('.BO') ? '$' : '₹';
+                                    toast.success(`🔔 ${rec.ticker} hit ${trigger.alert_type} price (${currency}${trigger.trigger_price.toFixed(2)})!`, {
                                         duration: 5000,
                                         icon: trigger.alert_type === 'BUY' ? '📈' : '📉',
                                     });
@@ -643,6 +647,7 @@ export default function DashboardNew() {
                     .lt('created_at', `${today}T23:59:59Z`);
 
                 if (!existingBuyAlerts || existingBuyAlerts.length === 0) {
+                    const currency = !rec.ticker.includes('.NS') && !rec.ticker.includes('.BO') ? '$' : '₹';
                     const { error: buyError } = await supabase
                         .from('price_alerts')
                         .insert([{
@@ -652,7 +657,7 @@ export default function DashboardNew() {
                             alert_type: 'BUY',
                             trigger_price: rec.buy_price,
                             current_price: currentPrice,
-                            message: `${rec.ticker} dropped to ₹${currentPrice.toFixed(2)}, below your BUY price of ₹${rec.buy_price.toFixed(2)}`,
+                            message: `${rec.ticker} dropped to ${currency}${currentPrice.toFixed(2)}, below your BUY price of ${currency}${rec.buy_price.toFixed(2)}`,
                         }]);
 
                     if (!buyError) {
@@ -676,6 +681,7 @@ export default function DashboardNew() {
                     .lt('created_at', `${today}T23:59:59Z`);
 
                 if (!existingSellAlerts || existingSellAlerts.length === 0) {
+                    const currency = !rec.ticker.includes('.NS') && !rec.ticker.includes('.BO') ? '$' : '₹';
                     const { error: sellError } = await supabase
                         .from('price_alerts')
                         .insert([{
@@ -685,7 +691,7 @@ export default function DashboardNew() {
                             alert_type: 'SELL',
                             trigger_price: rec.sell_price,
                             current_price: currentPrice,
-                            message: `${rec.ticker} rose to ₹${currentPrice.toFixed(2)}, above your SELL price of ₹${rec.sell_price.toFixed(2)}`,
+                            message: `${rec.ticker} rose to ${currency}${currentPrice.toFixed(2)}, above your SELL price of ${currency}${rec.sell_price.toFixed(2)}`,
                         }]);
 
                     if (!sellError) {
@@ -738,96 +744,92 @@ export default function DashboardNew() {
         });
     }, [recommendations, viewMode]);
 
-    // Calculate portfolio returns by period (day/week/month)
-    const portfolioReturns = useMemo(() => {
-        if (!recommendations || recommendations.length === 0) return [];
+    // Portfolio returns state
+    const [portfolioReturns, setPortfolioReturns] = useState<Array<{ week: string; return: number; cumulativeReturn: number; count: number }>>([]);
 
-        const now = new Date();
-        const periods: Array<{ week: string; return: number; count: number }> = [];
-        const count = portfolioReturnsPeriod === 'day' ? 30 : portfolioReturnsPeriod === 'week' ? 8 : 6;
-
-        for (let i = count - 1; i >= 0; i--) {
-            let periodStart: Date;
-            let periodEnd: Date;
-            let periodLabel: string;
-
-            if (portfolioReturnsPeriod === 'day') {
-                periodStart = new Date(now);
-                periodStart.setDate(now.getDate() - i);
-                periodStart.setHours(0, 0, 0, 0);
-                periodEnd = new Date(periodStart);
-                periodEnd.setHours(23, 59, 59, 999);
-                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            } else if (portfolioReturnsPeriod === 'week') {
-                periodStart = new Date(now);
-                periodStart.setDate(now.getDate() - (now.getDay() + i * 7));
-                periodStart.setHours(0, 0, 0, 0);
-                periodEnd = new Date(periodStart);
-                periodEnd.setDate(periodStart.getDate() + 6);
-                periodEnd.setHours(23, 59, 59, 999);
-                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            } else {
-                // month
-                periodStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-                periodEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
-                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    // Fetch portfolio returns from API - only re-fetch when range changes
+    useEffect(() => {
+        const fetchPortfolioReturns = async () => {
+            if (!session?.user?.id) {
+                setPortfolioReturns([]);
+                return;
             }
 
-            // Count recommendations added in this period
-            const addedInPeriod = recommendations.filter(rec => {
-                const entryDate = new Date(rec.entry_date);
-                return entryDate >= periodStart && entryDate <= periodEnd;
-            }).length;
+            // Always fetch portfolio returns, even if no recommendations
+            // The API will return empty data if no OPEN recommendations exist
 
-            // Find recommendations that were active during this period
-            const periodRecs = recommendations.filter(rec => {
-                if (rec.status === 'WATCHLIST') return false;
+            setPortfolioReturnsLoading(true);
+            try {
+                // Map frontend period to API range
+                const rangeMap: Record<'day' | 'week' | 'month', 'DAY' | 'WEEK' | 'MONTH'> = {
+                    'day': 'DAY',
+                    'week': 'WEEK',
+                    'month': 'MONTH'
+                };
+                const range = rangeMap[portfolioReturnsPeriod];
 
-                const entryDate = new Date(rec.entry_date);
-                const exitDate = rec.exit_date ? new Date(rec.exit_date) : now;
+                console.log('Fetching portfolio returns for user:', session.user.id, 'range:', range);
+                const data = await getRollingPortfolioReturns(session.user.id, range);
+                console.log('Portfolio returns API response:', data);
 
-                // Check if recommendation overlaps with this period
-                return entryDate <= periodEnd && exitDate >= periodStart;
-            });
-
-            if (periodRecs.length === 0) {
-                periods.push({
-                    week: periodLabel,
-                    return: 0,
-                    count: addedInPeriod
-                });
-                continue;
-            }
-
-            // Calculate average return for this period
-            let totalReturn = 0;
-            periodRecs.forEach(rec => {
-                const entry = rec.entry_price || 0;
-                const current = rec.status === 'CLOSED' ? (rec.exit_price || entry) : (rec.current_price || entry);
-
-                if (entry > 0) {
-                    if (rec.status === 'CLOSED' && rec.final_return_pct !== undefined) {
-                        totalReturn += rec.final_return_pct;
-                    } else {
-                        totalReturn += getReturnFromCacheOrCalculate(
-                            rec.ticker,
-                            entry,
-                            current || null,
-                            rec.action || 'BUY'
-                        );
-                    }
+                // Handle error response
+                if (data && data.error) {
+                    console.error('API returned error:', data.error);
+                    setPortfolioReturns([]);
+                    return;
                 }
-            });
 
-            periods.push({
-                week: periodLabel,
-                return: periodRecs.length > 0 ? totalReturn / periodRecs.length : 0,
-                count: addedInPeriod
-            });
-        }
+                if (data && data.points && Array.isArray(data.points) && data.points.length > 0) {
+                    // Transform API response to chart format
+                    const transformed = data.points.map((point: any, index: number) => {
+                        try {
+                            const date = new Date(point.date);
+                            let label = '';
 
-        return periods;
-    }, [recommendations, portfolioReturnsPeriod]);
+                            if (portfolioReturnsPeriod === 'day') {
+                                label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            } else if (portfolioReturnsPeriod === 'week') {
+                                // For weekly, show week start date (Monday)
+                                label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            } else {
+                                // For monthly, show month and year
+                                label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                            }
+
+                            return {
+                                week: label,
+                                return: typeof point.value === 'number' ? point.value : 0, // Already in percentage
+                                cumulativeReturn: (data.cumulative && data.cumulative[index] && typeof data.cumulative[index].value === 'number') ? data.cumulative[index].value : 0,
+                                count: point.active_count || 0
+                            };
+                        } catch (e) {
+                            console.error('Error transforming point:', point, e);
+                            return null;
+                        }
+                    }).filter((item: any) => item !== null);
+
+                    console.log('Transformed portfolio returns:', transformed);
+                    if (transformed.length > 0) {
+                        setPortfolioReturns(transformed);
+                    } else {
+                        console.warn('No valid transformed data');
+                        setPortfolioReturns([]);
+                    }
+                } else {
+                    console.warn('No portfolio returns data or empty points array:', data);
+                    setPortfolioReturns([]);
+                }
+            } catch (error) {
+                console.error('Error fetching portfolio returns:', error);
+                setPortfolioReturns([]);
+            } finally {
+                setPortfolioReturnsLoading(false);
+            }
+        };
+
+        fetchPortfolioReturns();
+        // Only re-fetch when range changes, not when recommendations change
+    }, [session?.user?.id, portfolioReturnsPeriod]);
 
     // Calculate total portfolio return
     const totalPortfolioReturn = useMemo(() => {
@@ -858,23 +860,26 @@ export default function DashboardNew() {
         return activeRecs.length > 0 ? totalReturn / activeRecs.length : 0; // Average return
     }, [recommendations]);
 
-    // Calculate portfolio allocation - count of BUY/SELL recommendations
+    // Calculate portfolio allocation - count of BUY/SELL recommendations (only active/OPEN)
     const portfolioAllocation = useMemo(() => {
         if (!recommendations || recommendations.length === 0) return [];
 
         const allocationMap: Record<string, { buyCount: number; sellCount: number }> = {};
 
-        recommendations.forEach(rec => {
-            if (!allocationMap[rec.ticker]) {
-                allocationMap[rec.ticker] = { buyCount: 0, sellCount: 0 };
-            }
+        // Only count OPEN recommendations
+        recommendations
+            .filter(rec => rec.status === 'OPEN')
+            .forEach(rec => {
+                if (!allocationMap[rec.ticker]) {
+                    allocationMap[rec.ticker] = { buyCount: 0, sellCount: 0 };
+                }
 
-            if (rec.action === 'BUY') {
-                allocationMap[rec.ticker].buyCount += 1;
-            } else if (rec.action === 'SELL') {
-                allocationMap[rec.ticker].sellCount += 1;
-            }
-        });
+                if (rec.action === 'BUY') {
+                    allocationMap[rec.ticker].buyCount += 1;
+                } else if (rec.action === 'SELL') {
+                    allocationMap[rec.ticker].sellCount += 1;
+                }
+            });
 
         return Object.entries(allocationMap)
             .filter(([_, data]) => data.buyCount > 0 || data.sellCount > 0)
@@ -946,7 +951,7 @@ export default function DashboardNew() {
         if (!recommendations || recommendations.length === 0) return [];
 
         const now = new Date();
-        const periods: Array<{ period: string; recommendations: number; watchlist: number }> = [];
+        const periods: Array<{ period: string; openRecommendations: number; watchlist: number; closed: number }> = [];
         const count = ideasAddedPeriod === 'day' ? 30 : ideasAddedPeriod === 'week' ? 8 : 6;
 
         for (let i = count - 1; i >= 0; i--) {
@@ -976,77 +981,123 @@ export default function DashboardNew() {
                 periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
             }
 
+            // Count recommendations added in this period
             const addedInPeriod = recommendations.filter(rec => {
+                if (!rec.entry_date) return false;
                 const entryDate = new Date(rec.entry_date);
                 return entryDate >= periodStart && entryDate <= periodEnd;
             });
 
-            const recommendationsCount = addedInPeriod.filter(r => r.status === 'OPEN' || r.status === 'CLOSED').length;
+            // Count only OPEN recommendations added in this period
+            const openRecommendationsCount = addedInPeriod.filter(r => r.status === 'OPEN').length;
             const watchlistCount = addedInPeriod.filter(r => r.status === 'WATCHLIST').length;
+
+            // Count stocks closed in this period (when exit_date falls within period)
+            const closedInPeriod = recommendations.filter(rec => {
+                if (!rec.exit_date || rec.status !== 'CLOSED') return false;
+                const exitDate = new Date(rec.exit_date);
+                return exitDate >= periodStart && exitDate <= periodEnd;
+            });
+            const closedCount = closedInPeriod.length;
 
             periods.push({
                 period: periodLabel,
-                recommendations: recommendationsCount,
-                watchlist: watchlistCount
+                openRecommendations: openRecommendationsCount,
+                watchlist: watchlistCount,
+                closed: closedCount
             });
         }
 
         return periods;
     }, [recommendations, ideasAddedPeriod]);
 
-    // Calculate top performers by period (day/week/month)
-    const topPerformersByPeriod = useMemo(() => {
-        if (!recommendations || recommendations.length === 0) return [];
+    // Calculate top performers by period (day/week/month) - only active positions
+    // Returns separate arrays for winners and losers
+    const { topWinners, topLosers } = useMemo(() => {
+        if (!recommendations || recommendations.length === 0) {
+            return { topWinners: [], topLosers: [] };
+        }
+
+        // Only get OPEN recommendations
+        const activeRecs = recommendations.filter(rec => rec.status === 'OPEN' && rec.entry_date);
+
+        if (activeRecs.length === 0) {
+            return { topWinners: [], topLosers: [] };
+        }
 
         const now = new Date();
         let periodStart: Date;
 
         if (topPerformersPeriod === 'day') {
+            // Today - period start is beginning of today
             periodStart = new Date(now);
             periodStart.setHours(0, 0, 0, 0);
         } else if (topPerformersPeriod === 'week') {
+            // Last 7 days
             periodStart = new Date(now);
-            periodStart.setDate(now.getDate() - now.getDay());
+            periodStart.setDate(now.getDate() - 7);
             periodStart.setHours(0, 0, 0, 0);
         } else {
-            // month
-            periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            // Last 30 days
+            periodStart = new Date(now);
+            periodStart.setDate(now.getDate() - 30);
             periodStart.setHours(0, 0, 0, 0);
         }
 
-        // Get recommendations active in the period
-        const periodRecs = recommendations.filter(rec => {
-            if (rec.status === 'WATCHLIST') return false;
-            const entryDate = new Date(rec.entry_date);
-            const exitDate = rec.exit_date ? new Date(rec.exit_date) : now;
-            return entryDate <= now && exitDate >= periodStart;
-        });
+        // Calculate period-specific returns for each active position
+        // Only include stocks that were active during the period
+        const periodReturns = activeRecs
+            .filter(rec => {
+                const entryDate = new Date(rec.entry_date);
+                return entryDate <= now; // Stock must have been added before or during period
+            })
+            .map(rec => {
+                // Determine start price for period calculation
+                // If stock was added before period start, ideally we'd use price at period start
+                // For now, we'll use entry_price as proxy (entry_price is closest to period start)
+                // If stock was added during period, use entry_price
+                const startPrice = rec.entry_price || 0;
 
-        return periodRecs.map(rec => {
-            const entry = rec.entry_price || 0;
-            const current = rec.status === 'CLOSED' ? (rec.exit_price || entry) : (rec.current_price || entry);
-            let ret = 0;
+                // End price is current price
+                const endPrice = rec.current_price || startPrice;
 
-            if (entry > 0) {
-                if (rec.status === 'CLOSED' && rec.final_return_pct !== undefined) {
-                    ret = rec.final_return_pct;
-                } else {
-                    ret = getReturnFromCacheOrCalculate(
-                        rec.ticker,
-                        entry,
-                        current || null,
-                        rec.action || 'BUY'
-                    );
+                let periodReturn = 0;
+
+                if (startPrice > 0 && endPrice > 0) {
+                    // Calculate absolute return for the period: (end - start) / start * 100
+                    periodReturn = ((endPrice - startPrice) / startPrice) * 100;
+
+                    // Apply action (BUY/SELL) - SELL positions have inverted returns
+                    if (rec.action === 'SELL') {
+                        periodReturn = -periodReturn;
+                    }
                 }
-            }
 
-            return {
-                ticker: rec.ticker,
-                return: ret,
-                status: rec.status
-            };
-        }).sort((a, b) => b.return - a.return).slice(0, 5);
+                return {
+                    ticker: rec.ticker,
+                    return: periodReturn,
+                    status: rec.status
+                };
+            });
+
+        // Split into winners (positive) and losers (negative)
+        const winners = periodReturns
+            .filter(r => r.return > 0)
+            .sort((a, b) => b.return - a.return)
+            .slice(0, 5);
+
+        const losers = periodReturns
+            .filter(r => r.return < 0)
+            .sort((a, b) => a.return - b.return) // Sort ascending (most negative first)
+            .slice(0, 5);
+
+        return { topWinners: winners, topLosers: losers };
     }, [recommendations, topPerformersPeriod]);
+
+    // Keep backward compatibility for now
+    const topPerformersByPeriod = useMemo(() => {
+        return [...topWinners, ...topLosers].sort((a, b) => b.return - a.return);
+    }, [topWinners, topLosers]);
 
     // Calculate KPI data for mini charts
     const kpiData = useMemo(() => {
@@ -1156,7 +1207,11 @@ export default function DashboardNew() {
 
                         {/* Weekly Returns Chart */}
                         <div className="h-[200px] -mx-2">
-                            {portfolioReturns.length > 0 ? (
+                            {portfolioReturnsLoading ? (
+                                <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
+                                    Loading...
+                                </div>
+                            ) : portfolioReturns.length > 0 ? (
                                 <WeeklyReturnsChart data={portfolioReturns} height={200} />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
@@ -1189,12 +1244,12 @@ export default function DashboardNew() {
                     </div>
                 </div>
 
-                {/* Top Performers & Allocation Section */}
+                {/* Top Winners & Losers Section */}
                 <div className="px-4 py-3 grid grid-cols-1 gap-3">
-                    {topPerformersByPeriod.length > 0 && (
+                    {topWinners.length > 0 && (
                         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-bold text-[var(--text-primary)]">Top Performers</h3>
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">Top Winners</h3>
                                 <select
                                     value={topPerformersPeriod}
                                     onChange={(e) => setTopPerformersPeriod(e.target.value as 'day' | 'week' | 'month')}
@@ -1206,15 +1261,35 @@ export default function DashboardNew() {
                                 </select>
                             </div>
                             <div className="h-[180px] -mx-2">
-                                <TopPerformersChart data={topPerformersByPeriod} height={180} />
+                                <TopPerformersChart data={topWinners} height={180} />
+                            </div>
+                        </div>
+                    )}
+
+                    {topLosers.length > 0 && (
+                        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">Top Losers</h3>
+                                <select
+                                    value={topPerformersPeriod}
+                                    onChange={(e) => setTopPerformersPeriod(e.target.value as 'day' | 'week' | 'month')}
+                                    className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                                >
+                                    <option value="day">Today</option>
+                                    <option value="week">This Week</option>
+                                    <option value="month">This Month</option>
+                                </select>
+                            </div>
+                            <div className="h-[180px] -mx-2">
+                                <TopPerformersChart data={topLosers} height={180} />
                             </div>
                         </div>
                     )}
 
                     {portfolioAllocation.length > 0 && (
-                        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4 overflow-hidden">
+                        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4 overflow-visible">
                             <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">Portfolio Allocation</h3>
-                            <div className="h-[200px] -mx-2 overflow-hidden">
+                            <div className="h-[200px] -mx-2 overflow-visible">
                                 <PortfolioAllocationDonut data={portfolioAllocation} height={200} />
                             </div>
                         </div>
@@ -1312,7 +1387,7 @@ export default function DashboardNew() {
 
             {/* Desktop: Original layout */}
             <div className="hidden md:block h-[calc(100vh-4rem)] overflow-hidden">
-                <div className="h-full grid grid-cols-12">
+                <div className="h-full grid grid-cols-12 min-h-0">
                     {/* Left Panel: Idea List */}
                     <div className={`
                         ${isExpanded ? 'hidden' : 'col-span-12 md:col-span-6 lg:col-span-5 xl:col-span-5'}
@@ -1338,7 +1413,7 @@ export default function DashboardNew() {
                     {shouldRenderDetail && selectedStock && (
                         <div className={`
                             ${isExpanded ? 'col-span-12' : 'col-span-12 md:col-span-6 lg:col-span-7 xl:col-span-7'}
-                            h-full relative transition-all duration-300
+                            h-full min-h-0 relative transition-all duration-300 flex flex-col overflow-hidden
                         ${isDetailAnimating ? 'opacity-100' : 'opacity-0'}
                     `}>
                             <StockDetailPanel
@@ -1354,6 +1429,35 @@ export default function DashboardNew() {
                     {!selectedStock && (
                         <div className="col-span-12 md:col-span-6 lg:col-span-7 xl:col-span-7 h-full overflow-y-auto bg-[var(--bg-primary)]/50">
                             <div className="p-6 space-y-6">
+                                {/* Portfolio Returns - Always show, positioned first */}
+                                <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-base font-bold text-[var(--text-primary)]">Portfolio Returns</h3>
+                                        <select
+                                            value={portfolioReturnsPeriod}
+                                            onChange={(e) => setPortfolioReturnsPeriod(e.target.value as 'day' | 'week' | 'month')}
+                                            className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                                        >
+                                            <option value="day">Day</option>
+                                            <option value="week">Week</option>
+                                            <option value="month">Month</option>
+                                        </select>
+                                    </div>
+                                    <div className="h-[250px] -mx-2">
+                                        {portfolioReturnsLoading ? (
+                                            <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
+                                                Loading...
+                                            </div>
+                                        ) : portfolioReturns.length > 0 ? (
+                                            <WeeklyReturnsChart data={portfolioReturns} height={250} />
+                                        ) : (
+                                            <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
+                                                No data available
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
                                 {/* Ideas Added Chart */}
                                 {ideasAddedData.length > 0 && (
                                     <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
@@ -1377,9 +1481,9 @@ export default function DashboardNew() {
 
                                 {/* Portfolio Allocation */}
                                 {portfolioAllocation.length > 0 && (
-                                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4 overflow-visible">
                                         <h3 className="text-base font-bold text-[var(--text-primary)] mb-4">Portfolio Allocation</h3>
-                                        <div className="h-[250px] -mx-2">
+                                        <div className="h-[250px] -mx-2 overflow-visible">
                                             <PortfolioAllocationDonut data={portfolioAllocation} height={250} />
                                         </div>
                                     </div>
@@ -1389,7 +1493,7 @@ export default function DashboardNew() {
                                 {topPerformersByPeriod.length > 0 && (
                                     <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
                                         <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-base font-bold text-[var(--text-primary)]">Top Performers</h3>
+                                            <h3 className="text-base font-bold text-[var(--text-primary)]">Top Performers in Active Positions</h3>
                                             <select
                                                 value={topPerformersPeriod}
                                                 onChange={(e) => setTopPerformersPeriod(e.target.value as 'day' | 'week' | 'month')}
@@ -1406,29 +1510,8 @@ export default function DashboardNew() {
                                     </div>
                                 )}
 
-                                {/* Portfolio Returns */}
-                                {portfolioReturns.length > 0 && (
-                                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-base font-bold text-[var(--text-primary)]">Portfolio Returns</h3>
-                                            <select
-                                                value={portfolioReturnsPeriod}
-                                                onChange={(e) => setPortfolioReturnsPeriod(e.target.value as 'day' | 'week' | 'month')}
-                                                className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
-                                            >
-                                                <option value="day">Day</option>
-                                                <option value="week">Week</option>
-                                                <option value="month">Month</option>
-                                            </select>
-                                        </div>
-                                        <div className="h-[250px] -mx-2">
-                                            <WeeklyReturnsChart data={portfolioReturns} height={250} />
-                                        </div>
-                                    </div>
-                                )}
-
                                 {/* Empty State if no data */}
-                                {ideasAddedData.length === 0 && portfolioAllocation.length === 0 && topPerformersByPeriod.length === 0 && portfolioReturns.length === 0 && (
+                                {ideasAddedData.length === 0 && portfolioAllocation.length === 0 && topWinners.length === 0 && topLosers.length === 0 && (
                                     <div className="flex flex-col items-center justify-center py-16 text-center">
                                         <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--card-bg)] flex items-center justify-center">
                                             <Search className="w-8 h-8 text-[var(--text-tertiary)]" />
@@ -1527,10 +1610,10 @@ export default function DashboardNew() {
                                     </div>
                                 )}
                                 <form onSubmit={handleSubmit} className="space-y-5">
-                                    <div className="relative">
+                                    <div className="relative z-10">
                                         <label className="block text-sm font-medium text-gray-300 mb-1.5">Stock Ticker</label>
                                         <div className="relative group">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none z-10">
                                                 <Search className={`h-4 w-4 ${hasSearched && searchResults.length === 0 ? 'text-red-400' : 'text-gray-400'} group-focus-within:text-indigo-400 transition-colors`} />
                                             </div>
                                             <input
@@ -1538,7 +1621,7 @@ export default function DashboardNew() {
                                                 required
                                                 value={ticker}
                                                 onChange={(e) => handleSearch(e.target.value)}
-                                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg leading-5 bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 transition-all
+                                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg leading-5 bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 transition-all relative z-10
                             ${hasSearched && searchResults.length === 0 && ticker.length > 1
                                                         ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
                                                         : 'border-white/10 focus:ring-indigo-500/50 focus:border-indigo-500'}`}
@@ -1547,12 +1630,12 @@ export default function DashboardNew() {
                                             />
                                         </div>
                                         {hasSearched && searchResults.length === 0 && ticker.length > 1 && (
-                                            <div className="absolute right-0 top-0 text-xs text-red-400 font-medium flex items-center mt-8 mr-2 pointer-events-none">
+                                            <div className="absolute right-0 top-0 text-xs text-red-400 font-medium flex items-center mt-8 mr-2 pointer-events-none z-20">
                                                 Ticker incorrect
                                             </div>
                                         )}
                                         {(searchResults.length > 0 || isSearching) && ticker.length > 1 && (
-                                            <ul className="absolute z-50 mt-1 w-full bg-[var(--card-bg)] border border-[var(--border-color)] shadow-2xl max-h-60 rounded-lg py-1 text-base overflow-auto focus:outline-none sm:text-sm animate-fadeIn">
+                                            <ul className="absolute z-[100] mt-1 w-full bg-[#1e293b] border border-[var(--border-color)] shadow-2xl max-h-60 rounded-lg py-1 text-base overflow-y-auto overflow-x-hidden focus:outline-none sm:text-sm animate-fadeIn scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent backdrop-blur-sm">
                                                 {isSearching ? (
                                                     <li className="px-4 py-3 text-gray-400 text-sm text-center">Searching...</li>
                                                 ) : (

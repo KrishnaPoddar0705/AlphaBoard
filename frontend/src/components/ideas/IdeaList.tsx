@@ -346,7 +346,7 @@ export function IdeaList({
                 )}
 
                 {/* View Mode Toggle - Hidden on mobile (using bottom nav instead) */}
-                <div className="hidden md:flex gap-1 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] overflow-x-auto">
+                <div className="hidden md:flex gap-2 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] overflow-x-auto justify-center max-w-md mx-auto">
                     <ViewModeButton
                         active={viewMode === 'active'}
                         onClick={() => setViewMode('active')}
@@ -505,10 +505,11 @@ function IdeaListItem({
     }
 
     const isPositive = ret >= 0;
-    const dateAdded = new Date(rec.entry_date).toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-    });
+    const dateAdded = new Date(rec.entry_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+    // Detect currency based on ticker
+    const isUSStock = !rec.ticker.includes('.NS') && !rec.ticker.includes('.BO');
+    const currencySymbol = isUSStock ? '$' : '₹';
 
     return (
         <div
@@ -566,7 +567,7 @@ function IdeaListItem({
                             <div>
                                 <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Current</div>
                                 <div className="text-base font-mono font-semibold text-[var(--text-primary)]">
-                                    {current ? `₹${current.toFixed(2)}` : '-'}
+                                    {current ? `${currencySymbol}${current.toFixed(2)}` : '-'}
                                 </div>
                             </div>
                             <div>
@@ -575,7 +576,7 @@ function IdeaListItem({
                                     ? 'text-emerald-400'
                                     : 'text-[var(--text-primary)]'
                                     }`}>
-                                    {rec.buy_price ? `₹${rec.buy_price.toFixed(2)}` : '-'}
+                                    {rec.buy_price ? `${currencySymbol}${rec.buy_price.toFixed(2)}` : '-'}
                                 </div>
                             </div>
                         </>
@@ -583,12 +584,12 @@ function IdeaListItem({
                         <>
                             <div>
                                 <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Entry</div>
-                                <div className="text-base font-mono font-semibold text-[var(--text-primary)]">₹{entry.toFixed(2)}</div>
+                                <div className="text-base font-mono font-semibold text-[var(--text-primary)]">{currencySymbol}{entry.toFixed(2)}</div>
                             </div>
                             <div>
                                 <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Current</div>
                                 <div className="text-base font-mono font-semibold text-[var(--text-primary)]">
-                                    {current ? `₹${current.toFixed(2)}` : '-'}
+                                    {current ? `${currencySymbol}${current.toFixed(2)}` : '-'}
                                 </div>
                             </div>
                         </>
@@ -671,11 +672,11 @@ function IdeaListItem({
                 <div className="col-span-2 px-2">
                     {viewMode === 'watchlist' ? (
                         <span className="text-sm text-[var(--text-primary)] font-mono font-medium">
-                            {current ? `₹${current.toFixed(2)}` : '-'}
+                            {current ? `${currencySymbol}${current.toFixed(2)}` : '-'}
                         </span>
                     ) : (
                         <span className="text-sm text-[var(--text-primary)] font-mono font-medium">
-                            ₹{entry.toFixed(2)}
+                            {currencySymbol}{entry.toFixed(2)}
                         </span>
                     )}
                 </div>
@@ -684,7 +685,7 @@ function IdeaListItem({
                 {viewMode !== 'watchlist' && (
                     <div className="col-span-2 px-2">
                         <span className="text-sm text-[var(--text-primary)] font-mono font-medium">
-                            {current ? `₹${current.toFixed(2)}` : '-'}
+                            {current ? `${currencySymbol}${current.toFixed(2)}` : '-'}
                         </span>
                     </div>
                 )}
@@ -699,7 +700,7 @@ function IdeaListItem({
                                     : 'text-[var(--text-primary)]'
                                 : 'text-[var(--text-secondary)]'
                                 }`}>
-                                {rec.buy_price ? `₹${rec.buy_price.toFixed(2)}` : '-'}
+                                {rec.buy_price ? `${currencySymbol}${rec.buy_price.toFixed(2)}` : '-'}
                             </span>
                         </div>
                         <div className="col-span-2 px-2">
@@ -709,7 +710,7 @@ function IdeaListItem({
                                     : 'text-[var(--text-primary)]'
                                 : 'text-[var(--text-secondary)]'
                                 }`}>
-                                {rec.sell_price ? `₹${rec.sell_price.toFixed(2)}` : '-'}
+                                {rec.sell_price ? `${currencySymbol}${rec.sell_price.toFixed(2)}` : '-'}
                             </span>
                         </div>
                     </>

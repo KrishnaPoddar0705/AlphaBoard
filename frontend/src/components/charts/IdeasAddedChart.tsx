@@ -2,7 +2,7 @@ import React from 'react';
 import { ResponsiveBar } from '@nivo/bar';
 
 interface IdeasAddedChartProps {
-    data: Array<{ period: string; recommendations: number; watchlist: number }>;
+    data: Array<{ period: string; openRecommendations: number; watchlist: number; closed: number }>;
     height?: number;
     periodType?: 'day' | 'week' | 'month';
 }
@@ -22,12 +22,13 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
 
     const chartData = data.map(item => ({
         period: item.period,
-        Recommendations: item.recommendations,
-        Watchlist: item.watchlist
+        'Recommendations': item.openRecommendations,
+        Watchlist: item.watchlist,
+        Closed: item.closed || 0
     }));
 
     const maxValue = Math.max(
-        ...chartData.map(d => d.Recommendations + d.Watchlist),
+        ...chartData.map(d => d['Recommendations'] + d.Watchlist + d.Closed),
         1
     );
 
@@ -35,13 +36,13 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
         <div style={{ height, width: '100%' }}>
             <ResponsiveBar
                 data={chartData}
-                keys={['Recommendations', 'Watchlist']}
+                keys={['Recommendations', 'Watchlist', 'Closed']}
                 indexBy="period"
-                margin={{ top: 10, right: 10, bottom: 60, left: 50 }}
+                margin={{ top: 50, right: 10, bottom: 60, left: 50 }}
                 padding={0.3}
                 valueScale={{ type: 'linear', min: 0, max: maxValue * 1.1 }}
                 indexScale={{ type: 'band', round: true }}
-                colors={['#6366f1', '#8b5cf6']}
+                colors={['#10b981', '#3b82f6', '#eab308']}
                 borderColor={{ from: 'color', modifiers: [['darker', 1.2]] }}
                 axisTop={null}
                 axisRight={null}
@@ -82,7 +83,9 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
                         <div style={{ marginBottom: '4px' }}>
                             <strong>{indexValue}</strong>
                         </div>
-                        <div style={{ color: id === 'Recommendations' ? '#6366f1' : '#8b5cf6' }}>
+                        <div style={{
+                            color: id === 'Recommendations' ? '#10b981' : id === 'Watchlist' ? '#3b82f6' : '#eab308'
+                        }}>
                             {id}: {value}
                         </div>
                     </div>
@@ -90,17 +93,18 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
                 legends={[
                     {
                         dataFrom: 'keys',
-                        anchor: 'top-right',
+                        anchor: 'top',
                         direction: 'row',
                         justify: false,
                         translateX: 0,
-                        translateY: -20,
-                        itemsSpacing: 10,
-                        itemWidth: 100,
+                        translateY: -40,
+                        itemsSpacing: 20,
+                        itemWidth: 140,
                         itemHeight: 20,
                         itemDirection: 'left-to-right',
-                        itemOpacity: 0.85,
-                        symbolSize: 12,
+                        itemOpacity: 1,
+                        symbolSize: 16,
+                        symbolShape: 'square',
                         effects: [
                             {
                                 on: 'hover',
@@ -140,8 +144,9 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
                     },
                     legends: {
                         text: {
-                            fill: 'rgba(255, 255, 255, 0.7)',
-                            fontSize: 11
+                            fill: 'rgba(255, 255, 255, 0.95)',
+                            fontSize: 12,
+                            fontWeight: 500
                         }
                     }
                 }}

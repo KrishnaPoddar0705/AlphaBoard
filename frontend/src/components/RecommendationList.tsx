@@ -68,7 +68,7 @@ export default function RecommendationList({
 
             {/* View Mode Toggle */}
             <div className="px-6 py-3 border-b border-[var(--border-color)] flex-shrink-0">
-                <div className="flex gap-1 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)]">
+                <div className="flex gap-2 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] justify-center max-w-md mx-auto">
                     <button
                         onClick={() => setViewMode('active')}
                         className={`flex-1 flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all ${viewMode === 'active' ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)]'}`}

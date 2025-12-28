@@ -274,6 +274,13 @@ export const getPriceTargets = async (ticker: string, userId: string) => {
     return res.data;
 };
 
+export const getRollingPortfolioReturns = async (userId: string, range: 'DAY' | 'WEEK' | 'MONTH' = 'DAY') => {
+    const res = await api.get(`/api/portfolio/rolling-returns`, {
+        params: { user_id: userId, range }
+    });
+    return res.data;
+};
+
 export const getAnalystPriceTargets = async (analystUserId: string, ticker: string) => {
     const res = await api.get(`/price-targets/analyst/${analystUserId}/${ticker}`);
     return res.data;

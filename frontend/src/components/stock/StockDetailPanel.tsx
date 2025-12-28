@@ -417,12 +417,16 @@ export function StockDetailPanel({
 
     const financials = data?.financials || {};
 
+    // Detect currency based on ticker
+    const isUSStock = !stock.ticker.includes('.NS') && !stock.ticker.includes('.BO');
+    const currencySymbol = isUSStock ? '$' : '₹';
+
     return (
-        <div className={`${isMobile ? 'fixed inset-0' : 'h-full'} bg-[var(--bg-primary)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent ${isMobile ? 'animate-slideInRight z-50' : ''}`}>
+        <div className={`${isMobile ? 'fixed inset-0' : 'h-full flex flex-col'} bg-[var(--bg-primary)] ${isMobile ? 'overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent animate-slideInRight z-50' : 'overflow-hidden'}`}>
             {/* All Content - Scrollable */}
             <div
                 ref={scrollRef}
-                className="w-full"
+                className={`w-full ${isMobile ? '' : 'flex-1 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent min-h-0'}`}
             >
                 {/* Sticky Header - Mobile optimized */}
                 <StockHeader
@@ -436,6 +440,7 @@ export function StockDetailPanel({
                     isExpanded={isExpanded}
                     onClose={onClose}
                     onToggleExpand={onToggleExpand}
+                    currencySymbol={currencySymbol}
                 />
 
                 {/* Investment Thesis Section */}
@@ -558,7 +563,7 @@ export function StockDetailPanel({
                                                 ) : (
                                                     <>
                                                         <span className="text-sm font-mono text-[var(--text-primary)]">
-                                                            ₹{trigger.trigger_price.toFixed(2)}
+                                                            {currencySymbol}{trigger.trigger_price.toFixed(2)}
                                                         </span>
                                                         {stock.current_price && (
                                                             <>

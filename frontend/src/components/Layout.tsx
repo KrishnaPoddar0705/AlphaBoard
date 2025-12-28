@@ -260,13 +260,13 @@ export default function Layout() {
                                         <LogOut className="w-5 h-5" />
                                     </button>
                                     {/* Desktop: With text */}
-                                    <button
-                                        onClick={handleLogout}
+                                <button
+                                    onClick={handleLogout}
                                         className="hidden md:inline-flex items-center px-4 py-2 border border-[var(--border-color)] text-sm font-medium rounded-md text-[var(--text-primary)] bg-white/5 hover:bg-white/10 focus:outline-none backdrop-blur-sm transition-all"
-                                    >
-                                        <LogOut className="w-4 h-4 mr-2" />
-                                        Sign Out
-                                    </button>
+                                >
+                                    <LogOut className="w-4 h-4 mr-2" />
+                                    Sign Out
+                                </button>
                                 </>
                             ) : (
                                 <Link

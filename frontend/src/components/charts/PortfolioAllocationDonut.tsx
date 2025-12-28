@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ResponsivePie } from '@nivo/pie';
 
 interface PortfolioAllocationDonutProps {
@@ -7,6 +7,7 @@ interface PortfolioAllocationDonutProps {
 }
 
 export const PortfolioAllocationDonut: React.FC<PortfolioAllocationDonutProps> = ({ data, height = 200 }) => {
+    const [hoveredId, setHoveredId] = useState<string | null>(null);
     if (!data || data.length === 0) {
         return (
             <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
@@ -33,12 +34,12 @@ export const PortfolioAllocationDonut: React.FC<PortfolioAllocationDonutProps> =
     ];
 
     return (
-        <div style={{ height, width: '100%', overflow: 'hidden' }}>
+        <div style={{ height, width: '100%', overflow: 'visible', position: 'relative' }}>
             <ResponsivePie
                 data={chartData}
-                margin={{ top: 10, right: 10, bottom: 10, left: 10 }}
+                margin={{ top: 40, right: 120, bottom: 40, left: 120 }}
                 innerRadius={0.5}
-                padAngle={2}
+                padAngle={1}
                 cornerRadius={4}
                 activeOuterRadiusOffset={8}
                 colors={colors}
@@ -47,20 +48,28 @@ export const PortfolioAllocationDonut: React.FC<PortfolioAllocationDonutProps> =
                     from: 'color',
                     modifiers: [['darker', 0.2]]
                 }}
-                arcLinkLabelsSkipAngle={10}
-                arcLinkLabelsTextColor="rgba(255, 255, 255, 0.6)"
+                arcLinkLabelsSkipAngle={360}
+                arcLinkLabel={(d: any) => {
+                    // Only show label for hovered segment
+                    return hoveredId === d.id ? d.label : '';
+                }}
+                arcLinkLabelsTextColor="rgba(255, 255, 255, 0.9)"
                 arcLinkLabelsThickness={2}
                 arcLinkLabelsColor={{ from: 'color' }}
-                arcLabelsSkipAngle={10}
+                arcLabelsSkipAngle={360}
                 enableArcLabels={false}
                 arcLabelsTextColor={{
                     from: 'color',
                     modifiers: [['darker', 2]]
                 }}
-                // Prevent overflow by adjusting link labels
-                arcLinkLabelsOffset={-5}
-                arcLinkLabelsDiagonalLength={8}
-                arcLinkLabelsStraightLength={8}
+                arcLabelsRadiusOffset={0.6}
+                // Adjust link labels to show all
+                arcLinkLabelsOffset={2}
+                arcLinkLabelsDiagonalLength={16}
+                arcLinkLabelsStraightLength={12}
+                arcLinkLabelsTextOffset={4}
+                onMouseEnter={(datum) => setHoveredId(datum.id as string)}
+                onMouseLeave={() => setHoveredId(null)}
                 tooltip={({ datum }) => {
                     const buyCount = datum.data.buyCount || 0;
                     const sellCount = datum.data.sellCount || 0;

@@ -26,6 +26,7 @@ interface StockHeaderProps {
     isExpanded?: boolean;
     onClose: () => void;
     onToggleExpand?: () => void;
+    currencySymbol?: string;
 }
 
 export function StockHeader({
@@ -41,6 +42,7 @@ export function StockHeader({
     isExpanded = false,
     onClose,
     onToggleExpand,
+    currencySymbol = '₹',
 }: StockHeaderProps) {
 
     // Use exit price if available (for closed positions), otherwise use current price
@@ -95,7 +97,7 @@ export function StockHeader({
                                 text-2xl md:text-3xl lg:text-4xl font-mono font-bold tracking-tight
                                 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}
                             `}>
-                                ₹{displayPrice?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                {currencySymbol}{displayPrice?.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </span>
 
                             {/* Price Change */}
@@ -116,7 +118,7 @@ export function StockHeader({
 
                             {/* Entry Price */}
                             <span className="text-xs md:text-sm text-[var(--text-secondary)]">
-                                Entry: <span className="font-mono text-[var(--text-primary)]">₹{entryPrice?.toFixed(2)}</span>
+                                Entry: <span className="font-mono text-[var(--text-primary)]">{currencySymbol}{entryPrice?.toFixed(2)}</span>
                                 {formattedEntryDate && (
                                     <span className="ml-1 md:ml-2 text-[var(--text-tertiary)] hidden sm:inline">({formattedEntryDate})</span>
                                 )}
@@ -126,7 +128,7 @@ export function StockHeader({
                             {exitPrice && (
                                 <>
                                     <span className="text-sm text-[var(--text-secondary)]">
-                                        Exit: <span className="font-mono text-[var(--text-primary)]">₹{exitPrice.toFixed(2)}</span>
+                                        Exit: <span className="font-mono text-[var(--text-primary)]">{currencySymbol}{exitPrice.toFixed(2)}</span>
                                     </span>
                                     {formattedExitDate && (
                                         <span className="text-sm text-[var(--text-secondary)]">

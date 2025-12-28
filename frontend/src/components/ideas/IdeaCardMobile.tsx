@@ -39,6 +39,10 @@ export function IdeaCardMobile({
     const isClosed = rec.status === 'CLOSED';
     const current = isClosed ? (rec.exit_price || entry) : rec.current_price;
 
+    // Detect currency based on ticker
+    const isUSStock = !rec.ticker.includes('.NS') && !rec.ticker.includes('.BO');
+    const currencySymbol = isUSStock ? '$' : '₹';
+
     // Calculate return using cache
     let ret = 0;
     if (isClosed && rec.final_return_pct !== undefined) {
@@ -154,7 +158,7 @@ export function IdeaCardMobile({
                         <div>
                             <p className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Current</p>
                             <p className="text-base font-mono font-semibold text-[var(--text-primary)]">
-                                {current ? `₹${current.toFixed(2)}` : '-'}
+                                {current ? `${currencySymbol}${current.toFixed(2)}` : '-'}
                             </p>
                         </div>
                         <div>
@@ -163,7 +167,7 @@ export function IdeaCardMobile({
                                 ? 'text-emerald-400'
                                 : 'text-[var(--text-primary)]'
                                 }`}>
-                                {rec.buy_price ? `₹${rec.buy_price.toFixed(2)}` : '-'}
+                                {rec.buy_price ? `${currencySymbol}${rec.buy_price.toFixed(2)}` : '-'}
                             </p>
                         </div>
                     </>
@@ -172,13 +176,13 @@ export function IdeaCardMobile({
                         <div>
                             <p className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Entry</p>
                             <p className="text-base font-mono font-semibold text-[var(--text-primary)]">
-                                ₹{entry.toFixed(2)}
+                                {currencySymbol}{entry.toFixed(2)}
                             </p>
                         </div>
                         <div>
                             <p className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Current</p>
                             <p className="text-base font-mono font-semibold text-[var(--text-primary)]">
-                                {current ? `₹${current.toFixed(2)}` : '-'}
+                                {current ? `${currencySymbol}${current.toFixed(2)}` : '-'}
                             </p>
                         </div>
                     </>

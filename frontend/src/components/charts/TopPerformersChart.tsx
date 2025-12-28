@@ -29,7 +29,10 @@ export const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ data, he
             status: item.status || 'OPEN'
         }));
 
+    // Determine if we're showing winners or losers
+    const hasNegativeReturns = sortedData.some(d => d.return < 0);
     const maxValue = Math.max(...sortedData.map(d => Math.abs(d.return)), 1);
+    const minValue = hasNegativeReturns ? Math.min(...sortedData.map(d => d.return), 0) : 0;
 
     return (
         <div style={{ height, width: '100%' }}>
@@ -39,7 +42,7 @@ export const TopPerformersChart: React.FC<TopPerformersChartProps> = ({ data, he
                 indexBy="ticker"
                 margin={{ top: 10, right: 10, bottom: 60, left: 50 }}
                 padding={0.4}
-                valueScale={{ type: 'linear', min: 0, max: maxValue * 1.1 }}
+                valueScale={{ type: 'linear', min: hasNegativeReturns ? minValue * 1.1 : 0, max: maxValue * 1.1 }}
                 indexScale={{ type: 'band', round: true }}
                 colors={(bar) => {
                     const status = (bar.data as any).status;
