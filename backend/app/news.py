@@ -120,22 +120,26 @@ def fetch_yahoo_finance_news(ticker: str, limit: int = 10) -> List[Dict[str, Any
     """
     Fetch news from Yahoo Finance RSS/API
     For Indian stocks (.NS, .BO), use the full ticker format.
+    For US stocks, use the ticker as-is.
     Uses requests to fetch RSS feed to avoid SSL certificate issues.
     """
     try:
-        # For Indian stocks, keep the .NS/.BO suffix for Yahoo Finance
-        # Yahoo Finance uses format like LENSKART.NS for NSE stocks
-        if '.NS' in ticker or '.BO' in ticker:
-            yahoo_ticker = ticker
-        else:
-            # For other stocks, use as-is
-            yahoo_ticker = ticker
+        # Determine if it's an Indian or US stock
+        is_indian = '.NS' in ticker or '.BO' in ticker
+        yahoo_ticker = ticker  # Use ticker as-is for both markets
         
-        # Yahoo Finance RSS feed - try both formats
-        urls = [
-            f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={yahoo_ticker}&region=IN&lang=en-IN",  # India region
-            f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={yahoo_ticker}&region=US&lang=en-US",  # US region fallback
-        ]
+        # Try the appropriate region first, then fallback
+        if is_indian:
+            urls = [
+                f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={yahoo_ticker}&region=IN&lang=en-IN",  # India region (primary)
+                f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={yahoo_ticker}&region=US&lang=en-US",  # US region fallback
+            ]
+        else:
+            # US stock - try US region first
+            urls = [
+                f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={yahoo_ticker}&region=US&lang=en-US",  # US region (primary)
+                f"https://feeds.finance.yahoo.com/rss/2.0/headline?s={yahoo_ticker}&region=IN&lang=en-IN",  # India region fallback
+            ]
         
         articles = []
         for url in urls:

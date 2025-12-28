@@ -20,3 +20,48 @@ print(f"Key length: {len(key)}")
 # The Python client doesn't need options for service role - it automatically bypasses RLS
 supabase: Client = create_client(url, key)
 
+# Patch headers to ensure service role key is properly set for RLS bypass
+def _patch_supabase_headers(client: Client, service_key: str) -> None:
+    """Patch Supabase client headers to ensure service role key bypasses RLS."""
+    try:
+        if hasattr(client, 'rest'):
+            rest_client = client.rest
+            
+            # Try multiple paths to access the underlying HTTP session
+            patched = False
+            
+            # Path 1: rest.postgrest.session.headers
+            if hasattr(rest_client, 'postgrest'):
+                postgrest = rest_client.postgrest
+                if hasattr(postgrest, 'session'):
+                    session = postgrest.session
+                    if hasattr(session, 'headers'):
+                        session.headers['apikey'] = service_key
+                        session.headers['Authorization'] = f'Bearer {service_key}'
+                        print("✅ Patched headers via rest.postgrest.session.headers")
+                        patched = True
+            
+            # Path 2: rest.headers (direct)
+            if not patched and hasattr(rest_client, 'headers'):
+                rest_client.headers['apikey'] = service_key
+                rest_client.headers['Authorization'] = f'Bearer {service_key}'
+                print("✅ Patched headers via rest.headers")
+                patched = True
+            
+            # Path 3: rest.session.headers
+            if not patched and hasattr(rest_client, 'session'):
+                session = rest_client.session
+                if hasattr(session, 'headers'):
+                    session.headers['apikey'] = service_key
+                    session.headers['Authorization'] = f'Bearer {service_key}'
+                    print("✅ Patched headers via rest.session.headers")
+                    patched = True
+            
+            if not patched:
+                print("⚠️ Could not patch Supabase headers - RLS bypass may not work")
+    except Exception as e:
+        print(f"⚠️ Error patching Supabase headers: {e}")
+
+# Patch headers to ensure RLS bypass
+_patch_supabase_headers(supabase, key)
+

@@ -38,45 +38,137 @@ def set_cached_data(key: str, data: Any):
     }
 
 def get_ticker_obj(ticker: str):
-    if not ticker.endswith(".NS") and not ticker.endswith(".BO") and not ticker.startswith("^") and "." not in ticker:
-        ticker = f"{ticker}.NS"
+    """
+    Get yfinance Ticker object. 
+    Don't modify ticker - use it as-is. Yahoo Finance handles both US (AAPL) and Indian (RELIANCE.NS) tickers.
+    """
+    # Use ticker as-is - yfinance can handle both US and Indian tickers
+    # US tickers: AAPL, MSFT, GOOGL (no suffix)
+    # Indian tickers: RELIANCE.NS, TCS.NS, HDFCBANK.NS (with .NS or .BO suffix)
     return yf.Ticker(ticker)
 
 def get_current_price(ticker: str) -> Optional[float]:
+    """
+    Get current price for a ticker. Works for both US and Indian stocks.
+    """
     stock = get_ticker_obj(ticker)
     try:
         # Fast fetch if possible, info can be slow. 
         # fast_info is better in newer yfinance
         try:
-            return stock.fast_info['last_price']
+            price = stock.fast_info.get('last_price')
+            if price and price > 0:
+                return float(price)
         except:
+            pass
+        
+        # Fallback to info
+        try:
             info = stock.info
-            return info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
+            price = info.get('currentPrice') or info.get('regularMarketPrice') or info.get('previousClose')
+            if price and price > 0:
+                return float(price)
+        except:
+            pass
+        
+        # Last resort: try history
+        try:
+            hist = stock.history(period="1d", interval="1m")
+            if not hist.empty:
+                last_price = hist['Close'].iloc[-1]
+                if last_price and last_price > 0:
+                    return float(last_price)
+        except:
+            pass
+        
+        return None
     except Exception as e:
         print(f"Error fetching price for {ticker}: {e}")
         return None
 
 def search_stocks(query: str) -> List[Dict[str, str]]:
-    if FINNHUB_API_KEY:
-        try:
-            url = f"https://finnhub.io/api/v1/search?q={query}&token={FINNHUB_API_KEY}"
-            response = httpx.get(url)
-            if response.status_code == 200:
-                data = response.json()
-                results = []
-                for item in data.get("result", [])[:10]:
-                    results.append({
-                        "symbol": item.get("symbol"),
-                        "name": item.get("description")
-                    })
-                return results
-        except Exception:
-            pass
-
+    """
+    Search for stocks using Yahoo Finance and Finnhub (if available).
+    Supports both US and Indian markets.
+    """
     results = []
     clean_query = query.upper().strip()
-    results.append({"symbol": f"{clean_query}.NS", "name": f"{clean_query} (NSE)"})
-    results.append({"symbol": f"{clean_query}.BO", "name": f"{clean_query} (BSE)"})
+    
+    # Try Yahoo Finance search first (works for both US and Indian stocks)
+    try:
+        # Yahoo Finance search endpoint
+        search_url = f"https://query1.finance.yahoo.com/v1/finance/search?q={clean_query}&quotesCount=15&newsCount=0"
+        response = httpx.get(search_url, timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            quotes = data.get("quotes", [])
+            
+            for quote in quotes[:15]:  # Limit to 15 results
+                symbol = quote.get("symbol", "")
+                name = quote.get("longname") or quote.get("shortname") or quote.get("name", "")
+                exchange = quote.get("exchange", "")
+                
+                # Skip if no symbol or name
+                if not symbol or not name:
+                    continue
+                
+                # Determine market type
+                if ".NS" in symbol or exchange == "NSE":
+                    market = "NSE"
+                elif ".BO" in symbol or exchange == "BSE":
+                    market = "BSE"
+                elif exchange in ["NYSE", "NASDAQ", "AMEX"] or (not symbol.endswith((".NS", ".BO")) and "." not in symbol):
+                    market = "US"
+                else:
+                    market = "US"  # Default to US for unknown exchanges
+                
+                results.append({
+                    "symbol": symbol,
+                    "name": name,
+                    "market": market
+                })
+            
+            if results:
+                return results
+    except Exception as e:
+        print(f"Yahoo Finance search error: {e}")
+    
+    # Fallback to Finnhub if available
+    if FINNHUB_API_KEY:
+        try:
+            url = f"https://finnhub.io/api/v1/search?q={clean_query}&token={FINNHUB_API_KEY}"
+            response = httpx.get(url, timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                for item in data.get("result", [])[:15]:
+                    symbol = item.get("symbol", "")
+                    name = item.get("description", "")
+                    if symbol and name:
+                        # Determine market from symbol
+                        if ".NS" in symbol:
+                            market = "NSE"
+                        elif ".BO" in symbol:
+                            market = "BSE"
+                        else:
+                            market = "US"
+                        
+                        results.append({
+                            "symbol": symbol,
+                            "name": name,
+                            "market": market
+                        })
+                if results:
+                    return results
+        except Exception as e:
+            print(f"Finnhub search error: {e}")
+    
+    # Final fallback: suggest Indian markets
+    if not results:
+        results.append({"symbol": f"{clean_query}.NS", "name": f"{clean_query} (NSE)", "market": "NSE"})
+        results.append({"symbol": f"{clean_query}.BO", "name": f"{clean_query} (BSE)", "market": "BSE"})
+        # Also suggest US ticker
+        results.append({"symbol": clean_query, "name": f"{clean_query} (US)", "market": "US"})
+    
     return results
 
 def format_statement(df: pd.DataFrame, key_map: Dict[str, str], count: int = 5) -> List[Dict[str, Any]]:

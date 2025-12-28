@@ -4,7 +4,7 @@ import { useUser } from '@clerk/clerk-react';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
-import Dashboard from './pages/Dashboard';
+import Dashboard from './pages/DashboardNew';
 import Leaderboard from './pages/Leaderboard';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import AnalystPerformance from './pages/AnalystPerformance';

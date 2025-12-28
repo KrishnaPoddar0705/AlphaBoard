@@ -11,17 +11,27 @@
  * @page
  */
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import { useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
 import { searchStocks, getPrice } from '../lib/api';
-import { Search, AlertCircle, Upload, X, Menu } from 'lucide-react';
+import { Search, AlertCircle, Upload, X, Plus, User, Moon } from 'lucide-react';
 import { IdeaList } from '../components/ideas/IdeaList';
 import { StockDetailPanel } from '../components/stock/StockDetailPanel';
+import { IdeaCardMobile } from '../components/ideas/IdeaCardMobile';
 import { usePanelWidth, usePanelTransition } from '../hooks/useLayout';
 import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
-import { setCachedReturn, calculateReturn } from '../lib/returnsCache';
+import { setCachedReturn, calculateReturn, getReturnFromCacheOrCalculate } from '../lib/returnsCache';
 import toast, { Toaster } from 'react-hot-toast';
+import { MobileBottomNav } from '../components/MobileBottomNav';
+import { getStockSummary } from '../lib/api';
+import { WeeklyReturnsChart } from '../components/charts/WeeklyReturnsChart';
+import { TopPerformersChart } from '../components/charts/TopPerformersChart';
+import { PortfolioAllocationDonut } from '../components/charts/PortfolioAllocationDonut';
+import { MonthlyPnLChart } from '../components/charts/MonthlyPnLChart';
+import { KPIMiniChart } from '../components/charts/KPIMiniChart';
+import { IdeasAddedChart } from '../components/charts/IdeasAddedChart';
 
 // Mock data fallback
 const MOCK_STOCKS = [
@@ -34,21 +44,43 @@ const MOCK_STOCKS = [
 
 export default function DashboardNew() {
     const { session } = useAuth();
+    const { user: clerkUser } = useUser();
     const { isMobile } = usePanelWidth();
+
+    // Initialize mobile state immediately to avoid hydration issues
+    const [isMobileState, setIsMobileState] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return window.innerWidth < 768;
+        }
+        return false;
+    });
+
+    // Ensure mobile detection works on first render and updates
+    useEffect(() => {
+        const checkMobile = () => {
+            const width = window.innerWidth;
+            setIsMobileState(width < 768);
+        };
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
+    // Use state-based mobile detection for rendering (prioritize hook, fallback to state)
+    const isMobileView = isMobile !== undefined ? isMobile : isMobileState;
 
     // State
     const [recommendations, setRecommendations] = useState<any[]>([]);
     const [selectedStock, setSelectedStock] = useState<any>(null);
     const [viewMode, setViewMode] = useState<'active' | 'watchlist' | 'history'>('active');
     const [showModal, setShowModal] = useState(false);
-    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
 
     // Form State
     const [ticker, setTicker] = useState('');
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
-    const [_hasSearched, setHasSearched] = useState(false);
+    const [hasSearched, setHasSearched] = useState(false);
     const [action, setAction] = useState('BUY');
     const [entryPrice, setEntryPrice] = useState<string>('');
     const [thesis, setThesis] = useState('');
@@ -56,12 +88,19 @@ export default function DashboardNew() {
     const [currentPrice, setCurrentPrice] = useState<number | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [isWatchlistAdd, setIsWatchlistAdd] = useState(false);
+    const [selectedMarket, setSelectedMarket] = useState<'IN' | 'US'>('IN'); // Track market for currency display
     const [buyPrice, setBuyPrice] = useState<string>('');
     const [sellPrice, setSellPrice] = useState<string>('');
+    const [priceTarget, setPriceTarget] = useState<string>('');
+    const [targetDate, setTargetDate] = useState<string>('');
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [isLoadingPrices, setIsLoadingPrices] = useState(false);
+    const [companyNames, setCompanyNames] = useState<Record<string, string>>({});
+    const [ideasAddedPeriod, setIdeasAddedPeriod] = useState<'day' | 'week' | 'month'>('week');
+    const [topPerformersPeriod, setTopPerformersPeriod] = useState<'day' | 'week' | 'month'>('week');
+    const [portfolioReturnsPeriod, setPortfolioReturnsPeriod] = useState<'day' | 'week' | 'month'>('week');
 
     // Panel transition hook
     const { shouldRender: shouldRenderDetail, isAnimating: isDetailAnimating } = usePanelTransition(!!selectedStock);
@@ -79,12 +118,56 @@ export default function DashboardNew() {
         };
     }, [session]);
 
-    // Close mobile drawer when stock is selected
+    // Close stock detail when navigating away on mobile
     useEffect(() => {
-        if (selectedStock && isMobile) {
-            setIsMobileDrawerOpen(false);
+        // Stock detail is handled by full-screen overlay on mobile
+    }, [selectedStock, isMobileView]);
+
+    // Fetch company names for displayed recommendations
+    useEffect(() => {
+        const fetchCompanyNames = async () => {
+            const displayedRecs = recommendations.filter(rec => {
+                if (viewMode === 'active') return rec.status === 'OPEN';
+                if (viewMode === 'watchlist') return rec.status === 'WATCHLIST';
+                if (viewMode === 'history') return rec.status === 'CLOSED';
+                return false;
+            });
+
+            const tickersToFetch = displayedRecs
+                .map(rec => rec.ticker)
+                .filter(ticker => !companyNames[ticker]);
+
+            if (tickersToFetch.length === 0) return;
+
+            const namePromises = tickersToFetch.map(async (ticker) => {
+                try {
+                    const summary = await getStockSummary(ticker);
+                    return { ticker, name: summary?.companyName || null };
+                } catch (error) {
+                    console.warn(`Failed to fetch company name for ${ticker}:`, error);
+                    return { ticker, name: null };
+                }
+            });
+
+            const results = await Promise.all(namePromises);
+            const newNames: Record<string, string> = {};
+
+            results.forEach(({ ticker, name }) => {
+                if (name) {
+                    newNames[ticker] = name;
+                }
+            });
+
+            if (Object.keys(newNames).length > 0) {
+                setCompanyNames(prev => ({ ...prev, ...newNames }));
+            }
+        };
+
+        if (recommendations.length > 0) {
+            fetchCompanyNames();
         }
-    }, [selectedStock, isMobile]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [recommendations, viewMode]);
 
     // Data Fetching Functions
     const fetchRecommendations = async () => {
@@ -250,6 +333,16 @@ export default function DashboardNew() {
     const handleSearch = async (q: string) => {
         setTicker(q);
         setHasSearched(false);
+
+        // Auto-detect market from typed ticker if no suffix
+        if (q.length > 0 && !q.includes('.NS') && !q.includes('.BO') && !q.includes('.')) {
+            // If it's a plain ticker without suffix, assume US market for now
+            // User can select from dropdown to confirm
+            setSelectedMarket('US');
+        } else if (q.includes('.NS') || q.includes('.BO')) {
+            setSelectedMarket('IN');
+        }
+
         if (q.length > 1) {
             setIsSearching(true);
             try {
@@ -278,14 +371,25 @@ export default function DashboardNew() {
         setSearchResults([]);
         setHasSearched(false);
         setCurrentPrice(null);
+
+        // Determine market from symbol
+        const isUS = !symbol.includes('.NS') && !symbol.includes('.BO');
+        setSelectedMarket(isUS ? 'US' : 'IN');
+
         try {
             const data = await getPrice(symbol);
             setCurrentPrice(data.price);
-            setEntryPrice(data.price.toString());
+            // Set entry price to current price but allow user to edit
+            if (!entryPrice || entryPrice === '0' || entryPrice === '') {
+                setEntryPrice(data.price.toString());
+            }
         } catch (e) {
             console.error('Failed to get price', e);
         }
     };
+
+    // Helper to get currency symbol
+    const getCurrencySymbol = () => selectedMarket === 'US' ? '$' : '₹';
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
@@ -325,7 +429,10 @@ export default function DashboardNew() {
                 }
             }
 
-            const newRec = {
+            // Determine benchmark based on market (US stocks use S&P 500, Indian stocks use NSE)
+            const benchmarkTicker = selectedMarket === 'US' ? '^GSPC' : '^NSEI';
+
+            const newRec: any = {
                 user_id: session.user.id,
                 ticker,
                 action: isWatchlistAdd ? 'WATCH' : action,
@@ -334,20 +441,48 @@ export default function DashboardNew() {
                 buy_price: isWatchlistAdd && buyPrice ? parseFloat(buyPrice) : null,
                 sell_price: isWatchlistAdd && sellPrice ? parseFloat(sellPrice) : null,
                 thesis,
-                benchmark_ticker: '^NSEI',
+                benchmark_ticker: benchmarkTicker,
                 entry_date: new Date().toISOString(),
                 status: isWatchlistAdd ? 'WATCHLIST' : 'OPEN',
                 images: imageUrls,
+                price_target: priceTarget ? parseFloat(priceTarget) : null,
+                target_date: targetDate ? new Date(targetDate).toISOString() : null
             };
 
-            const { error: sbError } = await supabase.from('recommendations').insert([newRec]);
-            if (sbError) throw sbError;
+            // Use API endpoint to create recommendation
+            try {
+                const { createRecommendation } = await import('../lib/api');
+                await createRecommendation(newRec, session.user.id);
+            } catch (apiError: any) {
+                // If API fails, fallback to direct Supabase insert
+                // Remove price_target and target_date for direct insert since they're not in recommendations table
+                const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
+                console.warn('API create failed, using direct insert:', apiError);
+                const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
+                if (sbError) throw sbError;
+
+                // If we had a price target, create it separately
+                if (price_target) {
+                    try {
+                        const { createPriceTarget } = await import('../lib/api');
+                        await createPriceTarget(
+                            ticker,
+                            price_target,
+                            target_date,
+                            session.user.id
+                        );
+                    } catch (ptError) {
+                        console.warn('Failed to create price target in fallback:', ptError);
+                    }
+                }
+            }
 
             await fetchRecommendations();
             closeModal();
         } catch (err) {
             console.error('Submission failed', err);
             // Fallback mock
+            const benchmarkTicker = selectedMarket === 'US' ? '^GSPC' : '^NSEI';
             const mockRec = {
                 id: Math.random().toString(36).substr(2, 9),
                 user_id: session.user.id,
@@ -356,6 +491,7 @@ export default function DashboardNew() {
                 entry_price: isWatchlistAdd ? null : (parseFloat(entryPrice) || 0),
                 current_price: parseFloat(entryPrice) || 0,
                 thesis,
+                benchmark_ticker: benchmarkTicker,
                 entry_date: new Date().toISOString(),
                 status: isWatchlistAdd ? 'WATCHLIST' : 'OPEN',
                 images: [],
@@ -565,8 +701,21 @@ export default function DashboardNew() {
         }
     };
 
-    const closeModal = () => {
+    const closeModal = useCallback(() => {
         setShowModal(false);
+        // Reset form state
+        setTicker('');
+        setSearchResults([]);
+        setEntryPrice('');
+        setThesis('');
+        setCurrentPrice(null);
+        setError(null);
+        setSelectedImages([]);
+        setBuyPrice('');
+        setSellPrice('');
+        setPriceTarget('');
+        setTargetDate('');
+        setSelectedMarket('IN'); // Reset to default Indian market
         setTicker('');
         setThesis('');
         setEntryPrice('');
@@ -577,10 +726,361 @@ export default function DashboardNew() {
         setHasSearched(false);
         setIsWatchlistAdd(false);
         setSelectedImages([]);
-        setBuyPrice('');
-        setSellPrice('');
-    };
+    }, []);
 
+    // Filter recommendations by view mode - MUST be before early return
+    const displayedRecommendations = useMemo(() => {
+        return recommendations.filter(rec => {
+            if (viewMode === 'active') return rec.status === 'OPEN';
+            if (viewMode === 'watchlist') return rec.status === 'WATCHLIST';
+            if (viewMode === 'history') return rec.status === 'CLOSED';
+            return false;
+        });
+    }, [recommendations, viewMode]);
+
+    // Calculate portfolio returns by period (day/week/month)
+    const portfolioReturns = useMemo(() => {
+        if (!recommendations || recommendations.length === 0) return [];
+
+        const now = new Date();
+        const periods: Array<{ week: string; return: number; count: number }> = [];
+        const count = portfolioReturnsPeriod === 'day' ? 30 : portfolioReturnsPeriod === 'week' ? 8 : 6;
+
+        for (let i = count - 1; i >= 0; i--) {
+            let periodStart: Date;
+            let periodEnd: Date;
+            let periodLabel: string;
+
+            if (portfolioReturnsPeriod === 'day') {
+                periodStart = new Date(now);
+                periodStart.setDate(now.getDate() - i);
+                periodStart.setHours(0, 0, 0, 0);
+                periodEnd = new Date(periodStart);
+                periodEnd.setHours(23, 59, 59, 999);
+                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else if (portfolioReturnsPeriod === 'week') {
+                periodStart = new Date(now);
+                periodStart.setDate(now.getDate() - (now.getDay() + i * 7));
+                periodStart.setHours(0, 0, 0, 0);
+                periodEnd = new Date(periodStart);
+                periodEnd.setDate(periodStart.getDate() + 6);
+                periodEnd.setHours(23, 59, 59, 999);
+                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else {
+                // month
+                periodStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                periodEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }
+
+            // Count recommendations added in this period
+            const addedInPeriod = recommendations.filter(rec => {
+                const entryDate = new Date(rec.entry_date);
+                return entryDate >= periodStart && entryDate <= periodEnd;
+            }).length;
+
+            // Find recommendations that were active during this period
+            const periodRecs = recommendations.filter(rec => {
+                if (rec.status === 'WATCHLIST') return false;
+
+                const entryDate = new Date(rec.entry_date);
+                const exitDate = rec.exit_date ? new Date(rec.exit_date) : now;
+
+                // Check if recommendation overlaps with this period
+                return entryDate <= periodEnd && exitDate >= periodStart;
+            });
+
+            if (periodRecs.length === 0) {
+                periods.push({
+                    week: periodLabel,
+                    return: 0,
+                    count: addedInPeriod
+                });
+                continue;
+            }
+
+            // Calculate average return for this period
+            let totalReturn = 0;
+            periodRecs.forEach(rec => {
+                const entry = rec.entry_price || 0;
+                const current = rec.status === 'CLOSED' ? (rec.exit_price || entry) : (rec.current_price || entry);
+
+                if (entry > 0) {
+                    if (rec.status === 'CLOSED' && rec.final_return_pct !== undefined) {
+                        totalReturn += rec.final_return_pct;
+                    } else {
+                        totalReturn += getReturnFromCacheOrCalculate(
+                            rec.ticker,
+                            entry,
+                            current || null,
+                            rec.action || 'BUY'
+                        );
+                    }
+                }
+            });
+
+            periods.push({
+                week: periodLabel,
+                return: periodRecs.length > 0 ? totalReturn / periodRecs.length : 0,
+                count: addedInPeriod
+            });
+        }
+
+        return periods;
+    }, [recommendations, portfolioReturnsPeriod]);
+
+    // Calculate total portfolio return
+    const totalPortfolioReturn = useMemo(() => {
+        if (!recommendations || recommendations.length === 0) return 0;
+
+        const activeRecs = recommendations.filter(r => r.status === 'OPEN' || r.status === 'CLOSED');
+        if (activeRecs.length === 0) return 0;
+
+        let totalReturn = 0;
+        activeRecs.forEach(rec => {
+            const entry = rec.entry_price || 0;
+            const current = rec.status === 'CLOSED' ? (rec.exit_price || entry) : (rec.current_price || entry);
+
+            if (entry > 0) {
+                if (rec.status === 'CLOSED' && rec.final_return_pct !== undefined) {
+                    totalReturn += rec.final_return_pct;
+                } else {
+                    totalReturn += getReturnFromCacheOrCalculate(
+                        rec.ticker,
+                        entry,
+                        current || null,
+                        rec.action || 'BUY'
+                    );
+                }
+            }
+        });
+
+        return activeRecs.length > 0 ? totalReturn / activeRecs.length : 0; // Average return
+    }, [recommendations]);
+
+    // Calculate portfolio allocation - count of BUY/SELL recommendations
+    const portfolioAllocation = useMemo(() => {
+        if (!recommendations || recommendations.length === 0) return [];
+
+        const allocationMap: Record<string, { buyCount: number; sellCount: number }> = {};
+
+        recommendations.forEach(rec => {
+            if (!allocationMap[rec.ticker]) {
+                allocationMap[rec.ticker] = { buyCount: 0, sellCount: 0 };
+            }
+
+            if (rec.action === 'BUY') {
+                allocationMap[rec.ticker].buyCount += 1;
+            } else if (rec.action === 'SELL') {
+                allocationMap[rec.ticker].sellCount += 1;
+            }
+        });
+
+        return Object.entries(allocationMap)
+            .filter(([_, data]) => data.buyCount > 0 || data.sellCount > 0)
+            .map(([ticker, data]) => ({
+                ticker,
+                buyCount: data.buyCount,
+                sellCount: data.sellCount
+            }));
+    }, [recommendations]);
+
+    // Calculate monthly P&L - equal weight portfolio return %
+    const monthlyPnL = useMemo(() => {
+        if (!recommendations || recommendations.length === 0) return [];
+
+        const now = new Date();
+        const months: Record<string, number[]> = {};
+
+        // Get last 6 months
+        for (let i = 5; i >= 0; i--) {
+            const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+            const monthKey = monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+            months[monthKey] = [];
+
+            recommendations.forEach(rec => {
+                if (rec.status === 'WATCHLIST') return;
+
+                const entryDate = new Date(rec.entry_date);
+                const exitDate = rec.exit_date ? new Date(rec.exit_date) : now;
+
+                // Check if recommendation overlaps with this month
+                if (entryDate <= monthEnd && exitDate >= monthStart) {
+                    const entry = rec.entry_price || 0;
+                    const current = rec.status === 'CLOSED' ? (rec.exit_price || entry) : (rec.current_price || entry);
+
+                    if (entry > 0) {
+                        let ret = 0;
+                        if (rec.status === 'CLOSED' && rec.final_return_pct !== undefined) {
+                            ret = rec.final_return_pct;
+                        } else {
+                            ret = getReturnFromCacheOrCalculate(
+                                rec.ticker,
+                                entry,
+                                current || null,
+                                rec.action || 'BUY'
+                            );
+                        }
+                        months[monthKey].push(ret);
+                    }
+                }
+            });
+        }
+
+        // Calculate equal-weight portfolio return (average of all returns)
+        return Object.entries(months).map(([month, returns]) => {
+            const avgReturn = returns.length > 0
+                ? returns.reduce((sum, r) => sum + r, 0) / returns.length
+                : 0;
+            return {
+                month,
+                return: avgReturn
+            };
+        });
+    }, [recommendations]);
+
+    // Calculate ideas added over time (day/week/month)
+    const ideasAddedData = useMemo(() => {
+        if (!recommendations || recommendations.length === 0) return [];
+
+        const now = new Date();
+        const periods: Array<{ period: string; recommendations: number; watchlist: number }> = [];
+        const count = ideasAddedPeriod === 'day' ? 30 : ideasAddedPeriod === 'week' ? 8 : 6;
+
+        for (let i = count - 1; i >= 0; i--) {
+            let periodStart: Date;
+            let periodEnd: Date;
+            let periodLabel: string;
+
+            if (ideasAddedPeriod === 'day') {
+                periodStart = new Date(now);
+                periodStart.setDate(now.getDate() - i);
+                periodStart.setHours(0, 0, 0, 0);
+                periodEnd = new Date(periodStart);
+                periodEnd.setHours(23, 59, 59, 999);
+                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else if (ideasAddedPeriod === 'week') {
+                periodStart = new Date(now);
+                periodStart.setDate(now.getDate() - (now.getDay() + i * 7));
+                periodStart.setHours(0, 0, 0, 0);
+                periodEnd = new Date(periodStart);
+                periodEnd.setDate(periodStart.getDate() + 6);
+                periodEnd.setHours(23, 59, 59, 999);
+                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            } else {
+                // month
+                periodStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                periodEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0, 23, 59, 59, 999);
+                periodLabel = periodStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            }
+
+            const addedInPeriod = recommendations.filter(rec => {
+                const entryDate = new Date(rec.entry_date);
+                return entryDate >= periodStart && entryDate <= periodEnd;
+            });
+
+            const recommendationsCount = addedInPeriod.filter(r => r.status === 'OPEN' || r.status === 'CLOSED').length;
+            const watchlistCount = addedInPeriod.filter(r => r.status === 'WATCHLIST').length;
+
+            periods.push({
+                period: periodLabel,
+                recommendations: recommendationsCount,
+                watchlist: watchlistCount
+            });
+        }
+
+        return periods;
+    }, [recommendations, ideasAddedPeriod]);
+
+    // Calculate top performers by period (day/week/month)
+    const topPerformersByPeriod = useMemo(() => {
+        if (!recommendations || recommendations.length === 0) return [];
+
+        const now = new Date();
+        let periodStart: Date;
+
+        if (topPerformersPeriod === 'day') {
+            periodStart = new Date(now);
+            periodStart.setHours(0, 0, 0, 0);
+        } else if (topPerformersPeriod === 'week') {
+            periodStart = new Date(now);
+            periodStart.setDate(now.getDate() - now.getDay());
+            periodStart.setHours(0, 0, 0, 0);
+        } else {
+            // month
+            periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+            periodStart.setHours(0, 0, 0, 0);
+        }
+
+        // Get recommendations active in the period
+        const periodRecs = recommendations.filter(rec => {
+            if (rec.status === 'WATCHLIST') return false;
+            const entryDate = new Date(rec.entry_date);
+            const exitDate = rec.exit_date ? new Date(rec.exit_date) : now;
+            return entryDate <= now && exitDate >= periodStart;
+        });
+
+        return periodRecs.map(rec => {
+            const entry = rec.entry_price || 0;
+            const current = rec.status === 'CLOSED' ? (rec.exit_price || entry) : (rec.current_price || entry);
+            let ret = 0;
+
+            if (entry > 0) {
+                if (rec.status === 'CLOSED' && rec.final_return_pct !== undefined) {
+                    ret = rec.final_return_pct;
+                } else {
+                    ret = getReturnFromCacheOrCalculate(
+                        rec.ticker,
+                        entry,
+                        current || null,
+                        rec.action || 'BUY'
+                    );
+                }
+            }
+
+            return {
+                ticker: rec.ticker,
+                return: ret,
+                status: rec.status
+            };
+        }).sort((a, b) => b.return - a.return).slice(0, 5);
+    }, [recommendations, topPerformersPeriod]);
+
+    // Calculate KPI data for mini charts
+    const kpiData = useMemo(() => {
+        const activeCount = recommendations.filter(r => r.status === 'OPEN').length;
+        const totalValue = recommendations
+            .filter(r => r.status === 'OPEN')
+            .reduce((sum, r) => sum + ((r.entry_price || 0) * 1), 0);
+
+        // Generate trend data (last 7 days)
+        const trendData = [];
+        const now = new Date();
+        for (let i = 6; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i);
+            const dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+            // Count active recommendations on this date
+            const countOnDate = recommendations.filter(r => {
+                if (r.status !== 'OPEN') return false;
+                const entryDate = new Date(r.entry_date);
+                return entryDate <= date;
+            }).length;
+
+            trendData.push({ date: dateKey, value: countOnDate });
+        }
+
+        return {
+            activeCount,
+            totalValue,
+            trendData
+        };
+    }, [recommendations]);
+
+    // Early return after all hooks
     if (!session) {
         return (
             <div className="h-screen flex items-center justify-center bg-slate-900">
@@ -590,7 +1090,7 @@ export default function DashboardNew() {
     }
 
     return (
-        <div className="h-[calc(100vh-4rem)] bg-slate-900 overflow-hidden">
+        <div className="h-[calc(100vh-4rem)] bg-[var(--bg-primary)] md:overflow-hidden overflow-y-auto md:overflow-y-hidden">
             <Toaster
                 position="top-right"
                 toastOptions={{
@@ -608,223 +1108,548 @@ export default function DashboardNew() {
                     },
                 }}
             />
-            {/* 12-Column Grid Layout */}
-            <div className="h-full grid grid-cols-12">
-                {/* Left Panel: Idea List (4 columns on desktop) */}
-                <div className={`
-                    ${isMobile
-                        ? 'fixed inset-y-0 left-0 z-40 w-80 transform transition-transform duration-300 ease-out'
-                        : isExpanded
-                            ? 'hidden'
-                            : 'col-span-12 md:col-span-5 lg:col-span-4 xl:col-span-4'
-                    }
-                    ${isMobile && !isMobileDrawerOpen ? '-translate-x-full' : 'translate-x-0'}
-                `}>
-                    <IdeaList
-                        isLoading={isLoadingPrices}
-                        recommendations={recommendations}
-                        selectedStock={selectedStock}
-                        setSelectedStock={setSelectedStock}
-                        viewMode={viewMode}
-                        setViewMode={setViewMode}
-                        handleCloseIdea={handleCloseIdea}
-                        handlePromoteWatchlist={handlePromoteWatchlist}
-                        handleDeleteWatchlist={handleDeleteWatchlist}
-                        onNewIdea={() => { setIsWatchlistAdd(false); setShowModal(true); }}
-                    />
+
+            {/* Mobile: Dashboard with Portfolio Summary and Recommendations List */}
+            <div className="md:hidden min-h-screen pb-20" style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom))' }}>
+                {/* Dashboard Header - Mobile optimized */}
+                <div className="sticky top-0 z-30 bg-[var(--bg-primary)]/95 backdrop-blur-xl border-b border-[var(--border-color)] px-4 py-3">
+                    <div className="flex items-center justify-between">
+                        <h1 className="text-xl font-bold text-[var(--text-primary)]">Dashboard</h1>
+                        <div className="flex items-center gap-3">
+                            <button className="p-2 text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors">
+                                <Moon className="w-5 h-5" />
+                            </button>
+                            <div className="w-10 h-10 rounded-full bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center overflow-hidden">
+                                {clerkUser?.imageUrl ? (
+                                    <img src={clerkUser.imageUrl} alt={clerkUser.firstName || 'User'} className="w-full h-full object-cover" />
+                                ) : (
+                                    <User className="w-5 h-5 text-indigo-400" />
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Mobile Drawer Overlay */}
-                {isMobile && isMobileDrawerOpen && (
-                    <div
-                        className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm"
-                        onClick={() => setIsMobileDrawerOpen(false)}
-                    />
-                )}
+                {/* Portfolio Summary Section - Mobile optimized */}
+                <div className="px-4 py-3">
+                    <div className="bg-[var(--card-bg)] rounded-2xl border border-[var(--border-color)] p-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h2 className="text-base font-bold text-[var(--text-primary)]">Portfolio Returns</h2>
+                            <select
+                                value={portfolioReturnsPeriod}
+                                onChange={(e) => setPortfolioReturnsPeriod(e.target.value as 'day' | 'week' | 'month')}
+                                className="text-sm text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 cursor-pointer"
+                            >
+                                <option value="day">Daily</option>
+                                <option value="week">Weekly</option>
+                                <option value="month">Monthly</option>
+                            </select>
+                        </div>
 
-                {/* Right Panel: Stock Detail (8 columns on desktop) */}
-                {shouldRenderDetail && selectedStock && (
-                    <div className={`
-                        ${isMobile
-                            ? 'col-span-12'
-                            : isExpanded
-                                ? 'col-span-12'
-                                : 'col-span-12 md:col-span-7 lg:col-span-8 xl:col-span-8'
-                        }
-                        h-full transition-all duration-300
-                        ${isDetailAnimating ? 'opacity-100' : 'opacity-0'}
-                    `}>
-                        <StockDetailPanel
-                            stock={selectedStock}
-                            onClose={() => setSelectedStock(null)}
-                            isExpanded={isExpanded}
-                            onToggleExpand={() => setIsExpanded(!isExpanded)}
+                        {/* Total Return Display - Mobile optimized */}
+                        <div className="mb-3">
+                            <div className="text-2xl font-bold font-mono text-[var(--text-primary)] mb-1">
+                                {totalPortfolioReturn >= 0 ? '+' : ''}{totalPortfolioReturn.toFixed(2)}%
+                            </div>
+                            <p className="text-xs text-[var(--text-secondary)]">Average Portfolio Return</p>
+                        </div>
+
+                        {/* Weekly Returns Chart */}
+                        <div className="h-[200px] -mx-2">
+                            {portfolioReturns.length > 0 ? (
+                                <WeeklyReturnsChart data={portfolioReturns} height={200} />
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
+                                    No data available
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* KPI Mini Charts Section */}
+                <div className="px-4 py-3 grid grid-cols-2 gap-3">
+                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-3">
+                        <KPIMiniChart
+                            data={kpiData.trendData}
+                            label="Active Positions"
+                            value={kpiData.activeCount}
+                            color="#6366f1"
+                            trend={kpiData.activeCount > 0 ? 'up' : 'neutral'}
                         />
+                    </div>
+                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-3">
+                        <KPIMiniChart
+                            data={kpiData.trendData.map(d => ({ ...d, value: d.value * 1000 }))}
+                            label="Portfolio Value"
+                            value={`₹${(kpiData.totalValue / 1000).toFixed(0)}K`}
+                            color="#10b981"
+                            trend="up"
+                        />
+                    </div>
+                </div>
+
+                {/* Top Performers & Allocation Section */}
+                <div className="px-4 py-3 grid grid-cols-1 gap-3">
+                    {topPerformersByPeriod.length > 0 && (
+                        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-bold text-[var(--text-primary)]">Top Performers</h3>
+                                <select
+                                    value={topPerformersPeriod}
+                                    onChange={(e) => setTopPerformersPeriod(e.target.value as 'day' | 'week' | 'month')}
+                                    className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                                >
+                                    <option value="day">Today</option>
+                                    <option value="week">This Week</option>
+                                    <option value="month">This Month</option>
+                                </select>
+                            </div>
+                            <div className="h-[180px] -mx-2">
+                                <TopPerformersChart data={topPerformersByPeriod} height={180} />
+                            </div>
+                        </div>
+                    )}
+
+                    {portfolioAllocation.length > 0 && (
+                        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4 overflow-hidden">
+                            <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">Portfolio Allocation</h3>
+                            <div className="h-[200px] -mx-2 overflow-hidden">
+                                <PortfolioAllocationDonut data={portfolioAllocation} height={200} />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Monthly P&L Section */}
+                {monthlyPnL.length > 0 && (
+                    <div className="px-4 py-3">
+                        <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                            <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">Monthly P&L</h3>
+                            <div className="h-[200px] -mx-2">
+                                <MonthlyPnLChart data={monthlyPnL} height={200} />
+                            </div>
+                        </div>
                     </div>
                 )}
 
-                {/* Empty State when no stock selected (desktop) */}
-                {!selectedStock && !isMobile && (
-                    <div className="col-span-12 md:col-span-7 lg:col-span-8 xl:col-span-8 h-full flex items-center justify-center bg-slate-900/50">
-                        <div className="text-center">
-                            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-slate-800/50 flex items-center justify-center">
-                                <Search className="w-8 h-8 text-slate-600" />
-                            </div>
-                            <h3 className="text-lg font-semibold text-white mb-2">Select an idea</h3>
-                            <p className="text-sm text-slate-400 max-w-xs">
-                                Choose a stock from the list to view detailed analysis and charts.
-                            </p>
+                {/* Recommendations List Section - Mobile optimized */}
+                <div className="px-4 pb-4">
+                    <div className="flex items-center justify-between mb-3">
+                        <h2 className="text-base font-bold text-[var(--text-primary)]">
+                            {viewMode === 'active' ? 'Active Positions' : viewMode === 'watchlist' ? 'Watchlist' : 'Closed Positions'}
+                        </h2>
+                        <select
+                            value={viewMode}
+                            onChange={(e) => setViewMode(e.target.value as 'active' | 'watchlist' | 'history')}
+                            className="text-sm text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                        >
+                            <option value="active">Active</option>
+                            <option value="watchlist">Watchlist</option>
+                            <option value="history">History</option>
+                        </select>
+                    </div>
+
+                    {/* Idea Cards List */}
+                    {isLoadingPrices ? (
+                        <div className="space-y-3">
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} className="h-32 bg-[var(--card-bg)] rounded-xl animate-pulse" />
+                            ))}
                         </div>
+                    ) : displayedRecommendations.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                            <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--card-bg)] flex items-center justify-center">
+                                <Search className="w-8 h-8 text-[var(--text-tertiary)]" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">
+                                {viewMode === 'active' ? 'No active ideas' : viewMode === 'watchlist' ? 'Watchlist is empty' : 'No past ideas'}
+                            </h3>
+                            <p className="text-sm text-[var(--text-secondary)] max-w-xs mb-6">
+                                {viewMode === 'active'
+                                    ? 'Start tracking your investment thesis by adding a new idea.'
+                                    : viewMode === 'watchlist'
+                                        ? 'Add stocks you want to monitor before making a decision.'
+                                        : 'Closed positions will appear here for performance tracking.'}
+                            </p>
+                            <button
+                                onClick={() => { setIsWatchlistAdd(false); setShowModal(true); }}
+                                className="px-6 py-3 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl font-medium transition-colors flex items-center gap-2"
+                            >
+                                <Plus className="w-5 h-5" />
+                                Add First Idea
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {displayedRecommendations.map((rec) => (
+                                <IdeaCardMobile
+                                    key={rec.id}
+                                    recommendation={rec}
+                                    companyName={companyNames[rec.ticker]}
+                                    isSelected={selectedStock?.id === rec.id}
+                                    viewMode={viewMode}
+                                    onSelect={() => setSelectedStock(rec)}
+                                    onClose={(e) => handleCloseIdea(rec, e)}
+                                    onPromote={(action, e) => handlePromoteWatchlist(rec, action, e)}
+                                />
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Stock Detail Overlay - Full screen on mobile */}
+                {selectedStock && (
+                    <div className="fixed inset-0 z-50 md:hidden">
+                        <StockDetailPanel
+                            stock={selectedStock}
+                            onClose={() => setSelectedStock(null)}
+                            isExpanded={false}
+                        />
                     </div>
                 )}
             </div>
 
-            {/* Mobile Menu Button */}
-            {isMobile && !isMobileDrawerOpen && (
+            {/* Desktop: Original layout */}
+            <div className="hidden md:block h-[calc(100vh-4rem)] overflow-hidden">
+                <div className="h-full grid grid-cols-12">
+                    {/* Left Panel: Idea List */}
+                    <div className={`
+                        ${isExpanded ? 'hidden' : 'col-span-12 md:col-span-6 lg:col-span-5 xl:col-span-5'}
+                        h-full overflow-hidden flex flex-col bg-[var(--bg-primary)]
+                    `}>
+                        <div className="flex-1 overflow-y-auto relative">
+                            <IdeaList
+                                isLoading={isLoadingPrices}
+                                recommendations={recommendations}
+                                selectedStock={selectedStock}
+                                setSelectedStock={setSelectedStock}
+                                viewMode={viewMode}
+                                setViewMode={setViewMode}
+                                handleCloseIdea={handleCloseIdea}
+                                handlePromoteWatchlist={handlePromoteWatchlist}
+                                handleDeleteWatchlist={handleDeleteWatchlist}
+                                onNewIdea={() => { setIsWatchlistAdd(false); setShowModal(true); }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Right Panel: Stock Detail */}
+                    {shouldRenderDetail && selectedStock && (
+                        <div className={`
+                            ${isExpanded ? 'col-span-12' : 'col-span-12 md:col-span-6 lg:col-span-7 xl:col-span-7'}
+                            h-full relative transition-all duration-300
+                        ${isDetailAnimating ? 'opacity-100' : 'opacity-0'}
+                    `}>
+                            <StockDetailPanel
+                                stock={selectedStock}
+                                onClose={() => setSelectedStock(null)}
+                                isExpanded={isExpanded}
+                                onToggleExpand={() => setIsExpanded(!isExpanded)}
+                            />
+                        </div>
+                    )}
+
+                    {/* Empty State - Dashboard Charts */}
+                    {!selectedStock && (
+                        <div className="col-span-12 md:col-span-6 lg:col-span-7 xl:col-span-7 h-full overflow-y-auto bg-[var(--bg-primary)]/50">
+                            <div className="p-6 space-y-6">
+                                {/* Ideas Added Chart */}
+                                {ideasAddedData.length > 0 && (
+                                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-base font-bold text-[var(--text-primary)]">Ideas Added</h3>
+                                            <select
+                                                value={ideasAddedPeriod}
+                                                onChange={(e) => setIdeasAddedPeriod(e.target.value as 'day' | 'week' | 'month')}
+                                                className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                                            >
+                                                <option value="day">Day</option>
+                                                <option value="week">Week</option>
+                                                <option value="month">Month</option>
+                                            </select>
+                                        </div>
+                                        <div className="h-[250px] -mx-2">
+                                            <IdeasAddedChart data={ideasAddedData} height={250} periodType={ideasAddedPeriod} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Portfolio Allocation */}
+                                {portfolioAllocation.length > 0 && (
+                                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                                        <h3 className="text-base font-bold text-[var(--text-primary)] mb-4">Portfolio Allocation</h3>
+                                        <div className="h-[250px] -mx-2">
+                                            <PortfolioAllocationDonut data={portfolioAllocation} height={250} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Top Performers */}
+                                {topPerformersByPeriod.length > 0 && (
+                                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-base font-bold text-[var(--text-primary)]">Top Performers</h3>
+                                            <select
+                                                value={topPerformersPeriod}
+                                                onChange={(e) => setTopPerformersPeriod(e.target.value as 'day' | 'week' | 'month')}
+                                                className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                                            >
+                                                <option value="day">Today</option>
+                                                <option value="week">This Week</option>
+                                                <option value="month">This Month</option>
+                                            </select>
+                                        </div>
+                                        <div className="h-[250px] -mx-2">
+                                            <TopPerformersChart data={topPerformersByPeriod} height={250} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Portfolio Returns */}
+                                {portfolioReturns.length > 0 && (
+                                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="text-base font-bold text-[var(--text-primary)]">Portfolio Returns</h3>
+                                            <select
+                                                value={portfolioReturnsPeriod}
+                                                onChange={(e) => setPortfolioReturnsPeriod(e.target.value as 'day' | 'week' | 'month')}
+                                                className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
+                                            >
+                                                <option value="day">Day</option>
+                                                <option value="week">Week</option>
+                                                <option value="month">Month</option>
+                                            </select>
+                                        </div>
+                                        <div className="h-[250px] -mx-2">
+                                            <WeeklyReturnsChart data={portfolioReturns} height={250} />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Empty State if no data */}
+                                {ideasAddedData.length === 0 && portfolioAllocation.length === 0 && topPerformersByPeriod.length === 0 && portfolioReturns.length === 0 && (
+                                    <div className="flex flex-col items-center justify-center py-16 text-center">
+                                        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-[var(--card-bg)] flex items-center justify-center">
+                                            <Search className="w-8 h-8 text-[var(--text-tertiary)]" />
+                                        </div>
+                                        <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">Select an idea</h3>
+                                        <p className="text-sm text-[var(--text-secondary)] max-w-xs">
+                                            Choose a stock from the list to view detailed analysis and charts.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+
+            {/* Mobile Bottom Nav for View Mode Switching - Always visible on mobile */}
+            <div className="md:hidden">
+                <MobileBottomNav
+                    viewMode={viewMode}
+                    onViewModeChange={setViewMode}
+                    counts={{
+                        active: recommendations.filter(r => r.status === 'OPEN').length,
+                        watchlist: recommendations.filter(r => r.status === 'WATCHLIST').length,
+                        history: recommendations.filter(r => r.status === 'CLOSED').length,
+                    }}
+                />
+            </div>
+
+            {/* Floating Action Button (FAB) for New Idea - Mobile */}
+            <div className="md:hidden fixed bottom-20 right-4 z-50" style={{ bottom: 'calc(4rem + env(safe-area-inset-bottom))' }}>
+                {!selectedStock && (
+                    <button
+                        onClick={() => { setIsWatchlistAdd(false); setShowModal(true); }}
+                        className="w-14 h-14 rounded-full bg-indigo-500 text-white
+                                 shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 active:scale-95 transition-all
+                                 flex items-center justify-center"
+                        title="New Idea"
+                    >
+                        <Plus className="w-6 h-6" />
+                    </button>
+                )}
+            </div>
+
+            {/* Desktop FAB */}
+            <div className="hidden md:block fixed bottom-6 right-6 z-50">
                 <button
-                    onClick={() => setIsMobileDrawerOpen(true)}
-                    className="fixed bottom-6 left-6 z-50 p-4 rounded-full bg-indigo-500 text-white
-                             shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 transition-colors"
+                    onClick={() => { setIsWatchlistAdd(false); setShowModal(true); }}
+                    className="w-14 h-14 rounded-full bg-indigo-500 text-white
+                             shadow-lg shadow-indigo-500/30 hover:bg-indigo-400 transition-colors
+                             flex items-center justify-center"
+                    title="New Idea"
                 >
-                    <Menu className="w-6 h-6" />
+                    <Plus className="w-6 h-6" />
                 </button>
-            )}
+            </div>
 
             {/* New Idea Modal */}
             {showModal && (
-                <div className="fixed z-50 inset-0 overflow-y-auto">
-                    <div className="flex items-center justify-center min-h-screen p-4">
-                        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={closeModal} />
-
-                        <div className="relative bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full border border-white/10 animate-scaleIn">
-                            <div className="p-6">
-                                {/* Modal Header */}
+                <div className="fixed z-50 inset-0 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+                    <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+                        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={closeModal}></div>
+                        <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+                        <div className="inline-block align-bottom bg-[var(--card-bg)] rounded-2xl text-left overflow-visible shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-[var(--border-color)] relative">
+                            <div className="px-6 py-6">
                                 <div className="flex justify-between items-center mb-6">
-                                    <h3 className="text-xl font-bold text-white">
+                                    <h3 className="text-xl font-bold text-[var(--text-primary)]">
                                         {isWatchlistAdd ? 'Add to Watchlist' : 'New Recommendation'}
                                     </h3>
-                                    <button
-                                        onClick={closeModal}
-                                        className="p-2 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
-                                    >
+                                    <button onClick={closeModal} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors p-1 hover:bg-white/10 rounded-full">
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>
 
-                                {/* Type Toggle */}
-                                <div className="flex gap-2 mb-6 p-1 bg-slate-900/50 rounded-xl">
+                                <div className="mb-6 flex gap-2">
                                     <button
                                         type="button"
                                         onClick={() => setIsWatchlistAdd(false)}
-                                        className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${!isWatchlistAdd
-                                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                                            : 'text-slate-400 hover:text-white'
-                                            }`}
+                                        className={`flex-1 py-2 text-sm font-medium rounded-lg border ${!isWatchlistAdd ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-transparent border-white/10 text-gray-400'}`}
                                     >
                                         Recommendation
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => setIsWatchlistAdd(true)}
-                                        className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${isWatchlistAdd
-                                            ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
-                                            : 'text-slate-400 hover:text-white'
-                                            }`}
+                                        className={`flex-1 py-2 text-sm font-medium rounded-lg border ${isWatchlistAdd ? 'bg-indigo-600 border-indigo-500 text-white' : 'bg-transparent border-white/10 text-gray-400'}`}
                                     >
                                         Watchlist
                                     </button>
                                 </div>
 
-                                {/* Error */}
                                 {error && (
-                                    <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-sm flex items-center gap-2">
+                                    <div className="mb-4 p-3 rounded bg-red-500/20 border border-red-500/30 text-red-200 text-sm flex items-center gap-2">
                                         <AlertCircle className="w-4 h-4" />
                                         {error}
                                     </div>
                                 )}
-
-                                {/* Form */}
                                 <form onSubmit={handleSubmit} className="space-y-5">
-                                    {/* Ticker Search */}
                                     <div className="relative">
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">
-                                            Stock Ticker
-                                        </label>
-                                        <div className="relative">
-                                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                                        <label className="block text-sm font-medium text-gray-300 mb-1.5">Stock Ticker</label>
+                                        <div className="relative group">
+                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                <Search className={`h-4 w-4 ${hasSearched && searchResults.length === 0 ? 'text-red-400' : 'text-gray-400'} group-focus-within:text-indigo-400 transition-colors`} />
+                                            </div>
                                             <input
                                                 type="text"
+                                                required
                                                 value={ticker}
                                                 onChange={(e) => handleSearch(e.target.value)}
-                                                placeholder="Search ticker..."
-                                                className="w-full pl-10 pr-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl
-                                                         text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
-                                                required
+                                                className={`block w-full pl-10 pr-3 py-2.5 border rounded-lg leading-5 bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 transition-all
+                            ${hasSearched && searchResults.length === 0 && ticker.length > 1
+                                                        ? 'border-red-500/50 focus:ring-red-500/50 focus:border-red-500'
+                                                        : 'border-white/10 focus:ring-indigo-500/50 focus:border-indigo-500'}`}
+                                                placeholder="Search ticker (e.g. RELIANCE)"
+                                                autoComplete="off"
                                             />
                                         </div>
-
-                                        {/* Search Results */}
+                                        {hasSearched && searchResults.length === 0 && ticker.length > 1 && (
+                                            <div className="absolute right-0 top-0 text-xs text-red-400 font-medium flex items-center mt-8 mr-2 pointer-events-none">
+                                                Ticker incorrect
+                                            </div>
+                                        )}
                                         {(searchResults.length > 0 || isSearching) && ticker.length > 1 && (
-                                            <ul className="absolute z-10 mt-1 w-full bg-slate-800 border border-white/10 rounded-xl py-1 max-h-48 overflow-auto shadow-xl">
+                                            <ul className="absolute z-50 mt-1 w-full bg-[var(--card-bg)] border border-[var(--border-color)] shadow-2xl max-h-60 rounded-lg py-1 text-base overflow-auto focus:outline-none sm:text-sm animate-fadeIn">
                                                 {isSearching ? (
-                                                    <li className="px-4 py-3 text-slate-400 text-sm">Searching...</li>
+                                                    <li className="px-4 py-3 text-gray-400 text-sm text-center">Searching...</li>
                                                 ) : (
-                                                    searchResults.map((res) => (
-                                                        <li
-                                                            key={res.symbol}
-                                                            onClick={() => selectStock(res.symbol)}
-                                                            className="px-4 py-2.5 hover:bg-indigo-500/20 cursor-pointer"
-                                                        >
-                                                            <span className="text-white font-medium">{res.name}</span>
-                                                            <span className="text-slate-400 text-xs ml-2">{res.symbol}</span>
-                                                        </li>
-                                                    ))
+                                                    searchResults.map((res) => {
+                                                        // Use market from backend if available, otherwise infer from symbol
+                                                        const market = res.market || (res.symbol.includes('.NS') ? 'NSE' : res.symbol.includes('.BO') ? 'BSE' : 'US');
+                                                        return (
+                                                            <li
+                                                                key={res.symbol}
+                                                                className="cursor-pointer select-none relative py-2.5 pl-3 pr-9 text-[var(--text-primary)] hover:bg-indigo-600 transition-colors border-b border-[var(--border-color)] last:border-0 group"
+                                                                onClick={() => selectStock(res.symbol)}
+                                                            >
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="font-medium text-blue-200 group-hover:text-white transition-colors truncate">{res.name}</span>
+                                                                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 whitespace-nowrap">
+                                                                                {market}
+                                                                            </span>
+                                                                        </div>
+                                                                        <span className="text-xs text-gray-400 group-hover:text-white/70 transition-colors font-mono">{res.symbol}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </li>
+                                                        );
+                                                    })
                                                 )}
                                             </ul>
                                         )}
                                     </div>
 
-                                    {/* Action & Price (not for watchlist) */}
                                     {!isWatchlistAdd && (
-                                        <div className="grid grid-cols-2 gap-4">
+                                        <div className="grid grid-cols-1 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-300 mb-2">Action</label>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Action</label>
                                                 <select
                                                     value={action}
                                                     onChange={(e) => setAction(e.target.value)}
-                                                    className="w-full px-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl
-                                                             text-white focus:outline-none focus:border-indigo-500"
+                                                    className="block w-full px-3 py-2.5 border border-[var(--border-color)] bg-white/5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm rounded-lg appearance-none cursor-pointer hover:bg-white/10 transition-colors"
                                                 >
-                                                    <option value="BUY">BUY</option>
-                                                    <option value="SELL">SELL</option>
+                                                    <option value="BUY" className="bg-[#1e293b]">BUY</option>
+                                                    <option value="SELL" className="bg-[#1e293b]">SELL</option>
                                                 </select>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-300 mb-2">Entry Price</label>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Entry Price</label>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">{getCurrencySymbol()}</span>
+                                                    </div>
                                                     <input
                                                         type="number"
                                                         step="0.01"
+                                                        required={!isWatchlistAdd}
                                                         value={entryPrice}
                                                         onChange={(e) => setEntryPrice(e.target.value)}
-                                                        className="w-full pl-8 pr-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl
-                                                                 text-white focus:outline-none focus:border-indigo-500"
-                                                        required
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                        placeholder="0.00"
                                                     />
                                                 </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Price Target (Optional)</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">{getCurrencySymbol()}</span>
+                                                    </div>
+                                                    <input
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={priceTarget}
+                                                        onChange={(e) => setPriceTarget(e.target.value)}
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                        placeholder="0.00"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Time Horizon (Optional)</label>
+                                                <input
+                                                    type="date"
+                                                    value={targetDate}
+                                                    onChange={(e) => setTargetDate(e.target.value)}
+                                                    className="block w-full px-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                    min={new Date().toISOString().split('T')[0]}
+                                                />
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* Current Price Display */}
-                                    {currentPrice && (
-                                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-between">
-                                            <span className="text-sm text-emerald-400 flex items-center gap-2">
-                                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    {currentPrice && !isWatchlistAdd && (
+                                        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-300 flex items-center justify-between animate-fadeIn">
+                                            <span className="flex items-center gap-2">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
                                                 Current Market Price
                                             </span>
-                                            <span className="font-mono font-bold text-emerald-400">₹{currentPrice}</span>
+                                            <span className="font-mono font-bold">{getCurrencySymbol()}{currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                         </div>
                                     )}
 
@@ -832,76 +1657,80 @@ export default function DashboardNew() {
                                     {isWatchlistAdd && (
                                         <div className="grid grid-cols-2 gap-4">
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-300 mb-2">BUY Price</label>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">BUY Price</label>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">{getCurrencySymbol()}</span>
+                                                    </div>
                                                     <input
                                                         type="number"
                                                         step="0.01"
                                                         value={buyPrice}
                                                         onChange={(e) => setBuyPrice(e.target.value)}
                                                         placeholder="Alert when price ≤ BUY"
-                                                        className="w-full pl-8 pr-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl
-                                                                 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
                                                     />
                                                 </div>
-                                                <p className="mt-1 text-xs text-slate-500">Alert when price drops to this level</p>
+                                                <p className="mt-1 text-xs text-gray-500">Alert when price drops to this level</p>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-slate-300 mb-2">SELL Price</label>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">SELL Price</label>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">₹</span>
+                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">{getCurrencySymbol()}</span>
+                                                    </div>
                                                     <input
                                                         type="number"
                                                         step="0.01"
                                                         value={sellPrice}
                                                         onChange={(e) => setSellPrice(e.target.value)}
                                                         placeholder="Alert when price ≥ SELL"
-                                                        className="w-full pl-8 pr-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl
-                                                                 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
                                                     />
                                                 </div>
-                                                <p className="mt-1 text-xs text-slate-500">Alert when price rises to this level</p>
+                                                <p className="mt-1 text-xs text-gray-500">Alert when price rises to this level</p>
                                             </div>
                                         </div>
                                     )}
 
-                                    {/* Thesis */}
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Investment Thesis</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-1.5">Thesis / Notes</label>
                                         <textarea
                                             value={thesis}
                                             onChange={(e) => setThesis(e.target.value)}
                                             rows={3}
-                                            placeholder="Why are you making this trade?"
-                                            className="w-full px-4 py-2.5 bg-slate-900/50 border border-white/10 rounded-xl
-                                                     text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
+                                            className="block w-full py-2.5 px-3 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all resize-none"
+                                            placeholder="What's your rationale for this trade?"
                                         />
                                     </div>
 
-                                    {/* Image Upload */}
+                                    {/* Image Upload Section */}
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-2">Attachments</label>
+                                        <label className="block text-sm font-medium text-gray-300 mb-1.5">Attachments</label>
                                         <div className="flex flex-wrap gap-2">
                                             {selectedImages.map((file, index) => (
-                                                <div key={index} className="relative w-14 h-14 rounded-lg overflow-hidden group">
-                                                    <img src={URL.createObjectURL(file)} alt="" className="w-full h-full object-cover" />
+                                                <div key={index} className="relative w-16 h-16 rounded-lg overflow-hidden border border-white/10 group">
+                                                    <img
+                                                        src={URL.createObjectURL(file)}
+                                                        alt="preview"
+                                                        className="w-full h-full object-cover"
+                                                    />
                                                     <button
                                                         type="button"
                                                         onClick={() => removeImage(index)}
-                                                        className="absolute inset-0 bg-black/60 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="absolute top-0.5 right-0.5 bg-black/50 hover:bg-red-500 rounded-full p-0.5 text-white opacity-0 group-hover:opacity-100 transition-all"
                                                     >
-                                                        <X className="w-4 h-4 text-white" />
+                                                        <X className="w-3 h-3" />
                                                     </button>
                                                 </div>
                                             ))}
                                             <button
                                                 type="button"
                                                 onClick={() => fileInputRef.current?.click()}
-                                                className="w-14 h-14 rounded-lg border-2 border-dashed border-slate-600 hover:border-indigo-500 
-                                                         flex items-center justify-center text-slate-500 hover:text-indigo-400 transition-colors"
+                                                className="w-16 h-16 rounded-lg border-2 border-dashed border-white/20 hover:border-indigo-500/50 flex flex-col items-center justify-center text-gray-400 hover:text-indigo-400 hover:bg-white/5 transition-all"
                                             >
-                                                <Upload className="w-5 h-5" />
+                                                <Upload className="w-5 h-5 mb-1" />
+                                                <span className="text-[10px]">Add</span>
                                             </button>
                                             <input
                                                 type="file"
@@ -914,31 +1743,25 @@ export default function DashboardNew() {
                                         </div>
                                     </div>
 
-                                    {/* Submit */}
-                                    <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                                    <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-white/10">
                                         <button
                                             type="button"
                                             onClick={closeModal}
-                                            className="px-4 py-2.5 text-sm font-medium text-slate-400 hover:text-white 
-                                                     hover:bg-white/5 rounded-xl transition-colors"
+                                            className="px-4 py-2 text-sm font-medium text-gray-300 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-colors"
                                         >
                                             Cancel
                                         </button>
                                         <button
                                             type="submit"
                                             disabled={loading}
-                                            className="px-6 py-2.5 text-sm font-semibold text-white bg-indigo-500 
-                                                     hover:bg-indigo-400 rounded-xl transition-colors shadow-lg shadow-indigo-500/25
-                                                     disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                            className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                         >
                                             {loading ? (
                                                 <>
-                                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                                     Saving...
                                                 </>
-                                            ) : (
-                                                isWatchlistAdd ? 'Add to Watchlist' : 'Save Recommendation'
-                                            )}
+                                            ) : (isWatchlistAdd ? 'Add to Watchlist' : 'Save Recommendation')}
                                         </button>
                                     </div>
                                 </form>

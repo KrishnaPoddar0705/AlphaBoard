@@ -38,6 +38,7 @@ import NewsCard from '../NewsCard';
 import PodcastPlayer from '../PodcastPlayer';
 import PodcastList from '../PodcastList';
 import { PriceTargetTimeline } from './PriceTargetTimeline';
+import { usePanelWidth } from '../../hooks/useLayout';
 
 interface StockDetailPanelProps {
     stock: any;
@@ -53,7 +54,8 @@ export function StockDetailPanel({
     onToggleExpand,
 }: StockDetailPanelProps) {
     const { session } = useAuth();
-    
+    const { isMobile } = usePanelWidth();
+
     // State
     const [activeTab, setActiveTab] = useState<TabId>('chart');
     const [isSticky, setIsSticky] = useState(false);
@@ -64,7 +66,7 @@ export function StockDetailPanel({
     const [podcastData, setPodcastData] = useState<any>(null);
     const [companyName, setCompanyName] = useState<string>('');
     const [showSavedPodcasts, setShowSavedPodcasts] = useState(false);
-    
+
     // Date range state
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -122,7 +124,7 @@ export function StockDetailPanel({
     // Fetch price alert triggers
     const fetchAlertTriggers = async () => {
         if (stock.status !== 'WATCHLIST' || !session?.user?.id) return;
-        
+
         setIsLoadingTriggers(true);
         try {
             const { data, error } = await supabase
@@ -151,7 +153,7 @@ export function StockDetailPanel({
     // Handle adding new alert trigger
     const handleAddTrigger = async () => {
         if (!session?.user?.id || !newTriggerPrice.trim()) return;
-        
+
         const priceValue = parseFloat(newTriggerPrice);
         if (isNaN(priceValue) || priceValue <= 0) {
             return;
@@ -274,7 +276,7 @@ export function StockDetailPanel({
         if (startDate && endDate && data?.chartData?.length > 0) {
             const start = new Date(startDate);
             const end = new Date(endDate);
-            const sortedData = [...data.chartData].sort((a: any, b: any) => 
+            const sortedData = [...data.chartData].sort((a: any, b: any) =>
                 new Date(a.date).getTime() - new Date(b.date).getTime()
             );
 
@@ -416,13 +418,13 @@ export function StockDetailPanel({
     const financials = data?.financials || {};
 
     return (
-        <div className="absolute inset-0 bg-[var(--bg-primary)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent animate-slideInRight">
+        <div className={`${isMobile ? 'fixed inset-0' : 'h-full'} bg-[var(--bg-primary)] overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent ${isMobile ? 'animate-slideInRight z-50' : ''}`}>
             {/* All Content - Scrollable */}
             <div
                 ref={scrollRef}
                 className="w-full"
             >
-                {/* Sticky Header */}
+                {/* Sticky Header - Mobile optimized */}
                 <StockHeader
                     ticker={stock.ticker}
                     currentPrice={financials.currentPrice || stock.current_price}
@@ -510,11 +512,10 @@ export function StockDetailPanel({
                                             className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/10 hover:border-indigo-500/50 transition-colors"
                                         >
                                             <div className="flex items-center gap-3 flex-1">
-                                                <span className={`px-2 py-1 text-xs font-bold rounded ${
-                                                    trigger.alert_type === 'BUY'
-                                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                                                }`}>
+                                                <span className={`px-2 py-1 text-xs font-bold rounded ${trigger.alert_type === 'BUY'
+                                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                                    }`}>
                                                     {trigger.alert_type}
                                                 </span>
                                                 {editingTriggerId === trigger.id ? (
@@ -693,7 +694,7 @@ export function StockDetailPanel({
                 )}
 
                 {/* Tab Content */}
-                <div className="px-6 py-6">
+                <div className="px-4 md:px-6 py-4 md:py-6">
                     {/* Charts Tab */}
                     {activeTab === 'chart' && (
                         <ChartsSection
@@ -795,7 +796,7 @@ export function StockDetailPanel({
                                         <h3 className="text-xl font-bold text-[var(--text-primary)]">Latest News</h3>
                                         <div className="flex items-center gap-3">
                                             <span className="text-sm text-[var(--text-secondary)]">{data.news.length} articles</span>
-                                            <button 
+                                            <button
                                                 onClick={handleGeneratePodcast}
                                                 disabled={podcastLoading || newsLoading}
                                                 className="px-3 py-1.5 text-xs bg-purple-600 hover:bg-purple-500 
@@ -815,7 +816,7 @@ export function StockDetailPanel({
                                                     </>
                                                 )}
                                             </button>
-                                            <button 
+                                            <button
                                                 onClick={fetchNews}
                                                 className="px-3 py-1 text-xs bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
                                                 disabled={newsLoading}
@@ -833,7 +834,7 @@ export function StockDetailPanel({
                                     <Newspaper className="w-12 h-12 text-[var(--text-tertiary)] mx-auto mb-3" />
                                     <p className="text-[var(--text-secondary)] mb-2">No news articles available for {stock.ticker}</p>
                                     <p className="text-xs text-[var(--text-tertiary)] mb-4">News will be fetched from multiple sources and summarized with AI.</p>
-                                    <button 
+                                    <button
                                         onClick={fetchNews}
                                         className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
                                         disabled={newsLoading}

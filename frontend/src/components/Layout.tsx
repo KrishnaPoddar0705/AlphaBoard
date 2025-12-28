@@ -2,9 +2,11 @@ import { Link, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useClerk, useUser } from '@clerk/clerk-react';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, Trophy, LogOut, User, BarChart2, Building2, Settings, Users, FileText } from 'lucide-react';
+import { LayoutDashboard, Trophy, LogOut, User, BarChart2, Building2, Settings, Users, FileText, Menu } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import AlertsDropdown from './AlertsDropdown';
+import { MobileNavDrawer } from './MobileNavDrawer';
+import { MobileBottomNav } from './MobileBottomNav';
 
 export default function Layout() {
     const { session, loading: authLoading } = useAuth();
@@ -14,6 +16,7 @@ export default function Layout() {
     const location = useLocation();
     const [organization, setOrganization] = useState<{ id: string; name: string; role: string } | null>(null);
     const [loadingOrg, setLoadingOrg] = useState(true);
+    const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
     // Helper function to check if a path is active
     const isActive = (path: string) => {
@@ -151,11 +154,19 @@ export default function Layout() {
         <div className="min-h-screen">
             <nav className="glass border-b border-[var(--border-color)] relative z-50">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex justify-between h-16">
-                        <div className="flex">
+                    <div className="flex justify-between h-14 md:h-16">
+                        <div className="flex items-center">
                             <div className="flex-shrink-0 flex items-center">
                                 <span className="text-xl font-bold text-[var(--text-primary)]">AlphaBoard</span>
                             </div>
+                            {/* Mobile Hamburger Menu */}
+                            <button
+                                onClick={() => setIsMobileNavOpen(true)}
+                                className="ml-4 md:hidden p-2 hover:bg-white/10 rounded-lg transition-colors text-[var(--text-secondary)] hover:text-[var(--text-primary)] min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                title="Menu"
+                            >
+                                <Menu className="w-5 h-5" />
+                            </button>
                             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
                                 <Link
                                     to="/"
@@ -236,16 +247,27 @@ export default function Layout() {
                                 )}
                             </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2 md:gap-4">
                             {user && <AlertsDropdown />}
                             {user ? (
-                                <button
-                                    onClick={handleLogout}
-                                    className="ml-3 inline-flex items-center px-4 py-2 border border-[var(--border-color)] text-sm font-medium rounded-md text-[var(--text-primary)] bg-white/5 hover:bg-white/10 focus:outline-none backdrop-blur-sm transition-all"
-                                >
-                                    <LogOut className="w-4 h-4 mr-2" />
-                                    Sign Out
-                                </button>
+                                <>
+                                    {/* Mobile: Icon only */}
+                                    <button
+                                        onClick={handleLogout}
+                                        className="md:hidden p-2 border border-[var(--border-color)] rounded-md text-[var(--text-primary)] bg-white/5 hover:bg-white/10 focus:outline-none backdrop-blur-sm transition-all min-w-[44px] min-h-[44px] flex items-center justify-center"
+                                        title="Sign Out"
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                    </button>
+                                    {/* Desktop: With text */}
+                                    <button
+                                        onClick={handleLogout}
+                                        className="hidden md:inline-flex items-center px-4 py-2 border border-[var(--border-color)] text-sm font-medium rounded-md text-[var(--text-primary)] bg-white/5 hover:bg-white/10 focus:outline-none backdrop-blur-sm transition-all"
+                                    >
+                                        <LogOut className="w-4 h-4 mr-2" />
+                                        Sign Out
+                                    </button>
+                                </>
                             ) : (
                                 <Link
                                     to="/"
@@ -260,9 +282,20 @@ export default function Layout() {
                 </div>
             </nav>
 
-            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 relative z-0">
+            <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8 relative z-0 pb-20 md:pb-6" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 1.5rem)' }}>
                 <Outlet />
             </main>
+
+            {/* Mobile Bottom Navigation - Will be rendered by Dashboard for view mode switching */}
+            {location.pathname !== '/' && <MobileBottomNav />}
+
+            {/* Mobile Navigation Drawer */}
+            <MobileNavDrawer
+                isOpen={isMobileNavOpen}
+                onClose={() => setIsMobileNavOpen(false)}
+                user={user}
+                organization={organization}
+            />
         </div>
     );
 }

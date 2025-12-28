@@ -39,18 +39,28 @@ export function StockTabs({ activeTab, onTabChange, isSticky = false }: StockTab
     return (
         <div
             className={`
-                sticky top-[88px] z-20 transition-all duration-300
-                ${isSticky 
-                    ? 'bg-[var(--bg-primary)]/95 backdrop-blur-xl border-b border-[var(--border-color)]' 
+                sticky z-20 transition-all duration-300
+                ${isSticky
+                    ? 'bg-[var(--bg-primary)]/95 backdrop-blur-xl border-b border-[var(--border-color)]'
                     : 'bg-[var(--bg-primary)]/80 backdrop-blur-sm border-b border-[var(--border-color)]'
                 }
+                top-0 md:top-[88px]
             `}
         >
-            <div className="px-6">
-                <nav className="flex gap-1 -mb-px" role="tablist">
+            <div className="px-4 md:px-6">
+                <nav className="flex gap-1 -mb-px overflow-x-auto scrollbar-hide" role="tablist" style={{ WebkitOverflowScrolling: 'touch' }}>
+                    <style>{`
+                        .scrollbar-hide::-webkit-scrollbar {
+                            display: none;
+                        }
+                        .scrollbar-hide {
+                            -ms-overflow-style: none;
+                            scrollbar-width: none;
+                        }
+                    `}</style>
                     {tabs.map((tab) => {
                         const isActive = activeTab === tab.id;
-                        
+
                         return (
                             <button
                                 key={tab.id}
@@ -58,11 +68,12 @@ export function StockTabs({ activeTab, onTabChange, isSticky = false }: StockTab
                                 aria-selected={isActive}
                                 onClick={() => onTabChange(tab.id)}
                                 className={`
-                                    relative group flex items-center gap-2 px-4 py-3.5
-                                    text-sm font-medium transition-all duration-200
+                                    relative group flex items-center gap-2 px-3 py-2 md:px-4 md:py-3.5
+                                    text-sm font-medium transition-all duration-200 flex-shrink-0
                                     focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900
-                                    ${isActive 
-                                        ? 'text-[var(--text-primary)]' 
+                                    min-h-[44px] md:min-h-0
+                                    ${isActive
+                                        ? 'text-[var(--text-primary)]'
                                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                                     }
                                 `}
@@ -88,7 +99,7 @@ export function StockTabs({ activeTab, onTabChange, isSticky = false }: StockTab
 
                                 {/* Active Indicator */}
                                 {isActive && (
-                                    <span 
+                                    <span
                                         className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
                                         style={{
                                             animation: 'slideIn 0.2s ease-out',
@@ -99,8 +110,8 @@ export function StockTabs({ activeTab, onTabChange, isSticky = false }: StockTab
                                 {/* Hover Background */}
                                 <span className={`
                                     absolute inset-0 rounded-lg transition-colors duration-200
-                                    ${isActive 
-                                        ? 'bg-[var(--list-item-hover)]' 
+                                    ${isActive
+                                        ? 'bg-[var(--list-item-hover)]'
                                         : 'group-hover:bg-[var(--list-item-hover)]'
                                     }
                                 `} />

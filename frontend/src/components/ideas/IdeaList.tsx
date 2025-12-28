@@ -292,9 +292,9 @@ export function IdeaList({
             )}
 
             {/* Header */}
-            <div className="flex-shrink-0 px-4 py-4 border-b border-[var(--border-color)] bg-[var(--bg-primary)]/95 backdrop-blur-sm z-10">
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-xl font-bold text-[var(--text-primary)]">
+            <div className="flex-shrink-0 px-4 md:px-4 py-3 md:py-4 border-b border-[var(--border-color)] bg-[var(--bg-primary)]/95 backdrop-blur-sm z-10">
+                <div className="flex items-center justify-between mb-3 md:mb-4">
+                    <h1 className="text-lg md:text-xl font-bold text-[var(--text-primary)]">
                         My Ideas
                     </h1>
                     <div className="flex items-center gap-2">
@@ -325,7 +325,7 @@ export function IdeaList({
                             className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium
                                      bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg
                                      shadow-lg shadow-indigo-500/25 hover:shadow-xl hover:shadow-indigo-500/30
-                                     transition-all duration-200"
+                                     transition-all duration-200 min-h-[44px] md:min-h-0"
                         >
                             <Plus className="w-4 h-4" />
                             <span className="hidden sm:inline">New</span>
@@ -345,8 +345,8 @@ export function IdeaList({
                     </div>
                 )}
 
-                {/* View Mode Toggle */}
-                <div className="flex gap-1 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)]">
+                {/* View Mode Toggle - Hidden on mobile (using bottom nav instead) */}
+                <div className="hidden md:flex gap-1 p-1 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] overflow-x-auto">
                     <ViewModeButton
                         active={viewMode === 'active'}
                         onClick={() => setViewMode('active')}
@@ -386,27 +386,27 @@ export function IdeaList({
                 ) : (
                     // Idea List
                     <div>
-                        {/* Table Header */}
-                        <div className="px-6 py-3 bg-[var(--card-bg)] border-b border-[var(--border-color)] sticky top-0 z-10">
-                            <div className="grid grid-cols-12 gap-2 items-center">
-                                <div className="col-span-3 px-4 text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Ticker</div>
-                                <div className="col-span-2 px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                                    {viewMode === 'watchlist' ? 'Current Price' : 'Entry'}
+                        {/* Table Header - Hidden on mobile */}
+                        <div className="hidden md:block px-6 py-4 bg-[var(--card-bg)] border-b border-[var(--border-color)] sticky top-0 z-10">
+                            <div className="grid grid-cols-12 gap-4 items-center">
+                                <div className="col-span-3 px-2 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">TICKER</div>
+                                <div className="col-span-2 px-2 text-right text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">
+                                    {viewMode === 'watchlist' ? 'CURRENT PRICE' : 'ENTRY'}
                                 </div>
                                 {viewMode === 'watchlist' && (
                                     <>
-                                        <div className="col-span-2 px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">BUY Price</div>
-                                        <div className="col-span-2 px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">SELL Price</div>
+                                        <div className="col-span-2 px-2 text-right text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">BUY PRICE</div>
+                                        <div className="col-span-2 px-2 text-right text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">SELL PRICE</div>
                                     </>
                                 )}
                                 {viewMode !== 'watchlist' && (
-                                    <div className="col-span-2 px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">Current Price</div>
+                                    <div className="col-span-2 px-2 text-right text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">CURRENT PRICE</div>
                                 )}
-                                <div className={`px-4 text-right text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider ${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-4'}`}>Return</div>
-                                <div className={`${viewMode === 'watchlist' ? 'col-span-1' : 'col-span-1'}`}></div>
+                                <div className={`px-2 text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider ${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-3'}`}>RETURN</div>
+                                <div className="col-span-1"></div>
                             </div>
                         </div>
-                        <div className="divide-y divide-white/5">
+                        <div className="md:divide-y md:divide-white/5">
                             {displayedRecommendations.map((rec) => (
                                 <IdeaListItem
                                     key={rec.id}
@@ -442,8 +442,8 @@ function ViewModeButton({ active, onClick, count, children }: ViewModeButtonProp
         <button
             onClick={onClick}
             className={`
-                flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 text-xs font-medium
-                rounded-lg transition-all duration-200
+                flex items-center justify-center gap-1.5 px-4 py-2 text-sm font-medium
+                rounded-lg transition-all duration-200 flex-shrink-0 min-h-[44px] whitespace-nowrap
                 ${active
                     ? 'bg-indigo-500 text-white shadow-lg shadow-indigo-500/25'
                     : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--list-item-hover)]'
@@ -514,70 +514,176 @@ function IdeaListItem({
         <div
             onClick={onSelect}
             className={`
-                group relative px-6 py-3 cursor-pointer transition-all duration-200
+                    group relative cursor-pointer transition-all duration-200
                 ${isSelected
                     ? 'bg-indigo-500/10 border-l-2 border-indigo-500'
                     : 'hover:bg-[var(--list-item-hover)] border-l-2 border-transparent'
                 }
-            `}
+                    md:px-6 md:py-4
+                `}
         >
-            <div className="grid grid-cols-12 gap-2 items-center">
-                {/* Ticker & Action */}
-                {/* 
-                    Improved padding and spacing for better visibility.
-                    Kept truncate for company name to prevent overflow while ensuring ticker is always visible.
-                    Adjusted column span to accommodate larger return column.
-                */}
-                <div className={`px-4 py-2 ${viewMode === 'watchlist' ? 'col-span-3' : 'col-span-3'}`}>
-                    <div className="flex items-center gap-2">
-                        <span className="text-[var(--text-primary)] font-semibold text-sm">{rec.ticker}</span>
-                    </div>
-                    {companyName && (
-                        <div className="text-xs text-[var(--text-secondary)] mt-0.5 truncate block">
-                            {companyName}
+            {/* Mobile Card Layout - Improved spacing and clarity */}
+            <div className="md:hidden p-4 mb-3 bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] shadow-sm active:scale-[0.98] transition-transform">
+                {/* Row 1: Ticker + Return */}
+                <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0 pr-2">
+                        <div className="text-lg font-bold text-[var(--text-primary)] mb-1">{rec.ticker}</div>
+                        {companyName && (
+                            <div className="text-xs text-[var(--text-secondary)] truncate mb-1">{companyName}</div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className={`
+                                text-[10px] font-bold uppercase px-2 py-0.5 rounded flex-shrink-0
+                                ${rec.action === 'WATCH'
+                                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                    : rec.action === 'BUY'
+                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                }
+                            `}>
+                                {rec.action}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-tertiary)]">{dateAdded}</span>
                         </div>
-                    )}
-                    <div className="flex items-center gap-2 mt-1">
-                        <span className={`
-                            text-[10px] font-bold uppercase px-1.5 py-0.5 rounded flex-shrink-0
-                            ${rec.action === 'WATCH'
-                                ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                                : rec.action === 'BUY'
-                                    ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                    : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                    </div>
+                    {viewMode !== 'watchlist' && (
+                        <div className={`
+                            text-xl font-bold font-mono flex-shrink-0 ml-2 px-3 py-1.5 rounded-lg
+                            ${isPositive
+                                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                             }
                         `}>
-                            {rec.action}
-                        </span>
-                        <span className="text-[10px] text-[var(--text-tertiary)]">{dateAdded}</span>
+                            {isPositive ? '+' : ''}{ret.toFixed(2)}%
+                        </div>
+                    )}
+                </div>
+
+                {/* Row 2: Prices - Better spacing */}
+                <div className="grid grid-cols-2 gap-3 mb-3 pb-3 border-b border-[var(--border-color)]">
+                    {viewMode === 'watchlist' ? (
+                        <>
+                            <div>
+                                <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Current</div>
+                                <div className="text-base font-mono font-semibold text-[var(--text-primary)]">
+                                    {current ? `₹${current.toFixed(2)}` : '-'}
+                                </div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">BUY Target</div>
+                                <div className={`text-base font-mono font-semibold ${rec.buy_price && current && current <= rec.buy_price
+                                    ? 'text-emerald-400'
+                                    : 'text-[var(--text-primary)]'
+                                    }`}>
+                                    {rec.buy_price ? `₹${rec.buy_price.toFixed(2)}` : '-'}
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div>
+                                <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Entry</div>
+                                <div className="text-base font-mono font-semibold text-[var(--text-primary)]">₹{entry.toFixed(2)}</div>
+                            </div>
+                            <div>
+                                <div className="text-[10px] text-[var(--text-secondary)] mb-1 uppercase tracking-wider">Current</div>
+                                <div className="text-base font-mono font-semibold text-[var(--text-primary)]">
+                                    {current ? `₹${current.toFixed(2)}` : '-'}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+
+                {/* Row 3: Quick Action Buttons - Improved touch targets */}
+                <div className="flex items-center gap-2">
+                    {viewMode === 'watchlist' && (
+                        <>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPromote('BUY', e);
+                                }}
+                                className="flex-1 px-4 py-3 text-sm font-bold text-emerald-400 hover:bg-emerald-500/20 rounded-xl border border-emerald-500/30 transition-all active:scale-95 min-h-[48px] flex items-center justify-center"
+                            >
+                                BUY
+                            </button>
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPromote('SELL', e);
+                                }}
+                                className="flex-1 px-4 py-3 text-sm font-bold text-rose-400 hover:bg-rose-500/20 rounded-xl border border-rose-500/30 transition-all active:scale-95 min-h-[48px] flex items-center justify-center"
+                            >
+                                SELL
+                            </button>
+                        </>
+                    )}
+                    {viewMode === 'active' && (
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onClose(e);
+                            }}
+                            className={`
+                                w-full px-4 py-3 text-sm font-bold rounded-xl border transition-all active:scale-95 min-h-[48px] flex items-center justify-center
+                                ${rec.action === 'BUY'
+                                    ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border-rose-500/30'
+                                    : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border-emerald-500/30'
+                                }
+                            `}
+                        >
+                            {rec.action === 'BUY' ? 'SELL Position' : 'BUY Position'}
+                        </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Desktop Table Layout - Improved spacing */}
+            <div className="hidden md:grid grid-cols-12 gap-4 items-center">
+                {/* Ticker & Action - Better padding and spacing */}
+                <div className={`col-span-3 px-2`}>
+                    <div className="flex flex-col gap-1">
+                        <span className="text-[var(--text-primary)] font-semibold text-sm leading-tight">{rec.ticker}</span>
+                        {companyName && (
+                            <div className="text-xs text-[var(--text-secondary)] truncate">
+                                {companyName}
+                            </div>
+                        )}
+                        <div className="flex items-center gap-2 mt-1">
+                            <span className={`
+                                text-[10px] font-bold uppercase px-2 py-0.5 rounded flex-shrink-0
+                            ${rec.action === 'WATCH'
+                                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                    : rec.action === 'BUY'
+                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+                                }
+                        `}>
+                                {rec.action}
+                            </span>
+                            <span className="text-[10px] text-[var(--text-tertiary)]">{dateAdded}</span>
+                        </div>
                     </div>
                 </div>
 
                 {/* Entry Price / Current Price */}
-                {/* 
-                    Improved padding and spacing for better visibility.
-                    Removed overflow-hidden to ensure content is always visible.
-                */}
-                <div className="col-span-2 px-4 py-2 text-right">
+                <div className="col-span-2 px-2">
                     {viewMode === 'watchlist' ? (
-                        <span className="text-sm text-[var(--text-primary)] font-mono">
+                        <span className="text-sm text-[var(--text-primary)] font-mono font-medium">
                             {current ? `₹${current.toFixed(2)}` : '-'}
                         </span>
                     ) : (
-                        <span className="text-sm text-[var(--text-primary)] font-mono">
+                        <span className="text-sm text-[var(--text-primary)] font-mono font-medium">
                             ₹{entry.toFixed(2)}
                         </span>
                     )}
                 </div>
 
                 {/* Current Price */}
-                {/* 
-                    Improved padding and spacing for better visibility.
-                    Removed overflow-hidden to ensure content is always visible.
-                */}
                 {viewMode !== 'watchlist' && (
-                    <div className="col-span-2 px-4 py-2 text-right">
-                        <span className="text-sm text-[var(--text-primary)] font-mono">
+                    <div className="col-span-2 px-2">
+                        <span className="text-sm text-[var(--text-primary)] font-mono font-medium">
                             {current ? `₹${current.toFixed(2)}` : '-'}
                         </span>
                     </div>
@@ -586,8 +692,8 @@ function IdeaListItem({
                 {/* BUY Price & SELL Price (for watchlist) */}
                 {viewMode === 'watchlist' && (
                     <>
-                        <div className="col-span-2 px-4 py-2 text-right">
-                            <span className={`text-sm font-mono ${rec.buy_price
+                        <div className="col-span-2 px-2">
+                            <span className={`text-sm font-mono font-medium ${rec.buy_price
                                 ? current && current <= rec.buy_price
                                     ? 'text-emerald-400 font-bold'
                                     : 'text-[var(--text-primary)]'
@@ -596,8 +702,8 @@ function IdeaListItem({
                                 {rec.buy_price ? `₹${rec.buy_price.toFixed(2)}` : '-'}
                             </span>
                         </div>
-                        <div className="col-span-2 px-4 py-2 text-right">
-                            <span className={`text-sm font-mono ${rec.sell_price
+                        <div className="col-span-2 px-2">
+                            <span className={`text-sm font-mono font-medium ${rec.sell_price
                                 ? current && current >= rec.sell_price
                                     ? 'text-rose-400 font-bold'
                                     : 'text-[var(--text-primary)]'
@@ -609,29 +715,17 @@ function IdeaListItem({
                     </>
                 )}
 
-                {/* Return */}
-                {/* 
-                    Increased column width to col-span-4 for non-watchlist to accommodate return value and SELL button.
-                    Added proper left padding to ensure return value is never cut off.
-                    Flex container with whitespace-nowrap prevents text wrapping.
-                */}
-                <div className={`pl-6 pr-4 py-2 text-right ${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-4'}`}>
+                {/* Return - Better spacing with hover-only action button */}
+                <div className={`px-2 ${viewMode === 'watchlist' ? 'col-span-2' : 'col-span-3'}`}>
                     {viewMode !== 'watchlist' ? (
-                        <div className="flex items-center justify-end gap-3 whitespace-nowrap">
-                            {/* 
-                                Percentage value with flex-shrink-0 to prevent compression.
-                                Added min-w-0 to parent and proper padding to ensure full visibility.
-                            */}
-                            <div className={`
-                                inline-flex items-center text-sm font-semibold flex-shrink-0
+                        <div className="flex items-center gap-4 whitespace-nowrap group/return">
+                            <span className={`
+                                text-sm font-semibold font-mono flex-shrink-0
                                 ${isPositive ? 'text-emerald-400' : 'text-rose-400'}
                             `}>
-                                <span className="font-mono whitespace-nowrap">{isPositive ? '+' : ''}{ret.toFixed(2)}%</span>
-                            </div>
-                            {/* 
-                                SELL/BUY button - appears only on hover.
-                                Positioned to the right with adequate gap to prevent overlap.
-                            */}
+                                {isPositive ? '+' : ''}{ret.toFixed(2)}%
+                            </span>
+                            {/* Action button only visible on hover */}
                             {viewMode === 'active' && (
                                 <button
                                     onClick={(e) => {
@@ -639,8 +733,8 @@ function IdeaListItem({
                                         onClose(e);
                                     }}
                                     className={`
-                                        px-2.5 py-1.5 text-[10px] font-bold rounded-md transition-all whitespace-nowrap flex-shrink-0
-                                        opacity-0 group-hover:opacity-100
+                                        px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap flex-shrink-0
+                                        opacity-0 group-hover/return:opacity-100 pointer-events-none group-hover/return:pointer-events-auto
                                         ${rec.action === 'BUY'
                                             ? 'bg-rose-500/20 text-rose-400 hover:bg-rose-500/30 border border-rose-500/30'
                                             : 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 border border-emerald-500/30'
@@ -657,36 +751,36 @@ function IdeaListItem({
                     )}
                 </div>
 
-                {/* Actions */}
-                {/* 
-                    Actions column - SELL button moved to Return column.
-                    Only watchlist actions remain here.
-                    Delete button removed - watchlist items persist permanently.
-                */}
-                <div className="col-span-1 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                {/* Actions Column - Always visible */}
+                <div className="col-span-1 flex justify-end items-center gap-2 px-2">
                     {viewMode === 'watchlist' && (
                         <>
                             <button
-                                onClick={(e) => onPromote('BUY', e)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPromote('BUY', e);
+                                }}
                                 className="px-3 py-1.5 text-xs font-bold text-emerald-400 hover:bg-emerald-500/20 rounded-lg border border-emerald-500/30 transition-colors"
                             >
                                 BUY
                             </button>
                             <button
-                                onClick={(e) => onPromote('SELL', e)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPromote('SELL', e);
+                                }}
                                 className="px-3 py-1.5 text-xs font-bold text-rose-400 hover:bg-rose-500/20 rounded-lg border border-rose-500/30 transition-colors"
                             >
                                 SELL
                             </button>
                         </>
                     )}
+                    {/* Arrow indicator - always visible when selected */}
+                    {isSelected && (
+                        <ChevronRight className="w-4 h-4 text-indigo-400 flex-shrink-0" />
+                    )}
                 </div>
             </div>
-
-            {/* Selection Indicator */}
-            {isSelected && (
-                <ChevronRight className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-400" />
-            )}
         </div>
     );
 }

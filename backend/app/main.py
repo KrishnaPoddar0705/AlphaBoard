@@ -39,8 +39,17 @@ from .db import supabase
 from .logic import update_user_performance
 from .performance import calculate_comprehensive_performance, compute_portfolio_allocation, compute_monthly_returns_matrix
 from typing import List, Dict
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.cron import CronTrigger
+from datetime import datetime
+import atexit
 
 app = FastAPI()
+
+# Initialize scheduler for cron jobs
+scheduler = BackgroundScheduler(timezone='UTC')
+scheduler.start()
+atexit.register(lambda: scheduler.shutdown())
 
 # CORS middleware - must be added before routes
 # This ensures CORS headers are sent even on errors
@@ -72,6 +81,22 @@ def get_price(ticker: str):
     price = get_current_price(ticker)
     if price is None:
         raise HTTPException(status_code=404, detail="Ticker not found")
+    
+    # Update current_price for all recommendations with this ticker (OPEN and WATCHLIST only)
+    try:
+        # Update OPEN recommendations
+        supabase.table("recommendations").update({
+            "current_price": price
+        }).eq("ticker", ticker).eq("status", "OPEN").execute()
+        
+        # Update WATCHLIST recommendations
+        supabase.table("recommendations").update({
+            "current_price": price
+        }).eq("ticker", ticker).eq("status", "WATCHLIST").execute()
+    except Exception as e:
+        print(f"Error updating current_price for {ticker}: {e}")
+        # Don't fail the request if DB update fails
+    
     return {"ticker": ticker, "price": price}
 
 @app.get("/market/details/{ticker}")
@@ -1562,3 +1587,137 @@ def get_portfolio_contribution(user_id: str):
     except Exception as e:
         print(f"Error getting contribution: {e}")
         return {"contribution": []}
+
+
+# ============================================================================
+# Price Update Functions
+# ============================================================================
+
+def update_all_current_prices():
+    """
+    Update current_price for all OPEN and WATCHLIST recommendations.
+    This function is called by the cron job and can also be triggered manually.
+    """
+    try:
+        print(f"[{datetime.now().isoformat()}] Starting price update for all recommendations...")
+        
+        # Get all unique tickers from OPEN and WATCHLIST recommendations
+        open_recs = supabase.table("recommendations").select("ticker").eq("status", "OPEN").execute()
+        watchlist_recs = supabase.table("recommendations").select("ticker").eq("status", "WATCHLIST").execute()
+        
+        all_recs = (open_recs.data or []) + (watchlist_recs.data or [])
+        
+        if not all_recs:
+            print("No recommendations to update")
+            return {"updated": 0, "errors": 0}
+        
+        # Get unique tickers
+        unique_tickers = list(set([rec['ticker'] for rec in all_recs]))
+        print(f"Found {len(unique_tickers)} unique tickers to update")
+        
+        updated_count = 0
+        error_count = 0
+        
+        # Update prices for each ticker
+        for ticker in unique_tickers:
+            try:
+                price = get_current_price(ticker)
+                if price is not None and price > 0:
+                    try:
+                        # First, check how many recommendations exist for this ticker
+                        open_check = supabase.table("recommendations").select("id").eq("ticker", ticker).eq("status", "OPEN").execute()
+                        watchlist_check = supabase.table("recommendations").select("id").eq("ticker", ticker).eq("status", "WATCHLIST").execute()
+                        
+                        total_to_update = len(open_check.data or []) + len(watchlist_check.data or [])
+                        
+                        if total_to_update == 0:
+                            print(f"  No recommendations found to update for {ticker} (checked: OPEN={len(open_check.data or [])}, WATCHLIST={len(watchlist_check.data or [])})")
+                        else:
+                            # Update records by individual ID to bypass RLS issues
+                            open_updated = 0
+                            open_ids = [r['id'] for r in (open_check.data or [])]
+                            
+                            for rec_id in open_ids:
+                                try:
+                                    result = supabase.table("recommendations").update({
+                                        "current_price": price
+                                    }).eq("id", rec_id).execute()
+                                    
+                                    # Verify immediately
+                                    verify = supabase.table("recommendations").select("current_price").eq("id", rec_id).execute()
+                                    if verify.data and verify.data[0].get('current_price'):
+                                        db_price = float(verify.data[0].get('current_price'))
+                                        if abs(db_price - price) < 0.01:
+                                            open_updated += 1
+                                except Exception as e:
+                                    print(f"  ✗ Error updating record {rec_id[:8]}: {e}")
+                            
+                            watchlist_updated = 0
+                            watchlist_ids = [r['id'] for r in (watchlist_check.data or [])]
+                            
+                            for rec_id in watchlist_ids:
+                                try:
+                                    result = supabase.table("recommendations").update({
+                                        "current_price": price
+                                    }).eq("id", rec_id).execute()
+                                    
+                                    # Verify immediately
+                                    verify = supabase.table("recommendations").select("current_price").eq("id", rec_id).execute()
+                                    if verify.data and verify.data[0].get('current_price'):
+                                        db_price = float(verify.data[0].get('current_price'))
+                                        if abs(db_price - price) < 0.01:
+                                            watchlist_updated += 1
+                                except Exception as e:
+                                    print(f"  ✗ Error updating record {rec_id[:8]}: {e}")
+                            
+                            total_updated = open_updated + watchlist_updated
+                            if total_updated > 0:
+                                updated_count += total_updated
+                                print(f"✓ Updated {total_updated} recommendations for {ticker} with price {price} (OPEN: {open_updated}, WATCHLIST: {watchlist_updated})")
+                            else:
+                                print(f"⚠ No recommendations were updated for {ticker} despite finding {total_to_update} records")
+                                # Debug: show what the current prices are
+                                debug = supabase.table("recommendations").select("id, current_price, status").eq("ticker", ticker).limit(5).execute()
+                                if debug.data:
+                                    print(f"  Debug - Current prices in DB: {[(r.get('id')[:8] if r.get('id') else 'N/A', r.get('current_price'), r.get('status')) for r in debug.data]}")
+                    except Exception as db_error:
+                        print(f"✗ Database error updating {ticker}: {db_error}")
+                        error_count += 1
+                else:
+                    print(f"✗ Could not fetch valid price for {ticker} (got: {price})")
+                    error_count += 1
+            except Exception as e:
+                print(f"✗ Error fetching price for {ticker}: {e}")
+                error_count += 1
+                # Continue to next ticker even if this one fails
+                continue
+        
+        print(f"[{datetime.now().isoformat()}] Price update completed. Updated: {updated_count}, Errors: {error_count}")
+        return {"updated": updated_count, "errors": error_count, "tickers_processed": len(unique_tickers)}
+    except Exception as e:
+        print(f"Error in update_all_current_prices: {e}")
+        return {"updated": 0, "errors": 1, "error_message": str(e)}
+
+
+@app.post("/admin/update-prices")
+def admin_update_prices():
+    """
+    Admin endpoint to manually trigger price updates for all recommendations.
+    """
+    try:
+        result = update_all_current_prices()
+        return {"status": "success", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating prices: {str(e)}")
+
+
+# Schedule daily price update at 10:00 AM GMT
+scheduler.add_job(
+    func=update_all_current_prices,
+    trigger=CronTrigger(hour=10, minute=0, timezone='UTC'),
+    id='daily_price_update',
+    name='Update all recommendation current prices',
+    replace_existing=True
+)
+
+print("Scheduled daily price update at 10:00 AM GMT")

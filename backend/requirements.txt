@@ -12,4 +12,5 @@ requests
 lxml
 pandas
 numpy
+apscheduler
 
