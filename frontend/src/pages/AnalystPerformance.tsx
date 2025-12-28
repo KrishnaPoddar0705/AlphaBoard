@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getAnalystPerformance, getRollingPortfolioReturns } from '../lib/api';
 import { MonthlyReturnsHeatmap } from '../components/charts/MonthlyReturnsHeatmap';
@@ -8,6 +8,7 @@ import { PortfolioAllocationDonut } from '../components/charts/PortfolioAllocati
 import { ArrowLeft, TrendingUp, BarChart2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { getReturnFromCacheOrCalculate } from '../lib/returnsCache';
+import { getSupabaseUserIdForClerkUser } from '../lib/clerkSupabaseSync';
 
 export default function AnalystPerformance() {
     const { id } = useParams<{ id: string }>();
@@ -21,36 +22,47 @@ export default function AnalystPerformance() {
     const [ideasAddedPeriod, setIdeasAddedPeriod] = useState<'day' | 'week' | 'month'>('week');
     const [returnsMatrixPeriod, setReturnsMatrixPeriod] = useState<'day' | 'week' | 'month'>('month');
 
-    useEffect(() => {
-        if (id) {
-            fetchData();
-            fetchRecommendations();
-        }
-    }, [id]);
+    // Refs to prevent concurrent calls
+    const fetchingRecommendations = useRef(false);
+    const fetchingPortfolioReturns = useRef(false);
+    const fetchingData = useRef(false);
 
-    useEffect(() => {
-        if (id) {
-            fetchPortfolioReturns();
-        }
-    }, [id, portfolioReturnsPeriod]);
-
-    const fetchRecommendations = async () => {
-        if (!id) return;
+    const fetchRecommendations = useCallback(async () => {
+        if (!id || fetchingRecommendations.current) return;
+        fetchingRecommendations.current = true;
         try {
+            // Convert Clerk user ID to Supabase UUID if needed
+            let supabaseUserId = id;
+
+            // Check if id is a Clerk user ID (starts with 'user_')
+            if (id.startsWith('user_')) {
+                const mappedId = await getSupabaseUserIdForClerkUser(id);
+                if (!mappedId) {
+                    console.error('Could not find Supabase UUID for Clerk user ID:', id);
+                    setRecommendations([]);
+                    return;
+                }
+                supabaseUserId = mappedId;
+            }
+
             const { data, error } = await supabase
                 .from('recommendations')
                 .select('*')
-                .eq('user_id', id)
+                .eq('user_id', supabaseUserId)
                 .order('entry_date', { ascending: false });
             if (error) throw error;
             setRecommendations(data || []);
         } catch (err) {
             console.error('Error fetching recommendations:', err);
+            setRecommendations([]);
+        } finally {
+            fetchingRecommendations.current = false;
         }
-    };
+    }, [id]);
 
-    const fetchPortfolioReturns = async () => {
-        if (!id) return;
+    const fetchPortfolioReturns = useCallback(async () => {
+        if (!id || fetchingPortfolioReturns.current) return;
+        fetchingPortfolioReturns.current = true;
         setPortfolioReturnsLoading(true);
         try {
             const rangeMap: Record<'day' | 'week' | 'month', 'DAY' | 'WEEK' | 'MONTH'> = {
@@ -59,42 +71,75 @@ export default function AnalystPerformance() {
                 'month': 'MONTH'
             };
             const range = rangeMap[portfolioReturnsPeriod];
-            const data = await getRollingPortfolioReturns(id, range);
+
+            // Convert Clerk user ID to Supabase UUID if needed (backend handles this, but ensure we pass the right format)
+            let userId = id;
+            if (id.startsWith('user_')) {
+                // Backend will handle conversion, but we can pass Clerk ID directly
+                userId = id;
+            }
+
+            const data = await getRollingPortfolioReturns(userId, range);
 
             if (data && data.error) {
+                console.error('Portfolio returns API error:', data.error);
                 setPortfolioReturns([]);
                 return;
             }
 
-            const formattedData = (data?.points || []).map((point: any, index: number) => {
-                const date = new Date(point.date);
-                let label: string;
-                if (portfolioReturnsPeriod === 'day') {
-                    label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                } else if (portfolioReturnsPeriod === 'week') {
-                    label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (data && data.points && Array.isArray(data.points) && data.points.length > 0) {
+                // Transform API response to chart format (values are already in percentage from backend)
+                const transformed = data.points.map((point: any, index: number) => {
+                    try {
+                        const date = new Date(point.date);
+                        let label = '';
+
+                        if (portfolioReturnsPeriod === 'day') {
+                            label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        } else if (portfolioReturnsPeriod === 'week') {
+                            // For weekly, show week start date
+                            label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        } else {
+                            // For monthly, show month and year
+                            label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                        }
+
+                        return {
+                            week: label,
+                            return: typeof point.value === 'number' ? point.value : 0, // Already in percentage from backend
+                            cumulativeReturn: (data.cumulative && data.cumulative[index] && typeof data.cumulative[index].value === 'number')
+                                ? data.cumulative[index].value
+                                : 0, // Already in percentage from backend
+                            count: point.active_count || 0
+                        };
+                    } catch (e) {
+                        console.error('Error transforming point:', point, e);
+                        return null;
+                    }
+                }).filter((item: any) => item !== null);
+
+                if (transformed.length > 0) {
+                    setPortfolioReturns(transformed);
                 } else {
-                    label = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+                    console.warn('No valid transformed data');
+                    setPortfolioReturns([]);
                 }
-
-                return {
-                    week: label,
-                    return: (point.value || 0) * 100,
-                    cumulativeReturn: data?.cumulative?.[index] ? (data.cumulative[index].value || 0) * 100 : undefined,
-                    count: point.active_count
-                };
-            });
-
-            setPortfolioReturns(formattedData);
+            } else {
+                console.warn('No portfolio returns data or empty points array:', data);
+                setPortfolioReturns([]);
+            }
         } catch (error) {
             console.error('Error fetching portfolio returns:', error);
             setPortfolioReturns([]);
         } finally {
             setPortfolioReturnsLoading(false);
+            fetchingPortfolioReturns.current = false;
         }
-    };
+    }, [id, portfolioReturnsPeriod]);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
+        if (!id || fetchingData.current) return;
+        fetchingData.current = true;
         try {
             setLoading(true);
             const perf = await getAnalystPerformance(id!);
@@ -103,8 +148,22 @@ export default function AnalystPerformance() {
             console.error('Error fetching performance data:', error);
         } finally {
             setLoading(false);
+            fetchingData.current = false;
         }
-    };
+    }, [id]);
+
+    useEffect(() => {
+        if (id) {
+            fetchData();
+            fetchRecommendations();
+        }
+    }, [id, fetchData, fetchRecommendations]);
+
+    useEffect(() => {
+        if (id) {
+            fetchPortfolioReturns();
+        }
+    }, [id, portfolioReturnsPeriod, fetchPortfolioReturns]);
 
     const metrics = performanceData?.summary_metrics || {};
 

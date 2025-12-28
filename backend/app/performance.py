@@ -89,11 +89,16 @@ def get_historical_price_data(ticker: str, start_date: str, end_date: str) -> pd
         return pd.DataFrame()
 
 
-def calculate_daily_portfolio_value(user_id: str, date: datetime) -> Tuple[float, float]:
+def calculate_daily_portfolio_value(user_id: str, date: datetime, price_cache: Optional[Dict[str, Dict[datetime, float]]] = None) -> Tuple[float, float]:
     """
     Calculate portfolio value and benchmark value for a specific date.
     Returns: (portfolio_value, benchmark_value)
     Uses cached current prices to avoid excessive API calls.
+    
+    Args:
+        user_id: User ID
+        date: Target date
+        price_cache: Optional pre-fetched price cache {ticker: {date: price}} to avoid individual API calls
     """
     # Convert Clerk user ID to Supabase UUID if needed
     supabase_user_id = get_supabase_user_id(user_id)
@@ -115,8 +120,9 @@ def calculate_daily_portfolio_value(user_id: str, date: datetime) -> Tuple[float
     portfolio_value = 0.0
     benchmark_ticker = "^NSEI"  # Default benchmark
     
-    # Get historical prices for the date (with timeout protection)
-    date_str = date.strftime("%Y-%m-%d")
+    # Normalize date for cache lookup
+    date_normalized = date.replace(tzinfo=None) if date.tzinfo else date
+    date_only = date_normalized.date()
     
     for rec in open_recs:
         ticker = rec['ticker']
@@ -126,17 +132,19 @@ def calculate_daily_portfolio_value(user_id: str, date: datetime) -> Tuple[float
         if not entry_price or not invested_amount:
             continue
         
-        # Use current_price as fallback (faster than historical fetch)
-        price = rec.get('current_price') or entry_price
+        # Use cached price if available
+        price = None
+        if price_cache and ticker in price_cache:
+            ticker_prices = price_cache[ticker]
+            # Find closest date on or before target date
+            for cached_date, cached_price in sorted(ticker_prices.items(), reverse=True):
+                if cached_date.date() <= date_only:
+                    price = cached_price
+                    break
         
-        # Only fetch historical if we really need it (for past dates)
-        if date.date() < datetime.now().date():
-            try:
-                df = get_historical_price_data(ticker, date_str, (date + timedelta(days=1)).strftime("%Y-%m-%d"))
-                if not df.empty:
-                    price = float(df['Close'].iloc[-1])
-            except:
-                pass  # Use fallback price
+        # Fallback to current_price or entry_price
+        if price is None:
+            price = rec.get('current_price') or entry_price
         
         # Calculate position value using invested_amount
         # Position value = invested_amount × (current_price / entry_price)
@@ -144,21 +152,25 @@ def calculate_daily_portfolio_value(user_id: str, date: datetime) -> Tuple[float
             position_value = float(invested_amount) * (float(price) / float(entry_price))
             portfolio_value += position_value
     
-    # Calculate benchmark value (use cached or default)
+    # Calculate benchmark value (use cache if available)
     benchmark_value = 100.0
-    if date.date() < datetime.now().date():
-        try:
-            df = get_historical_price_data(benchmark_ticker, date_str, (date + timedelta(days=1)).strftime("%Y-%m-%d"))
-            if not df.empty:
-                benchmark_value = float(df['Close'].iloc[-1])
-        except:
-            pass
+    if price_cache and benchmark_ticker in price_cache:
+        benchmark_prices = price_cache[benchmark_ticker]
+        for cached_date, cached_price in sorted(benchmark_prices.items(), reverse=True):
+            if cached_date.date() <= date_only:
+                benchmark_value = cached_price
+                break
     
     return (portfolio_value, benchmark_value)
 
 
 def compute_daily_returns(user_id: str, start_date: datetime, end_date: datetime) -> pd.DataFrame:
-    """Calculate daily portfolio returns with timeout protection"""
+    """
+    Calculate daily portfolio returns with timeout protection.
+    Uses batch price fetching to avoid individual API calls per day.
+    """
+    from app.portfolio_returns import fetch_historical_prices_batch
+    
     # Ensure dates are timezone-naive for pd.date_range
     if start_date.tzinfo is not None:
         start_date = start_date.replace(tzinfo=None)
@@ -169,6 +181,48 @@ def compute_daily_returns(user_id: str, start_date: datetime, end_date: datetime
     max_days = 730
     if (end_date - start_date).days > max_days:
         start_date = end_date - timedelta(days=max_days)
+    
+    # Validate dates - don't fetch future dates
+    now = datetime.now().replace(tzinfo=None) if datetime.now().tzinfo else datetime.now()
+    if end_date > now:
+        end_date = now
+    if start_date > end_date:
+        return pd.DataFrame()
+    
+    # Get user's recommendations to determine which tickers we need
+    supabase_user_id = get_supabase_user_id(user_id)
+    if not supabase_user_id:
+        return pd.DataFrame()
+    
+    try:
+        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").lte("entry_date", end_date.isoformat()).execute()
+        open_recs = response.data if response.data else []
+    except Exception as e:
+        print(f"Error fetching recommendations: {e}")
+        return pd.DataFrame()
+    
+    if not open_recs:
+        return pd.DataFrame()
+    
+    # Get unique tickers (including benchmark)
+    unique_tickers = list(set(rec['ticker'] for rec in open_recs))
+    benchmark_ticker = "^NSEI"
+    if benchmark_ticker not in unique_tickers:
+        unique_tickers.append(benchmark_ticker)
+    
+    # Batch fetch all historical prices upfront (ONE API call for all tickers)
+    print(f"Batch fetching prices for {len(unique_tickers)} tickers from {start_date.date()} to {end_date.date()}...")
+    historical_prices_dict = fetch_historical_prices_batch(unique_tickers, start_date, end_date)
+    
+    # Convert to date-indexed cache format: {ticker: {date: price}}
+    price_cache: Dict[str, Dict[datetime, float]] = {}
+    for ticker, price_list in historical_prices_dict.items():
+        price_cache[ticker] = {}
+        for price_point in price_list:
+            price_date = price_point['date']
+            if hasattr(price_date, 'tzinfo') and price_date.tzinfo:
+                price_date = price_date.replace(tzinfo=None)
+            price_cache[ticker][price_date] = price_point['close']
     
     dates = pd.date_range(start=start_date, end=end_date, freq='D')
     returns_data = []
@@ -190,7 +244,9 @@ def compute_daily_returns(user_id: str, start_date: datetime, end_date: datetime
             date_dt = date.to_pydatetime()
         else:
             date_dt = date
-        portfolio_value, benchmark_value = calculate_daily_portfolio_value(user_id, date_dt)
+        
+        # Use cached prices (no individual API calls)
+        portfolio_value, benchmark_value = calculate_daily_portfolio_value(user_id, date_dt, price_cache)
         
         if prev_portfolio_value is not None and prev_portfolio_value > 0:
             daily_return = (portfolio_value / prev_portfolio_value) - 1
@@ -530,10 +586,39 @@ def compute_profitable_weeks(user_id: str) -> float:
 
 
 def get_cached_performance_summary(user_id: str) -> Optional[Dict]:
-    """Get cached performance summary from database - currently disabled"""
-    # The performance_summary_cache table doesn't exist yet
-    # Using direct performance table queries instead
-    return None
+    """
+    Get cached performance summary from performance table.
+    This is fast and returns immediately without expensive calculations.
+    """
+    try:
+        # Convert Clerk user ID to Supabase UUID if needed
+        supabase_user_id = get_supabase_user_id(user_id)
+        if not supabase_user_id:
+            print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+            return None
+        
+        # Query performance table (fast, no calculations)
+        res = supabase.table("performance").select("*").eq("user_id", supabase_user_id).limit(1).execute()
+        
+        if res.data and len(res.data) > 0:
+            perf = res.data[0]
+            return {
+                'total_return_pct': perf.get('total_return_pct', 0) or 0,
+                'alpha_pct': perf.get('alpha_pct', 0) or 0,
+                'sharpe_ratio': perf.get('sharpe_ratio', 0) or 0,
+                'max_drawdown_pct': perf.get('max_drawdown_pct', 0) or 0,
+                'win_rate': perf.get('win_rate', 0) or 0,
+                'total_trades': perf.get('total_ideas', 0) or 0,
+                'last_updated': perf.get('last_updated'),
+                # Set defaults for fields that might not exist
+                'avg_risk_score': perf.get('avg_risk_score', 0) or 0,
+                'profitable_weeks_pct': perf.get('profitable_weeks_pct', 0) or 0,
+                'median_holding_period_days': perf.get('median_holding_period_days', 0) or 0
+            }
+        return None
+    except Exception as e:
+        print(f"Error fetching performance summary: {e}")
+        return None
 
 
 def get_cached_monthly_returns(user_id: str) -> List[Dict]:
@@ -580,45 +665,57 @@ def get_cached_yearly_returns(user_id: str) -> List[Dict]:
 
 
 def get_cached_performance_data(user_id: str) -> Optional[Dict]:
-    """Get all cached performance data"""
+    """
+    Get all cached performance data from performance table.
+    This is fast and returns immediately without expensive calculations.
+    """
     summary = get_cached_performance_summary(user_id)
+    
+    # Always return data structure, even if summary is None (use defaults)
+    # This ensures the endpoint returns quickly
     monthly_returns = get_cached_monthly_returns(user_id)
     yearly_returns = get_cached_yearly_returns(user_id)
-    portfolio_breakdown = compute_portfolio_allocation(user_id)  # This is fast, no need to cache
     
-    if not summary:
-        return None
+    # Only compute portfolio breakdown if we have summary (to avoid unnecessary work)
+    portfolio_breakdown = []
+    if summary:
+        try:
+            portfolio_breakdown = compute_portfolio_allocation(user_id)  # This is fast
+        except Exception as e:
+            print(f"Error computing portfolio allocation: {e}")
+            portfolio_breakdown = []
     
-    # Get trade P&L from recommendations (fast operation)
+    # Get trade P&L from recommendations (fast operation - just reads from DB)
+    best_trades = []
+    worst_trades = []
     try:
         # Convert Clerk user ID to Supabase UUID if needed
         supabase_user_id = get_supabase_user_id(user_id)
-        if not supabase_user_id:
-            print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
-            best_trades = []
-            worst_trades = []
-        else:
+        if supabase_user_id:
             response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).execute()
             recs = response.data if response.data else []
             portfolio_recs = [r for r in recs if r.get('status') != 'WATCHLIST']
-            trades = compute_trade_pnl(portfolio_recs)
-            best_trades = trades[:10] if len(trades) > 10 else trades
-            worst_trades = sorted(trades, key=lambda x: x.get('return_pct', 0))[:10]
-    except:
+            if portfolio_recs:
+                trades = compute_trade_pnl(portfolio_recs)
+                best_trades = trades[:10] if len(trades) > 10 else trades
+                worst_trades = sorted(trades, key=lambda x: x.get('return_pct', 0))[:10]
+    except Exception as e:
+        print(f"Error computing trade P&L: {e}")
         best_trades = []
         worst_trades = []
     
+    # Return data structure with summary (or defaults if None)
     return {
         'summary_metrics': {
-            'total_return_pct': summary.get('total_return_pct', 0),
-            'alpha_pct': summary.get('alpha_pct', 0),
-            'sharpe_ratio': summary.get('sharpe_ratio', 0),
-            'max_drawdown_pct': summary.get('max_drawdown_pct', 0),
-            'win_rate': summary.get('win_rate', 0),
-            'avg_risk_score': summary.get('avg_risk_score', 0),
-            'profitable_weeks_pct': summary.get('profitable_weeks_pct', 0),
-            'total_trades': summary.get('total_trades', 0),
-            'median_holding_period_days': summary.get('median_holding_period_days', 0)
+            'total_return_pct': summary.get('total_return_pct', 0) if summary else 0,
+            'alpha_pct': summary.get('alpha_pct', 0) if summary else 0,
+            'sharpe_ratio': summary.get('sharpe_ratio', 0) if summary else 0,
+            'max_drawdown_pct': summary.get('max_drawdown_pct', 0) if summary else 0,
+            'win_rate': summary.get('win_rate', 0) if summary else 0,
+            'avg_risk_score': summary.get('avg_risk_score', 0) if summary else 0,
+            'profitable_weeks_pct': summary.get('profitable_weeks_pct', 0) if summary else 0,
+            'total_trades': summary.get('total_trades', 0) if summary else 0,
+            'median_holding_period_days': summary.get('median_holding_period_days', 0) if summary else 0
         },
         'monthly_returns': monthly_returns,
         'yearly_returns': yearly_returns,

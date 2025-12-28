@@ -854,52 +854,66 @@ async def save_podcast(request: Request):
 def get_analyst_performance(user_id: str, background_tasks: BackgroundTasks):
     """
     Get comprehensive performance metrics for an analyst.
-    Returns cached data immediately, triggers background recalculation if cache is stale.
+    Returns cached data immediately from performance table (fast).
+    Triggers background recalculation if cache is stale (>1 hour old).
     """
     try:
-        from .performance import get_cached_performance_data
+        from .performance import get_cached_performance_data, calculate_comprehensive_performance
         
-        # Try to get cached data first
+        # Try to get cached data first (reads from performance table - fast)
         cached_data = get_cached_performance_data(user_id)
         
         if cached_data:
-            # Return cached data immediately
+            # Return cached data immediately (fast path)
             # Trigger background recalculation if cache is older than 1 hour
             try:
                 from .performance import get_cached_performance_summary
                 summary = get_cached_performance_summary(user_id)
                 if summary and summary.get('last_updated'):
                     from datetime import datetime, timedelta
-                    last_updated = datetime.fromisoformat(summary['last_updated'].replace('Z', '+00:00'))
-                    if datetime.now().replace(tzinfo=last_updated.tzinfo) - last_updated > timedelta(hours=1):
-                        # Cache is stale, trigger recalculation in background
+                    try:
+                        last_updated_str = summary['last_updated']
+                        if isinstance(last_updated_str, str):
+                            last_updated = datetime.fromisoformat(last_updated_str.replace('Z', '+00:00'))
+                        else:
+                            last_updated = last_updated_str
+                        
+                        # Make timezone-naive for comparison
+                        if last_updated.tzinfo:
+                            last_updated = last_updated.replace(tzinfo=None)
+                        now = datetime.now().replace(tzinfo=None) if datetime.now().tzinfo else datetime.now()
+                        
+                        if (now - last_updated).total_seconds() > 3600:  # 1 hour
+                            # Cache is stale, trigger recalculation in background
+                            background_tasks.add_task(calculate_comprehensive_performance, user_id)
+                    except Exception as time_error:
+                        # If timestamp parsing fails, trigger update
                         background_tasks.add_task(calculate_comprehensive_performance, user_id)
                 else:
-                    # No timestamp, trigger recalculation
+                    # No timestamp, trigger recalculation in background
                     background_tasks.add_task(calculate_comprehensive_performance, user_id)
-            except:
-                # If check fails, still return cached data but trigger update
+            except Exception as check_error:
+                # If check fails, still return cached data but trigger update in background
                 background_tasks.add_task(calculate_comprehensive_performance, user_id)
             
             return PerformanceMetricsResponse(**cached_data)
         else:
-            # No cache, calculate synchronously but with timeout protection
-            try:
-                performance_data = calculate_comprehensive_performance(user_id)
-                return PerformanceMetricsResponse(**performance_data)
-            except Exception as calc_error:
-                # If calculation fails, return empty data structure
-                return PerformanceMetricsResponse(
-                    summary_metrics={},
-                    monthly_returns=[],
-                    yearly_returns=[],
-                    portfolio_breakdown=[],
-                    best_trades=[],
-                    worst_trades=[]
-                )
+            # No cache exists, return empty structure and trigger calculation in background
+            # Don't block the request - return immediately
+            background_tasks.add_task(calculate_comprehensive_performance, user_id)
+            
+            return PerformanceMetricsResponse(
+                summary_metrics={},
+                monthly_returns=[],
+                yearly_returns=[],
+                portfolio_breakdown=[],
+                best_trades=[],
+                worst_trades=[]
+            )
     except Exception as e:
         import traceback
         traceback.print_exc()
+        print(f"Error in get_analyst_performance: {e}")
         # Return empty structure instead of error
         return PerformanceMetricsResponse(
             summary_metrics={},

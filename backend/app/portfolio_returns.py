@@ -13,6 +13,11 @@ import pandas as pd
 from collections import defaultdict
 import yfinance as yf
 
+# Cache for historical prices to avoid repeated API calls
+_price_cache: Dict[str, Dict[str, List[Dict[str, any]]]] = {}
+_cache_timestamps: Dict[str, datetime] = {}
+CACHE_TTL_SECONDS = 300  # 5 minutes cache
+
 
 def get_trading_days(start_date: datetime, end_date: datetime) -> List[datetime]:
     """
@@ -51,6 +56,7 @@ def fetch_historical_prices_batch(
 ) -> Dict[str, List[Dict[str, any]]]:
     """
     Fetch historical daily close prices for multiple tickers.
+    Uses caching to avoid repeated API calls.
     
     Args:
         tickers: List of ticker symbols
@@ -60,40 +66,136 @@ def fetch_historical_prices_batch(
     Returns:
         Dictionary mapping ticker -> list of {date: datetime, close: float}
     """
-    prices = {}
+    from datetime import datetime as dt
     
+    # Validate dates - don't fetch future dates
+    now = dt.now().replace(tzinfo=None) if dt.now().tzinfo else dt.now()
+    if end_date > now:
+        print(f"Warning: end_date {end_date} is in the future, clamping to {now}")
+        end_date = now
+    if start_date > end_date:
+        print(f"Warning: start_date {start_date} is after end_date {end_date}, returning empty")
+        return {ticker: [] for ticker in tickers}
+    
+    prices = {}
+    cache_key_base = f"{start_date.strftime('%Y-%m-%d')}_{end_date.strftime('%Y-%m-%d')}"
+    
+    # Check cache first
+    uncached_tickers = []
     for ticker in tickers:
-        try:
-            stock = yf.Ticker(ticker)
-            # Fetch history with date range
-            hist = stock.history(
-                start=start_date.strftime('%Y-%m-%d'),
-                end=(end_date + timedelta(days=1)).strftime('%Y-%m-%d')
-            )
-            
-            if hist.empty:
-                prices[ticker] = []
+        cache_key = f"{ticker}_{cache_key_base}"
+        if cache_key in _price_cache:
+            cache_time = _cache_timestamps.get(cache_key)
+            if cache_time and (now - cache_time).total_seconds() < CACHE_TTL_SECONDS:
+                prices[ticker] = _price_cache[cache_key]
                 continue
-            
-            # Extract close prices
-            ticker_prices = []
-            for date, row in hist.iterrows():
-                close_price = row['Close']
-                if pd.notna(close_price) and close_price > 0:
-                    # Convert pandas Timestamp to datetime
-                    date_dt = date.to_pydatetime() if hasattr(date, 'to_pydatetime') else datetime.combine(date.date(), datetime.min.time())
-                    ticker_prices.append({
-                        'date': date_dt,
-                        'close': float(close_price)
-                    })
-            
-            # Sort by date
-            ticker_prices.sort(key=lambda x: x['date'])
-            prices[ticker] = ticker_prices
-            
-        except Exception as e:
-            print(f"Error fetching prices for {ticker}: {e}")
-            prices[ticker] = []
+        uncached_tickers.append(ticker)
+    
+    # Only fetch uncached tickers
+    if not uncached_tickers:
+        return prices
+    
+    # Use batch download for better performance
+    try:
+        # yfinance batch download is more efficient
+        ticker_str = ' '.join(uncached_tickers)
+        hist_batch = yf.download(
+            ticker_str,
+            start=start_date.strftime('%Y-%m-%d'),
+            end=(end_date + timedelta(days=1)).strftime('%Y-%m-%d'),
+            progress=False,
+            group_by='ticker',
+            threads=True
+        )
+        
+        # Process batch results
+        for ticker in uncached_tickers:
+            try:
+                if hist_batch.empty:
+                    prices[ticker] = []
+                    continue
+                
+                # Handle MultiIndex columns (multiple tickers)
+                if isinstance(hist_batch.columns, pd.MultiIndex):
+                    if ticker in hist_batch.columns.levels[0]:
+                        ticker_data = hist_batch[ticker]
+                    else:
+                        prices[ticker] = []
+                        continue
+                else:
+                    # Single ticker case
+                    ticker_data = hist_batch
+                
+                if ticker_data.empty:
+                    prices[ticker] = []
+                    continue
+                
+                # Extract close prices
+                ticker_prices = []
+                for date, row in ticker_data.iterrows():
+                    close_price = row.get('Close', row.get('Adj Close', None))
+                    if pd.notna(close_price) and close_price > 0:
+                        # Convert pandas Timestamp to datetime
+                        date_dt = date.to_pydatetime() if hasattr(date, 'to_pydatetime') else datetime.combine(date.date(), datetime.min.time())
+                        # Remove timezone if present
+                        if hasattr(date_dt, 'tzinfo') and date_dt.tzinfo:
+                            date_dt = date_dt.replace(tzinfo=None)
+                        ticker_prices.append({
+                            'date': date_dt,
+                            'close': float(close_price)
+                        })
+                
+                # Sort by date
+                ticker_prices.sort(key=lambda x: x['date'])
+                prices[ticker] = ticker_prices
+                
+                # Cache the result
+                cache_key = f"{ticker}_{cache_key_base}"
+                _price_cache[cache_key] = ticker_prices
+                _cache_timestamps[cache_key] = now
+                
+            except Exception as e:
+                print(f"Error processing prices for {ticker}: {e}")
+                prices[ticker] = []
+        
+    except Exception as e:
+        print(f"Error in batch download, falling back to individual fetches: {e}")
+        # Fallback to individual fetches if batch fails
+        for ticker in uncached_tickers:
+            try:
+                stock = yf.Ticker(ticker)
+                hist = stock.history(
+                    start=start_date.strftime('%Y-%m-%d'),
+                    end=(end_date + timedelta(days=1)).strftime('%Y-%m-%d')
+                )
+                
+                if hist.empty:
+                    prices[ticker] = []
+                    continue
+                
+                ticker_prices = []
+                for date, row in hist.iterrows():
+                    close_price = row.get('Close', row.get('Adj Close', None))
+                    if pd.notna(close_price) and close_price > 0:
+                        date_dt = date.to_pydatetime() if hasattr(date, 'to_pydatetime') else datetime.combine(date.date(), datetime.min.time())
+                        if hasattr(date_dt, 'tzinfo') and date_dt.tzinfo:
+                            date_dt = date_dt.replace(tzinfo=None)
+                        ticker_prices.append({
+                            'date': date_dt,
+                            'close': float(close_price)
+                        })
+                
+                ticker_prices.sort(key=lambda x: x['date'])
+                prices[ticker] = ticker_prices
+                
+                # Cache the result
+                cache_key = f"{ticker}_{cache_key_base}"
+                _price_cache[cache_key] = ticker_prices
+                _cache_timestamps[cache_key] = now
+                
+            except Exception as e:
+                print(f"Error fetching prices for {ticker}: {e}")
+                prices[ticker] = []
     
     return prices
 
@@ -212,11 +314,23 @@ def calculate_daily_portfolio_returns(
     # Use parsed_recs (includes both OPEN and CLOSED)
     active_recs = parsed_recs
     
+    # Validate date range - don't fetch future dates
+    now = datetime.now().replace(tzinfo=None) if datetime.now().tzinfo else datetime.now()
+    if end_date > now:
+        print(f"Warning: end_date {end_date} is in the future, clamping to {now}")
+        end_date = now
+    if start_date > end_date:
+        print(f"Warning: start_date {start_date} is after end_date {end_date}, returning empty")
+        return [], []
+    
     # Get unique tickers
     unique_tickers = list(set(rec['ticker'] for rec in active_recs))
     
+    if not unique_tickers:
+        return [], []
+    
     # Fetch historical prices for all tickers
-    print(f"Fetching historical prices for {len(unique_tickers)} tickers...")
+    print(f"Fetching historical prices for {len(unique_tickers)} tickers from {start_date.date()} to {end_date.date()}...")
     historical_prices = fetch_historical_prices_batch(unique_tickers, start_date, end_date)
     
     # Track missing tickers

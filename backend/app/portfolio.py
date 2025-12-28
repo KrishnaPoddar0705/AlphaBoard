@@ -295,6 +295,7 @@ def rebalance_portfolio_with_weights(user_id: str, weight_updates: Dict[str, flo
 def compute_portfolio_returns_series(user_id: str, positions: Dict[str, Dict], days: int = 252) -> pd.Series:
     """
     Compute portfolio returns time series from historical prices.
+    Uses batch fetching to avoid individual API calls per day.
     
     Args:
         user_id: User ID
@@ -305,10 +306,30 @@ def compute_portfolio_returns_series(user_id: str, positions: Dict[str, Dict], d
         pd.Series of daily returns
     """
     try:
-        from .performance import get_historical_price_data
+        from app.portfolio_returns import fetch_historical_prices_batch
         
-        end_date = datetime.now()
+        end_date = datetime.now().replace(tzinfo=None) if datetime.now().tzinfo else datetime.now()
         start_date = end_date - timedelta(days=days)
+        
+        # Get unique tickers
+        unique_tickers = [ticker for ticker in positions.keys() if positions[ticker].get('entry_price', 0) > 0 and positions[ticker].get('units', 0) > 0]
+        
+        if not unique_tickers:
+            return pd.Series()
+        
+        # Batch fetch all historical prices upfront (ONE API call)
+        print(f"Batch fetching prices for {len(unique_tickers)} tickers from {start_date.date()} to {end_date.date()}...")
+        historical_prices_dict = fetch_historical_prices_batch(unique_tickers, start_date, end_date)
+        
+        # Convert to date-indexed cache: {ticker: {date: price}}
+        price_cache: Dict[str, Dict[datetime, float]] = {}
+        for ticker, price_list in historical_prices_dict.items():
+            price_cache[ticker] = {}
+            for price_point in price_list:
+                price_date = price_point['date']
+                if hasattr(price_date, 'tzinfo') and price_date.tzinfo:
+                    price_date = price_date.replace(tzinfo=None)
+                price_cache[ticker][price_date] = price_point['close']
         
         returns_data = []
         dates = pd.date_range(start=start_date, end=end_date, freq='D')
@@ -317,6 +338,14 @@ def compute_portfolio_returns_series(user_id: str, positions: Dict[str, Dict], d
         for date in dates:
             portfolio_value = 0.0
             
+            # Convert pandas Timestamp to datetime
+            if hasattr(date, 'to_pydatetime'):
+                date_dt = date.to_pydatetime()
+            else:
+                date_dt = date
+            date_normalized = date_dt.replace(tzinfo=None) if date_dt.tzinfo else date_dt
+            date_only = date_normalized.date()
+            
             for ticker, pos in positions.items():
                 entry_price = pos.get('entry_price', 0)
                 units = pos.get('units', 0)
@@ -324,16 +353,15 @@ def compute_portfolio_returns_series(user_id: str, positions: Dict[str, Dict], d
                 if entry_price <= 0 or units <= 0:
                     continue
                 
-                # Get price for this date
-                date_str = date.strftime("%Y-%m-%d")
-                try:
-                    df = get_historical_price_data(ticker, date_str, (date + timedelta(days=1)).strftime("%Y-%m-%d"))
-                    if not df.empty:
-                        current_price = float(df['Close'].iloc[-1])
-                    else:
-                        current_price = entry_price
-                except:
-                    current_price = entry_price
+                # Get price from cache
+                current_price = entry_price  # Default fallback
+                if ticker in price_cache:
+                    ticker_prices = price_cache[ticker]
+                    # Find closest date on or before target date
+                    for cached_date, cached_price in sorted(ticker_prices.items(), reverse=True):
+                        if cached_date.date() <= date_only:
+                            current_price = cached_price
+                            break
                 
                 position_value = units * current_price
                 portfolio_value += position_value
@@ -347,6 +375,12 @@ def compute_portfolio_returns_series(user_id: str, positions: Dict[str, Dict], d
             prev_portfolio_value = portfolio_value
         
         return pd.Series(returns_data, index=dates[:len(returns_data)])
+    
+    except Exception as e:
+        print(f"Error in compute_portfolio_returns_series: {e}")
+        import traceback
+        traceback.print_exc()
+        return pd.Series()
     except Exception as e:
         print(f"Error computing returns series: {e}")
         return pd.Series()
