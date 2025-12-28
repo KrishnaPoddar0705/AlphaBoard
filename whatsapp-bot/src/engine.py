@@ -1377,25 +1377,19 @@ class MessageEngine:
             await self._send_error_message(phone)
     
     async def _handle_analyst_selected(self, phone: str, user_id: str, analyst_id: str) -> None:
-        """Handle analyst selection - show position type options."""
+        """Handle analyst selection - directly show OPEN positions (active recommendations)."""
         try:
+            logger.info(f"🔍 [TRACK ANALYST] Analyst selected: {analyst_id}, showing OPEN positions directly")
             context = state_manager.get_context(user_id)
             state_manager.advance_step(user_id, {"analyst_id": analyst_id})
             
-            # Show OPEN/CLOSED selection
-            await self.wa_client.send_interactive_buttons(
-                phone,
-                body_text="📊 *Select Position Type*\n\nWhat positions do you want to view?",
-                buttons=[
-                    {"id": f"analyst_status_OPEN_{analyst_id}", "title": "📈 Open Positions"},
-                    {"id": f"analyst_status_CLOSED_{analyst_id}", "title": "📉 Closed (History)"},
-                    {"id": f"analyst_status_ALL_{analyst_id}", "title": "📋 All Positions"}
-                ]
-            )
+            # Directly show OPEN positions instead of asking for position type
+            await self._handle_show_analyst_recs(phone, user_id, analyst_id, "OPEN")
             
         except Exception as e:
-            logger.error(f"Error handling analyst selection: {e}")
+            logger.error(f"❌ [TRACK ANALYST] Error handling analyst selection: {e}", exc_info=True)
             await self._send_error_message(phone)
+            state_manager.cancel_flow(user_id)
     
     async def _handle_show_analyst_recs(
         self,
