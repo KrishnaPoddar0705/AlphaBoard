@@ -248,7 +248,7 @@ export default function Layout() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2 md:gap-4">
-                            {user && <AlertsDropdown />}
+                            {user && location.pathname !== '/' && <AlertsDropdown />}
                             {user ? (
                                 <>
                                     {/* Mobile: Icon only */}
