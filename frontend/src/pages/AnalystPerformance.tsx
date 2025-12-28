@@ -106,14 +106,6 @@ export default function AnalystPerformance() {
         }
     };
 
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <div className="text-gray-400">Loading performance data...</div>
-            </div>
-        );
-    }
-
     const metrics = performanceData?.summary_metrics || {};
 
     // Calculate ideas added data
@@ -335,6 +327,15 @@ export default function AnalystPerformance() {
 
         return matrixData;
     }, [portfolioReturns, returnsMatrixPeriod]);
+
+    // Early return AFTER all hooks (React rules: hooks must be called in same order on every render)
+    if (loading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-gray-400">Loading performance data...</div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen p-8">

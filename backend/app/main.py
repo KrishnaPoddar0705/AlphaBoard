@@ -1708,23 +1708,41 @@ def get_rolling_portfolio_returns(
     Get rolling portfolio returns for a user.
     
     Args:
-        user_id: User ID
+        user_id: User ID (Clerk ID or Supabase UUID)
         range: 'DAY', 'WEEK', or 'MONTH'
     
     Returns:
         Dictionary with points, cumulative, and meta
     """
     from app.portfolio_returns import compute_rolling_portfolio_returns
+    from app.performance import get_supabase_user_id
     
     # Validate range
     if range not in ['DAY', 'WEEK', 'MONTH']:
         return {"error": "Invalid range. Must be DAY, WEEK, or MONTH"}, 400
     
     try:
+        # Convert Clerk user ID to Supabase UUID if needed
+        supabase_user_id = get_supabase_user_id(user_id)
+        if not supabase_user_id:
+            print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+            return {
+                "error": f"User not found. Please ensure your account is synced with Supabase.",
+                "points": [],
+                "cumulative": [],
+                "meta": {
+                    "window_days": 1 if range == "DAY" else (7 if range == "WEEK" else 30),
+                    "start_date": None,
+                    "end_date": datetime.now().isoformat(),
+                    "method_used": "equal_weight",
+                    "missing_symbols": []
+                }
+            }, 404
+        
         # Fetch user's recommendations
         # Include both OPEN and CLOSED recommendations with entry_date (for historical tracking)
         # WATCHLIST items are excluded as they don't have entry_date
-        response = supabase.table("recommendations").select("*").eq("user_id", user_id).in_("status", ["OPEN", "CLOSED"]).not_.is_("entry_date", "null").order("entry_date", desc=False).execute()
+        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).in_("status", ["OPEN", "CLOSED"]).not_.is_("entry_date", "null").order("entry_date", desc=False).execute()
         
         if not response.data:
             return {
