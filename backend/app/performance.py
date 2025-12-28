@@ -11,6 +11,39 @@ from .db import supabase
 from .market import get_current_price, get_ticker_obj
 
 
+def get_supabase_user_id(clerk_user_id: str) -> Optional[str]:
+    """
+    Convert Clerk user ID to Supabase UUID by looking up the mapping table.
+    If the input is already a UUID, return it as-is.
+    
+    Args:
+        clerk_user_id: Clerk user ID (e.g., 'user_36SrJ1Sdb2xpMdFzdxGJw4S5Dma') or UUID
+        
+    Returns:
+        Supabase UUID string or None if not found
+    """
+    # Check if it's already a UUID format (36 chars with dashes)
+    if len(clerk_user_id) == 36 and clerk_user_id.count('-') == 4:
+        return clerk_user_id
+    
+    # Look up in clerk_user_mapping table
+    try:
+        result = supabase.table("clerk_user_mapping") \
+            .select("supabase_user_id") \
+            .eq("clerk_user_id", clerk_user_id) \
+            .limit(1) \
+            .execute()
+        
+        if result.data and len(result.data) > 0:
+            return result.data[0].get("supabase_user_id")
+        
+        print(f"Warning: No clerk_user_mapping found for Clerk ID: {clerk_user_id}")
+        return None
+    except Exception as e:
+        print(f"Error looking up Supabase UUID for Clerk ID {clerk_user_id}: {e}")
+        return None
+
+
 def get_historical_price_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
     """Fetch historical price data for a ticker"""
     try:
@@ -30,9 +63,15 @@ def calculate_daily_portfolio_value(user_id: str, date: datetime) -> Tuple[float
     Returns: (portfolio_value, benchmark_value)
     Uses cached current prices to avoid excessive API calls.
     """
+    # Convert Clerk user ID to Supabase UUID if needed
+    supabase_user_id = get_supabase_user_id(user_id)
+    if not supabase_user_id:
+        print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+        return (0.0, 0.0)
+    
     # Fetch all OPEN recommendations as of this date
     try:
-        response = supabase.table("recommendations").select("*").eq("user_id", user_id).eq("status", "OPEN").lte("entry_date", date.isoformat()).execute()
+        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").lte("entry_date", date.isoformat()).execute()
         open_recs = response.data if response.data else []
     except Exception as e:
         print(f"Error fetching recommendations: {e}")
@@ -174,8 +213,14 @@ def compute_drawdown(portfolio_values: pd.Series) -> float:
 
 def compute_monthly_returns_matrix(user_id: str) -> List[Dict]:
     """Compute monthly returns matrix for 2020-2025"""
+    # Convert Clerk user ID to Supabase UUID if needed
+    supabase_user_id = get_supabase_user_id(user_id)
+    if not supabase_user_id:
+        print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+        return []
+    
     # Fetch all recommendations
-    response = supabase.table("recommendations").select("*").eq("user_id", user_id).execute()
+    response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).execute()
     recs = response.data if response.data else []
     
     if not recs:
@@ -275,7 +320,13 @@ def compute_win_rate(recommendations: List[Dict]) -> float:
 def compute_portfolio_allocation(user_id: str) -> List[Dict]:
     """Calculate current portfolio allocation using invested_amount"""
     try:
-        response = supabase.table("recommendations").select("*").eq("user_id", user_id).eq("status", "OPEN").execute()
+        # Convert Clerk user ID to Supabase UUID if needed
+        supabase_user_id = get_supabase_user_id(user_id)
+        if not supabase_user_id:
+            print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+            return []
+        
+        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
         open_recs = response.data if response.data else []
         
         if not open_recs:
@@ -400,8 +451,14 @@ def compute_volatility_risk_score(user_id: str, days: int = 7) -> float:
 
 def compute_profitable_weeks(user_id: str) -> float:
     """Calculate % of weeks with positive returns"""
+    # Convert Clerk user ID to Supabase UUID if needed
+    supabase_user_id = get_supabase_user_id(user_id)
+    if not supabase_user_id:
+        print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+        return 0.0
+    
     # Get date range from first recommendation
-    response = supabase.table("recommendations").select("entry_date").eq("user_id", user_id).order("entry_date", desc=False).limit(1).execute()
+    response = supabase.table("recommendations").select("entry_date").eq("user_id", supabase_user_id).order("entry_date", desc=False).limit(1).execute()
     
     if not response.data:
         return 0.0
@@ -441,7 +498,13 @@ def get_cached_performance_summary(user_id: str) -> Optional[Dict]:
 def get_cached_monthly_returns(user_id: str) -> List[Dict]:
     """Get cached monthly returns from database"""
     try:
-        res = supabase.table("monthly_returns_matrix").select("*").eq("user_id", user_id).order("year", desc=False).order("month", desc=False).execute()
+        # Convert Clerk user ID to Supabase UUID if needed
+        supabase_user_id = get_supabase_user_id(user_id)
+        if not supabase_user_id:
+            print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+            return []
+        
+        res = supabase.table("monthly_returns_matrix").select("*").eq("user_id", supabase_user_id).order("year", desc=False).order("month", desc=False).execute()
         if res.data:
             return res.data
     except Exception as e:
@@ -487,12 +550,19 @@ def get_cached_performance_data(user_id: str) -> Optional[Dict]:
     
     # Get trade P&L from recommendations (fast operation)
     try:
-        response = supabase.table("recommendations").select("*").eq("user_id", user_id).execute()
-        recs = response.data if response.data else []
-        portfolio_recs = [r for r in recs if r.get('status') != 'WATCHLIST']
-        trades = compute_trade_pnl(portfolio_recs)
-        best_trades = trades[:10] if len(trades) > 10 else trades
-        worst_trades = sorted(trades, key=lambda x: x.get('return_pct', 0))[:10]
+        # Convert Clerk user ID to Supabase UUID if needed
+        supabase_user_id = get_supabase_user_id(user_id)
+        if not supabase_user_id:
+            print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+            best_trades = []
+            worst_trades = []
+        else:
+            response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).execute()
+            recs = response.data if response.data else []
+            portfolio_recs = [r for r in recs if r.get('status') != 'WATCHLIST']
+            trades = compute_trade_pnl(portfolio_recs)
+            best_trades = trades[:10] if len(trades) > 10 else trades
+            worst_trades = sorted(trades, key=lambda x: x.get('return_pct', 0))[:10]
     except:
         best_trades = []
         worst_trades = []
@@ -523,7 +593,13 @@ def validate_and_rebalance_weights(user_id: str, new_weight: float) -> Dict:
     Returns: {'valid': bool, 'error': str}
     """
     try:
-        response = supabase.table("recommendations").select("weight_pct").eq("user_id", user_id).eq("status", "OPEN").execute()
+        # Convert Clerk user ID to Supabase UUID if needed
+        supabase_user_id = get_supabase_user_id(user_id)
+        if not supabase_user_id:
+            print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+            return 0.0
+        
+        response = supabase.table("recommendations").select("weight_pct").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
         open_recs = response.data if response.data else []
         
         total_weight = sum(rec.get('weight_pct', 0) or 0 for rec in open_recs)
@@ -554,7 +630,13 @@ def rebalance_portfolio_weights(user_id: str):
         balance = get_portfolio_balance(user_id)
         available_balance = float(balance.get('available_cash', 1000000))
         
-        response = supabase.table("recommendations").select("*").eq("user_id", user_id).eq("status", "OPEN").execute()
+        # Convert Clerk user ID to Supabase UUID if needed
+        supabase_user_id = get_supabase_user_id(user_id)
+        if not supabase_user_id:
+            print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+            return []
+        
+        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
         open_recs = response.data if response.data else []
         
         if not open_recs:
@@ -633,8 +715,21 @@ def calculate_comprehensive_performance(user_id: str) -> Dict:
     Calculate all performance metrics and cache them.
     Returns comprehensive performance data.
     """
+    # Convert Clerk user ID to Supabase UUID if needed
+    supabase_user_id = get_supabase_user_id(user_id)
+    if not supabase_user_id:
+        print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+        return {
+            "summary_metrics": {},
+            "monthly_returns": [],
+            "yearly_returns": [],
+            "portfolio_breakdown": [],
+            "best_trades": [],
+            "worst_trades": []
+        }
+    
     # Fetch all recommendations
-    response = supabase.table("recommendations").select("*").eq("user_id", user_id).execute()
+    response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).execute()
     recs = response.data if response.data else []
     
     if not recs:
