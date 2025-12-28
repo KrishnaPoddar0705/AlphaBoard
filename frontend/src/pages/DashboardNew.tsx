@@ -24,7 +24,6 @@ import { usePanelWidth, usePanelTransition } from '../hooks/useLayout';
 import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
 import { setCachedReturn, calculateReturn, getReturnFromCacheOrCalculate } from '../lib/returnsCache';
 import { getRollingPortfolioReturns } from '../lib/api';
-import { Toaster } from 'react-hot-toast';
 import { MobileBottomNav } from '../components/MobileBottomNav';
 import { getStockSummary } from '../lib/api';
 import { WeeklyReturnsChart } from '../components/charts/WeeklyReturnsChart';
@@ -1131,24 +1130,6 @@ export default function DashboardNew() {
 
     return (
         <div className="h-[calc(100vh-4rem)] bg-[var(--bg-primary)] md:overflow-hidden overflow-y-auto md:overflow-y-hidden">
-            <Toaster
-                position="top-right"
-                toastOptions={{
-                    duration: 5000,
-                    style: {
-                        background: '#1e293b',
-                        color: '#fff',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                    },
-                    success: {
-                        iconTheme: {
-                            primary: '#10b981',
-                            secondary: '#fff',
-                        },
-                    },
-                }}
-            />
-
             {/* Mobile: Dashboard with Portfolio Summary and Recommendations List */}
             <div className="md:hidden min-h-screen pb-20" style={{ paddingBottom: 'calc(4rem + env(safe-area-inset-bottom))' }}>
                 {/* Dashboard Header - Mobile optimized */}
