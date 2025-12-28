@@ -1404,37 +1404,64 @@ class MessageEngine:
         analyst_id: str,
         status: str
     ) -> None:
-        """Show analyst recommendations in detailed format."""
+        """Show analyst recommendations in detailed format.
+        
+        IMPORTANT: analyst_id must be a Supabase UUID from profiles table, NOT a WhatsApp user ID.
+        This method queries public.recommendations directly using the analyst's Supabase UUID.
+        """
         try:
             logger.info(f"Showing recommendations for analyst {analyst_id}, status: {status}")
+            
+            # CRITICAL: Verify analyst_id is a valid Supabase UUID format
+            # UUID format: 8-4-4-4-12 hex characters
+            import re
+            uuid_pattern = re.compile(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', re.IGNORECASE)
+            if not uuid_pattern.match(analyst_id):
+                logger.error(f"Invalid analyst_id format: {analyst_id}. Expected Supabase UUID.")
+                await self.wa_client.send_text_message(
+                    phone,
+                    "❌ *Error*\n\nInvalid analyst ID format. Please try selecting the analyst again."
+                )
+                state_manager.cancel_flow(user_id)
+                return
             
             # Verify admin still has access and get organization context
             context = state_manager.get_context(user_id)
             admin_org_id = context.data.get("organization_id") if context else None
             
-            # Get analyst profile and verify they're in the same organization
+            # Get analyst profile from public.profiles table (NOT whatsapp_users)
+            # This confirms the analyst_id is a valid Supabase UUID
+            logger.info(f"Looking up analyst in public.profiles table with UUID: {analyst_id}")
             profile_result = self.ab_client.supabase.table("profiles") \
-                .select("username, full_name, organization_id") \
+                .select("id, username, full_name, organization_id") \
                 .eq("id", analyst_id) \
                 .limit(1) \
                 .execute()
             
             analyst_name = "Analyst"
             analyst_org_id = None
+            analyst_supabase_uuid = None
             
             if profile_result.data and len(profile_result.data) > 0:
                 profile = profile_result.data[0]
+                analyst_supabase_uuid = profile.get("id")  # This is the Supabase UUID
                 analyst_name = profile.get("full_name") or profile.get("username") or "Analyst"
                 analyst_org_id = profile.get("organization_id")
-                logger.info(f"Found analyst profile: {analyst_name}, org_id: {analyst_org_id}")
+                logger.info(f"✅ Found analyst profile: {analyst_name} (UUID: {analyst_supabase_uuid}), org_id: {analyst_org_id}")
             else:
-                logger.warning(f"Analyst profile not found for ID: {analyst_id}")
+                logger.error(f"❌ Analyst profile not found in public.profiles for UUID: {analyst_id}")
+                await self.wa_client.send_text_message(
+                    phone,
+                    "❌ *Error*\n\nAnalyst not found. Please try selecting the analyst again."
+                )
+                state_manager.cancel_flow(user_id)
+                return
             
             # Also check membership table for organization
             if not analyst_org_id:
                 membership_result = self.ab_client.supabase.table("user_organization_membership") \
                     .select("organization_id") \
-                    .eq("user_id", analyst_id) \
+                    .eq("user_id", analyst_supabase_uuid) \
                     .limit(1) \
                     .execute()
                 
@@ -1444,7 +1471,7 @@ class MessageEngine:
             
             # Verify analyst is in admin's organization
             if admin_org_id and analyst_org_id and admin_org_id != analyst_org_id:
-                logger.warning(f"Analyst {analyst_id} (org: {analyst_org_id}) not in admin's org: {admin_org_id}")
+                logger.warning(f"Analyst {analyst_supabase_uuid} (org: {analyst_org_id}) not in admin's org: {admin_org_id}")
                 await self.wa_client.send_text_message(
                     phone,
                     f"⚠️ *Access Denied*\n\n"
@@ -1453,15 +1480,16 @@ class MessageEngine:
                 state_manager.cancel_flow(user_id)
                 return
             
-            # Get recommendations - DIRECT query to public.recommendations
+            # Get recommendations - DIRECT query to public.recommendations using Supabase UUID
+            # DO NOT query whatsapp_users table - recommendations are in public.recommendations
             status_filter = None if status == "ALL" else status
-            logger.info(f"Fetching recommendations with status filter: {status_filter}")
+            logger.info(f"Fetching recommendations from public.recommendations for Supabase UUID: {analyst_supabase_uuid}, status: {status_filter}")
             
             recs = []
             try:
-                # Try direct query first
-                recs = await self.ab_client.get_analyst_recommendations_detailed(analyst_id, status_filter)
-                logger.info(f"Retrieved {len(recs)} recommendations for analyst {analyst_id}")
+                # Query public.recommendations directly using the analyst's Supabase UUID
+                recs = await self.ab_client.get_analyst_recommendations_detailed(analyst_supabase_uuid, status_filter)
+                logger.info(f"✅ Retrieved {len(recs)} recommendations for analyst {analyst_supabase_uuid}")
             except AlphaBoardClientError as e:
                 logger.error(f"Failed to get recommendations: {e}")
                 # Fall through to direct query fallback
@@ -1478,10 +1506,12 @@ class MessageEngine:
                     if service_key and service_key.startswith("sb_secret_"):
                         self.ab_client._ensure_headers_set(service_key)
                     
-                    # Direct query to recommendations table
+                    # CRITICAL: Direct query to public.recommendations using Supabase UUID
+                    # DO NOT query whatsapp_users - recommendations are in public.recommendations
+                    logger.info(f"Direct query to public.recommendations for user_id={analyst_supabase_uuid}")
                     direct_result = self.ab_client.supabase.table("recommendations") \
                         .select("*") \
-                        .eq("user_id", analyst_id) \
+                        .eq("user_id", analyst_supabase_uuid) \
                         .order("entry_date", desc=True) \
                         .limit(50) \
                         .execute()
@@ -1520,16 +1550,17 @@ class MessageEngine:
                 except Exception as direct_error:
                     logger.error(f"Direct query also failed: {direct_error}", exc_info=True)
             
-            # Get performance stats
-            performance = await self.ab_client.get_analyst_performance(analyst_id)
+            # Get performance stats using Supabase UUID
+            performance = await self.ab_client.get_analyst_performance(analyst_supabase_uuid)
             
             if not recs:
                 status_label = status.lower() if status != "ALL" else "positions"
-                # Check if analyst has ANY recommendations
+                # Check if analyst has ANY recommendations in public.recommendations
                 try:
+                    logger.info(f"Checking for any recommendations for Supabase UUID: {analyst_supabase_uuid}")
                     any_recs = self.ab_client.supabase.table("recommendations") \
                         .select("status, ticker") \
-                        .eq("user_id", analyst_id) \
+                        .eq("user_id", analyst_supabase_uuid) \
                         .limit(5) \
                         .execute()
                     
