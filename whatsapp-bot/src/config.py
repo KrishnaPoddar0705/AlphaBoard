@@ -3,6 +3,7 @@ Configuration management for WhatsApp Bot service.
 Uses pydantic BaseSettings for environment variable loading and validation.
 """
 
+import os
 from functools import lru_cache
 from typing import Literal, Set
 from pydantic_settings import BaseSettings
@@ -122,16 +123,18 @@ class Settings(BaseSettings):
     # =========================================================================
     # Meta WhatsApp Cloud API Configuration
     # =========================================================================
-    META_WHATSAPP_ACCESS_TOKEN: str
+    # These fields are optional at startup - will be validated when actually used
+    META_WHATSAPP_ACCESS_TOKEN: str = ""
     META_WHATSAPP_API_VERSION: str = "v22.0"
-    META_WHATSAPP_PHONE_NUMBER_ID: str
-    META_WHATSAPP_VERIFY_TOKEN: str
+    META_WHATSAPP_PHONE_NUMBER_ID: str = ""
+    META_WHATSAPP_VERIFY_TOKEN: str = ""
     
     # =========================================================================
     # Supabase Configuration (Direct DB Access)
     # =========================================================================
-    SUPABASE_URL: str
-    SUPABASE_SERVICE_ROLE_KEY: str
+    # These fields are optional at startup - will be validated when actually used
+    SUPABASE_URL: str = ""
+    SUPABASE_SERVICE_ROLE_KEY: str = ""
     
     # =========================================================================
     # AlphaBoard Backend API Configuration
@@ -166,6 +169,7 @@ class Settings(BaseSettings):
     # Server Configuration
     # =========================================================================
     HOST: str = "0.0.0.0"
+    # PORT defaults to 8001, but BaseSettings will automatically read from PORT env var if set
     PORT: int = 8001
     
     class Config:
