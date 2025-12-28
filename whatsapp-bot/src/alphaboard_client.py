@@ -63,11 +63,50 @@ class AlphaBoardClient:
                 logger.warning("SUPABASE_SERVICE_ROLE_KEY format not recognized. Expected 'eyJ...' or 'sb_secret_...'")
         else:
             logger.error("SUPABASE_SERVICE_ROLE_KEY is not set!")
+            raise ValueError("SUPABASE_SERVICE_ROLE_KEY must be set")
         
-        self.supabase: SupabaseClient = create_client(
-            settings.SUPABASE_URL,
-            service_key
-        )
+        # Create Supabase client
+        # The Python client should automatically handle both JWT and new secret key formats
+        try:
+            # For new secret key format (sb_secret_...), ensure it's passed correctly
+            # The create_client function should handle apikey header automatically
+            self.supabase: SupabaseClient = create_client(
+                settings.SUPABASE_URL,
+                service_key
+            )
+            
+            # For new secret key format, manually ensure apikey header is set
+            # The Supabase Python client should do this automatically, but we'll verify
+            if service_key.startswith("sb_secret_"):
+                # Try to set headers manually if the client supports it
+                if hasattr(self.supabase, 'rest') and hasattr(self.supabase.rest, 'headers'):
+                    # Ensure apikey header is set
+                    if 'apikey' not in self.supabase.rest.headers:
+                        self.supabase.rest.headers['apikey'] = service_key
+                    if 'Authorization' not in self.supabase.rest.headers:
+                        self.supabase.rest.headers['Authorization'] = f'Bearer {service_key}'
+                    logger.info("Manually set apikey headers for new secret key format")
+            
+            # Test the connection by making a simple query
+            try:
+                test_result = self.supabase.table("profiles").select("id").limit(1).execute()
+                if test_result.data is not None:
+                    logger.info("Supabase client initialized and connection verified")
+                else:
+                    logger.warning("Supabase client initialized but test query returned no data")
+            except Exception as test_error:
+                error_str = str(test_error).lower()
+                if "apikey" in error_str or "api key" in error_str:
+                    logger.error("API key error during connection test - check SUPABASE_SERVICE_ROLE_KEY")
+                    # Try to manually patch headers if possible
+                    logger.warning("Attempting to manually configure headers...")
+                else:
+                    logger.warning(f"Connection test failed: {test_error}")
+                
+        except Exception as e:
+            logger.error(f"Failed to initialize Supabase client: {e}", exc_info=True)
+            # Re-raise to prevent silent failures
+            raise AlphaBoardClientError(f"Failed to initialize Supabase client: {str(e)}")
         
         # Initialize HTTP client for AlphaBoard API calls
         headers = {"Content-Type": "application/json"}
@@ -1493,18 +1532,36 @@ class AlphaBoardClient:
             
             logger.info(f"Found analyst profile: {profile_check.data[0].get('username')}")
             
-            # Build query
-            query = self.supabase.table("recommendations") \
-                .select("*") \
-                .eq("user_id", analyst_user_id) \
-                .order("entry_date", desc=True)
-            
-            if status:
-                query = query.eq("status", status)
-            
-            result = query.limit(20).execute()
-            
-            logger.info(f"Query returned {len(result.data) if result.data else 0} recommendations")
+            # Build query with explicit error handling
+            try:
+                query = self.supabase.table("recommendations") \
+                    .select("*") \
+                    .eq("user_id", analyst_user_id) \
+                    .order("entry_date", desc=True)
+                
+                if status:
+                    query = query.eq("status", status)
+                
+                result = query.limit(20).execute()
+                
+                # Check for errors in the response
+                if hasattr(result, 'error') and result.error:
+                    logger.error(f"Supabase query error: {result.error}")
+                    # Try to extract error message
+                    error_msg = str(result.error)
+                    if "apikey" in error_msg.lower() or "api key" in error_msg.lower():
+                        logger.error("API key error detected - check SUPABASE_SERVICE_ROLE_KEY configuration")
+                    return []
+                
+                logger.info(f"Query returned {len(result.data) if result.data else 0} recommendations")
+                
+            except Exception as query_error:
+                logger.error(f"Error executing recommendations query: {query_error}", exc_info=True)
+                # Check if it's an API key error
+                error_str = str(query_error).lower()
+                if "apikey" in error_str or "api key" in error_str:
+                    logger.error("API key authentication failed - verify SUPABASE_SERVICE_ROLE_KEY is correct")
+                return []
             
             # If no results with status filter, check if analyst has any recommendations at all
             if (not result.data or len(result.data) == 0) and status:
