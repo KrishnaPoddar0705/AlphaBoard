@@ -81,10 +81,10 @@ class AlphaBoardClient:
         # The Python client should automatically handle both JWT and new secret key formats
         try:
             # Create the client first
-        self.supabase: SupabaseClient = create_client(
-            settings.SUPABASE_URL,
-            service_key
-        )
+            self.supabase: SupabaseClient = create_client(
+                settings.SUPABASE_URL,
+                service_key
+            )
         
             # For new secret key format, we MUST manually set apikey header
             # The Supabase Python client doesn't automatically set it for sb_secret_ format
@@ -220,7 +220,7 @@ class AlphaBoardClient:
     async def close(self):
         """Close the HTTP client."""
         if hasattr(self, '_http_client') and self._http_client:
-        await self._http_client.aclose()
+            await self._http_client.aclose()
     
     # =========================================================================
     # User Management
@@ -1693,12 +1693,10 @@ class AlphaBoardClient:
                     if "apikey" in error_msg.lower() or "api key" in error_msg.lower():
                         logger.error("API key error detected - ensuring headers are set")
                         self._ensure_headers_set(service_key)
-                        # Retry query
-                        result = query.limit(50).execute()
+                        # Retry query with same final_query
+                        result = final_query.execute()
                     else:
                         return []
-                
-                logger.info(f"Query returned {len(result.data) if result.data else 0} recommendations")
                 
             except Exception as query_error:
                 logger.error(f"Error executing recommendations query: {query_error}", exc_info=True)
@@ -1708,12 +1706,12 @@ class AlphaBoardClient:
                     self._ensure_headers_set(service_key)
                     try:
                         # Retry with headers set
-            query = self.supabase.table("recommendations") \
-                .select("*") \
-                .eq("user_id", analyst_user_id) \
-                .order("entry_date", desc=True)
-            if status:
-                query = query.eq("status", status)
+                        query = self.supabase.table("recommendations") \
+                            .select("*") \
+                            .eq("user_id", analyst_user_id) \
+                            .order("entry_date", desc=True)
+                        if status:
+                            query = query.eq("status", status)
                         result = query.limit(50).execute()
                         logger.info(f"Retry query returned {len(result.data) if result.data else 0} recommendations")
                     except Exception as retry_error:
