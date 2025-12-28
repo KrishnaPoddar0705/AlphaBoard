@@ -42,9 +42,21 @@ class AlphaBoardClient:
         self.api_base_url = settings.ALPHABOARD_API_BASE_URL.rstrip("/")
         self.api_key = settings.ALPHABOARD_API_KEY
         
-        # Initialize Supabase client for direct DB access
+        # Initialize HTTP client for AlphaBoard API calls FIRST (before Supabase)
+        # This ensures it's always available even if Supabase init fails
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["X-API-KEY"] = self.api_key
+        
+        self._http_client = httpx.AsyncClient(
+            timeout=30.0,
+            headers=headers
+        )
+        
+            # Initialize Supabase client for direct DB access
         # Using service role key to bypass RLS
         service_key = settings.SUPABASE_SERVICE_ROLE_KEY
+        self._service_key = service_key  # Store for later use in queries
         
         # Debug: Log key status (only first 10 chars for security)
         if service_key:
@@ -204,20 +216,11 @@ class AlphaBoardClient:
                     rest_client.headers['Authorization'] = f'Bearer {service_key}'
         except Exception:
             pass  # Silently fail if we can't set headers
-        
-        # Initialize HTTP client for AlphaBoard API calls
-        headers = {"Content-Type": "application/json"}
-        if self.api_key:
-            headers["X-API-KEY"] = self.api_key
-        
-        self._http_client = httpx.AsyncClient(
-            timeout=30.0,
-            headers=headers
-        )
     
     async def close(self):
         """Close the HTTP client."""
-        await self._http_client.aclose()
+        if hasattr(self, '_http_client') and self._http_client:
+            await self._http_client.aclose()
     
     # =========================================================================
     # User Management
@@ -1630,7 +1633,24 @@ class AlphaBoardClient:
             logger.info(f"Found analyst profile: {profile_check.data[0].get('username')}")
             
             # Build query with explicit error handling
+            result = None
             try:
+                # Store service_key for header patching
+                service_key = getattr(self, '_service_key', None)
+                if not service_key:
+                    # Try to get it from settings if available
+                    from .config import get_settings
+                    try:
+                        settings = get_settings()
+                        service_key = settings.SUPABASE_SERVICE_ROLE_KEY
+                        self._service_key = service_key  # Cache it
+                    except:
+                        pass
+                
+                # Ensure headers are set before query (for new secret format)
+                if service_key and service_key.startswith("sb_secret_"):
+                    self._ensure_headers_set(service_key)
+                
                 query = self.supabase.table("recommendations") \
                     .select("*") \
                     .eq("user_id", analyst_user_id) \
@@ -1638,45 +1658,70 @@ class AlphaBoardClient:
                 
                 if status:
                     query = query.eq("status", status)
+                else:
+                    # If status is None (ALL), don't filter by status
+                    pass
                 
-                result = query.limit(20).execute()
+                result = query.limit(50).execute()  # Increased limit to get more results
                 
                 # Check for errors in the response
                 if hasattr(result, 'error') and result.error:
                     logger.error(f"Supabase query error: {result.error}")
-                    # Try to extract error message
                     error_msg = str(result.error)
                     if "apikey" in error_msg.lower() or "api key" in error_msg.lower():
-                        logger.error("API key error detected - check SUPABASE_SERVICE_ROLE_KEY configuration")
-                    return []
+                        logger.error("API key error detected - ensuring headers are set")
+                        self._ensure_headers_set(service_key)
+                        # Retry query
+                        result = query.limit(50).execute()
+                    else:
+                        return []
                 
                 logger.info(f"Query returned {len(result.data) if result.data else 0} recommendations")
                 
             except Exception as query_error:
                 logger.error(f"Error executing recommendations query: {query_error}", exc_info=True)
-                # Check if it's an API key error
                 error_str = str(query_error).lower()
                 if "apikey" in error_str or "api key" in error_str:
-                    logger.error("API key authentication failed - verify SUPABASE_SERVICE_ROLE_KEY is correct")
-                return []
+                    logger.error("API key authentication failed - ensuring headers are set and retrying")
+                    self._ensure_headers_set(service_key)
+                    try:
+                        # Retry with headers set
+                        query = self.supabase.table("recommendations") \
+                            .select("*") \
+                            .eq("user_id", analyst_user_id) \
+                            .order("entry_date", desc=True)
+                        if status:
+                            query = query.eq("status", status)
+                        result = query.limit(50).execute()
+                        logger.info(f"Retry query returned {len(result.data) if result.data else 0} recommendations")
+                    except Exception as retry_error:
+                        logger.error(f"Retry also failed: {retry_error}")
+                        return []
+                else:
+                    return []
             
             # If no results with status filter, check if analyst has any recommendations at all
-            if (not result.data or len(result.data) == 0) and status:
+            if (not result or not result.data or len(result.data) == 0) and status:
                 logger.info(f"No {status} recommendations found, checking if analyst has any recommendations...")
-                all_recs_check = self.supabase.table("recommendations") \
-                    .select("status") \
-                    .eq("user_id", analyst_user_id) \
-                    .limit(5) \
-                    .execute()
-                
-                if all_recs_check.data:
-                    statuses = [r.get("status") for r in all_recs_check.data]
-                    logger.info(f"Analyst has recommendations with statuses: {set(statuses)}")
-                else:
-                    logger.info(f"Analyst has no recommendations at all")
+                try:
+                    all_recs_check = self.supabase.table("recommendations") \
+                        .select("status, ticker") \
+                        .eq("user_id", analyst_user_id) \
+                        .limit(10) \
+                        .execute()
+                    
+                    if all_recs_check.data:
+                        statuses = [r.get("status") for r in all_recs_check.data]
+                        tickers = [r.get("ticker") for r in all_recs_check.data]
+                        logger.info(f"Analyst has {len(all_recs_check.data)} recommendations with statuses: {set(statuses)}")
+                        logger.info(f"Sample tickers: {tickers[:5]}")
+                    else:
+                        logger.info(f"Analyst has no recommendations at all in database")
+                except Exception as check_error:
+                    logger.error(f"Error checking all recommendations: {check_error}")
             
             recs = []
-            if result.data:
+            if result and result.data:
                 for rec in result.data:
                     entry_price = rec.get("entry_price")
                     current_price = rec.get("current_price")
