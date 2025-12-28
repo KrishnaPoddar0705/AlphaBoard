@@ -1094,10 +1094,6 @@ export default function DashboardNew() {
         return { topWinners: winners, topLosers: losers };
     }, [recommendations, topPerformersPeriod]);
 
-    // Keep backward compatibility for now
-    const topPerformersByPeriod = useMemo(() => {
-        return [...topWinners, ...topLosers].sort((a, b) => b.return - a.return);
-    }, [topWinners, topLosers]);
 
     // Calculate KPI data for mini charts
     const kpiData = useMemo(() => {
@@ -1197,8 +1193,8 @@ export default function DashboardNew() {
                             </select>
                         </div>
 
-                        {/* Total Return Display - Mobile optimized */}
-                        <div className="mb-3">
+                        {/* Total Return Display - Hidden on mobile */}
+                        <div className="mb-3 hidden md:block">
                             <div className="text-2xl font-bold font-mono text-[var(--text-primary)] mb-1">
                                 {totalPortfolioReturn >= 0 ? '+' : ''}{totalPortfolioReturn.toFixed(2)}%
                             </div>
@@ -1222,8 +1218,8 @@ export default function DashboardNew() {
                     </div>
                 </div>
 
-                {/* KPI Mini Charts Section */}
-                <div className="px-4 py-3 grid grid-cols-2 gap-3">
+                {/* KPI Mini Charts Section - Hidden on mobile */}
+                <div className="hidden md:grid px-4 py-3 grid-cols-2 gap-3">
                     <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-3">
                         <KPIMiniChart
                             data={kpiData.trendData}
@@ -1244,8 +1240,8 @@ export default function DashboardNew() {
                     </div>
                 </div>
 
-                {/* Top Winners & Losers Section */}
-                <div className="px-4 py-3 grid grid-cols-1 gap-3">
+                {/* Top Winners & Losers Section - Hidden on mobile */}
+                <div className="hidden md:grid px-4 py-3 grid-cols-1 gap-3">
                     {topWinners.length > 0 && (
                         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
                             <div className="flex items-center justify-between mb-3">
@@ -1296,9 +1292,9 @@ export default function DashboardNew() {
                     )}
                 </div>
 
-                {/* Monthly P&L Section */}
+                {/* Monthly P&L Section - Hidden on mobile */}
                 {monthlyPnL.length > 0 && (
-                    <div className="px-4 py-3">
+                    <div className="hidden md:block px-4 py-3">
                         <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
                             <h3 className="text-sm font-bold text-[var(--text-primary)] mb-3">Monthly P&L</h3>
                             <div className="h-[200px] -mx-2">
@@ -1489,26 +1485,6 @@ export default function DashboardNew() {
                                     </div>
                                 )}
 
-                                {/* Top Performers */}
-                                {topPerformersByPeriod.length > 0 && (
-                                    <div className="bg-[var(--card-bg)] rounded-xl border border-[var(--border-color)] p-4">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <h3 className="text-base font-bold text-[var(--text-primary)]">Top Performers in Active Positions</h3>
-                                            <select
-                                                value={topPerformersPeriod}
-                                                onChange={(e) => setTopPerformersPeriod(e.target.value as 'day' | 'week' | 'month')}
-                                                className="text-xs text-[var(--text-secondary)] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-lg px-2 py-1 focus:outline-none cursor-pointer"
-                                            >
-                                                <option value="day">Today</option>
-                                                <option value="week">This Week</option>
-                                                <option value="month">This Month</option>
-                                            </select>
-                                        </div>
-                                        <div className="h-[250px] -mx-2">
-                                            <TopPerformersChart data={topPerformersByPeriod} height={250} />
-                                        </div>
-                                    </div>
-                                )}
 
                                 {/* Empty State if no data */}
                                 {ideasAddedData.length === 0 && portfolioAllocation.length === 0 && topWinners.length === 0 && topLosers.length === 0 && (

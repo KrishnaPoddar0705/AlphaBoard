@@ -293,11 +293,28 @@ def calculate_daily_portfolio_returns(
         
         # Calculate daily return for each active stock
         stock_returns = []
+        prev_day_date = prev_day.date() if hasattr(prev_day, 'date') else prev_day
+        
         for rec in active_stocks:
             ticker = rec['ticker']
             price_history = historical_prices.get(ticker, [])
             
-            if not price_history:
+            # Get entry_date for this stock
+            entry_date_raw = rec['entry_date']
+            if isinstance(entry_date_raw, str):
+                entry_date_dt = datetime.fromisoformat(entry_date_raw.replace('Z', '+00:00'))
+            else:
+                entry_date_dt = entry_date_raw
+            entry_date_only = entry_date_dt.date() if hasattr(entry_date_dt, 'date') else entry_date_dt
+            
+            # Get entry_price - this is our baseline
+            entry_price = rec.get('entry_price')
+            if not entry_price or entry_price <= 0:
+                # Skip if no valid entry_price
+                continue
+            
+            # If no price history and not on entry day (where we can use entry_price), skip
+            if not price_history and day_date != entry_date_only and prev_day_date != entry_date_only:
                 continue
             
             # Get prices for current and previous day
@@ -314,24 +331,36 @@ def calculate_daily_portfolio_returns(
                 else:
                     exit_date_dt = exit_date_raw
                 exit_date_only = exit_date_dt.date() if hasattr(exit_date_dt, 'date') else exit_date_dt
-                
-                # If closed on or before this day, use exit_price
+            
+            # Determine prices based on entry day, exit day, and current day
+            if exit_date_only and exit_date_only <= day_date:
+                # Position was closed on or before this day - use exit_price
+                current_price = rec.get('exit_price')
+                if exit_date_only <= prev_day_date:
+                    prev_price = rec.get('exit_price')
+                elif prev_day_date == entry_date_only:
+                    # Previous day was entry day, use entry_price
+                    prev_price = entry_price
+                else:
+                    prev_price = get_price_at_date(price_history, prev_day)
+            elif day_date == entry_date_only:
+                # This is the entry day - use entry_price as baseline
+                # Try to get actual price on entry day, fallback to entry_price
+                current_price = get_price_at_date(price_history, day) or entry_price
+                prev_price = entry_price  # Use entry_price as baseline
+            elif prev_day_date == entry_date_only:
+                # Previous day was entry day - use entry_price as prev_price
                 if exit_date_only and exit_date_only <= day_date:
                     current_price = rec.get('exit_price')
-                    # For previous day, if it's also after exit, use exit_price
-                    # Otherwise get from history
-                    prev_day_date = prev_day.date() if hasattr(prev_day, 'date') else prev_day
-                    if exit_date_only <= prev_day_date:
-                        prev_price = rec.get('exit_price')
-                    else:
-                        prev_price = get_price_at_date(price_history, prev_day)
                 else:
-                    # Still active, use historical prices
                     current_price = get_price_at_date(price_history, day)
-                    prev_price = get_price_at_date(price_history, prev_day)
+                prev_price = entry_price
             else:
-                # Still OPEN, use historical prices
-                current_price = get_price_at_date(price_history, day)
+                # Normal day-over-day calculation
+                if exit_date_only and exit_date_only <= day_date:
+                    current_price = rec.get('exit_price')
+                else:
+                    current_price = get_price_at_date(price_history, day)
                 prev_price = get_price_at_date(price_history, prev_day)
             
             if current_price and prev_price and prev_price > 0:
