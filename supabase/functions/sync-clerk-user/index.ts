@@ -169,17 +169,277 @@ serve(async (req) => {
             user_metadata: userMetadata,
         })
 
-        if (createUserError || !newUser.user) {
-            console.error('Error creating Supabase user:', createUserError)
+        if (createUserError) {
+            // Log the full error for debugging
+            console.log('createUserError:', JSON.stringify(createUserError, null, 2))
+            console.log('Error message:', createUserError.message)
+            console.log('Error status:', createUserError.status)
+            console.log('Error code:', createUserError.code)
+            
+            // Check if error is due to email already existing
+            // Supabase can return various error formats, so check multiple patterns
+            const errorMsg = (createUserError.message || String(createUserError) || '').toLowerCase()
+            const errorCode = String(createUserError.status || createUserError.code || '').toLowerCase()
+            const errorString = JSON.stringify(createUserError).toLowerCase()
+            
+            // More comprehensive error detection
+            const isEmailExistsError = 
+                // Check error message
+                (errorMsg.includes('email') && (
+                    errorMsg.includes('already') ||
+                    errorMsg.includes('registered') ||
+                    errorMsg.includes('exists') ||
+                    errorMsg.includes('duplicate') ||
+                    errorMsg.includes('unique') ||
+                    errorMsg.includes('taken')
+                )) ||
+                // Check error code
+                errorCode === 'user_already_exists' ||
+                errorCode === 'email_already_exists' ||
+                errorCode === '422' ||
+                // Check full error object
+                errorString.includes('email') && (
+                    errorString.includes('already') ||
+                    errorString.includes('registered') ||
+                    errorString.includes('exists') ||
+                    errorString.includes('duplicate') ||
+                    errorString.includes('unique')
+                ) ||
+                // HTTP status codes
+                createUserError.status === 422 || // Unprocessable entity
+                createUserError.status === 400 // Bad request (often means email exists)
+
+            console.log('isEmailExistsError:', isEmailExistsError)
+
+            if (isEmailExistsError) {
+                // Email already exists - check mapping table first (fastest approach)
+                console.log(`Email ${email} already exists, checking mapping table first...`)
+                
+                const { data: mappingByEmail, error: mappingError } = await supabaseAdmin
+                    .from('clerk_user_mapping')
+                    .select('clerk_user_id, supabase_user_id')
+                    .eq('email', email)
+                    .maybeSingle()
+
+                if (mappingError && mappingError.code !== 'PGRST116') {
+                    console.error('Error checking mapping by email:', mappingError)
+                }
+
+                if (mappingByEmail) {
+                    // Found mapping by email
+                    console.log(`Found existing mapping for email ${email}`)
+                    
+                    if (mappingByEmail.clerk_user_id === clerkUserId) {
+                        // Same Clerk user - mapping already exists, return success
+                        supabaseUserId = mappingByEmail.supabase_user_id
+                        
+                        // Generate session and return
+                        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+                            type: 'magiclink',
+                            email: email,
+                        })
+
+                        if (sessionError || !sessionData) {
+                            console.error('Error generating session link:', sessionError)
+                            return new Response(
+                                JSON.stringify({
+                                    success: true,
+                                    supabaseUserId,
+                                    email,
+                                    isNewUser: false,
+                                    sessionToken: null,
+                                }),
+                                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                            )
+                        }
+
+                        const actionLink = sessionData.properties?.action_link || ''
+                        const tokenMatch = actionLink.match(/[#&]token=([^&]+)/)
+                        const sessionToken = tokenMatch ? tokenMatch[1] : sessionData.properties?.hashed_token || null
+
+                        return new Response(
+                            JSON.stringify({
+                                success: true,
+                                supabaseUserId,
+                                email,
+                                isNewUser: false,
+                                sessionToken: sessionToken,
+                                magicLink: actionLink,
+                            }),
+                            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        )
+                    } else {
+                        // Different Clerk user - conflict
+                        console.error(`Email ${email} is already mapped to different Clerk user ${mappingByEmail.clerk_user_id}`)
+                        return new Response(
+                            JSON.stringify({
+                                error: 'Email already registered',
+                                details: 'This email is already associated with another account'
+                            }),
+                            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        )
+                    }
+                }
+
+                // No mapping found - try to find user by listing (with pagination)
+                console.log(`No mapping found, looking up Supabase user by email...`)
+                
+                let existingUser = null
+                let page = 1
+                const perPage = 1000
+                let hasMore = true
+                let maxPages = 5 // Limit to prevent infinite loops
+
+                while (hasMore && !existingUser && page <= maxPages) {
+                    try {
+                        const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers({
+                            page,
+                            perPage,
+                        })
+
+                        if (listError) {
+                            console.error(`Error listing users (page ${page}):`, listError)
+                            break
+                        }
+
+                        if (!usersData || !usersData.users || usersData.users.length === 0) {
+                            hasMore = false
+                            break
+                        }
+
+                        // Search for user with matching email
+                        existingUser = usersData.users.find(u => u.email?.toLowerCase() === email.toLowerCase())
+
+                        if (existingUser) {
+                            console.log(`Found existing user: ${existingUser.id}`)
+                            break
+                        }
+
+                        // Check if there are more pages
+                        hasMore = usersData.users.length === perPage
+                        page++
+                    } catch (err) {
+                        console.error(`Exception listing users (page ${page}):`, err)
+                        break
+                    }
+                }
+
+                if (!existingUser) {
+                    console.error('Email exists but user not found')
+                    return new Response(
+                        JSON.stringify({
+                            error: 'Email already registered',
+                            details: 'This email is already associated with another account. If this is your account, please contact support.'
+                        }),
+                        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    )
+                }
+
+                // Found existing user - check if already mapped
+                supabaseUserId = existingUser.id
+                console.log(`Found existing Supabase user ${supabaseUserId} for email ${email}`)
+
+                // Check if this user is already mapped to another Clerk user
+                const { data: existingMappingForUser, error: mappingCheckError } = await supabaseAdmin
+                    .from('clerk_user_mapping')
+                    .select('clerk_user_id')
+                    .eq('supabase_user_id', supabaseUserId)
+                    .maybeSingle()
+
+                if (mappingCheckError && mappingCheckError.code !== 'PGRST116') {
+                    console.error('Error checking existing mapping:', mappingCheckError)
+                    return new Response(
+                        JSON.stringify({
+                            error: 'Failed to check user mapping',
+                            details: mappingCheckError.message
+                        }),
+                        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                    )
+                }
+
+                if (existingMappingForUser) {
+                    if (existingMappingForUser.clerk_user_id === clerkUserId) {
+                        // Same Clerk user - mapping already exists
+                        console.log(`Mapping already exists for Clerk user ${clerkUserId}`)
+                        // Generate session and return (same as above)
+                        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
+                            type: 'magiclink',
+                            email: email,
+                        })
+
+                        if (sessionError || !sessionData) {
+                            return new Response(
+                                JSON.stringify({
+                                    success: true,
+                                    supabaseUserId,
+                                    email,
+                                    isNewUser: false,
+                                    sessionToken: null,
+                                }),
+                                { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                            )
+                        }
+
+                        const actionLink = sessionData.properties?.action_link || ''
+                        const tokenMatch = actionLink.match(/[#&]token=([^&]+)/)
+                        const sessionToken = tokenMatch ? tokenMatch[1] : sessionData.properties?.hashed_token || null
+
+                        return new Response(
+                            JSON.stringify({
+                                success: true,
+                                supabaseUserId,
+                                email,
+                                isNewUser: false,
+                                sessionToken: sessionToken,
+                                magicLink: actionLink,
+                            }),
+                            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        )
+                    } else {
+                        // Different Clerk user - conflict
+                        return new Response(
+                            JSON.stringify({
+                                error: 'Email already registered',
+                                details: 'This email is already associated with another account'
+                            }),
+                            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                        )
+                    }
+                } else {
+                    // Existing user not mapped - create mapping (migration case)
+                    console.log(`Linking existing Supabase user ${supabaseUserId} to Clerk user ${clerkUserId}`)
+                    
+                    // Update user metadata
+                    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(supabaseUserId)
+                    if (userData?.user) {
+                        await supabaseAdmin.auth.admin.updateUserById(supabaseUserId, {
+                            user_metadata: {
+                                ...userData.user.user_metadata,
+                                clerk_user_id: clerkUserId,
+                            }
+                        })
+                    }
+                    // Continue to create mapping below (supabaseUserId is already set)
+                }
+            } else {
+                // Different error - return it
+                console.error('Error creating Supabase user (not email exists):', createUserError)
+                return new Response(
+                    JSON.stringify({ error: 'Failed to create Supabase user', details: createUserError?.message || JSON.stringify(createUserError) }),
+                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+        } else if (!newUser?.user) {
             return new Response(
-                JSON.stringify({ error: 'Failed to create Supabase user', details: createUserError?.message }),
+                JSON.stringify({ error: 'Failed to create Supabase user', details: 'User creation returned no user' }),
                 { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
+        } else {
+            // Successfully created new user
+            supabaseUserId = newUser.user.id
         }
 
-        supabaseUserId = newUser.user.id
-
-        // Create mapping
+        // Create mapping (if it doesn't already exist)
         const { error: mappingInsertError } = await supabaseAdmin
             .from('clerk_user_mapping')
             .insert({
@@ -189,8 +449,18 @@ serve(async (req) => {
             })
 
         if (mappingInsertError) {
+            // Check if error is due to duplicate (mapping already exists)
+            const isDuplicateError = mappingInsertError.code === '23505' || // PostgreSQL unique violation
+                                   mappingInsertError.message?.toLowerCase().includes('duplicate') ||
+                                   mappingInsertError.message?.toLowerCase().includes('unique')
+            
+            if (isDuplicateError) {
+                // Mapping already exists (race condition) - this is fine, continue
+                console.log('Mapping already exists (race condition), continuing...')
+            } else {
             console.error('Error creating mapping:', mappingInsertError)
             // Non-fatal, continue
+            }
         }
 
         // Create profile (trigger should handle this, but ensure it exists)

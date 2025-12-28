@@ -39,8 +39,16 @@ export const KPIMiniChart: React.FC<KPIMiniChartProps> = ({
                     {value}
                 </div>
             </div>
-            <div style={{ height, width: '100%', flex: 1 }}>
-                <ResponsiveContainer width="100%" height="100%">
+            <div style={{
+                height: height || 60,
+                width: '100%',
+                flex: 1,
+                minWidth: 1,
+                minHeight: height || 60,
+                position: 'relative',
+                display: 'block'
+            }}>
+                <ResponsiveContainer width="100%" height={height || 60}>
                     {showArea ? (
                         <AreaChart data={data} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
                             <defs>
