@@ -98,24 +98,22 @@ export default function PublicLeaderboard() {
 
             const leaderboardData: any[] = [];
 
-            // Use cached performance data from performance table
+            // Include all public users, even if they don't have performance data yet
             for (const userId of publicUserIds) {
                 const username = usernameMap.get(userId) || 'Unknown';
                 const perf = performanceMap.get(userId);
 
-                // Only include users who have performance data (have recommendations)
-                if (perf) {
-                    leaderboardData.push({
-                        user_id: userId,
-                        username: username,
-                        total_ideas: perf.total_ideas || 0,
-                        win_rate: perf.win_rate || 0,
-                            total_return_pct: perf.cumulative_portfolio_return_pct || 0,
-                            alpha_pct: perf.alpha_pct || 0,
-                            sharpe_ratio: null, // sharpe_ratio not available in performance table
-                            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
-                    });
-                }
+                // Include all users, using performance data if available, otherwise default to 0
+                leaderboardData.push({
+                    user_id: userId,
+                    username: username,
+                    total_ideas: perf?.total_ideas || 0,
+                    win_rate: perf?.win_rate || 0,
+                    total_return_pct: perf?.cumulative_portfolio_return_pct || 0,
+                    alpha_pct: perf?.alpha_pct || 0,
+                    sharpe_ratio: null, // sharpe_ratio not available in performance table
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+                });
             }
 
             // Add current user if they're public or not in org (and not already in list)

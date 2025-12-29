@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Award, TrendingUp, TrendingDown, Globe, Building2 } from 'lucide-react';
 import { useOrganization } from '../hooks/useOrganization';
 import AnalystProfile from '../components/AnalystProfile/AnalystProfile';
+import { safeLog, safeWarn, safeError } from '../lib/logger';
 
 type LeaderboardType = 'organization' | 'public';
 
@@ -50,7 +51,7 @@ export default function Leaderboard() {
                 await calculatePublicLeaderboard();
             }
         } catch (err) {
-            console.error(err);
+            safeError('Error calculating leaderboard:', err);
             setAnalysts([]);
         } finally {
             setLoading(false);
@@ -66,7 +67,7 @@ export default function Leaderboard() {
                 .eq('organization_id', organizationId);
 
             if (membersError) {
-                console.error('Error fetching organization members:', membersError);
+                safeError('Error fetching organization members:', membersError);
                 setAnalysts([]);
                 return;
             }
@@ -92,7 +93,7 @@ export default function Leaderboard() {
                 .eq('organization_id', organizationId); // Ensure they belong to this org
 
             if (profilesError) {
-                console.error('Error fetching organization profiles:', profilesError);
+                safeError('Error fetching organization profiles:', profilesError);
                 setAnalysts([]);
                 return;
             }
@@ -116,7 +117,7 @@ export default function Leaderboard() {
                         .in('user_id', batch);
                     
                     if (error) {
-                        console.error('Error fetching organization performance batch:', error);
+                        safeError('Error fetching organization performance batch:', error);
                         // Continue with other batches
                     } else if (data) {
                         orgPerformance = orgPerformance.concat(data);
@@ -157,30 +158,52 @@ export default function Leaderboard() {
             const allAnalysts = leaderboardData.sort((a, b) => (b.alpha_pct || 0) - (a.alpha_pct || 0));
             setAnalysts(allAnalysts);
         } catch (err) {
-            console.error('Error calculating organization leaderboard:', err);
+            safeError('Error calculating organization leaderboard:', err);
             setAnalysts([]);
         }
     };
 
     const calculatePublicLeaderboard = async () => {
         try {
-            // Fetch ONLY public leaderboard (users without org, not private)
-            const { data: publicProfiles } = await supabase
+            // First, get all users who have organization memberships
+            const { data: orgMembers, error: membersError } = await supabase
+                .from('user_organization_membership')
+                .select('user_id');
+
+            if (membersError) {
+                safeError('Error fetching organization members:', membersError);
+            }
+
+            const orgMemberIds = new Set(orgMembers?.map(m => m.user_id) || []);
+            safeLog('Users with organization memberships, count:', orgMemberIds.size);
+
+            // Fetch public profiles (not private) and exclude those in organizations
+            const { data: allPublicProfiles, error: profilesError } = await supabase
                 .from('profiles')
                 .select('id, username')
-                .is('organization_id', null)
                 .eq('is_private', false);
 
-            const publicUserIds = publicProfiles?.map(p => p.id) || [];
+            if (profilesError) {
+                safeError('Error fetching public profiles:', profilesError);
+                setAnalysts([]);
+                return;
+            }
+
+            // Filter out users who are in organizations
+            const publicProfiles = allPublicProfiles?.filter(p => !orgMemberIds.has(p.id)) || [];
+            const publicUserIds = publicProfiles.map(p => p.id);
+            
+            safeLog('Public profiles found (not in org, not private), count:', publicProfiles.length);
             
             if (publicUserIds.length === 0) {
+                safeLog('No public profiles found (users without organization membership and is_private is false)');
                 setAnalysts([]);
                 return;
             }
 
             // Create a map of user_id to username
             const usernameMap = new Map<string, string>();
-            publicProfiles?.forEach(p => {
+            publicProfiles.forEach(p => {
                 usernameMap.set(p.id, p.username || 'Unknown');
             });
 
@@ -197,13 +220,15 @@ export default function Leaderboard() {
                         .in('user_id', batch);
                     
                     if (error) {
-                        console.error('Error fetching public performance batch:', error);
+                        safeError('Error fetching public performance batch:', error);
                         // Continue with other batches
                     } else if (data) {
                         publicPerformance = publicPerformance.concat(data);
                     }
                 }
             }
+
+            safeLog('Performance data found, count:', publicPerformance.length);
 
             const performanceMap = new Map<string, any>();
             publicPerformance?.forEach(p => {
@@ -212,31 +237,31 @@ export default function Leaderboard() {
 
             const leaderboardData: any[] = [];
 
-            // Use cached performance data from performance table
+            // Include all public users, even if they don't have performance data yet
             for (const userId of publicUserIds) {
                 const username = usernameMap.get(userId) || 'Unknown';
                 const perf = performanceMap.get(userId);
 
-                // Only include users who have performance data (have recommendations)
-                if (perf) {
-                    leaderboardData.push({
-                        user_id: userId,
-                        username: username,
-                        total_ideas: perf.total_ideas || 0,
-                        win_rate: perf.win_rate || 0,
-                        total_return_pct: perf.cumulative_portfolio_return_pct || 0,
-                        alpha_pct: perf.alpha_pct || 0,
-                        sharpe_ratio: null, // sharpe_ratio not available in performance table
-                        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
-                    });
-                }
+                // Include all users, using performance data if available, otherwise default to 0
+                leaderboardData.push({
+                    user_id: userId,
+                    username: username,
+                    total_ideas: perf?.total_ideas || 0,
+                    win_rate: perf?.win_rate || 0,
+                    total_return_pct: perf?.cumulative_portfolio_return_pct || 0,
+                    alpha_pct: perf?.alpha_pct || 0,
+                    sharpe_ratio: null, // sharpe_ratio not available in performance table
+                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+                });
             }
+
+            safeLog('Final leaderboard data, count:', leaderboardData.length, 'analysts');
 
             // Sort by alpha_pct
             const allAnalysts = leaderboardData.sort((a, b) => (b.alpha_pct || 0) - (a.alpha_pct || 0));
             setAnalysts(allAnalysts);
         } catch (err) {
-            console.error('Error calculating public leaderboard:', err);
+            safeError('Error calculating public leaderboard:', err);
             setAnalysts([]);
         }
     };
@@ -265,8 +290,8 @@ export default function Leaderboard() {
             </div>
 
             {/* Tabs */}
-            {organization?.id && (
-                <div className="flex justify-center gap-4 relative z-10">
+            <div className="flex justify-center gap-4 relative z-10">
+                {organization?.id && (
                     <button
                         onClick={() => setActiveTab('organization')}
                         className={`
@@ -280,21 +305,21 @@ export default function Leaderboard() {
                         <Building2 className="w-4 h-4" />
                         {organization.name}
                     </button>
-                    <button
-                        onClick={() => setActiveTab('public')}
-                        className={`
-                            px-6 py-3 rounded-lg font-medium transition-all
-                            flex items-center gap-2
-                            ${activeTab === 'public'
-                                ? 'bg-indigo-500/20 dark:bg-blue-500/20 text-indigo-700 dark:text-blue-200 border-2 border-indigo-500 dark:border-blue-400/30'
-                                : 'bg-[var(--list-item-hover)] text-[var(--text-primary)] hover:bg-[var(--card-bg)] border-2 border-[var(--border-color)]'}
-                        `}
-                    >
-                        <Globe className="w-4 h-4" />
-                        Public Leaderboard
-                    </button>
-                </div>
-            )}
+                )}
+                <button
+                    onClick={() => setActiveTab('public')}
+                    className={`
+                        px-6 py-3 rounded-lg font-medium transition-all
+                        flex items-center gap-2
+                        ${activeTab === 'public'
+                            ? 'bg-indigo-500/20 dark:bg-blue-500/20 text-indigo-700 dark:text-blue-200 border-2 border-indigo-500 dark:border-blue-400/30'
+                            : 'bg-[var(--list-item-hover)] text-[var(--text-primary)] hover:bg-[var(--card-bg)] border-2 border-[var(--border-color)]'}
+                    `}
+                >
+                    <Globe className="w-4 h-4" />
+                    Public Leaderboard
+                </button>
+            </div>
 
             <div className="glass-panel rounded-3xl overflow-hidden max-w-6xl mx-auto relative z-10 border-2 border-[var(--border-color)]">
                 <table className="min-w-full divide-y divide-[var(--border-color)]">
