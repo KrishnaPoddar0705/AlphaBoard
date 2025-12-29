@@ -81,7 +81,8 @@ export const createRecommendation = async (data: any, userId: string) => {
         throw new Error('User ID is required. Please ensure user is authenticated and synced with Supabase.');
     }
 
-    const res = await api.post(`/recommendations/create?user_id=${userId}`, data);
+    // Send user_id in request body instead of query parameter for security
+    const res = await api.post(`/recommendations/create`, { ...data, user_id: userId });
     return res.data;
 };
 
@@ -257,12 +258,12 @@ export const getPortfolioContribution = async (userId: string) => {
 // --- Price Target Endpoints ---
 
 export const createPriceTarget = async (ticker: string, targetPrice: number, targetDate: string | null, userId: string) => {
+    // Send user_id in request body instead of query parameter for security
     const res = await api.post('/price-targets', {
         ticker,
         target_price: targetPrice,
-        target_date: targetDate || null
-    }, {
-        params: { user_id: userId }
+        target_date: targetDate || null,
+        user_id: userId
     });
     return res.data;
 };

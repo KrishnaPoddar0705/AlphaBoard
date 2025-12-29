@@ -103,8 +103,8 @@ export default function RAGSearchBar() {
       setResult(data);
 
     } catch (err: any) {
-      console.error('Search error:', err);
-      setError(err.message || 'Search failed');
+      const { getUserFriendlyError } = await import('../../lib/errorSanitizer');
+      setError(getUserFriendlyError(err));
     } finally {
       setSearching(false);
     }

@@ -149,8 +149,8 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
       }, 2000);
 
     } catch (err: any) {
-      console.error('Upload error:', err);
-      setError(err.message || 'Upload failed');
+      const { getUserFriendlyError } = await import('../../lib/errorSanitizer');
+      setError(getUserFriendlyError(err));
       setUploading(false);
       setUploadStatus('');
     }

@@ -258,8 +258,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                 }));
             }
 
-            console.log('Saving weights:', weightsToSave);
-            
             // Save via Edge Function
             await saveWeights(userId, weightsToSave);
             
@@ -276,8 +274,8 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
             
             alert('Weights saved successfully!');
         } catch (error) {
-            console.error('Error saving weights:', error);
-            alert(`Failed to save weights: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            const { getUserFriendlyError } = await import('../../lib/errorSanitizer');
+            alert(`Failed to save weights: ${getUserFriendlyError(error)}`);
         } finally {
             setSaving(false);
         }

@@ -956,6 +956,33 @@ def calculate_comprehensive_performance(user_id: str) -> Dict:
         'median_holding_period_days': median_holding_period
     }
     
+    # Update performance table with cumulative portfolio return (portfolio total return) and timestamp
+    # cumulative_portfolio_return_pct = portfolio total return from start to now
+    # This is calculated as: ((latest_portfolio_value / initial_portfolio_value) - 1) * 100
+    try:
+        supabase_user_id = get_supabase_user_id(user_id)
+        if supabase_user_id:
+            now = datetime.now()
+            # Make timezone-aware for database
+            if now.tzinfo is None:
+                from datetime import timezone
+                now = now.replace(tzinfo=timezone.utc)
+            
+            # total_return is the portfolio total return (cumulative from start to now)
+            # Store it in cumulative_portfolio_return_pct to represent portfolio total return
+            portfolio_total_return = total_return  # Portfolio total return = cumulative return
+            
+            supabase.table("performance").upsert({
+                "user_id": supabase_user_id,
+                "cumulative_portfolio_return_pct": portfolio_total_return,  # Portfolio total return
+                "total_return_pct": portfolio_total_return,  # Also update total_return_pct to match
+                "cumulative_return_updated_at": now.isoformat()
+            }).execute()
+    except Exception as e:
+        print(f"Error updating cumulative portfolio return for user {user_id}: {e}")
+        import traceback
+        traceback.print_exc()
+    
     # Cache the results - Disabled as cache tables don't exist yet
     # TODO: Create cache tables for better performance when querying historical data
     # - performance_summary_cache
@@ -971,4 +998,69 @@ def calculate_comprehensive_performance(user_id: str) -> Dict:
         'best_trades': best_trades,
         'worst_trades': worst_trades
     }
+
+
+def update_all_users_cumulative_returns():
+    """
+    Batch update cumulative portfolio return for all users with recommendations.
+    This function is called by the scheduled cron job to update all users' 
+    cumulative portfolio returns daily.
+    """
+    try:
+        print(f"[{datetime.now().isoformat()}] Starting batch update of cumulative portfolio returns...")
+        
+        # Get all users who have recommendations (excluding WATCHLIST)
+        response = supabase.table("recommendations").select("user_id").neq("status", "WATCHLIST").execute()
+        
+        if not response.data:
+            print("No recommendations found")
+            return {"updated": 0, "errors": 0}
+        
+        # Get unique user IDs
+        unique_user_ids = list(set([rec['user_id'] for rec in response.data]))
+        print(f"Found {len(unique_user_ids)} users to update")
+        
+        updated_count = 0
+        error_count = 0
+        
+        # Process each user
+        for user_id in unique_user_ids:
+            try:
+                # Calculate comprehensive performance which will update cumulative_portfolio_return_pct
+                # Note: user_id here is already a Supabase UUID, but calculate_comprehensive_performance
+                # expects Clerk user ID, so we need to handle this
+                
+                # Try to find Clerk user ID from mapping
+                mapping_response = supabase.table("clerk_user_mapping").select("clerk_user_id").eq("supabase_user_id", user_id).limit(1).execute()
+                
+                if mapping_response.data and len(mapping_response.data) > 0:
+                    clerk_user_id = mapping_response.data[0].get("clerk_user_id")
+                    if clerk_user_id:
+                        # Use Clerk user ID
+                        calculate_comprehensive_performance(clerk_user_id)
+                        updated_count += 1
+                    else:
+                        # Fallback: use UUID directly (in case it's already a UUID)
+                        calculate_comprehensive_performance(user_id)
+                        updated_count += 1
+                else:
+                    # No mapping found, try using UUID directly
+                    calculate_comprehensive_performance(user_id)
+                    updated_count += 1
+                    
+            except Exception as user_error:
+                error_count += 1
+                print(f"Error updating cumulative return for user {user_id}: {user_error}")
+                import traceback
+                traceback.print_exc()
+                continue
+        
+        print(f"[{datetime.now().isoformat()}] Batch update completed: {updated_count} updated, {error_count} errors")
+        return {"updated": updated_count, "errors": error_count}
+        
+    except Exception as e:
+        print(f"Error in batch update of cumulative returns: {e}")
+        import traceback
+        traceback.print_exc()
+        return {"updated": 0, "errors": 1}
 

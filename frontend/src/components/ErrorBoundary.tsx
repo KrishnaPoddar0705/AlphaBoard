@@ -1,6 +1,7 @@
 import { Component } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import { Home, AlertCircle } from 'lucide-react';
+import { getUserFriendlyError } from '../lib/errorSanitizer';
 
 interface Props {
     children: ReactNode;
@@ -51,7 +52,7 @@ class ErrorBoundaryClass extends Component<Props, State> {
                         </h2>
 
                         <p className="text-[var(--text-secondary)] mb-8 leading-relaxed">
-                            {this.state.error?.message || 'An unexpected error occurred.'}
+                            {this.state.error ? getUserFriendlyError(this.state.error) : 'An unexpected error occurred.'}
                         </p>
 
                         <button

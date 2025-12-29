@@ -28,25 +28,63 @@ serve(async (req) => {
   }
 
   try {
+    // Get authorization header
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Missing Authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Extract token from Authorization header
+    const token = authHeader.replace('Bearer ', '').trim()
+    if (!token) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid Authorization header format' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    // Decode JWT token to get user ID
+    let userId: string | null = null
+    try {
+      const parts = token.split('.')
+      if (parts.length === 3) {
+        const payload = JSON.parse(
+          atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))
+        )
+        userId = payload.sub || payload.user_id || null
+      }
+    } catch (e) {
+      console.error('Error decoding token:', e)
+    }
+
+    if (!userId) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid token format' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Create Supabase client
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     )
 
-    // Get userId from query params
-    const url = new URL(req.url)
-    const userId = url.searchParams.get('userId')
+    // Verify user is authenticated
+    const { data: { user }, error: authError } = await supabaseClient.auth.getUser()
 
-    if (!userId) {
+    if (authError || !user || user.id !== userId) {
       return new Response(
-        JSON.stringify({ error: 'userId query parameter is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Unauthorized', details: 'User verification failed' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 

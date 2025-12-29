@@ -37,7 +37,7 @@ from .podcast import (
 )
 from .db import supabase
 from .logic import update_user_performance
-from .performance import calculate_comprehensive_performance, compute_portfolio_allocation, compute_monthly_returns_matrix
+from .performance import calculate_comprehensive_performance, compute_portfolio_allocation, compute_monthly_returns_matrix, update_all_users_cumulative_returns
 from typing import List, Dict
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -162,9 +162,21 @@ def create_recommendation(rec: RecommendationCreate, background_tasks: Backgroun
     # Simplest MVP: Client sends user_id in header 'x-user-id'.
     pass
 
-# Re-defining to include user_id from header for MVP simplicity
+# Re-defining to include user_id from request body for security (not in URL)
 @app.post("/recommendations/create")
-def create_rec_endpoint(rec: RecommendationCreate, user_id: str, background_tasks: BackgroundTasks):
+async def create_rec_endpoint(request: Request, background_tasks: BackgroundTasks):
+    # Parse request body to get user_id and recommendation data
+    body = await request.json()
+    if not body:
+        raise HTTPException(status_code=400, detail="Request body is required")
+    
+    user_id = body.get('user_id')
+    if not user_id:
+        raise HTTPException(status_code=400, detail="user_id is required in request body")
+    
+    # Remove user_id from body before creating RecommendationCreate object
+    rec_data = {k: v for k, v in body.items() if k != 'user_id'}
+    rec = RecommendationCreate(**rec_data)
     # Fetch current benchmark price to store? 
     # Logic.py handles calculation dynamically, but storing entry bench price is better.
     # I'll stick to logic.py approach.
@@ -1795,6 +1807,18 @@ def admin_update_prices():
         raise HTTPException(status_code=500, detail=f"Error updating prices: {str(e)}")
 
 
+@app.post("/admin/update-cumulative-returns")
+def admin_update_cumulative_returns():
+    """
+    Admin endpoint to manually trigger cumulative portfolio return updates for all users.
+    """
+    try:
+        result = update_all_users_cumulative_returns()
+        return {"status": "success", **result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error updating cumulative returns: {str(e)}")
+
+
 # Schedule daily price update at 10:00 AM GMT
 scheduler.add_job(
     func=update_all_current_prices,
@@ -1804,4 +1828,14 @@ scheduler.add_job(
     replace_existing=True
 )
 
+# Schedule daily cumulative portfolio return update at 10:00 AM GMT
+scheduler.add_job(
+    func=update_all_users_cumulative_returns,
+    trigger=CronTrigger(hour=10, minute=0, timezone='UTC'),
+    id='daily_cumulative_return_update',
+    name='Update all users cumulative portfolio returns',
+    replace_existing=True
+)
+
 print("Scheduled daily price update at 10:00 AM GMT")
+print("Scheduled daily cumulative portfolio return update at 10:00 AM GMT")

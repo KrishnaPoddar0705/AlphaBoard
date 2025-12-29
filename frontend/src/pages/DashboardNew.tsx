@@ -32,6 +32,7 @@ import { PortfolioAllocationDonut } from '../components/charts/PortfolioAllocati
 import { MonthlyPnLChart } from '../components/charts/MonthlyPnLChart';
 import { KPIMiniChart } from '../components/charts/KPIMiniChart';
 import { IdeasAddedChart } from '../components/charts/IdeasAddedChart';
+import { safeLog, safeWarn, safeError } from '../lib/logger';
 
 // Mock data fallback
 const MOCK_STOCKS = [
@@ -145,7 +146,7 @@ export default function DashboardNew() {
                     const summary = await getStockSummary(ticker);
                     return { ticker, name: summary?.companyName || null };
                 } catch (error) {
-                    console.warn(`Failed to fetch company name for ${ticker}:`, error);
+                    safeWarn(`Failed to fetch company name for ${ticker}:`, error);
                     return { ticker, name: null };
                 }
             });
@@ -182,7 +183,7 @@ export default function DashboardNew() {
             if (error) throw error;
             return data || [];
         } catch (err) {
-            console.warn('Could not fetch recommendations', err);
+            safeWarn('Could not fetch recommendations', err);
             return [];
         }
     };
@@ -202,7 +203,7 @@ export default function DashboardNew() {
             // Then update prices (awaits completion)
             await updatePricesForRecommendations(data);
         } catch (err) {
-            console.error("Failed to load recommendations with prices", err);
+            safeError("Failed to load recommendations with prices", err);
         } finally {
             setIsLoadingPrices(false);
         }
@@ -285,7 +286,7 @@ export default function DashboardNew() {
                 const priceData = await getPrice(symbol);
                 return { symbol, price: priceData.price };
             } catch (e) {
-                console.warn(`Failed to update price for ${symbol}`, e);
+                safeWarn(`Failed to update price for ${symbol}`, e);
                 return null;
             }
         });
@@ -385,7 +386,7 @@ export default function DashboardNew() {
             // Set entry price to current price
             setEntryPrice(data.price.toString());
         } catch (e) {
-            console.error('Failed to get price', e);
+            safeError('Failed to get price', e);
         }
     };
 
@@ -458,7 +459,7 @@ export default function DashboardNew() {
                 // If API fails, fallback to direct Supabase insert
                 // Remove price_target and target_date for direct insert since they're not in recommendations table
                 const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
-                console.warn('API create failed, using direct insert:', apiError);
+                safeWarn('API create failed, using direct insert');
                 const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
                 if (sbError) throw sbError;
 
@@ -473,7 +474,7 @@ export default function DashboardNew() {
                             session.user.id
                         );
                     } catch (ptError) {
-                        console.warn('Failed to create price target in fallback:', ptError);
+                        safeWarn('Failed to create price target in fallback:', ptError);
                     }
                 }
             }
@@ -481,7 +482,7 @@ export default function DashboardNew() {
             await fetchRecommendations();
             closeModal();
         } catch (err) {
-            console.error('Submission failed', err);
+            safeError('Submission failed', err);
             // Fallback mock
             const benchmarkTicker = selectedMarket === 'US' ? '^GSPC' : '^NSEI';
             const mockRec = {
@@ -530,7 +531,7 @@ export default function DashboardNew() {
             ));
             await fetchRecommendations();
         } catch (err) {
-            console.error('Failed to close idea', err);
+            safeError('Failed to close idea', err);
         }
     };
 
@@ -538,7 +539,7 @@ export default function DashboardNew() {
         e.stopPropagation();
         // Watchlist items persist permanently - deletion disabled
         // This function is kept for API compatibility but does nothing
-        console.log(`Delete watchlist item disabled - ${rec.ticker} will remain in watchlist`);
+        safeLog(`Delete watchlist item disabled - ${rec.ticker} will remain in watchlist`);
     };
 
     const handlePromoteWatchlist = async (rec: any, actionType: 'BUY' | 'SELL', e: React.MouseEvent) => {
@@ -567,7 +568,7 @@ export default function DashboardNew() {
 
             await fetchRecommendations();
         } catch (err) {
-            console.error('Failed to promote', err);
+            safeError('Failed to promote', err);
         }
     };
 
@@ -695,7 +696,7 @@ export default function DashboardNew() {
                 }
             }
         } catch (err) {
-            console.error('Error checking alerts:', err);
+            safeError('Error checking alerts:', err);
         }
     };
 
@@ -760,13 +761,13 @@ export default function DashboardNew() {
                 };
                 const range = rangeMap[portfolioReturnsPeriod];
 
-                console.log('Fetching portfolio returns for user:', session.user.id, 'range:', range);
+                safeLog('Fetching portfolio returns, range:', range);
                 const data = await getRollingPortfolioReturns(session.user.id, range);
-                console.log('Portfolio returns API response:', data);
+                safeLog('Portfolio returns API response received');
 
                 // Handle error response
                 if (data && data.error) {
-                    console.error('API returned error:', data.error);
+                    safeError('API returned error');
                     setPortfolioReturns([]);
                     return;
                 }
@@ -795,24 +796,24 @@ export default function DashboardNew() {
                                 count: point.active_count || 0
                             };
                         } catch (e) {
-                            console.error('Error transforming point:', point, e);
+                            safeError('Error transforming point:', e);
                             return null;
                         }
                     }).filter((item: any) => item !== null);
 
-                    console.log('Transformed portfolio returns:', transformed);
+                    safeLog('Transformed portfolio returns, count:', transformed.length);
                     if (transformed.length > 0) {
                         setPortfolioReturns(transformed);
                     } else {
-                        console.warn('No valid transformed data');
+                        safeWarn('No valid transformed data');
                         setPortfolioReturns([]);
                     }
                 } else {
-                    console.warn('No portfolio returns data or empty points array:', data);
+                    safeWarn('No portfolio returns data or empty points array');
                     setPortfolioReturns([]);
                 }
             } catch (error) {
-                console.error('Error fetching portfolio returns:', error);
+                safeError('Error fetching portfolio returns:', error);
                 setPortfolioReturns([]);
             } finally {
                 setPortfolioReturnsLoading(false);

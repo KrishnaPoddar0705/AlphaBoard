@@ -209,7 +209,8 @@ export function IdeaList({
             }, 500);
         } catch (error: any) {
             console.error('Error generating portfolio podcast:', error);
-            alert(`Failed to generate podcast: ${error.message || 'Unknown error'}`);
+            const { getUserFriendlyError } = await import('../../lib/errorSanitizer');
+            alert(`Failed to generate podcast: ${getUserFriendlyError(error)}`);
         } finally {
             setPodcastLoading(false);
         }
