@@ -6,6 +6,8 @@ import { getVisibleRecommendations, updateMemberRole } from '../../lib/edgeFunct
 import { useTeams } from '../../hooks/useTeams';
 import TeamSelector from './TeamSelector';
 import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon, Shield, ShieldOff } from 'lucide-react';
+import { safeLog, safeWarn, safeError } from '../../lib/logger';
+import { getUserFriendlyError } from '../../lib/errorSanitizer';
 
 interface OrganizationUser {
   userId: string;
@@ -101,7 +103,7 @@ export default function AdminDashboard() {
           .eq('team_id', selectedTeamId);
 
         if (error) {
-          console.error('Error fetching team members:', error);
+          safeError('Error fetching team members:', error);
           setTeamMemberIds(new Set());
           return;
         }
@@ -109,7 +111,7 @@ export default function AdminDashboard() {
         const memberIds = new Set(teamMembers?.map((tm: any) => tm.user_id) || []);
         setTeamMemberIds(memberIds);
       } catch (err) {
-        console.error('Error fetching team members:', err);
+        safeError('Error fetching team members:', err);
         setTeamMemberIds(new Set());
       }
     };
@@ -130,7 +132,7 @@ export default function AdminDashboard() {
         .single();
 
       if (membershipError || !membership) {
-        console.error('Membership error:', membershipError);
+        safeError('Membership error:', membershipError);
         setError('You are not a member of any organization');
         setLoading(false);
         return;
@@ -147,7 +149,7 @@ export default function AdminDashboard() {
       setOrganizationId(orgId);
       setOrganizationName(org?.name || 'Unknown Organization');
 
-      console.log('Fetching data for organization:', orgId);
+      safeLog('Fetching data for organization');
 
       // Fetch organization details to get join code
       const { data: orgData, error: orgError } = await supabase
@@ -158,9 +160,9 @@ export default function AdminDashboard() {
 
       if (!orgError && orgData) {
         setJoinCode(orgData.join_code);
-        console.log('Join code fetched');
+        safeLog('Join code fetched');
       } else {
-        console.error('Error fetching join code:', orgError);
+        safeError('Error fetching join code:', orgError);
       }
 
       // Fetch all members with their profiles
@@ -169,10 +171,10 @@ export default function AdminDashboard() {
         .select('user_id, role, joined_at')
         .eq('organization_id', orgId);
 
-      console.log('Members data:', membersData, 'Error:', membersError);
+      safeLog('Members data fetched');
 
       if (membersError) {
-        console.error('Error fetching members:', membersError);
+        safeError('Error fetching members:', membersError);
       }
 
       if (membersData && membersData.length > 0) {
@@ -182,7 +184,11 @@ export default function AdminDashboard() {
           .select('id, username, email')
           .in('id', membersData.map((m: any) => m.user_id));
 
-        console.log('Profiles data:', profilesData, 'Error:', profilesError);
+        if (profilesError) {
+          safeError('Error fetching profiles:', profilesError);
+        }
+
+        safeLog('Profiles data fetched');
 
         const profilesMap = new Map();
         const emailsMap = new Map();
@@ -200,7 +206,7 @@ export default function AdminDashboard() {
           joinedAt: m.joined_at,
         }));
 
-        console.log('Final users list:', usersList);
+        safeLog('Final users list, count:', usersList.length);
         setUsers(usersList);
 
         // Fetch performance data for all members
@@ -214,7 +220,11 @@ export default function AdminDashboard() {
             .in('user_id', userIds)
             .neq('status', 'WATCHLIST'); // Exclude watchlist items
 
-          console.log('All recommendations:', allRecommendations, 'Error:', recsError);
+          if (recsError) {
+            safeError('Error fetching recommendations:', recsError);
+          }
+
+          safeLog('All recommendations fetched, count:', allRecommendations?.length || 0);
 
           // Fetch team memberships for all users
           const { data: teamMemberships, error: teamMembersError } = await supabase
@@ -222,7 +232,11 @@ export default function AdminDashboard() {
             .select('user_id, team_id, teams(id, name)')
             .in('user_id', userIds);
 
-          console.log('Team memberships:', teamMemberships, 'Error:', teamMembersError);
+          if (teamMembersError) {
+            safeError('Error fetching team memberships:', teamMembersError);
+          }
+
+          safeLog('Team memberships fetched, count:', teamMemberships?.length || 0);
 
           // Create a map of user_id -> teams[]
           const userTeamsMap = new Map<string, Array<{ id: string; name: string }>>();
@@ -240,7 +254,11 @@ export default function AdminDashboard() {
             .select('user_id, total_ideas, win_rate, total_return_pct, alpha_pct')
             .in('user_id', userIds);
 
-          console.log('Performance data:', perfData, 'Error:', perfError);
+          if (perfError) {
+            safeError('Error fetching performance data:', perfError);
+          }
+
+          safeLog('Performance data fetched, count:', perfData?.length || 0);
 
           // Calculate metrics from recommendations for each user
           const performanceList = membersData.map((m: any) => {
@@ -286,12 +304,12 @@ export default function AdminDashboard() {
           setPerformance(performanceList);
         }
       } else {
-        console.log('No members found or empty result');
+        safeLog('No members found or empty result');
         setUsers([]);
       }
     } catch (err: any) {
-      console.error('Error in fetchOrganizationData:', err);
-      setError(err.message || 'Failed to load organization data');
+      safeError('Error in fetchOrganizationData:', err);
+      setError(getUserFriendlyError(err));
     } finally {
       setLoading(false);
     }
@@ -325,8 +343,8 @@ export default function AdminDashboard() {
       alert(result.message || `Successfully ${action}d ${username} to ${newRole}`);
       fetchOrganizationData(); // Refresh to show updated role
     } catch (err: any) {
-      console.error('Error updating role:', err);
-      alert('Failed to update role: ' + (err.message || 'Unknown error'));
+      safeError('Error updating role:', err);
+      alert('Failed to update role: ' + getUserFriendlyError(err));
     }
   };
 
@@ -344,8 +362,8 @@ export default function AdminDashboard() {
         .eq('organization_id', organizationId);
 
       if (error) {
-        console.error('Error removing user:', error);
-        alert('Failed to remove user: ' + error.message);
+        safeError('Error removing user:', error);
+        alert('Failed to remove user: ' + getUserFriendlyError(error));
         return;
       }
 
@@ -359,8 +377,8 @@ export default function AdminDashboard() {
       alert(`${username} has been removed from the organization`);
       fetchOrganizationData();
     } catch (err: any) {
-      console.error('Error removing user:', err);
-      alert('Failed to remove user: ' + err.message);
+      safeError('Error removing user:', err);
+      alert('Failed to remove user: ' + getUserFriendlyError(err));
     }
   };
 
@@ -375,7 +393,7 @@ export default function AdminDashboard() {
     // Fetch recommendations and price targets if not already loaded
     if (!analystRecommendations[userId]) {
       try {
-        console.log('Fetching recommendations for user:', userId, 'in organization:', organizationId);
+        safeLog('Fetching recommendations for analyst in organization');
 
         // Fetch recommendations with all details
         // Use getVisibleRecommendations to respect team-based RLS
@@ -384,7 +402,7 @@ export default function AdminDashboard() {
           const response = await getVisibleRecommendations(selectedTeamId || undefined, undefined);
           recs = (response.recommendations || []).filter((r: any) => r.user_id === userId);
         } catch (err) {
-          console.warn('Failed to fetch via Edge Function, using direct query', err);
+          safeWarn('Failed to fetch via Edge Function, using direct query', err);
         }
         
         // Fallback to direct query if Edge Function fails or returns no results
@@ -399,7 +417,7 @@ export default function AdminDashboard() {
         
         const recsError = null; // No error if we got data
 
-        console.log('Recommendations for user:', userId, 'Count:', recs?.length, 'Data:', recs, 'Error:', recsError);
+        safeLog('Recommendations fetched, count:', recs?.length);
 
         if (!recsError && recs) {
           setAnalystRecommendations(prev => ({ ...prev, [userId]: recs }));
@@ -415,7 +433,7 @@ export default function AdminDashboard() {
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
 
-        console.log('Price targets for user:', userId, 'Count:', targets?.length, 'Error:', targetsError);
+        safeLog('Price targets fetched, count:', targets?.length || 0);
 
         if (!targetsError && targets) {
           setAnalystPriceTargets(prev => ({ ...prev, [userId]: targets }));
@@ -423,7 +441,7 @@ export default function AdminDashboard() {
           setAnalystPriceTargets(prev => ({ ...prev, [userId]: [] }));
         }
       } catch (err) {
-        console.error('Error fetching analyst details:', err);
+        safeError('Error fetching analyst details:', err);
         // Set empty arrays to prevent retrying
         setAnalystRecommendations(prev => ({ ...prev, [userId]: [] }));
         setAnalystPriceTargets(prev => ({ ...prev, [userId]: [] }));

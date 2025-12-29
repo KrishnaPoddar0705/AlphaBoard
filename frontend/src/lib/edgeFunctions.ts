@@ -101,11 +101,13 @@ export async function saveWeights(userId: string, weights: Weight[]): Promise<{ 
 
 /**
  * Get portfolio weights from database
+ * Note: userId is extracted from JWT token on server side for security
  */
-export async function getWeights(userId: string): Promise<{ weights: Weight[]; totalWeight: number }> {
+export async function getWeights(_userId: string): Promise<{ weights: Weight[]; totalWeight: number }> {
   const headers = await getAuthHeaders();
 
-  const response = await fetch(`${EDGE_FUNCTION_URL}/get-weights?userId=${userId}`, {
+  // User ID is extracted from JWT token on server side - not passed in URL
+  const response = await fetch(`${EDGE_FUNCTION_URL}/get-weights`, {
     method: 'GET',
     headers,
   });
