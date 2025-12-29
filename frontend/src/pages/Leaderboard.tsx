@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Award, TrendingUp, TrendingDown, Globe, Building2 } from 'lucide-react';
 import { useOrganization } from '../hooks/useOrganization';
 import AnalystProfile from '../components/AnalystProfile/AnalystProfile';
-import { safeLog, safeWarn, safeError } from '../lib/logger';
+import { safeLog, safeError } from '../lib/logger';
 
 type LeaderboardType = 'organization' | 'public';
 
@@ -73,7 +73,7 @@ export default function Leaderboard() {
             }
 
             const memberUserIds = memberships?.map(m => m.user_id) || [];
-            
+
             if (memberUserIds.length === 0) {
                 setAnalysts([]);
                 return;
@@ -115,7 +115,7 @@ export default function Leaderboard() {
                         .from('performance')
                         .select('user_id, cumulative_portfolio_return_pct, total_ideas, win_rate, alpha_pct')
                         .in('user_id', batch);
-                    
+
                     if (error) {
                         safeError('Error fetching organization performance batch:', error);
                         // Continue with other batches
@@ -192,9 +192,9 @@ export default function Leaderboard() {
             // Filter out users who are in organizations
             const publicProfiles = allPublicProfiles?.filter(p => !orgMemberIds.has(p.id)) || [];
             const publicUserIds = publicProfiles.map(p => p.id);
-            
+
             safeLog('Public profiles found (not in org, not private), count:', publicProfiles.length);
-            
+
             if (publicUserIds.length === 0) {
                 safeLog('No public profiles found (users without organization membership and is_private is false)');
                 setAnalysts([]);
@@ -218,7 +218,7 @@ export default function Leaderboard() {
                         .from('performance')
                         .select('user_id, cumulative_portfolio_return_pct, total_ideas, win_rate, alpha_pct')
                         .in('user_id', batch);
-                    
+
                     if (error) {
                         safeError('Error fetching public performance batch:', error);
                         // Continue with other batches
@@ -278,8 +278,8 @@ export default function Leaderboard() {
 
             <div className="text-center py-4 relative z-10">
                 <h1 className="text-4xl font-bold text-[var(--text-primary)]">
-                    {activeTab === 'organization' && organization 
-                        ? `${organization.name} Leaderboard` 
+                    {activeTab === 'organization' && organization
+                        ? `${organization.name} Leaderboard`
                         : 'Public Leaderboard'}
                 </h1>
                 <p className="mt-2 text-[var(--text-secondary)] font-light">
