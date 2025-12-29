@@ -49,14 +49,145 @@ export default function PublicLeaderboard() {
 
     const calculateLeaderboard = async () => {
         try {
-            // Fetch ONLY public leaderboard (users without org, not private)
-            const { data: publicProfiles } = await supabase
-                .from('profiles')
-                .select('id, username')
-                .is('organization_id', null)
-                .eq('is_private', false);
+            // Use secure database function to get public leaderboard users
+            // This function runs server-side and ensures:
+            // 1. Only public profiles (is_private = false)
+            // 2. Users NOT in any organization
+            // 3. Proper security checks (no user IDs exposed in URLs)
+            const { data: publicProfiles, error: profilesError } = await supabase
+                .rpc('get_public_leaderboard_users');
 
-            const publicUserIds = publicProfiles?.map(p => p.id) || [];
+            if (profilesError) {
+                console.error('Error fetching public leaderboard users:', profilesError);
+                // If RPC function doesn't exist, fall back to secure client-side filtering
+                console.warn('RPC function not available, using fallback method');
+                
+                // Fallback: Get org members and filter securely
+                const { data: orgMembers } = await supabase
+                    .from('user_organization_membership')
+                    .select('user_id');
+                
+                const orgMemberSet = new Set(orgMembers?.map(m => m.user_id) || []);
+                
+                const { data: allPublicProfiles, error: fallbackError } = await supabase
+                    .from('profiles')
+                    .select('id, username')
+                    .eq('is_private', false);
+                
+                if (fallbackError) {
+                    console.error('Error in fallback query:', fallbackError);
+                    setAnalysts([]);
+                    setLoading(false);
+                    return;
+                }
+                
+                // Filter out org members securely
+                const filteredProfiles = allPublicProfiles?.filter(p => !orgMemberSet.has(p.id)) || [];
+                
+                if (filteredProfiles.length === 0) {
+                    setAnalysts([]);
+                    setLoading(false);
+                    return;
+                }
+                
+                // Continue with filtered profiles
+                const publicUserIds = filteredProfiles.map(p => p.id);
+                const usernameMap = new Map<string, string>();
+                filteredProfiles.forEach(p => {
+                    usernameMap.set(p.id, p.username || 'Unknown');
+                });
+                
+                // Fetch performance data
+                let publicPerformance: any[] = [];
+                if (publicUserIds.length > 0) {
+                    const BATCH_SIZE = 100;
+                    for (let i = 0; i < publicUserIds.length; i += BATCH_SIZE) {
+                        const batch = publicUserIds.slice(i, i + BATCH_SIZE);
+                        const { data, error } = await supabase
+                            .from('performance')
+                            .select('user_id, cumulative_portfolio_return_pct, total_ideas, win_rate, alpha_pct')
+                            .in('user_id', batch);
+                        
+                        if (error) {
+                            console.error('Error fetching public performance batch:', error);
+                        } else if (data) {
+                            publicPerformance = publicPerformance.concat(data);
+                        }
+                    }
+                }
+                
+                const performanceMap = new Map<string, any>();
+                publicPerformance?.forEach(p => {
+                    performanceMap.set(p.user_id, p);
+                });
+                
+                const leaderboardData: any[] = [];
+                for (const userId of publicUserIds) {
+                    const username = usernameMap.get(userId) || 'Unknown';
+                    const perf = performanceMap.get(userId);
+                    
+                    leaderboardData.push({
+                        user_id: userId,
+                        username: username,
+                        total_ideas: perf?.total_ideas || 0,
+                        win_rate: perf?.win_rate || 0,
+                        total_return_pct: perf?.cumulative_portfolio_return_pct || 0,
+                        alpha_pct: perf?.alpha_pct || 0,
+                        sharpe_ratio: null,
+                        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+                    });
+                }
+                
+                // Handle current user
+                if (session?.user?.id && !orgMemberSet.has(session.user.id)) {
+                    const { data: userProfile } = await supabase
+                        .from('profiles')
+                        .select('is_private')
+                        .eq('id', session.user.id)
+                        .single();
+                    
+                    const isPublic = userProfile && !userProfile.is_private;
+                    if (isPublic) {
+                        const { data: currentUserPerf } = await supabase
+                            .from('performance')
+                            .select('user_id, cumulative_portfolio_return_pct, total_ideas, win_rate, alpha_pct')
+                            .eq('user_id', session.user.id)
+                            .single();
+                        
+                        const existingIndex = leaderboardData.findIndex(a => a.user_id === session.user.id);
+                        const currentUserStats = {
+                            user_id: session.user.id,
+                            username: 'You',
+                            total_ideas: currentUserPerf?.total_ideas || 0,
+                            win_rate: currentUserPerf?.win_rate || 0,
+                            total_return_pct: currentUserPerf?.cumulative_portfolio_return_pct || 0,
+                            alpha_pct: currentUserPerf?.alpha_pct || 0,
+                            sharpe_ratio: null,
+                            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=You'
+                        };
+                        
+                        if (existingIndex >= 0) {
+                            leaderboardData[existingIndex] = currentUserStats;
+                        } else {
+                            leaderboardData.push(currentUserStats);
+                        }
+                    }
+                }
+                
+                const allAnalysts = leaderboardData.sort((a, b) => (b.alpha_pct || 0) - (a.alpha_pct || 0));
+                setAnalysts(allAnalysts);
+                setLoading(false);
+                return;
+            }
+
+            if (!publicProfiles || publicProfiles.length === 0) {
+                setAnalysts([]);
+                setLoading(false);
+                return;
+            }
+
+            console.log('Public profiles (not in org, not private) count:', publicProfiles.length);
+            const publicUserIds = publicProfiles.map((p: any) => p.id);
             
             if (publicUserIds.length === 0) {
                 setAnalysts([]);
@@ -66,9 +197,15 @@ export default function PublicLeaderboard() {
 
             // Create a map of user_id to username
             const usernameMap = new Map<string, string>();
-            publicProfiles?.forEach(p => {
+            publicProfiles.forEach((p: any) => {
                 usernameMap.set(p.id, p.username || 'Unknown');
             });
+            
+            // Get org members set for current user check
+            const { data: orgMembers } = await supabase
+                .from('user_organization_membership')
+                .select('user_id');
+            const orgMemberSet = new Set(orgMembers?.map((m: any) => m.user_id) || []);
 
             // Fetch performance table for all metrics including cumulative_portfolio_return_pct
             // Batch queries if there are many user IDs to avoid URL length limits
@@ -104,54 +241,56 @@ export default function PublicLeaderboard() {
                 const perf = performanceMap.get(userId);
 
                 // Include all users, using performance data if available, otherwise default to 0
-                leaderboardData.push({
-                    user_id: userId,
-                    username: username,
+                    leaderboardData.push({
+                        user_id: userId,
+                        username: username,
                     total_ideas: perf?.total_ideas || 0,
                     win_rate: perf?.win_rate || 0,
                     total_return_pct: perf?.cumulative_portfolio_return_pct || 0,
                     alpha_pct: perf?.alpha_pct || 0,
-                    sharpe_ratio: null, // sharpe_ratio not available in performance table
-                    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
-                });
+                            sharpe_ratio: null, // sharpe_ratio not available in performance table
+                            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+                    });
             }
 
-            // Add current user if they're public or not in org (and not already in list)
+            // Add current user if they're public and not in org (and not already in list)
             if (session?.user?.id) {
                 const { data: userProfile } = await supabase
                     .from('profiles')
-                    .select('is_private, organization_id')
+                    .select('is_private')
                     .eq('id', session.user.id)
                     .single();
                 
-                if (userProfile && (!userProfile.organization_id && !userProfile.is_private)) {
-                    // User is public, check if they have performance data
+                // Check if user is public and not in any organization
+                const isPublic = userProfile && !userProfile.is_private;
+                const notInOrg = !orgMemberSet.has(session.user.id);
+                
+                if (isPublic && notInOrg) {
+                    // User is public and not in org, check if they have performance data
                     const { data: currentUserPerf } = await supabase
                         .from('performance')
                         .select('user_id, cumulative_portfolio_return_pct, total_ideas, win_rate, alpha_pct')
                         .eq('user_id', session.user.id)
                         .single();
                     
-                    if (currentUserPerf) {
-                        const existingIndex = leaderboardData.findIndex(a => a.user_id === session.user.id);
-                        const currentUserStats = {
-                            user_id: session.user.id,
-                            username: 'You',
-                            total_ideas: currentUserPerf.total_ideas || 0,
-                            win_rate: currentUserPerf.win_rate || 0,
-                            total_return_pct: currentUserPerf.cumulative_portfolio_return_pct || 0,
-                            alpha_pct: currentUserPerf.alpha_pct || 0,
-                            sharpe_ratio: null, // sharpe_ratio not available in performance table
-                            avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=You'
-                        };
-                        
-                        if (existingIndex >= 0) {
-                            // Update existing entry
-                            leaderboardData[existingIndex] = currentUserStats;
-                        } else {
-                            // Add current user if not already in list
-                            leaderboardData.push(currentUserStats);
-                        }
+                    const existingIndex = leaderboardData.findIndex(a => a.user_id === session.user.id);
+                    const currentUserStats = {
+                        user_id: session.user.id,
+                        username: 'You',
+                        total_ideas: currentUserPerf?.total_ideas || 0,
+                        win_rate: currentUserPerf?.win_rate || 0,
+                        total_return_pct: currentUserPerf?.cumulative_portfolio_return_pct || 0,
+                        alpha_pct: currentUserPerf?.alpha_pct || 0,
+                        sharpe_ratio: null, // sharpe_ratio not available in performance table
+                        avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=You'
+                    };
+                    
+                    if (existingIndex >= 0) {
+                        // Update existing entry
+                        leaderboardData[existingIndex] = currentUserStats;
+                    } else {
+                        // Add current user if not already in list
+                        leaderboardData.push(currentUserStats);
                     }
                 }
             }

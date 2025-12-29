@@ -165,33 +165,102 @@ export default function Leaderboard() {
 
     const calculatePublicLeaderboard = async () => {
         try {
-            // First, get all users who have organization memberships
-            const { data: orgMembers, error: membersError } = await supabase
-                .from('user_organization_membership')
-                .select('user_id');
-
-            if (membersError) {
-                safeError('Error fetching organization members:', membersError);
-            }
-
-            const orgMemberIds = new Set(orgMembers?.map(m => m.user_id) || []);
-            safeLog('Users with organization memberships, count:', orgMemberIds.size);
-
-            // Fetch public profiles (not private) and exclude those in organizations
-            const { data: allPublicProfiles, error: profilesError } = await supabase
-                .from('profiles')
-                .select('id, username')
-                .eq('is_private', false);
+            // Use secure database function to get public leaderboard users
+            // This function runs server-side and ensures proper security checks
+            const { data: publicProfiles, error: profilesError } = await supabase
+                .rpc('get_public_leaderboard_users');
 
             if (profilesError) {
-                safeError('Error fetching public profiles:', profilesError);
+                safeError('Error fetching public leaderboard users:', profilesError);
+                // Fallback: Get org members and filter securely
+                safeLog('RPC function not available, using fallback method');
+                
+                const { data: orgMembers } = await supabase
+                    .from('user_organization_membership')
+                    .select('user_id');
+                
+                const orgMemberSet = new Set(orgMembers?.map((m: any) => m.user_id) || []);
+                
+                const { data: allPublicProfiles, error: fallbackError } = await supabase
+                    .from('profiles')
+                    .select('id, username')
+                    .eq('is_private', false);
+                
+                if (fallbackError) {
+                    safeError('Error in fallback query:', fallbackError);
+                    setAnalysts([]);
+                    return;
+                }
+                
+                const filteredProfiles = allPublicProfiles?.filter((p: any) => !orgMemberSet.has(p.id)) || [];
+                const publicUserIds = filteredProfiles.map((p: any) => p.id);
+                
+                if (publicUserIds.length === 0) {
+                    safeLog('No public profiles found');
+                    setAnalysts([]);
+                    return;
+                }
+                
+                // Continue with filtered profiles (same logic as below)
+                const usernameMap = new Map<string, string>();
+                filteredProfiles.forEach((p: any) => {
+                    usernameMap.set(p.id, p.username || 'Unknown');
+                });
+                
+                // Fetch performance data
+                let publicPerformance: any[] = [];
+                if (publicUserIds.length > 0) {
+                    const BATCH_SIZE = 100;
+                    for (let i = 0; i < publicUserIds.length; i += BATCH_SIZE) {
+                        const batch = publicUserIds.slice(i, i + BATCH_SIZE);
+                        const { data, error } = await supabase
+                            .from('performance')
+                            .select('user_id, cumulative_portfolio_return_pct, total_ideas, win_rate, alpha_pct')
+                            .in('user_id', batch);
+                        
+                        if (error) {
+                            safeError('Error fetching public performance batch:', error);
+                        } else if (data) {
+                            publicPerformance = publicPerformance.concat(data);
+                        }
+                    }
+                }
+                
+                const performanceMap = new Map<string, any>();
+                publicPerformance?.forEach((p: any) => {
+                    performanceMap.set(p.user_id, p);
+                });
+                
+                const leaderboardData: any[] = [];
+                for (const userId of publicUserIds) {
+                    const username = usernameMap.get(userId) || 'Unknown';
+                    const perf = performanceMap.get(userId);
+                    
+                    leaderboardData.push({
+                        user_id: userId,
+                        username: username,
+                        total_ideas: perf?.total_ideas || 0,
+                        win_rate: perf?.win_rate || 0,
+                        total_return_pct: perf?.cumulative_portfolio_return_pct || 0,
+                        alpha_pct: perf?.alpha_pct || 0,
+                        sharpe_ratio: null,
+                        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${userId}`
+                    });
+                }
+                
+                const allAnalysts = leaderboardData.sort((a, b) => (b.alpha_pct || 0) - (a.alpha_pct || 0));
+                setAnalysts(allAnalysts);
+                return;
+            }
+
+            if (!publicProfiles || publicProfiles.length === 0) {
+                safeLog('No public profiles found');
                 setAnalysts([]);
                 return;
             }
 
-            // Filter out users who are in organizations
-            const publicProfiles = allPublicProfiles?.filter(p => !orgMemberIds.has(p.id)) || [];
-            const publicUserIds = publicProfiles.map(p => p.id);
+            safeLog('Public profiles found (not in org, not private), count:', publicProfiles.length);
+            const publicUserIds = publicProfiles.map((p: any) => p.id);
 
             safeLog('Public profiles found (not in org, not private), count:', publicProfiles.length);
 
@@ -203,7 +272,7 @@ export default function Leaderboard() {
 
             // Create a map of user_id to username
             const usernameMap = new Map<string, string>();
-            publicProfiles.forEach(p => {
+            publicProfiles.forEach((p: any) => {
                 usernameMap.set(p.id, p.username || 'Unknown');
             });
 
