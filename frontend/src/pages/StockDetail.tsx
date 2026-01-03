@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { useParams } from "react-router-dom"
+import { useParams, useLocation, useNavigate, Outlet } from "react-router-dom"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card-new"
@@ -18,6 +18,8 @@ import { IncomeStatementSection } from "@/components/stock/IncomeStatementSectio
 import { CeoCard } from "@/components/stock/CeoCard"
 import { CompanyFactsCard } from "@/components/stock/CompanyFactsCard"
 import { RatingsSnapshot } from "@/components/stock/RatingsSnapshot"
+import { CommunityTab } from "@/components/community/CommunityTab"
+import { listPosts } from "@/lib/community/api"
 
 interface Comment {
   id: string
@@ -31,6 +33,8 @@ interface Comment {
 
 export default function StockDetail() {
   const { ticker } = useParams<{ ticker: string }>()
+  const location = useLocation()
+  const navigate = useNavigate()
   const { user } = useUser()
   const [stockData, setStockData] = React.useState<any>(null)
   const [comments, setComments] = React.useState<Comment[]>([])
@@ -45,6 +49,28 @@ export default function StockDetail() {
   const [loadingFinancials, setLoadingFinancials] = React.useState(false)
   const [chartData, setChartData] = React.useState<any[]>([])
   const [loadingChart, setLoadingChart] = React.useState(false)
+  const [activeTab, setActiveTab] = React.useState<'overview' | 'financials' | 'community'>('overview')
+  const [communityPostCount, setCommunityPostCount] = React.useState(0)
+
+  // Determine active tab from URL
+  React.useEffect(() => {
+    if (location.pathname.includes('/community')) {
+      setActiveTab('community')
+    } else if (location.pathname.includes('/financials')) {
+      setActiveTab('financials')
+    } else {
+      setActiveTab('overview')
+    }
+  }, [location.pathname])
+
+  // Load community post count
+  React.useEffect(() => {
+    if (ticker && activeTab === 'community') {
+      listPosts({ ticker, sort: 'hot', limit: 1, clerkUserId: user?.id })
+        .then(result => setCommunityPostCount(result.posts.length))
+        .catch(() => {})
+    }
+  }, [ticker, activeTab, user?.id])
 
   React.useEffect(() => {
     if (ticker) {
@@ -303,12 +329,66 @@ export default function StockDetail() {
 
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto px-6 py-8">
-        {/* Time Range Chips */}
-        <div className="mb-8">
-          <TimeRangeChips value={timeframe} onChange={setTimeframe} />
+        {/* Tabs */}
+        <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[#D7D0C2]">
+          <button
+            onClick={() => {
+              setActiveTab('overview')
+              navigate(`/stock/${ticker}`)
+            }}
+            className={`
+              px-4 py-2 text-sm font-mono rounded border transition-colors
+              ${activeTab === 'overview'
+                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]'
+                : 'bg-transparent text-[#1C1B17] border-[#D7D0C2] hover:bg-[#FBF7ED]'
+              }
+            `}
+          >
+            Overview
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('financials')
+              navigate(`/stock/${ticker}/financials`)
+            }}
+            className={`
+              px-4 py-2 text-sm font-mono rounded border transition-colors
+              ${activeTab === 'financials'
+                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]'
+                : 'bg-transparent text-[#1C1B17] border-[#D7D0C2] hover:bg-[#FBF7ED]'
+              }
+            `}
+          >
+            Financials
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('community')
+              navigate(`/stock/${ticker}/community`)
+            }}
+            className={`
+              px-4 py-2 text-sm font-mono rounded border transition-colors
+              ${activeTab === 'community'
+                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]'
+                : 'bg-transparent text-[#1C1B17] border-[#D7D0C2] hover:bg-[#FBF7ED]'
+              }
+            `}
+          >
+            Community {communityPostCount > 0 && `(${communityPostCount})`}
+          </button>
         </div>
 
-        {/* Main Top Grid: 12 columns */}
+        {/* Tab Content */}
+        {activeTab === 'community' ? (
+          <CommunityTab />
+        ) : (
+          <>
+            {/* Time Range Chips */}
+            <div className="mb-8">
+              <TimeRangeChips value={timeframe} onChange={setTimeframe} />
+            </div>
+
+            {/* Main Top Grid: 12 columns */}
         <div className="grid grid-cols-12 gap-6 mb-8">
           {/* Left: Price Chart (7 cols) */}
           <div className="col-span-12 lg:col-span-7">
@@ -579,6 +659,8 @@ export default function StockDetail() {
             )}
           </div>
         </div>
+          </>
+        )}
       </div>
     </div>
   )

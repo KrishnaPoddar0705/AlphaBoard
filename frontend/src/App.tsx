@@ -52,6 +52,9 @@ function App() {
           {/* Community routes - accessible to all */}
           <Route path="/community" element={<Community />} />
           <Route path="/stock/:ticker" element={<StockDetail />} />
+          <Route path="/stock/:ticker/community" element={<StockDetail />} />
+          <Route path="/stock/:ticker/community/:postId" element={<StockDetail />} />
+          <Route path="/stock/:ticker/financials" element={<StockDetail />} />
           
           {/* User-specific routes */}
           <Route path="/recommendations" element={
