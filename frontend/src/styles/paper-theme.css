@@ -1,0 +1,65 @@
+/**
+ * Paper Theme CSS Variables
+ * 
+ * Warm paper background with editorial typography for financial tear sheet design.
+ * Applied globally when UI_V2 flag is enabled.
+ */
+
+:root {
+  /* Paper Background */
+  --paper-bg: #F6F0E3;
+  --paper-bg-alt: #F7F2E8;
+  
+  /* Text Colors */
+  --paper-ink: #1D1D1D;
+  --paper-muted: #4A4A4A;
+  --paper-subtle: #6B6B6B;
+  
+  /* Dividers & Rules */
+  --paper-rule: #D8D2C6;
+  --paper-rule-light: #E8E2D6;
+  
+  /* Accent Colors */
+  --pos-green: #2E7D5B;
+  --neg-red: #B5544A;
+  
+  /* Link Colors */
+  --paper-link: #2563EB;
+  --paper-link-hover: #1D4ED8;
+  
+  /* Border */
+  --paper-border: #D8D2C6;
+  --paper-border-light: #E8E2D6;
+  
+  /* Border Radius */
+  --paper-radius-sm: 0.375rem;
+  --paper-radius-md: 0.5rem;
+  --paper-radius-lg: 0.75rem;
+  --paper-radius-xl: 1rem;
+}
+
+/* Paper Theme - Applied globally when UI_V2 is enabled */
+body.paper-theme-active,
+.paper-theme-active body {
+  background-color: var(--paper-bg) !important;
+  color: var(--paper-ink) !important;
+}
+
+.paper-theme-active {
+  background-color: var(--paper-bg);
+  color: var(--paper-ink);
+}
+
+/* Override dark theme variables when paper theme is active */
+.paper-theme-active :root {
+  --bg-primary: var(--paper-bg);
+  --bg-secondary: var(--paper-bg-alt);
+  --text-primary: var(--paper-ink);
+  --text-secondary: var(--paper-muted);
+  --text-tertiary: var(--paper-subtle);
+  --border-color: var(--paper-border);
+  --card-bg: var(--paper-bg);
+  --list-item-bg: var(--paper-bg-alt);
+  --list-item-hover: rgba(0, 0, 0, 0.05);
+}
+

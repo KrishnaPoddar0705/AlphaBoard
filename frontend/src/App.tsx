@@ -1,10 +1,15 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import Layout from './components/Layout';
+import LayoutV2 from './components/LayoutV2';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
-import Dashboard from './pages/DashboardNew';
+import Community from './pages/Community';
+import StockDetail from './pages/StockDetail';
+import Recommendations from './pages/Recommendations';
+import Watchlist from './pages/Watchlist';
+import History from './pages/History';
+import Performance from './pages/Performance';
 import Leaderboard from './pages/Leaderboard';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import AnalystPerformance from './pages/AnalystPerformance';
@@ -17,14 +22,21 @@ import ResearchLibrary from './pages/ResearchLibrary';
 import ReportDetail from './pages/ReportDetail';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
+import InlineLogin from './components/InlineLogin';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
 
-  if (!isLoaded) return <div>Loading...</div>;
+  if (!isLoaded) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[#F1EEE0]">
+        <div className="text-[#6F6A60] font-mono">Loading...</div>
+      </div>
+    );
+  }
 
   if (!user) {
-    return <Navigate to="/login" />;
+    return <InlineLogin />;
   }
 
   return <>{children}</>;
@@ -36,10 +48,42 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route element={<Layout />}>
-          <Route path="/" element={
+        <Route element={<LayoutV2 />}>
+          {/* Community routes - accessible to all */}
+          <Route path="/community" element={<Community />} />
+          <Route path="/stock/:ticker" element={<StockDetail />} />
+          
+          {/* User-specific routes */}
+          <Route path="/recommendations" element={
             <PrivateRoute>
-              <Dashboard />
+              <Recommendations />
+            </PrivateRoute>
+          } />
+          <Route path="/watchlist" element={
+            <PrivateRoute>
+              <Watchlist />
+            </PrivateRoute>
+          } />
+          <Route path="/history" element={
+            <PrivateRoute>
+              <History />
+            </PrivateRoute>
+          } />
+          <Route path="/performance" element={
+            <PrivateRoute>
+              <Performance />
+            </PrivateRoute>
+          } />
+          
+          {/* Organization routes */}
+          <Route path="/research" element={
+            <PrivateRoute>
+              <ResearchLibrary />
+            </PrivateRoute>
+          } />
+          <Route path="/research/:id" element={
+            <PrivateRoute>
+              <ReportDetail />
             </PrivateRoute>
           } />
           <Route path="/leaderboard" element={<Leaderboard />} />
@@ -69,6 +113,8 @@ function App() {
               <OrganizationSettings />
             </PrivateRoute>
           } />
+          
+          {/* Settings */}
           <Route path="/settings/privacy" element={
             <PrivateRoute>
               <PrivacySettings />
@@ -79,16 +125,9 @@ function App() {
               <Profile />
             </PrivateRoute>
           } />
-          <Route path="/research" element={
-            <PrivateRoute>
-              <ResearchLibrary />
-            </PrivateRoute>
-          } />
-          <Route path="/research/:id" element={
-            <PrivateRoute>
-              <ReportDetail />
-            </PrivateRoute>
-          } />
+          
+          {/* Redirect root to community */}
+          <Route path="/" element={<Navigate to="/community" replace />} />
         </Route>
         {/* Catch-all route for 404 errors */}
         <Route path="*" element={<NotFound />} />

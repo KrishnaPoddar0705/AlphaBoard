@@ -71,7 +71,7 @@ export default function Layout() {
                 .from('user_organization_membership')
                 .select('organization_id, role, organizations(id, name)')
                 .eq('user_id', supabaseUserId)
-                .single();
+                .maybeSingle();
 
             if (!error && data) {
                 const org = data.organizations as any;

@@ -47,9 +47,15 @@ export default function OrganizationSettings() {
         .from('user_organization_membership')
         .select('organization_id, role, organizations(id, name)')
         .eq('user_id', session!.user!.id)
-        .single();
+        .maybeSingle();
 
-      if (membershipError || !membership) {
+      if (membershipError) {
+        setError('Failed to load organization membership');
+        setLoading(false);
+        return;
+      }
+
+      if (!membership) {
         setError('You are not a member of any organization');
         setLoading(false);
         return;

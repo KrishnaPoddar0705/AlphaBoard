@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { ClerkProvider } from '@clerk/clerk-react'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { SearchProvider } from './contexts/SearchContext'
 import { validateCurrentOrigin } from './config/allowedOrigins'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -54,7 +55,9 @@ if (!checkFor404()) {
           afterSignUpUrl="/"
         >
           <ThemeProvider>
-            <App />
+            <SearchProvider>
+              <App />
+            </SearchProvider>
           </ThemeProvider>
         </ClerkProvider>
       </ErrorBoundary>

@@ -76,17 +76,18 @@ export const PortfolioAllocationDonut: React.FC<PortfolioAllocationDonutProps> =
                     return (
                         <div style={{
                             padding: '8px 12px',
-                            background: 'rgba(15, 23, 42, 0.95)',
-                            color: 'white',
+                            background: '#F7F2E6', // card bg
+                            color: '#1C1B17', // ink text
                             borderRadius: '8px',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            border: '1px solid #D7D0C2', // border
                             fontSize: '12px',
-                            fontWeight: '500'
+                            fontWeight: '500',
+                            fontFamily: 'ui-monospace, monospace'
                         }}>
-                            <div style={{ marginBottom: '6px' }}>
+                            <div style={{ marginBottom: '6px', color: '#1C1B17' }}>
                                 <strong>{datum.label}</strong>
                             </div>
-                            <div style={{ color: 'rgba(255, 255, 255, 0.8)', lineHeight: '1.6' }}>
+                            <div style={{ color: '#6F6A60', lineHeight: '1.6' }}>
                                 <div>BUY: {buyCount} {buyCount === 1 ? 'time' : 'times'}</div>
                                 <div>SELL: {sellCount} {sellCount === 1 ? 'time' : 'times'}</div>
                             </div>
@@ -98,8 +99,9 @@ export const PortfolioAllocationDonut: React.FC<PortfolioAllocationDonutProps> =
                 theme={{
                     labels: {
                         text: {
-                            fill: 'rgba(255, 255, 255, 0.7)',
-                            fontSize: 11
+                            fill: '#6F6A60', // muted
+                            fontSize: 11,
+                            fontFamily: 'ui-monospace, monospace'
                         }
                     }
                 }}

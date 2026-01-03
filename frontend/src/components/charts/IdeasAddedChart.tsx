@@ -73,18 +73,19 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
                 tooltip={({ id, value, indexValue }) => (
                     <div style={{
                         padding: '8px 12px',
-                        background: 'rgba(15, 23, 42, 0.95)',
-                        color: 'white',
+                        background: '#F7F2E6', // card bg
+                        color: '#1C1B17', // ink text
                         borderRadius: '8px',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        border: '1px solid #D7D0C2', // border
                         fontSize: '12px',
-                        fontWeight: '500'
+                        fontWeight: '500',
+                        fontFamily: 'ui-monospace, monospace'
                     }}>
-                        <div style={{ marginBottom: '4px' }}>
+                        <div style={{ marginBottom: '4px', color: '#1C1B17' }}>
                             <strong>{indexValue}</strong>
                         </div>
                         <div style={{
-                            color: id === 'Recommendations' ? '#10b981' : id === 'Watchlist' ? '#3b82f6' : '#eab308'
+                            color: id === 'Recommendations' ? '#2F8F5B' : id === 'Watchlist' ? '#1C1B17' : '#6F6A60'
                         }}>
                             {id}: {value}
                         </div>
@@ -121,32 +122,34 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
                     axis: {
                         domain: {
                             line: {
-                                stroke: 'rgba(255, 255, 255, 0.1)',
+                                stroke: '#D7D0C2', // border
                                 strokeWidth: 1
                             }
                         },
                         ticks: {
                             line: {
-                                stroke: 'rgba(255, 255, 255, 0.2)',
+                                stroke: '#E3DDCF', // gridlines
                                 strokeWidth: 1
                             },
                             text: {
-                                fill: 'rgba(255, 255, 255, 0.6)',
-                                fontSize: 11
+                                fill: '#6F6A60', // muted
+                                fontSize: 11,
+                                fontFamily: 'ui-monospace, monospace'
                             }
                         }
                     },
                     grid: {
                         line: {
-                            stroke: 'rgba(255, 255, 255, 0.05)',
+                            stroke: '#E3DDCF', // gridlines
                             strokeWidth: 1
                         }
                     },
                     legends: {
                         text: {
-                            fill: 'rgba(255, 255, 255, 0.95)',
+                            fill: '#1C1B17', // ink text
                             fontSize: 12,
-                            fontWeight: 500
+                            fontWeight: 500,
+                            fontFamily: 'ui-monospace, monospace'
                         }
                     }
                 }}

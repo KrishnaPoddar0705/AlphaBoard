@@ -200,8 +200,17 @@ def get_stock_summary(ticker: str) -> Dict[str, Any]:
     stock = get_ticker_obj(ticker)
     try:
         info = stock.info
+        # Get logo URL from Yahoo Finance
+        logo_url = info.get("logo_url") or info.get("logoUrl")
+        if not logo_url:
+            # Construct logo URL from ticker
+            clean_ticker = ticker.replace('.NS', '').replace('.BO', '')
+            logo_url = f"https://logo.clearbit.com/{clean_ticker.lower()}.com"
+        
         summary = {
             "companyName": info.get("longName") or info.get("shortName") or info.get("name"),
+            "logoUrl": logo_url,
+            "exchange": info.get("exchange"),
             "marketCap": info.get("marketCap"),
             "currentPrice": info.get("currentPrice") or info.get("regularMarketPrice"),
             "pe": info.get("trailingPE"),
@@ -210,13 +219,45 @@ def get_stock_summary(ticker: str) -> Dict[str, Any]:
             "roce": info.get("returnOnAssets"), 
             "roe": info.get("returnOnEquity"),
             "debtToEquity": info.get("debtToEquity"),
-            "high": info.get("dayHigh"),
-            "low": info.get("dayLow"),
+            "high": info.get("fiftyTwoWeekHigh") or info.get("dayHigh"),
+            "low": info.get("fiftyTwoWeekLow") or info.get("dayLow"),
             "beta": info.get("beta"),
             "targetMeanPrice": info.get("targetMeanPrice"),
             "targetLowPrice": info.get("targetLowPrice"),
             "targetHighPrice": info.get("targetHighPrice"),
-            "heldPercentInstitutions": info.get("heldPercentInstitutions")
+            "heldPercentInstitutions": info.get("heldPercentInstitutions"),
+            "volume": info.get("volume") or info.get("regularMarketVolume"),
+            "sharesOutstanding": info.get("sharesOutstanding"),
+            "dividendYield": info.get("dividendYield") or 0,
+            "description": info.get("longBusinessSummary") or info.get("description"),
+            "website": info.get("website"),
+            "sector": info.get("sector"),
+            "industry": info.get("industry"),
+            "fullTimeEmployees": info.get("fullTimeEmployees"),
+            "ipoDate": info.get("firstTradeDateEpochUtc"),
+            "recommendationMean": info.get("recommendationMean"),
+            "recommendationKey": info.get("recommendationKey"),
+            "numberOfAnalystOpinions": info.get("numberOfAnalystOpinions"),
+            "forwardPE": info.get("forwardPE"),
+            "trailingPE": info.get("trailingPE"),
+            "pegRatio": info.get("pegRatio"),
+            "priceToSalesTrailing12Months": info.get("priceToSalesTrailing12Months"),
+            "enterpriseValue": info.get("enterpriseValue"),
+            "profitMargins": info.get("profitMargins"),
+            "grossMargins": info.get("grossMargins"),
+            "operatingMargins": info.get("operatingMargins"),
+            "ebitdaMargins": info.get("ebitdaMargins"),
+            "revenueGrowth": info.get("revenueGrowth"),
+            "earningsGrowth": info.get("earningsGrowth"),
+            "earningsQuarterlyGrowth": info.get("earningsQuarterlyGrowth"),
+            "revenuePerShare": info.get("revenuePerShare"),
+            "totalCash": info.get("totalCash"),
+            "totalCashPerShare": info.get("totalCashPerShare"),
+            "totalDebt": info.get("totalDebt"),
+            "currentRatio": info.get("currentRatio"),
+            "quickRatio": info.get("quickRatio"),
+            "returnOnAssets": info.get("returnOnAssets"),
+            "returnOnEquity": info.get("returnOnEquity"),
         }
         set_cached_data(cache_key, summary)
         return summary
@@ -224,24 +265,30 @@ def get_stock_summary(ticker: str) -> Dict[str, Any]:
         print(f"Error fetching summary for {ticker}: {e}")
         return {}
 
-def get_stock_history_data(ticker: str, period: str = "5y") -> List[Dict[str, Any]]:
-    cache_key = f"{ticker}_history_{period}"
+def get_stock_history_data(ticker: str, period: str = "1y", interval: str = "1d") -> List[Dict[str, Any]]:
+    cache_key = f"{ticker}_history_{period}_{interval}"
     cached = get_cached_data(cache_key)
     if cached: return cached
 
     stock = get_ticker_obj(ticker)
     try:
-        hist = stock.history(period=period)
+        # For intraday data (1D with 5min), use different method
+        if period == "1d" and interval == "5m":
+            hist = stock.history(period="1d", interval="5m")
+        else:
+            hist = stock.history(period=period, interval=interval)
+        
         chart_data = []
         if not hist.empty:
             for date, row in hist.iterrows():
                 chart_data.append({
-                    "date": date.strftime("%Y-%m-%d"),
-                    "open": row["Open"],
-                    "high": row["High"],
-                    "low": row["Low"],
-                    "close": row["Close"],
-                    "volume": row["Volume"]
+                    "date": date.strftime("%Y-%m-%d") if interval != "5m" else date.strftime("%Y-%m-%d %H:%M:%S"),
+                    "timestamp": int(date.timestamp() * 1000) if hasattr(date, 'timestamp') else None,
+                    "open": float(row["Open"]) if "Open" in row else float(row.get("open", 0)),
+                    "high": float(row["High"]) if "High" in row else float(row.get("high", 0)),
+                    "low": float(row["Low"]) if "Low" in row else float(row.get("low", 0)),
+                    "close": float(row["Close"]) if "Close" in row else float(row.get("close", 0)),
+                    "volume": float(row["Volume"]) if "Volume" in row else float(row.get("volume", 0))
                 })
         set_cached_data(cache_key, chart_data)
         return chart_data
@@ -260,21 +307,45 @@ def get_financials_data(ticker: str) -> Dict[str, Any]:
         
         income_map = {
             "Total Revenue": "revenue",
-            "Net Income": "netProfit",
+            "Net Income": "netIncome",
             "Interest Expense": "interest",
             "Research And Development": "rnd",
             "Selling General And Administration": "sga",
             "Cost Of Revenue": "cogs",
-            "Operating Income": "operating_profit",
-            "Gross Profit": "gross_profit",
-            "Basic EPS": "eps"
+            "Operating Income": "operatingIncome",
+            "Gross Profit": "grossProfit",
+            "Basic EPS": "eps",
+            "EBITDA": "ebitda"
         }
         data = format_statement(financials_df, income_map)
         
-        # Calculate PE History if possible (requires history, which is separate, but we can try small fetch or skip)
-        # For speed, let's skip PE history in this call or do a lightweight version.
-        # Ideally, PE history needs price at that time. 
-        # We will fetch a lightweight history here just for PE calculation if not cached.
+        # Calculate derived fields
+        for item in data:
+            # Calculate operating expense (COGS + R&D + SG&A)
+            cogs = item.get("cogs", 0) or 0
+            rnd = item.get("rnd", 0) or 0
+            sga = item.get("sga", 0) or 0
+            item["operatingExpense"] = cogs + rnd + sga
+            
+            # Use netIncome from map
+            net_income = item.get("netIncome", 0) or 0
+            revenue = item.get("revenue", 0) or 0
+            
+            # Calculate net profit margin
+            if revenue > 0:
+                item["netProfitMargin"] = (net_income / revenue) * 100
+            else:
+                item["netProfitMargin"] = 0
+            
+            # Use EBITDA if available, otherwise estimate from operating income
+            if not item.get("ebitda") or item.get("ebitda") == 0:
+                operating_income = item.get("operatingIncome", 0) or 0
+                interest = item.get("interest", 0) or 0
+                # Rough estimate: Operating Income + Interest (simplified)
+                item["ebitda"] = operating_income + abs(interest) if operating_income > 0 else 0
+            
+            # Set period field
+            item["period"] = item.get("year", "N/A")
         
         set_cached_data(cache_key, data)
         return data

@@ -9,9 +9,10 @@
 
 import { useState, useEffect } from 'react';
 import { Target, Calendar, Clock, Plus } from 'lucide-react';
-import { Card } from '../ui/Card';
+import { Card, CardContent } from '../ui/card-new';
 import { getPriceTargets, createPriceTarget } from '../../lib/api';
-import { useAuth } from '../../hooks/useAuth';
+import { useUser } from '@clerk/clerk-react';
+import { supabase } from '../../lib/supabase';
 import { AddPriceTargetModal } from './AddPriceTargetModal';
 
 interface PriceTarget {
@@ -29,12 +30,31 @@ interface PriceTargetTimelineProps {
 }
 
 export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps) {
-    const { session } = useAuth();
+    const { user } = useUser();
     const [priceTargets, setPriceTargets] = useState<PriceTarget[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
+    const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
     
-    const effectiveUserId = userId || session?.user?.id;
+    useEffect(() => {
+        const getSupabaseUserId = async () => {
+            if (userId) {
+                setSupabaseUserId(userId);
+            } else if (user) {
+                const { data: mapping } = await supabase
+                    .from('clerk_user_mapping')
+                    .select('supabase_user_id')
+                    .eq('clerk_user_id', user.id)
+                    .maybeSingle();
+                if (mapping) {
+                    setSupabaseUserId(mapping.supabase_user_id);
+                }
+            }
+        };
+        getSupabaseUserId();
+    }, [user, userId]);
+    
+    const effectiveUserId = userId || supabaseUserId;
 
     useEffect(() => {
         if (effectiveUserId && ticker) {
@@ -103,34 +123,35 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
 
     return (
         <div className="mb-6">
-            <Card variant="glass" padding="md">
-                <div className="flex items-center justify-between mb-4">
+            <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+                <CardContent className="p-5">
+                    <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <Target className="w-5 h-5 text-indigo-400" />
-                        <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider">
+                        <Target className="w-5 h-5 text-[#1C1B17]" />
+                        <h3 className="text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider">
                             Price Target Timeline
                         </h3>
                     </div>
                     {!userId && ( // Only show add button for current user
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/30 rounded-lg transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium text-[#1C1B17] bg-[#FBF7ED] hover:bg-[#F7F2E6] border border-[#D7D0C2] rounded-lg transition-colors"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             Add Target
                         </button>
                     )}
-                </div>
+                    </div>
 
-                {loading ? (
-                    <div className="text-center py-6 text-[var(--text-secondary)] text-sm">Loading price targets...</div>
+                    {loading ? (
+                    <div className="text-center py-6 text-[#6F6A60] font-mono text-sm">Loading price targets...</div>
                 ) : priceTargets.length === 0 ? (
-                    <div className="text-center py-6 text-[var(--text-secondary)] text-sm italic">
+                    <div className="text-center py-6 text-[#6F6A60] font-mono text-sm italic">
                         No price targets set yet.
                         {!userId && (
                             <button
                                 onClick={() => setShowAddModal(true)}
-                                className="ml-2 text-indigo-400 hover:text-indigo-300 underline"
+                                className="ml-2 text-[#2F8F5B] hover:text-[#1C1B17] underline"
                             >
                                 Add one
                             </button>
@@ -146,23 +167,23 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
                                 <div
                                     key={target.id}
                                     className={`relative pl-6 pb-4 ${
-                                        index < priceTargets.length - 1 ? 'border-l-2 border-[var(--border-color)]' : ''
+                                        index < priceTargets.length - 1 ? 'border-l-2 border-[#D7D0C2]' : ''
                                     }`}
                                 >
                                     {/* Timeline dot */}
-                                    <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-indigo-500 border-2 border-[var(--bg-primary)] -translate-x-[7px]" />
+                                    <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-[#1C1B17] border-2 border-[#F7F2E6] -translate-x-[7px]" />
                                     
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <span className="text-lg font-bold text-[var(--text-primary)]">
-                                                    ₹{target.target_price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                <span className="text-lg font-mono font-bold text-[#1C1B17] tabular-nums">
+                                                    ${target.target_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                                 {isLatest && timeRemaining && (
-                                                    <span className={`text-xs px-2 py-0.5 rounded ${
+                                                    <span className={`text-xs font-mono px-2 py-0.5 rounded ${
                                                         timeRemaining === 'Overdue' 
-                                                            ? 'bg-red-500/20 text-red-300' 
-                                                            : 'bg-emerald-500/20 text-emerald-300'
+                                                            ? 'bg-[#B23B2A]/20 text-[#B23B2A]' 
+                                                            : 'bg-[#2F8F5B]/20 text-[#2F8F5B]'
                                                     }`}>
                                                         {timeRemaining}
                                                     </span>
@@ -170,7 +191,7 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
                                             </div>
                                         </div>
                                         
-                                        <div className="flex items-center gap-3 text-xs text-[var(--text-secondary)]">
+                                        <div className="flex items-center gap-3 text-xs font-mono text-[#6F6A60]">
                                             <div className="flex items-center gap-1">
                                                 <Calendar className="w-3.5 h-3.5" />
                                                 <span>Set on {formatDate(target.created_at)}</span>
@@ -187,7 +208,8 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
                             );
                         })}
                     </div>
-                )}
+                    )}
+                </CardContent>
             </Card>
 
             {showAddModal && (

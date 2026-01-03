@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
+import { useUser } from '@clerk/clerk-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { supabase } from '../../lib/supabase';
 import { ArrowLeft, Lock, Globe, Moon, Sun } from 'lucide-react';
 
 export default function PrivacySettings() {
-  const { session } = useAuth();
+  const { user, isLoaded } = useUser();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -14,24 +14,54 @@ export default function PrivacySettings() {
   const [isPrivate, setIsPrivate] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchPrivacySettings();
-    } else {
+    if (!isLoaded) {
+      setLoading(true);
+      return;
+    }
+
+    if (!user) {
       setLoading(false);
       setError('You must be logged in to access this page');
+      return;
     }
-  }, [session]);
 
-  const fetchPrivacySettings = async () => {
+    // Get Supabase user ID from mapping table
+    const getSupabaseUserId = async () => {
+      try {
+        const { data: mapping, error: mappingError } = await supabase
+          .from('clerk_user_mapping')
+          .select('supabase_user_id')
+          .eq('clerk_user_id', user.id)
+          .maybeSingle();
+
+        if (mappingError || !mapping) {
+          setError('Unable to verify your account. Please try logging out and back in.');
+          setLoading(false);
+          return;
+        }
+
+        setSupabaseUserId(mapping.supabase_user_id);
+        fetchPrivacySettings(mapping.supabase_user_id);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load user information');
+        setLoading(false);
+      }
+    };
+
+    getSupabaseUserId();
+  }, [user, isLoaded]);
+
+  const fetchPrivacySettings = async (userId: string) => {
     try {
       setLoading(true);
       const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('is_private')
-        .eq('id', session!.user!.id)
-        .single();
+        .eq('id', userId)
+        .maybeSingle();
 
       if (fetchError) throw fetchError;
 
@@ -44,7 +74,7 @@ export default function PrivacySettings() {
   };
 
   const handleTogglePrivacy = async () => {
-    if (!session?.user?.id) return;
+    if (!supabaseUserId) return;
 
     try {
       setSaving(true);
@@ -55,7 +85,7 @@ export default function PrivacySettings() {
       const { error: updateError } = await supabase
         .from('profiles')
         .update({ is_private: newPrivacyValue })
-        .eq('id', session.user.id);
+        .eq('id', supabaseUserId);
 
       if (updateError) throw updateError;
 

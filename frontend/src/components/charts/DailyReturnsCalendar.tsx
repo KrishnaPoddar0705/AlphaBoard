@@ -60,13 +60,13 @@ export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data
         };
     }, [filteredData]);
 
-    // Theme with white text for labels
+    // Theme with Editorial Paper Terminal colors
     const theme = {
-        textColor: '#ffffff',
+        textColor: '#1C1B17', // ink text
         fontSize: 11,
         labels: {
             text: {
-                fill: '#ffffff'
+                fill: '#6F6A60' // muted
             }
         }
     };
@@ -77,15 +77,15 @@ export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data
                 data={filteredData}
                 from={from}
                 to={to}
-                emptyColor="#1e293b"
-                colors={['#ef4444', '#fca5a5', '#86efac', '#10b981']}
+                emptyColor="#FBF7ED" // alt bg
+                colors={['#B23B2A', '#F09070', '#86EFAC', '#2F8F5B']} // solid red, light red, light green, solid green
                 minValue={min}
                 maxValue={max}
                 margin={{ top: 40, right: 40, bottom: 40, left: 40 }}
                 yearSpacing={40}
-                monthBorderColor="#ffffff"
-                dayBorderWidth={2}
-                dayBorderColor="#ffffff"
+                monthBorderColor="#D7D0C2" // border
+                dayBorderWidth={1}
+                dayBorderColor="#E3DDCF" // gridlines
                 theme={theme}
                 legends={[
                     {
@@ -105,10 +105,10 @@ export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data
                     const numValue = Number(returnValue);
 
                     return (
-                        <div className="bg-gray-900 border border-white/20 rounded-lg px-3 py-2 text-sm">
-                            <strong className="text-white">{day}</strong>
-                            <div className="text-gray-300 mt-1">Daily Return:</div>
-                            <div className={numValue >= 0 ? 'text-emerald-400' : numValue < 0 ? 'text-rose-400' : 'text-gray-400'}>
+                        <div className="bg-[#F7F2E6] border border-[#D7D0C2] rounded-lg px-3 py-2 text-sm font-mono">
+                            <strong className="text-[#1C1B17]">{day}</strong>
+                            <div className="text-[#6F6A60] mt-1">Daily Return:</div>
+                            <div className={`font-semibold tabular-nums ${numValue >= 0 ? 'text-[#2F8F5B]' : numValue < 0 ? 'text-[#B23B2A]' : 'text-[#6F6A60]'}`}>
                                 {numValue >= 0 ? '+' : ''}{numValue.toFixed(2)}%
                             </div>
                         </div>

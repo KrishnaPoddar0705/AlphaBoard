@@ -88,7 +88,7 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                             <path
                                 d={path}
                                 fill="none"
-                                stroke="#6366f1"
+                                stroke="#1C1B17"
                                 strokeWidth={2}
                                 strokeDasharray="4 4"
                                 opacity={0.9}
@@ -99,8 +99,8 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                                     cx={point.x}
                                     cy={point.y}
                                     r={4}
-                                    fill="#6366f1"
-                                    stroke="#ffffff"
+                                    fill="#1C1B17"
+                                    stroke="#F7F2E6"
                                     strokeWidth={2}
                                     opacity={0.9}
                                 />
@@ -110,7 +110,7 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                 }]}
                 colors={(bar) => {
                     const returnValue = typeof bar.data.return === 'number' ? bar.data.return : 0;
-                    return returnValue >= 0 ? '#10b981' : '#ef4444';
+                    return returnValue >= 0 ? '#2F8F5B' : '#B23B2A';
                 }}
                 borderColor={{ from: 'color', modifiers: [['darker', 1.2]] }}
                 axisTop={null}
@@ -154,26 +154,27 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                     return (
                         <div style={{
                             padding: '8px 12px',
-                            background: 'rgba(15, 23, 42, 0.95)',
-                            color: 'white',
+                            background: '#F7F2E6', // card bg
+                            color: '#1C1B17', // ink text
                             borderRadius: '8px',
-                            border: '1px solid rgba(255, 255, 255, 0.1)',
+                            border: '1px solid #D7D0C2', // border
                             fontSize: '12px',
-                            fontWeight: '500'
+                            fontWeight: '500',
+                            fontFamily: 'ui-monospace, monospace'
                         }}>
-                            <div style={{ marginBottom: '4px' }}>
+                            <div style={{ marginBottom: '4px', color: '#1C1B17' }}>
                                 <strong>{indexValue}</strong>
                             </div>
-                            <div style={{ color: numValue >= 0 ? '#10b981' : '#ef4444', marginBottom: '4px' }}>
+                            <div style={{ color: numValue >= 0 ? '#2F8F5B' : '#B23B2A', marginBottom: '4px' }}>
                                 Period: {numValue >= 0 ? '+' : ''}{formattedValue}%
                             </div>
                             {cumulativeValue !== null && (
-                                <div style={{ color: '#6366f1', marginBottom: item.count ? '4px' : '0' }}>
+                                <div style={{ color: '#1C1B17', marginBottom: item.count ? '4px' : '0' }}>
                                     Cumulative: {cumulativeValue}%
                                 </div>
                             )}
                             {item.count !== undefined && (
-                                <div style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: '11px', marginTop: '4px' }}>
+                                <div style={{ color: '#6F6A60', fontSize: '11px', marginTop: '4px' }}>
                                     {item.count} {item.count === 1 ? 'recommendation' : 'recommendations'} added
                                 </div>
                             )}
@@ -186,24 +187,25 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                     axis: {
                         domain: {
                             line: {
-                                stroke: 'rgba(255, 255, 255, 0.1)',
+                                stroke: '#D7D0C2', // border
                                 strokeWidth: 1
                             }
                         },
                         ticks: {
                             line: {
-                                stroke: 'rgba(255, 255, 255, 0.2)',
+                                stroke: '#E3DDCF', // gridlines
                                 strokeWidth: 1
                             },
                             text: {
-                                fill: 'rgba(255, 255, 255, 0.6)',
-                                fontSize: 11
+                                fill: '#6F6A60', // muted
+                                fontSize: 11,
+                                fontFamily: 'ui-monospace, monospace'
                             }
                         }
                     },
                     grid: {
                         line: {
-                            stroke: 'rgba(255, 255, 255, 0.05)',
+                            stroke: '#E3DDCF', // gridlines
                             strokeWidth: 1
                         }
                     }

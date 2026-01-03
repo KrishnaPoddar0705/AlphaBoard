@@ -33,8 +33,10 @@ export const getStockSummary = async (ticker: string) => {
     return res.data;
 };
 
-export const getStockHistory = async (ticker: string) => {
-    const res = await api.get(`/market/history/${ticker}`);
+export const getStockHistory = async (ticker: string, period: string = "1y", interval: string = "1d") => {
+    const res = await api.get(`/market/history/${ticker}`, {
+        params: { period, interval }
+    });
     return res.data;
 };
 
@@ -50,6 +52,13 @@ export const getBalanceSheet = async (ticker: string) => {
 
 export const getCashFlow = async (ticker: string) => {
     const res = await api.get(`/market/financials/cashflow/${ticker}`);
+    return res.data;
+};
+
+export const explainFinancials = async (ticker: string, incomeData: any[]) => {
+    const res = await api.post(`/market/financials/explain/${ticker}`, {
+        income: incomeData
+    });
     return res.data;
 };
 
@@ -83,6 +92,28 @@ export const createRecommendation = async (data: any, userId: string) => {
 
     // Send user_id in request body instead of query parameter for security
     const res = await api.post(`/recommendations/create`, { ...data, user_id: userId });
+    return res.data;
+};
+
+export const createWatchlistItem = async (data: any, userId: string) => {
+    if (!userId) {
+        throw new Error('User ID is required. Please ensure user is authenticated and synced with Supabase.');
+    }
+
+    // Use dedicated watchlist endpoint
+    const res = await api.post(`/watchlist/create`, { ...data, user_id: userId });
+    return res.data;
+};
+
+export const deleteWatchlistItem = async (recommendationId: string, userId: string) => {
+    if (!userId) {
+        throw new Error('User ID is required. Please ensure user is authenticated and synced with Supabase.');
+    }
+
+    // Use backend endpoint to bypass RLS (DELETE requests use query params)
+    const res = await api.delete(`/watchlist/${recommendationId}`, {
+        params: { user_id: userId }
+    });
     return res.data;
 };
 
@@ -258,12 +289,11 @@ export const getPortfolioContribution = async (userId: string) => {
 // --- Price Target Endpoints ---
 
 export const createPriceTarget = async (ticker: string, targetPrice: number, targetDate: string | null, userId: string) => {
-    // Send user_id in request body instead of query parameter for security
-    const res = await api.post('/price-targets', {
+    // Backend expects user_id as query parameter
+    const res = await api.post(`/price-targets?user_id=${encodeURIComponent(userId)}`, {
         ticker,
         target_price: targetPrice,
         target_date: targetDate || null,
-        user_id: userId
     });
     return res.data;
 };

@@ -27,8 +27,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return prefersDark ? 'dark' : 'light';
     }
     
-    // Default to dark
-    return 'dark';
+    // Default to light (Editorial Paper Terminal theme)
+    return 'light';
   });
 
   useEffect(() => {
