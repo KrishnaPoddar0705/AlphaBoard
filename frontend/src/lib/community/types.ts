@@ -8,6 +8,8 @@ export interface CommunityPost {
   created_at: string;
   updated_at: string;
   score: number;
+  upvotes?: number;
+  downvotes?: number;
   comment_count: number;
   last_activity_at: string;
   is_deleted: boolean;
@@ -27,6 +29,8 @@ export interface CommunityComment {
   created_at: string;
   updated_at: string;
   score: number;
+  upvotes?: number;
+  downvotes?: number;
   is_deleted: boolean;
   user_vote?: number | null;
   attachments?: CommunityAttachment[];

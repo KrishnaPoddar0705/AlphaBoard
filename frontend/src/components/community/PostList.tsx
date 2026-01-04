@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@clerk/clerk-react';
 import { PostCard } from './PostCard';
 import { SortBar } from './SortBar';
-import { listPosts, votePost } from '@/lib/community/api';
+import { listPosts } from '@/lib/community/api';
 import type { CommunityPost, SortOption, TopTimeframe } from '@/lib/community/types';
 
 interface PostListProps {
@@ -47,30 +47,6 @@ export function PostList({ ticker, onCreatePost }: PostListProps) {
     loadPosts(true);
   }, [ticker, sort, timeframe, user?.id]);
 
-  const handleVote = async (postId: string, value: -1 | 1 | 0) => {
-    if (!user) return;
-    try {
-      await votePost(postId, value, user.id);
-      // Optimistic update
-      setPosts(prev => prev.map(p => {
-        if (p.id === postId) {
-          const newVote = p.user_vote === value ? null : value;
-          const voteDiff = newVote === null 
-            ? -p.user_vote! 
-            : (p.user_vote === null ? newVote : (newVote - p.user_vote));
-          return {
-            ...p,
-            user_vote: newVote,
-            score: p.score + voteDiff,
-          };
-        }
-        return p;
-      }));
-    } catch (error) {
-      console.error('Failed to vote:', error);
-    }
-  };
-
   return (
     <div className="space-y-4">
       <SortBar
@@ -97,7 +73,6 @@ export function PostList({ ticker, onCreatePost }: PostListProps) {
             <PostCard
               key={post.id}
               post={post}
-              onVote={(value) => handleVote(post.id, value)}
               ticker={ticker}
             />
           ))}

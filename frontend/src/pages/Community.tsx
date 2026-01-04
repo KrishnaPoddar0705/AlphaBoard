@@ -3,20 +3,19 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { useDebounce } from "@/hooks/useDebounce"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card-new"
-import { Badge } from "@/components/ui/badge"
+import { Card, CardContent } from "@/components/ui/card-new"
 import { Button } from "@/components/ui/button"
-import { ArrowUp, ArrowDown, MessageCircle } from "lucide-react"
 import { getPrice, getStockHistory, getStockSummary, searchStocks } from "@/lib/api"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@clerk/clerk-react"
-import { MiniLineChart } from "@/components/charts/MiniLineChart"
+import { getSupabaseUserIdForClerkUser } from "@/lib/clerkSupabaseSync"
 import { SortingBanner } from "@/components/community/SortingBanner"
 import type { SortOption } from "@/components/community/SortingBanner"
 import { useSearch } from "@/contexts/SearchContext"
 import { SP500_STOCKS } from "@/data/sp500"
 import { NIFTY50_STOCKS } from "@/data/nifty50"
 import { Globe } from "lucide-react"
+import { CommunityStockCard } from "@/components/community/CommunityStockCard"
 import {
   Select,
   SelectContent,
@@ -40,6 +39,12 @@ interface StockCard {
   totalVotes: number
   dayChartData: Array<{ timestamp: number; price: number; open?: number; close?: number }>
   isLoading: boolean
+  // Community metrics
+  threadCount: number // Number of threads (posts) for this ticker
+  commentsCount: number // Total number of comments across all posts
+  aggregateScore: number // Sum of all post scores for this ticker
+  top_thread_title?: string | null
+  userVote?: number | null // -1, 0, or 1 for ticker-level vote
 }
 
 const BATCH_SIZE = 25
@@ -237,20 +242,122 @@ export default function Community() {
 
   const fetchStockMetrics = async (ticker: string) => {
     try {
-      const [votesResult, commentsResult] = await Promise.all([
-        supabase.from("stock_votes").select("*").eq("ticker", ticker),
-        supabase.from("stock_comments").select("*", { count: "exact", head: true }).eq("ticker", ticker),
-      ])
+      const now = new Date()
+      const yesterday24h = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+      const yesterday24hISO = yesterday24h.toISOString()
 
-      const votes = votesResult.data || []
-      const upvotes = votes.filter((v) => v.vote_type === "upvote").length
-      const downvotes = votes.filter((v) => v.vote_type === "downvote").length
-      const comments = commentsResult.count || 0
+      // Fetch community posts for this ticker
+      const postsResult = await supabase
+        .from("community_posts")
+        .select("id, created_at, score, comment_count, title, last_activity_at")
+        .eq("ticker", ticker)
+        .eq("is_deleted", false)
 
-      return { upvotes, downvotes, comments, totalVotes: upvotes + downvotes }
+      const posts = postsResult.data || []
+      
+      // Calculate aggregate score (sum of all post scores)
+      const aggregateScore = posts.reduce((sum, p) => sum + (p.score || 0), 0)
+      
+      // Get post IDs to fetch comments
+      const postIds = posts.map((p) => p.id)
+      
+      // Fetch comments for these posts
+      let comments: any[] = []
+      if (postIds.length > 0) {
+        const commentsResult = await supabase
+          .from("community_comments")
+          .select("id, created_at")
+          .eq("is_deleted", false)
+          .in("post_id", postIds)
+        
+        comments = commentsResult.data || []
+      }
+
+      // Get top thread (most recent by last_activity_at)
+      let top_thread_title: string | null = null
+      if (posts.length > 0) {
+        const sortedPosts = [...posts].sort((a, b) => 
+          new Date(b.last_activity_at).getTime() - new Date(a.last_activity_at).getTime()
+        )
+        const topPost = sortedPosts[0]
+        top_thread_title = topPost?.title || null
+      }
+
+      // Thread count (number of posts)
+      const threadCount = posts.length
+
+      // Get stock-level vote data from community_stocks table
+      // Default to 0 if stock doesn't exist yet (RPC function will create it on first vote)
+      let stockScore = 0
+      let stockUpvotes = 0
+      let stockDownvotes = 0
+      let stockUserVote: number | null = null
+      
+      const { data: stockData } = await supabase
+        .from('community_stocks')
+        .select('score, upvotes, downvotes, ticker')
+        .eq('ticker', ticker)
+        .maybeSingle()
+      
+      if (stockData) {
+        stockScore = stockData.score ?? 0
+        stockUpvotes = stockData.upvotes ?? 0
+        stockDownvotes = stockData.downvotes ?? 0
+      }
+      // If stockData is null, defaults (0) are already set above
+      
+      // Get user's stock-level vote (works for both authenticated and anonymous users)
+      // Check Supabase session directly (includes anonymous users)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user?.id) {
+        const { data: userVoteData } = await supabase
+          .from('community_votes')
+          .select('value')
+          .eq('target_type', 'stock')
+          .eq('target_id', ticker)
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+        
+        if (userVoteData) {
+          stockUserVote = userVoteData.value as number
+        }
+      }
+
+      // Legacy metrics for backward compatibility
+      const upvotes = 0
+      const downvotes = 0
+      const comments_total = comments.length
+
+      return {
+        upvotes,
+        downvotes,
+        comments: comments_total,
+        totalVotes: upvotes + downvotes,
+        threadCount,
+        commentsCount: comments_total,
+        aggregateScore,
+        top_thread_title,
+        stockScore,
+        stockUpvotes,
+        stockDownvotes,
+        stockUserVote,
+      }
     } catch (error) {
       console.error(`Error fetching metrics for ${ticker}:`, error)
-      return { upvotes: 0, downvotes: 0, comments: 0, totalVotes: 0 }
+      return {
+        upvotes: 0,
+        downvotes: 0,
+        comments: 0,
+        totalVotes: 0,
+        threadCount: 0,
+        commentsCount: 0,
+        aggregateScore: 0,
+        top_thread_title: null,
+        stockScore: 0,
+        stockUpvotes: 0,
+        stockDownvotes: 0,
+        stockUserVote: null,
+      }
     }
   }
 
@@ -282,8 +389,13 @@ export default function Community() {
         downvotes: 0,
         comments: 0,
         totalVotes: 0,
+        threadCount: 0,
+        commentsCount: 0,
+        aggregateScore: 0,
+        top_thread_title: null,
         dayChartData: [],
         isLoading: true,
+        userVote: null,
       }))
 
       setDisplayedStocks((prev) => [...prev, ...loadingStocks])
@@ -334,9 +446,21 @@ export default function Community() {
             price,
             change,
             changePercent,
-            ...metrics,
+            upvotes: metrics.upvotes,
+            downvotes: metrics.downvotes,
+            comments: metrics.comments,
+            totalVotes: metrics.totalVotes,
+            threadCount: metrics.threadCount,
+            commentsCount: metrics.commentsCount,
+            aggregateScore: metrics.aggregateScore,
+            top_thread_title: metrics.top_thread_title,
             dayChartData: chartData,
             isLoading: false,
+            userVote: metrics.userVote,
+            stockScore: metrics.stockScore ?? 0,
+            stockUpvotes: metrics.stockUpvotes ?? 0,
+            stockDownvotes: metrics.stockDownvotes ?? 0,
+            stockUserVote: metrics.stockUserVote ?? null,
           } as StockCard
         } catch (error) {
           console.error(`Error loading ${ticker}:`, error)
@@ -350,8 +474,17 @@ export default function Community() {
             downvotes: 0,
             comments: 0,
             totalVotes: 0,
+            threadCount: 0,
+            commentsCount: 0,
+            aggregateScore: 0,
+            top_thread_title: null,
             dayChartData: [],
             isLoading: false,
+            userVote: null,
+            stockScore: 0,
+            stockUpvotes: 0,
+            stockDownvotes: 0,
+            stockUserVote: null,
           } as StockCard
         }
       })
@@ -441,39 +574,7 @@ export default function Community() {
     return sortedStocks
   }, [sortedStocks, debouncedSearchQuery, searchResults])
 
-  const handleVote = async (ticker: string, voteType: "upvote" | "downvote") => {
-    if (!user) {
-      const anonymousId = `anon_${Date.now()}_${Math.random()}`
-      await supabase.from("stock_votes").upsert({
-        ticker,
-        user_id: anonymousId,
-        vote_type: voteType,
-      })
-    } else {
-      await supabase.from("stock_votes").upsert({
-        ticker,
-        user_id: user.id,
-        vote_type: voteType,
-      })
-    }
-
-    // Update local state
-    setDisplayedStocks((prev) =>
-      prev.map((stock) => {
-        if (stock.ticker === ticker) {
-          const newUpvotes = voteType === "upvote" ? stock.upvotes + 1 : stock.upvotes
-          const newDownvotes = voteType === "downvote" ? stock.downvotes + 1 : stock.downvotes
-          return {
-            ...stock,
-            upvotes: newUpvotes,
-            downvotes: newDownvotes,
-            totalVotes: newUpvotes + newDownvotes,
-          }
-        }
-        return stock
-      })
-    )
-  }
+  // Voting is now handled internally by CommunityActionStrip component via useVote hook
 
   const handleStockClick = (ticker: string) => {
     navigate(`/stock/${ticker}`)
@@ -580,98 +681,23 @@ export default function Community() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-5">
         {filteredStocks.map((stock) => (
-          <Card
+          <CommunityStockCard
             key={stock.ticker}
-            className="cursor-pointer hover:border-[#1C1B17] transition-all"
-            onClick={() => handleStockClick(stock.ticker)}
-          >
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <CardTitle className="text-base font-semibold text-[#1C1B17]">{stock.ticker}</CardTitle>
-                  {stock.companyName && (
-                    <p className="text-xs text-[#6F6A60] truncate mt-0.5">{stock.companyName}</p>
-                  )}
-                </div>
-                <Badge
-                  variant={stock.changePercent >= 0 ? "default" : "destructive"}
-                  className={`text-xs font-medium ml-2 flex-shrink-0 ${
-                    stock.changePercent >= 0
-                      ? "bg-[#2F8F5B] text-white border-[#2F8F5B]"
-                      : "bg-[#B23B2A] text-white border-[#B23B2A]"
-                  }`}
-                >
-                  {stock.changePercent >= 0 ? "+" : ""}
-                  {stock.changePercent.toFixed(1)}%
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div>
-                <div className="text-3xl font-bold text-[#1C1B17] tabular-nums">
-                  {stock.isLoading ? "..." : `$${stock.price.toFixed(2)}`}
-                </div>
-                <div className={`text-sm ${stock.change >= 0 ? "text-[#2F8F5B]" : "text-[#B23B2A]"}`}>
-                  {stock.change >= 0 ? "+" : ""}${stock.change.toFixed(2)} from last day
-                </div>
-              </div>
-
-              {/* Chart */}
-              {stock.isLoading ? (
-                <div className="h-20 w-full bg-[#FBF7ED] rounded-lg flex items-center justify-center border border-[#E3DDCF]">
-                  <div className="text-[#6F6A60] text-xs">Loading...</div>
-                </div>
-              ) : (
-                <div className="h-20 w-full">
-                  <MiniLineChart
-                    data={stock.dayChartData}
-                    isPositive={stock.changePercent >= 0}
-                    height={80}
-                  />
-                </div>
-              )}
-
-              {/* Engagement metrics */}
-              <div className="flex items-center gap-4 pt-2 border-t border-[#D7D0C2]">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleVote(stock.ticker, "upvote")
-                  }}
-                  className="h-8 gap-1"
-                >
-                  <ArrowUp className="h-4 w-4" />
-                  <span className="text-sm tabular-nums">{stock.upvotes}</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleVote(stock.ticker, "downvote")
-                  }}
-                  className="h-8 gap-1"
-                >
-                  <ArrowDown className="h-4 w-4" />
-                  <span className="text-sm tabular-nums">{stock.downvotes}</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleStockClick(stock.ticker)
-                  }}
-                  className="h-8 gap-1"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  <span className="text-sm tabular-nums">{stock.comments}</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            ticker={stock.ticker}
+            companyName={stock.companyName}
+            price={stock.price}
+            change={stock.change}
+            changePercent={stock.changePercent}
+            sparklineData={stock.dayChartData}
+            threadCount={stock.threadCount}
+            commentsCount={stock.commentsCount}
+            stockScore={stock.stockScore ?? 0}
+            stockUpvotes={stock.stockUpvotes ?? 0}
+            stockDownvotes={stock.stockDownvotes ?? 0}
+            stockUserVote={stock.stockUserVote ?? null}
+            isLoading={stock.isLoading}
+            top_thread_title={stock.top_thread_title}
+          />
         ))}
       </div>
 

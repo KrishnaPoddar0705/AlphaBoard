@@ -427,19 +427,27 @@ export async function deletePost(postId: string, clerkUserId: string): Promise<v
 }
 
 /**
- * Vote on a post
+ * Vote on a post (legacy function - consider using useVote hook instead)
+ * @deprecated Use the useVote hook with rpc_cast_vote instead
  */
 export async function votePost(postId: string, value: -1 | 1 | 0, clerkUserId: string): Promise<void> {
-  const supabaseUserId = await getSupabaseUserIdForClerkUser(clerkUserId);
-  if (!supabaseUserId) {
-    throw new Error('User must be authenticated. Please ensure your account is synced.');
+  // Import ensureVoterSession dynamically to avoid circular dependencies
+  const { ensureVoterSession } = await import('@/lib/auth/ensureVoterSession');
+  
+  // Ensure we have a Supabase session (creates anonymous session if needed)
+  const hasSession = await ensureVoterSession();
+  if (!hasSession) {
+    throw new Error('Failed to establish voting session');
   }
 
-  // Vote using RPC function to bypass RLS
-  const { error } = await supabase.rpc('vote_community_post', {
-    p_post_id: postId,
-    p_user_id: supabaseUserId,
-    p_value: value,
+  // Convert 0 to null for removing vote
+  const newValue = value === 0 ? null : value;
+
+  // Vote using new RPC function (uses auth.uid() from JWT)
+  const { error } = await supabase.rpc('rpc_cast_vote', {
+    p_target_type: 'post',
+    p_target_id: postId,
+    p_new_value: newValue,
   });
   
   if (error) {
@@ -773,19 +781,27 @@ export async function deleteComment(commentId: string, clerkUserId: string): Pro
 }
 
 /**
- * Vote on a comment
+ * Vote on a comment (legacy function - consider using useVote hook instead)
+ * @deprecated Use the useVote hook with rpc_cast_vote instead
  */
 export async function voteComment(commentId: string, value: -1 | 1 | 0, clerkUserId: string): Promise<void> {
-  const supabaseUserId = await getSupabaseUserIdForClerkUser(clerkUserId);
-  if (!supabaseUserId) {
-    throw new Error('User must be authenticated. Please ensure your account is synced.');
+  // Import ensureVoterSession dynamically to avoid circular dependencies
+  const { ensureVoterSession } = await import('@/lib/auth/ensureVoterSession');
+  
+  // Ensure we have a Supabase session (creates anonymous session if needed)
+  const hasSession = await ensureVoterSession();
+  if (!hasSession) {
+    throw new Error('Failed to establish voting session');
   }
 
-  // Vote using RPC function to bypass RLS
-  const { error } = await supabase.rpc('vote_community_comment', {
-    p_comment_id: commentId,
-    p_user_id: supabaseUserId,
-    p_value: value,
+  // Convert 0 to null for removing vote
+  const newValue = value === 0 ? null : value;
+
+  // Vote using new RPC function (uses auth.uid() from JWT)
+  const { error } = await supabase.rpc('rpc_cast_vote', {
+    p_target_type: 'comment',
+    p_target_id: commentId,
+    p_new_value: newValue,
   });
   
   if (error) {

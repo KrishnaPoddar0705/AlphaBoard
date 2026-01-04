@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import LayoutV2 from './components/LayoutV2';
@@ -23,6 +23,7 @@ import ReportDetail from './pages/ReportDetail';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import InlineLogin from './components/InlineLogin';
+import { ensureVoterSession } from './lib/auth/ensureVoterSession';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -43,6 +44,17 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  // Initialize anonymous session on app load (optional, for better UX)
+  // This ensures anonymous users have a session ready before they interact
+  useEffect(() => {
+    // Silently ensure anonymous session exists for voting
+    // This is non-blocking and doesn't show errors to users
+    ensureVoterSession().catch((error) => {
+      // Silently handle errors - voting will work when user tries to vote
+      console.debug('Anonymous session initialization:', error);
+    });
+  }, []);
+
   return (
     <BrowserRouter>
       <Routes>
@@ -55,7 +67,7 @@ function App() {
           <Route path="/stock/:ticker/community" element={<StockDetail />} />
           <Route path="/stock/:ticker/community/:postId" element={<StockDetail />} />
           <Route path="/stock/:ticker/financials" element={<StockDetail />} />
-          
+
           {/* User-specific routes */}
           <Route path="/recommendations" element={
             <PrivateRoute>
@@ -77,7 +89,7 @@ function App() {
               <Performance />
             </PrivateRoute>
           } />
-          
+
           {/* Organization routes */}
           <Route path="/research" element={
             <PrivateRoute>
@@ -116,7 +128,7 @@ function App() {
               <OrganizationSettings />
             </PrivateRoute>
           } />
-          
+
           {/* Settings */}
           <Route path="/settings/privacy" element={
             <PrivateRoute>
@@ -128,7 +140,7 @@ function App() {
               <Profile />
             </PrivateRoute>
           } />
-          
+
           {/* Redirect root to community */}
           <Route path="/" element={<Navigate to="/community" replace />} />
         </Route>
