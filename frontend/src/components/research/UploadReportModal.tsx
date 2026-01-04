@@ -132,7 +132,7 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
         throw new Error(errorData.error || errorData.details || `Upload failed (${response.status})`);
       }
 
-      const result = await response.json();
+      await response.json();
 
       setUploadStatus('File uploaded! Indexing and parsing...');
 

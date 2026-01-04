@@ -75,7 +75,7 @@ export async function syncClerkUserToSupabase(clerkUser: ClerkUser | null): Prom
     });
 
     if (!syncResponse.ok) {
-      const error = await syncResponse.json();
+      await syncResponse.json();
       return null;
     }
 

@@ -49,7 +49,7 @@ function App() {
   useEffect(() => {
     // Silently ensure anonymous session exists for voting
     // This is non-blocking and doesn't show errors to users
-    ensureVoterSession().catch((error) => {
+    ensureVoterSession().catch((_error) => {
       // Silently handle errors - voting will work when user tries to vote
     });
   }, []);
