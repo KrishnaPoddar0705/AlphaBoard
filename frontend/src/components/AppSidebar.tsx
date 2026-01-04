@@ -47,6 +47,12 @@ const navItems = {
       isActive: false,
     },
     {
+      title: "Leaderboard",
+      url: "/leaderboard",
+      icon: BarChart3,
+      isActive: false,
+    },
+    {
       title: "Recommendations",
       url: "/recommendations",
       icon: TrendingUp,
@@ -76,12 +82,6 @@ const navItems = {
       title: "Institutional Memory",
       url: "/research",
       icon: FileText,
-      isActive: false,
-    },
-    {
-      title: "Tracker",
-      url: "/leaderboard",
-      icon: BarChart3,
       isActive: false,
     },
     {

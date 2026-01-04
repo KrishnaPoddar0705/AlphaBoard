@@ -19,7 +19,6 @@ import { CompanyFactsCard } from "@/components/stock/CompanyFactsCard"
 import { RatingsSnapshot } from "@/components/stock/RatingsSnapshot"
 import { CommunityTab } from "@/components/community/CommunityTab"
 import { listPosts } from "@/lib/community/api"
-import { useQueryClient } from "@tanstack/react-query"
 import toast from "react-hot-toast"
 
 interface Comment {
@@ -37,7 +36,6 @@ export default function StockDetail() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useUser()
-  const queryClient = useQueryClient()
   const [stockData, setStockData] = React.useState<any>(null)
   const [comments, setComments] = React.useState<Comment[]>([])
   const [newComment, setNewComment] = React.useState("")

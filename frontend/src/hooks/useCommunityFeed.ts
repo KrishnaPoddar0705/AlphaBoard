@@ -48,7 +48,7 @@ export function useCommunityFeed(
     const checkSession = async () => {
       try {
         // Wait for session to be ready (with timeout)
-        const { data: { session } } = await supabase.auth.getSession()
+        await supabase.auth.getSession()
         if (mounted) {
           setSessionReady(true)
         }
