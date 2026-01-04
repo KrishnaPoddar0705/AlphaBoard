@@ -60,7 +60,6 @@ export default function PodcastPlayer({
                     URL.revokeObjectURL(url);
                 };
             } catch (error) {
-                console.error('Error creating audio blob:', error);
             }
         }
     }, [audioBase64]);
@@ -132,7 +131,6 @@ export default function PodcastPlayer({
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         } catch (error) {
-            console.error('Error downloading audio:', error);
         }
     };
 
@@ -177,7 +175,6 @@ export default function PodcastPlayer({
             
             setTimeout(() => setSaved(false), 3000); // Reset saved state after 3 seconds
         } catch (error: any) {
-            console.error('Error saving podcast:', error);
             alert(`Failed to save podcast: ${error.message || 'Unknown error'}`);
         } finally {
             setSaving(false);

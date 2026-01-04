@@ -47,7 +47,6 @@ export async function syncClerkUserToSupabase(clerkUser: ClerkUser | null): Prom
 
   const email = clerkUser.emailAddresses[0]?.emailAddress;
   if (!email) {
-    console.error('Clerk user has no email address');
     return null;
   }
 
@@ -77,14 +76,12 @@ export async function syncClerkUserToSupabase(clerkUser: ClerkUser | null): Prom
 
     if (!syncResponse.ok) {
       const error = await syncResponse.json();
-      console.error('Failed to sync Clerk user:', error);
       return null;
     }
 
     const syncData: SyncResponse = await syncResponse.json();
 
     if (!syncData.success || !syncData.supabaseUserId) {
-      console.error('Sync failed:', syncData);
       return null;
     }
 
@@ -127,17 +124,14 @@ export async function syncClerkUserToSupabase(clerkUser: ClerkUser | null): Prom
             // Session created successfully
             return { session: verifyData.session, userId: syncData.supabaseUserId };
           } else {
-            console.warn('Failed to verify token:', verifyError);
           }
         }
         
         // If we have a magic link but token extraction failed, try using signInWithOtp
         // This will send a new magic link, but it's more reliable
         if (syncData.magicLink && !token) {
-          console.log('Token extraction failed, will use signInWithOtp fallback');
         }
       } catch (err) {
-        console.warn('Failed to use magic link:', err);
       }
     }
 
@@ -153,7 +147,6 @@ export async function syncClerkUserToSupabase(clerkUser: ClerkUser | null): Prom
       });
 
       if (otpError) {
-        console.error('Failed to send OTP:', otpError);
         // Return user ID - session will be created when user verifies email
         return { session: null, userId: syncData.supabaseUserId };
       }
@@ -166,7 +159,6 @@ export async function syncClerkUserToSupabase(clerkUser: ClerkUser | null): Prom
         return { session: newSession, userId: syncData.supabaseUserId };
       }
     } catch (err) {
-      console.error('Error creating session:', err);
     }
 
     // If we still don't have a session, try using the magic link directly
@@ -187,15 +179,12 @@ export async function syncClerkUserToSupabase(clerkUser: ClerkUser | null): Prom
           }
         }
       } catch (err) {
-        console.warn('Failed to use magic link:', err);
       }
     }
 
     // Last resort: Return user ID - the useAuth hook will handle retrying
-    console.log('Session creation deferred. Will retry in useAuth hook.');
     return { session: null, userId: syncData.supabaseUserId };
   } catch (error) {
-    console.error('Error syncing Clerk user:', error);
     return null;
   }
 }
@@ -219,7 +208,6 @@ export async function getSupabaseUserIdForClerkUser(clerkUserId: string): Promis
 
     return data.supabase_user_id;
   } catch (error) {
-    console.error('Error getting Supabase user ID:', error);
     return null;
   }
 }

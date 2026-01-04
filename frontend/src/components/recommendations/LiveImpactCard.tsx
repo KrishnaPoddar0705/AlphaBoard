@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { TrendingUp, TrendingDown, AlertCircle, Zap } from 'lucide-react';
 
 interface LiveImpactCardProps {

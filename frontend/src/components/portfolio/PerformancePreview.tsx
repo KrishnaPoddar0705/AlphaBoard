@@ -57,7 +57,6 @@ export const PerformancePreviewV2: React.FC<PerformancePreviewProps> = ({ userId
             const data = await getPortfolioPreview(userId);
             setPreviewData(data);
         } catch (error) {
-            console.error('Error fetching portfolio preview:', error);
         } finally {
             setLoading(false);
         }

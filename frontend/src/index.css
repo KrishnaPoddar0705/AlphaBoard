@@ -20,6 +20,27 @@
   --color-slate-700: #334155;
   --color-slate-800: #1e293b;
   --color-slate-900: #0f172a;
+  
+  /* Editorial Paper Terminal Colors */
+  --color-paper: #F1EEE0;
+  --color-paper-light: #F7F2E6;
+  --color-paper-alt: #FBF7ED;
+  --color-ink: #1C1B17;
+  --color-ink-muted: #6F6A60;
+  --color-ink-faint: #8B857A;
+  --color-border-editorial: #D7D0C2;
+  --color-gridline: #E3DDCF;
+  --color-positive: #2F8F5B;
+  --color-negative: #B23B2A;
+  --color-chart-orange: #D06030;
+  --color-chart-salmon: #F09070;
+  
+  /* Sidebar colors */
+  --color-sidebar-background: #F1EEE0;
+  --color-sidebar-foreground: #1C1B17;
+  --color-sidebar-accent: rgba(28, 27, 23, 0.04);
+  --color-sidebar-accent-foreground: #1C1B17;
+  --color-sidebar-border: #D7D0C2;
 }
 
 /* ===========================
@@ -40,32 +61,90 @@
 }
 
 :root[data-theme="light"] {
-  --bg-primary: #f4f6fa;
-  --bg-secondary: rgba(0, 0, 0, 0.05);
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.35);
-  --text-primary: #0f172a;
-  --text-secondary: #1e293b;
-  --text-tertiary: #334155;
-  --border-color: rgba(0, 0, 0, 0.15);
-  --card-bg: rgba(255, 255, 255, 0.7);
-  --list-item-bg: rgba(255, 255, 255, 0.8);
-  --list-item-hover: rgba(0, 0, 0, 0.05);
+  /* Editorial Paper Terminal Theme - Paper Surfaces */
+  --bg-primary: #F1EEE0;
+  --card-bg: #F7F2E6;
+  --bg-secondary: #FBF7ED;
+  
+  /* Borders & Rules */
+  --border-color: #D7D0C2;
+  --gridline-color: #E3DDCF;
+  
+  /* Ink / Text */
+  --text-primary: #1C1B17;
+  --text-secondary: #6F6A60;
+  --text-tertiary: #8B857A;
+  
+  /* Accents */
+  --positive: #2F8F5B;
+  --positive-soft: #80D090;
+  --negative: #B23B2A;
+  --chart-orange: #D06030;
+  --chart-salmon: #F09070;
+  --link: #1D4ED8;
+  
+  /* Interaction States */
+  --hover-surface: rgba(28, 27, 23, 0.04);
+  --selected-surface: rgba(28, 27, 23, 0.08);
+  --focus-ring: rgba(29, 78, 216, 0.35);
+  
+  /* Sidebar Variables */
+  --sidebar-background: #F1EEE0;
+  --sidebar-foreground: #1C1B17;
+  --sidebar-accent: rgba(28, 27, 23, 0.04);
+  --sidebar-accent-foreground: #1C1B17;
+  --sidebar-border: #D7D0C2;
+  --sidebar-ring: rgba(29, 78, 216, 0.35);
+  
+  /* Legacy compatibility (will be removed gradually) */
+  --glass-bg: #F7F2E6;
+  --glass-border: #D7D0C2;
+  --list-item-bg: #FBF7ED;
+  --list-item-hover: rgba(28, 27, 23, 0.04);
 }
 
-/* Default to dark theme if no data-theme attribute */
+/* Default to Editorial Paper Terminal (light) theme */
 :root:not([data-theme]) {
-  --bg-primary: #0f172a;
-  --bg-secondary: rgba(255, 255, 255, 0.05);
-  --glass-bg: rgba(30, 41, 59, 0.5);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --text-primary: #f1f5f9;
-  --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
-  --border-color: rgba(255, 255, 255, 0.1);
-  --card-bg: rgba(30, 41, 59, 0.5);
-  --list-item-bg: rgba(30, 41, 59, 0.3);
-  --list-item-hover: rgba(255, 255, 255, 0.05);
+  /* Editorial Paper Terminal Theme - Paper Surfaces */
+  --bg-primary: #F1EEE0;
+  --card-bg: #F7F2E6;
+  --bg-secondary: #FBF7ED;
+  
+  /* Borders & Rules */
+  --border-color: #D7D0C2;
+  --gridline-color: #E3DDCF;
+  
+  /* Ink / Text */
+  --text-primary: #1C1B17;
+  --text-secondary: #6F6A60;
+  --text-tertiary: #8B857A;
+  
+  /* Accents */
+  --positive: #2F8F5B;
+  --positive-soft: #80D090;
+  --negative: #B23B2A;
+  --chart-orange: #D06030;
+  --chart-salmon: #F09070;
+  --link: #1D4ED8;
+  
+  /* Interaction States */
+  --hover-surface: rgba(28, 27, 23, 0.04);
+  --selected-surface: rgba(28, 27, 23, 0.08);
+  --focus-ring: rgba(29, 78, 216, 0.35);
+  
+  /* Sidebar Variables */
+  --sidebar-background: #F1EEE0;
+  --sidebar-foreground: #1C1B17;
+  --sidebar-accent: rgba(28, 27, 23, 0.04);
+  --sidebar-accent-foreground: #1C1B17;
+  --sidebar-border: #D7D0C2;
+  --sidebar-ring: rgba(29, 78, 216, 0.35);
+  
+  /* Legacy compatibility */
+  --glass-bg: #F7F2E6;
+  --glass-border: #D7D0C2;
+  --list-item-bg: #FBF7ED;
+  --list-item-hover: rgba(28, 27, 23, 0.04);
 }
 
 /* ===========================
@@ -81,18 +160,32 @@
   body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
-    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11", "tnum";
+    font-variant-numeric: tabular-nums;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* Focus ring styles */
+  /* Focus ring styles - Editorial Paper Terminal */
   :focus-visible {
-    @apply outline-none ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-900;
+    outline: none;
+    box-shadow: 0 0 0 3px var(--focus-ring);
   }
 
   /* Selection styles */
   ::selection {
-    @apply bg-indigo-500/30 text-white;
+    background-color: rgba(29, 78, 216, 0.2);
+    color: var(--text-primary);
+  }
+  
+  /* Typography - All text uses monospace */
+  * {
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  
+  /* Tabular numbers for all numbers */
+  h1, h2, h3, h4, h5, h6, p, span, div {
+    font-variant-numeric: tabular-nums;
   }
 }
 
@@ -101,19 +194,17 @@
    =========================== */
 @layer components {
 
-  /* Glass card effect */
+  /* Paper card effect - Editorial Paper Terminal */
   .glass {
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 
-  /* Glass panel for leaderboard */
+  /* Paper panel - Editorial Paper Terminal */
   .glass-panel {
-    background: var(--glass-bg);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--glass-border);
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
     transition: background-color 0.3s ease, border-color 0.3s ease;
   }
 
@@ -127,16 +218,18 @@
     @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 font-semibold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl shadow-lg shadow-indigo-500/25 hover:from-indigo-400 hover:to-purple-400 hover:shadow-xl hover:shadow-indigo-500/30 transition-all duration-200;
   }
 
-  /* Metric card */
+  /* Metric card - Editorial Paper Terminal */
   .metric-card {
-    @apply relative overflow-hidden rounded-xl p-4 transition-all duration-200;
+    @apply relative overflow-hidden rounded-xl p-5 transition-all duration-200;
     background: var(--card-bg);
     border: 1px solid var(--border-color);
     transition: background-color 0.3s ease, border-color 0.3s ease;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
   }
 
   .metric-card:hover {
-    @apply hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/10;
+    background: var(--hover-surface);
+    border-color: var(--text-primary);
   }
 }
 
@@ -420,46 +513,75 @@
 }
 
 /* ===========================
+   Sidebar Active State - Editorial Paper Terminal
+   =========================== */
+@layer components {
+  /* Active sidebar menu item - ink-filled pill */
+  [data-sidebar="menu-button"][data-active="true"] {
+    background-color: #1C1B17 !important;
+    color: #F7F2E6 !important;
+    font-weight: 600;
+  }
+  
+  /* Sidebar menu button hover */
+  [data-sidebar="menu-button"]:hover:not([data-active="true"]) {
+    background-color: rgba(28, 27, 23, 0.04);
+  }
+  
+  /* Sidebar group labels */
+  [data-sidebar="group-label"] {
+    color: #6F6A60;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+}
+
+/* ===========================
    Chart Specific Styles
    =========================== */
 
-/* Global Highcharts dark theme */
+/* Global Highcharts Editorial Paper Terminal theme */
 .highcharts-container,
 .highcharts-root {
-  font-family: inherit !important;
+  font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
-/* Background */
+/* Background - transparent on paper */
 .highcharts-background {
-  fill: var(--bg-primary) !important;
+  fill: transparent !important;
 }
 
 .highcharts-plot-background {
-  fill: var(--bg-primary) !important;
+  fill: transparent !important;
 }
 
-/* Grid lines */
+/* Grid lines - very light */
 .highcharts-grid-line {
-  stroke: var(--border-color) !important;
+  stroke: #E3DDCF !important;
   stroke-width: 1 !important;
 }
 
-/* Axis labels and text */
+/* Axis labels and text - muted */
 .highcharts-axis-labels text,
 .highcharts-axis-title {
-  fill: var(--text-secondary) !important;
+  fill: #6F6A60 !important;
   font-size: 11px !important;
+  font-weight: 500 !important;
 }
 
-/* Crosshair labels - TRANSPARENT BACKGROUND */
+/* Crosshair labels - Editorial Paper Terminal */
 .highcharts-crosshair-label {
   fill: transparent !important;
   stroke: none !important;
 }
 
 .highcharts-crosshair-label text {
-  fill: var(--text-primary) !important;
-  font-weight: 500 !important;
+  fill: #1C1B17 !important;
+  font-weight: 600 !important;
+  font-variant-numeric: tabular-nums !important;
 }
 
 /* Axis labels - TRANSPARENT BACKGROUND */
@@ -516,6 +638,44 @@ rect[fill="#e6e6e6"] {
 .highcharts-plot-background,
 .highcharts-plot-border {
   display: block !important;
+}
+
+/* Chart series colors - Editorial Paper Terminal */
+.highcharts-series-0 .highcharts-graph {
+  stroke: #2F8F5B !important;
+  stroke-width: 2 !important;
+}
+
+.highcharts-series-1 .highcharts-graph {
+  stroke: #B23B2A !important;
+  stroke-width: 2 !important;
+}
+
+.highcharts-series-2 .highcharts-graph {
+  stroke: #D06030 !important;
+  stroke-width: 2 !important;
+}
+
+/* Bar chart colors */
+.highcharts-series-0 .highcharts-point {
+  fill: #D06030 !important;
+}
+
+.highcharts-series-1 .highcharts-point {
+  fill: #F09070 !important;
+}
+
+.highcharts-series-2 .highcharts-point {
+  fill: #2F8F5B !important;
+}
+
+/* Positive/negative colors */
+.highcharts-positive {
+  fill: #2F8F5B !important;
+}
+
+.highcharts-negative {
+  fill: #B23B2A !important;
 }
 
 /* Override any inline styles on label boxes */

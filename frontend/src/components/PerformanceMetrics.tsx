@@ -34,7 +34,6 @@ export const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ userId }
             setPerformanceData(perf);
             setAllocationData(allocation.allocation || []);
         } catch (error) {
-            console.error('Error fetching performance data:', error);
         } finally {
             setLoading(false);
         }

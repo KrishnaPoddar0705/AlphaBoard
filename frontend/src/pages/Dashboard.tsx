@@ -111,7 +111,6 @@ export default function Dashboard() {
             const response = await getVisibleRecommendations(undefined, undefined);
             return response.recommendations || [];
         } catch (err) {
-            console.warn("Could not fetch recommendations", err);
             // Fallback to direct query if Edge Function fails
             try {
                 const { data, error } = await supabase
@@ -122,7 +121,6 @@ export default function Dashboard() {
                 if (data) return data;
                 if (error) throw error;
             } catch (fallbackErr) {
-                console.warn("Fallback query also failed", fallbackErr);
             }
             return [];
         }
@@ -144,7 +142,6 @@ export default function Dashboard() {
             // Then update prices (awaits completion)
             await updatePricesForRecommendations(data);
         } catch (err) {
-            console.error("Failed to load recommendations with prices", err);
         } finally {
             setIsLoadingPrices(false);
         }
@@ -318,7 +315,6 @@ export default function Dashboard() {
                 }
             }
         } catch (err) {
-            console.error('Error checking alerts:', err);
         }
     };
 
@@ -381,7 +377,6 @@ export default function Dashboard() {
                 const priceData = await getPrice(symbol);
                 return { symbol, price: priceData.price };
             } catch (e) {
-                console.warn(`Failed to update price for ${symbol}`, e);
                 return null;
             }
         });
@@ -449,7 +444,6 @@ export default function Dashboard() {
                     setSearchResults(mockResults);
                 }
             } catch (err) {
-                console.warn("Search failed", err);
                 setSearchResults([]);
             } finally {
                 setIsSearching(false);
@@ -471,7 +465,6 @@ export default function Dashboard() {
             setCurrentPrice(data.price);
             setEntryPrice(data.price.toString());
         } catch (e) {
-            console.error("Failed to get price", e);
             setCurrentPrice(null);
         }
     };
@@ -526,7 +519,6 @@ export default function Dashboard() {
                     return;
                 }
             } catch (syncError) {
-                console.error('Error syncing user:', syncError);
                 setError('Failed to sync user account. Please refresh the page and try again.');
                 setLoading(false);
                 return;
@@ -559,7 +551,6 @@ export default function Dashboard() {
                         .upload(filePath, file);
 
                     if (uploadError) {
-                        console.warn('Image upload failed', uploadError);
                         // Continue or throw? Let's log and continue for now, maybe partial success
                         continue;
                     }
@@ -598,7 +589,6 @@ export default function Dashboard() {
                 // If API fails, fallback to direct Supabase insert
                 // Remove price_target and target_date for direct insert since they're not in recommendations table
                 const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
-                console.warn('API create failed, using direct insert:', apiError);
                 const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
                 if (sbError) throw sbError;
 
@@ -608,7 +598,6 @@ export default function Dashboard() {
                         const { createPriceTarget } = await import('../lib/api');
                         await createPriceTarget(ticker, price_target, target_date, supabaseUserId);
                     } catch (ptError) {
-                        console.warn('Failed to create price target in fallback:', ptError);
                     }
                 }
             }
@@ -620,7 +609,6 @@ export default function Dashboard() {
 
             closeModal();
         } catch (err) {
-            console.error("Submission failed", err);
             // Fallback for demo (shouldn't be needed if sync worked)
             if (!supabaseUserId) {
                 setError('Failed to create recommendation. Please ensure you are signed in.');
@@ -687,7 +675,6 @@ export default function Dashboard() {
             // Refetch to be absolutely sure
             await fetchRecommendations();
         } catch (err) {
-            console.error("Failed to close idea", err);
             // Optimistic update still useful here
             setRecommendations(prev => prev.map(r => {
                 if (r.id === rec.id) {
@@ -702,7 +689,6 @@ export default function Dashboard() {
         e.stopPropagation();
         // Watchlist items persist permanently - deletion disabled
         // This function is kept for API compatibility but does nothing
-        console.log(`Delete watchlist item disabled - ${rec.ticker} will remain in watchlist`);
     };
 
     const [promoteModalOpen, setPromoteModalOpen] = useState(false);
@@ -763,7 +749,6 @@ export default function Dashboard() {
                         .upload(filePath, file);
 
                     if (uploadError) {
-                        console.warn('Image upload failed', uploadError);
                         continue;
                     }
 
@@ -803,7 +788,6 @@ export default function Dashboard() {
                 // If API fails, fallback to direct Supabase insert
                 // Remove price_target and target_date for direct insert since they're not in recommendations table
                 const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
-                console.warn('API create failed, using direct insert:', apiError);
                 const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
                 if (sbError) throw sbError;
 
@@ -818,7 +802,6 @@ export default function Dashboard() {
                             supabaseUserId
                         );
                     } catch (ptError) {
-                        console.warn('Failed to create price target in fallback:', ptError);
                     }
                 }
             }
@@ -828,7 +811,6 @@ export default function Dashboard() {
             setPromoteModalOpen(false);
             setPromoteRec(null);
         } catch (err: any) {
-            console.error("Promotion failed", err);
             setError(err.message || 'Failed to promote watchlist item');
         } finally {
             setLoading(false);

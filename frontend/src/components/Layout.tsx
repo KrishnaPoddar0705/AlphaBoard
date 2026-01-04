@@ -42,7 +42,6 @@ export default function Layout() {
 
             if (!supabaseUserId) {
                 // Retry after a short delay if session isn't ready yet
-                console.log('No Supabase user ID available yet, will retry...');
                 setTimeout(() => {
                     if (user?.id) {
                         fetchOrganization();
@@ -61,7 +60,6 @@ export default function Layout() {
 
             if (!mapping || mapping.clerk_user_id !== user.id) {
                 // Session doesn't match current Clerk user - clear organization
-                console.log('Supabase session does not match current Clerk user');
                 setOrganization(null);
                 setLoadingOrg(false);
                 return;
@@ -71,7 +69,7 @@ export default function Layout() {
                 .from('user_organization_membership')
                 .select('organization_id, role, organizations(id, name)')
                 .eq('user_id', supabaseUserId)
-                .single();
+                .maybeSingle();
 
             if (!error && data) {
                 const org = data.organizations as any;
@@ -84,7 +82,6 @@ export default function Layout() {
                 setOrganization(null);
             }
         } catch (err) {
-            console.error('Error fetching organization:', err);
             setOrganization(null);
         } finally {
             setLoadingOrg(false);
@@ -143,7 +140,6 @@ export default function Layout() {
             // Navigate to login
             navigate('/');
         } catch (error) {
-            console.error('Error during logout:', error);
             // Still try to sign out from Clerk even if Supabase signout fails
             await signOut();
             navigate('/');

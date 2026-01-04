@@ -53,7 +53,6 @@ export default function PodcastList({
             const data = await getPodcasts(userId, podcastType, ticker);
             setPodcasts(data.podcasts || []);
         } catch (error) {
-            console.error('Error fetching podcasts:', error);
             setPodcasts([]);
         } finally {
             setLoading(false);
@@ -96,7 +95,6 @@ export default function PodcastList({
             await deletePodcast(podcastId, userId);
             setPodcasts(podcasts.filter(p => p.id !== podcastId));
         } catch (error) {
-            console.error('Error deleting podcast:', error);
             alert('Failed to delete podcast');
         } finally {
             setDeletingId(null);

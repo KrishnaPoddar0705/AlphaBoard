@@ -26,7 +26,6 @@ export default function AuthCallback() {
           });
 
           if (error) {
-            console.error('Auth callback error:', error);
             navigate('/login?error=auth_failed');
             return;
           }
@@ -38,7 +37,6 @@ export default function AuthCallback() {
             navigate('/login?error=no_session');
           }
         } catch (err) {
-          console.error('Error handling auth callback:', err);
           navigate('/login?error=callback_failed');
         }
       } else {

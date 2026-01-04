@@ -79,7 +79,6 @@ export default function TickerInput({
           setSearchResults([]);
         }
       } catch (err) {
-        console.warn('Stock search failed:', err);
         setSearchResults([]);
       } finally {
         setIsSearching(false);

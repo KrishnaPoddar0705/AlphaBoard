@@ -48,43 +48,43 @@ export function AddPriceTargetModal({ ticker, onClose, onSubmit }: AddPriceTarge
             <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
                 <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-                <div className="inline-block align-bottom bg-[#1e293b] rounded-2xl text-left overflow-visible shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-white/10 relative">
+                <div className="inline-block align-bottom bg-[#F7F2E6] rounded-lg text-left overflow-visible shadow-2xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full border border-[#D7D0C2] relative">
                     <div className="px-6 py-6">
                         <div className="flex justify-between items-center mb-6">
                             <div className="flex items-center gap-2">
-                                <Target className="w-5 h-5 text-indigo-400" />
-                                <h3 className="text-xl font-bold text-white">
+                                <Target className="w-5 h-5 text-[#1C1B17]" />
+                                <h3 className="text-xl font-mono font-bold text-[#1C1B17]">
                                     Add Price Target
                                 </h3>
                             </div>
                             <button 
                                 onClick={onClose} 
-                                className="text-gray-400 hover:text-white transition-colors p-1 hover:bg-white/10 rounded-full"
+                                className="text-[#6F6A60] hover:text-[#1C1B17] transition-colors p-1 hover:bg-[#FBF7ED] rounded-full"
                             >
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
 
                         <div className="mb-4">
-                            <p className="text-sm text-gray-400">
-                                Adding price target for <span className="font-semibold text-white">{ticker}</span>
+                            <p className="text-sm font-mono text-[#6F6A60]">
+                                Adding price target for <span className="font-semibold text-[#1C1B17]">{ticker}</span>
                             </p>
                         </div>
 
                         {error && (
-                            <div className="mb-4 p-3 rounded bg-red-500/20 border border-red-500/30 text-red-200 text-sm flex items-center gap-2">
+                            <div className="mb-4 p-3 rounded bg-[#B23B2A]/10 border border-[#B23B2A] text-[#B23B2A] font-mono text-sm flex items-center gap-2">
                                 {error}
                             </div>
                         )}
 
                         <form onSubmit={handleSubmit} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                                    Target Price <span className="text-red-400">*</span>
+                                <label className="block text-sm font-mono font-medium text-[#1C1B17] mb-1.5">
+                                    Target Price <span className="text-[#B23B2A]">*</span>
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span className="text-gray-400 sm:text-sm">₹</span>
+                                        <span className="text-[#6F6A60] sm:text-sm font-mono">$</span>
                                     </div>
                                     <input
                                         type="number"
@@ -92,7 +92,7 @@ export function AddPriceTargetModal({ ticker, onClose, onSubmit }: AddPriceTarge
                                         required
                                         value={targetPrice}
                                         onChange={(e) => setTargetPrice(e.target.value)}
-                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                        className="block w-full pl-7 pr-3 py-2.5 border border-[#D7D0C2] rounded-lg bg-[#FBF7ED] text-[#1C1B17] placeholder-[#6F6A60] focus:outline-none focus:ring-2 focus:ring-[#1C1B17]/20 focus:border-[#1C1B17] sm:text-sm font-mono tabular-nums transition-all"
                                         placeholder="0.00"
                                         autoFocus
                                     />
@@ -100,7 +100,7 @@ export function AddPriceTargetModal({ ticker, onClose, onSubmit }: AddPriceTarge
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-300 mb-1.5">
+                                <label className="block text-sm font-mono font-medium text-[#1C1B17] mb-1.5">
                                     <div className="flex items-center gap-1.5">
                                         <Calendar className="w-4 h-4" />
                                         Time Horizon (Optional)
@@ -110,30 +110,30 @@ export function AddPriceTargetModal({ ticker, onClose, onSubmit }: AddPriceTarge
                                     type="date"
                                     value={targetDate}
                                     onChange={(e) => setTargetDate(e.target.value)}
-                                    className="block w-full px-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                    className="block w-full px-3 py-2.5 border border-[#D7D0C2] rounded-lg bg-[#FBF7ED] text-[#1C1B17] placeholder-[#6F6A60] focus:outline-none focus:ring-2 focus:ring-[#1C1B17]/20 focus:border-[#1C1B17] sm:text-sm font-mono transition-all"
                                     min={new Date().toISOString().split('T')[0]}
                                 />
-                                <p className="mt-1.5 text-xs text-gray-400">
+                                <p className="mt-1.5 text-xs font-mono text-[#6F6A60]">
                                     Set a target date to track time remaining for this price target
                                 </p>
                             </div>
 
-                            <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-white/10">
+                            <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-[#D7D0C2]">
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="px-4 py-2 text-sm font-medium text-gray-300 bg-transparent border border-white/10 rounded-lg hover:bg-white/5 focus:outline-none focus:ring-2 focus:ring-white/20 transition-colors"
+                                    className="px-4 py-2 text-sm font-mono font-medium text-[#1C1B17] bg-transparent border border-[#D7D0C2] rounded-lg hover:bg-[#FBF7ED] focus:outline-none focus:ring-2 focus:ring-[#1C1B17]/20 transition-colors"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 shadow-lg shadow-indigo-500/30 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                    className="px-6 py-2 text-sm font-mono font-medium text-[#F7F2E6] bg-[#1C1B17] rounded-lg hover:bg-[#1C1B17]/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1C1B17] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                                 >
                                     {loading ? (
                                         <>
-                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <div className="w-4 h-4 border-2 border-[#F7F2E6]/30 border-t-[#F7F2E6] rounded-full animate-spin"></div>
                                             Adding...
                                         </>
                                     ) : (

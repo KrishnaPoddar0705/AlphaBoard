@@ -40,7 +40,6 @@ export const PerformancePreviewV2: React.FC<PerformancePreviewV2Props> = ({ user
             const performanceData = await calculatePortfolioReturns(userId, selectedPeriod);
             setData(performanceData);
         } catch (err) {
-            console.error('Error fetching performance:', err);
             const errorMsg = err instanceof Error ? err.message : 'Failed to calculate performance';
 
             // Handle specific "no weights" error gracefully
@@ -93,7 +92,6 @@ export const PerformancePreviewV2: React.FC<PerformancePreviewV2Props> = ({ user
 
     // Validate data structure
     if (!data.returns || typeof data.returns !== 'object') {
-        console.error('Invalid data structure:', data);
         return (
             <div className="rounded-lg border border-yellow-500/30 bg-yellow-900/20 p-4">
                 <div className="flex items-start gap-3">

@@ -33,7 +33,6 @@ export function useTeams(options: UseTeamsOptions = {}) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch teams';
       setError(errorMessage);
-      console.error('Error fetching teams:', err);
     } finally {
       setLoading(false);
     }
@@ -50,7 +49,6 @@ export function useTeams(options: UseTeamsOptions = {}) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch organization teams';
       setError(errorMessage);
-      console.error('Error fetching organization teams:', err);
     } finally {
       setLoading(false);
     }
@@ -174,7 +172,6 @@ export function useTeamMembers(teamId: string | null) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch team members';
       setError(errorMessage);
-      console.error('Error fetching team members:', err);
     } finally {
       setLoading(false);
     }

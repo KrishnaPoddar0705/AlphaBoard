@@ -137,7 +137,6 @@ export function StockDetailPanel({
             if (error) throw error;
             setAlertTriggers(data || []);
         } catch (err) {
-            console.error('Failed to fetch alert triggers:', err);
         } finally {
             setIsLoadingTriggers(false);
         }
@@ -177,7 +176,6 @@ export function StockDetailPanel({
             setNewTriggerPrice('');
             await fetchAlertTriggers();
         } catch (err: any) {
-            console.error('Failed to add alert trigger:', err);
             if (err.code === '23505') {
                 // Unique constraint violation - trigger already exists
                 alert('This alert trigger already exists');
@@ -213,7 +211,6 @@ export function StockDetailPanel({
             setEditingPrice('');
             await fetchAlertTriggers();
         } catch (err) {
-            console.error('Failed to update trigger:', err);
         } finally {
             setIsSavingTrigger(false);
         }
@@ -234,7 +231,6 @@ export function StockDetailPanel({
 
             await fetchAlertTriggers();
         } catch (err) {
-            console.error('Failed to delete trigger:', err);
         } finally {
             setIsSavingTrigger(false);
         }
@@ -259,7 +255,6 @@ export function StockDetailPanel({
                 setCompanyName(summary.companyName);
             }
         } catch (err) {
-            console.error('Failed to fetch company name:', err);
         }
     };
 
@@ -313,7 +308,6 @@ export function StockDetailPanel({
             setLoading(false);
             fetchFinancials();
         } catch (err) {
-            console.error('Failed to fetch stock data:', err);
             setLoading(false);
         }
     };
@@ -336,7 +330,6 @@ export function StockDetailPanel({
                 quarterly: quarterly.status === 'fulfilled' ? quarterly.value : [],
             }));
         } catch (e) {
-            console.error('Failed to fetch financials:', e);
         } finally {
             setFinancialsLoading(false);
         }
@@ -348,7 +341,6 @@ export function StockDetailPanel({
             const newsData = await getStockNews(stock.ticker);
             setData((prev: any) => ({ ...prev, news: newsData.articles || newsData || [] }));
         } catch (e: any) {
-            console.error('Error fetching news', e);
             setData((prev: any) => ({ ...prev, news: [] }));
         } finally {
             setNewsLoading(false);
@@ -384,9 +376,7 @@ export function StockDetailPanel({
                 user_id: session.user.id,
             };
 
-            console.log('Generating podcast with user_id:', session.user.id);
             const result = await generatePodcast(podcastRequest);
-            console.log('Podcast generated successfully:', result);
             setPodcastData(result);
             setShowSavedPodcasts(true); // Show saved list after generating new podcast
             // Trigger refresh of saved podcasts list
@@ -394,7 +384,6 @@ export function StockDetailPanel({
                 window.dispatchEvent(new Event('podcast-refresh'));
             }, 500);
         } catch (error: any) {
-            console.error('Error generating podcast:', error);
             const { getUserFriendlyError } = await import('../../lib/errorSanitizer');
             alert(`Failed to generate podcast: ${getUserFriendlyError(error)}`);
         } finally {

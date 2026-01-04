@@ -1,8 +1,9 @@
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, Request, Query
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import base64
 import json
-from fastapi.middleware.cors import CORSMiddleware
+import traceback
 from .models import (
     RecommendationCreate, RecommendationResponse, StockPrice, NewsArticle, 
     ELI5Request, ELI5Response, ThesisGenerateRequest, ThesisResponse,
@@ -59,11 +60,13 @@ app.add_middleware(
         "https://www.alphaboard.theunicornlabs.com",
         "https://alphaboard.onrender.com",
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://localhost:3000",
-        "*"  # Allow all for development
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5173",
     ],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
     expose_headers=["*"],
 )
@@ -80,7 +83,10 @@ def search_market(q: str):
 def get_price(ticker: str):
     price = get_current_price(ticker)
     if price is None:
-        raise HTTPException(status_code=404, detail="Ticker not found")
+        # Log gracefully instead of raising error
+        print(f"[INFO] Unable to fetch price data for ticker: {ticker} - ticker may not exist or data unavailable")
+        # Return a response with price as None instead of raising 404
+        return {"ticker": ticker, "price": None, "available": False}
     
     # Update current_price for all recommendations with this ticker (OPEN and WATCHLIST only)
     try:
@@ -97,7 +103,7 @@ def get_price(ticker: str):
         print(f"Error updating current_price for {ticker}: {e}")
         # Don't fail the request if DB update fails
     
-    return {"ticker": ticker, "price": price}
+    return {"ticker": ticker, "price": price, "available": True}
 
 @app.get("/market/details/{ticker}")
 def get_details(ticker: str):
@@ -112,8 +118,8 @@ def get_summary_endpoint(ticker: str):
     return get_stock_summary(ticker)
 
 @app.get("/market/history/{ticker}")
-def get_history_endpoint(ticker: str):
-    return get_stock_history_data(ticker)
+def get_history_endpoint(ticker: str, period: str = "1y", interval: str = "1d"):
+    return get_stock_history_data(ticker, period, interval)
 
 @app.get("/market/financials/income/{ticker}")
 def get_income_endpoint(ticker: str):
@@ -130,6 +136,12 @@ def get_cashflow_endpoint(ticker: str):
 @app.get("/market/financials/quarterly/{ticker}")
 def get_quarterly_endpoint(ticker: str):
     return get_quarterly_data(ticker)
+
+@app.post("/market/financials/explain/{ticker}")
+def explain_financials_endpoint(ticker: str, financials_data: dict):
+    """Generate AI explanation for income statement data"""
+    from .financials_explainer import explain_financials
+    return explain_financials(ticker, financials_data.get("income", []))
 
 @app.get("/market/dividends/{ticker}")
 def get_dividends_endpoint(ticker: str):
@@ -165,124 +177,496 @@ def create_recommendation(rec: RecommendationCreate, background_tasks: Backgroun
 # Re-defining to include user_id from request body for security (not in URL)
 @app.post("/recommendations/create")
 async def create_rec_endpoint(request: Request, background_tasks: BackgroundTasks):
-    # Parse request body to get user_id and recommendation data
-    body = await request.json()
-    if not body:
-        raise HTTPException(status_code=400, detail="Request body is required")
-    
-    user_id = body.get('user_id')
-    if not user_id:
-        raise HTTPException(status_code=400, detail="user_id is required in request body")
-    
-    # Remove user_id from body before creating RecommendationCreate object
-    rec_data = {k: v for k, v in body.items() if k != 'user_id'}
-    rec = RecommendationCreate(**rec_data)
-    # Fetch current benchmark price to store? 
-    # Logic.py handles calculation dynamically, but storing entry bench price is better.
-    # I'll stick to logic.py approach.
-    
-    data = rec.dict()
-    
-    # Extract price_target and target_date before inserting into recommendations table
-    # These are stored separately in the price_targets table
-    price_target = data.pop('price_target', None)
-    target_date = data.pop('target_date', None)
-    
-    data['user_id'] = user_id
-    
-    # DON'T set organization_id on recommendations - they follow the user's profile.organization_id
-    # This allows recommendations to be portable when users move between organizations
-    
-    # Force entry price check
-    if data['entry_price'] == 0:
-         price = get_current_price(data['ticker'])
-         if price:
-             data['entry_price'] = price
-         else:
-             raise HTTPException(status_code=400, detail="Could not fetch price")
-
-    # Fetch and store entry benchmark price
-    benchmark_ticker = data.get('benchmark_ticker', '^NSEI')
     try:
-        from .market import get_current_price
-        entry_bench_price = get_current_price(benchmark_ticker)
-        if entry_bench_price:
-            data['entry_benchmark_price'] = entry_bench_price
-    except:
-        pass  # Continue without benchmark price if fetch fails
-    
-    # Initialize portfolio balance if needed
-    from .portfolio import get_portfolio_balance, calculate_position_size, update_portfolio_balance
-    balance = get_portfolio_balance(user_id)
-    available_balance = float(balance.get('available_cash', 1000000))
-    
-    # Handle weight and position_size calculation
-    weight_pct = data.get('weight_pct')
-    entry_price = float(data.get('entry_price', 0))
-    
-    if entry_price <= 0:
-        raise HTTPException(status_code=400, detail="Entry price must be greater than 0")
-    
-    if weight_pct is not None:
-        # User provided weight, validate it sums to 100% with other positions
-        from .performance import validate_and_rebalance_weights
-        validation_result = validate_and_rebalance_weights(user_id, weight_pct)
+        # Parse request body to get user_id and recommendation data
+        body = await request.json()
+        if not body:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Request body is required"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
         
-        if not validation_result['valid']:
-            raise HTTPException(status_code=400, detail=validation_result['error'])
+        user_id = body.get('user_id')
+        if not user_id:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "user_id is required in request body"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
         
-        # Calculate invested_amount and position_size based on weight
-        invested_amount, position_size = calculate_position_size(weight_pct, entry_price, available_balance)
-        data['weight_pct'] = weight_pct
-        data['invested_amount'] = invested_amount
-        data['position_size'] = position_size
-    else:
-        # No weight provided, will be calculated in rebalance function
-        data['weight_pct'] = None
-        data['invested_amount'] = 0
-        data['position_size'] = None
-    
-    res = supabase.table("recommendations").insert(data).execute()
-    
-    if not res.data:
-        raise HTTPException(status_code=500, detail="Failed to create recommendation")
-    
-    # If price_target is provided, create a price target entry in the price_targets table
-    if price_target is not None:
+        # Remove user_id from body before creating RecommendationCreate object
+        rec_data = {k: v for k, v in body.items() if k != 'user_id'}
+        
         try:
-            # target_date might already be a string (ISO format) from frontend
-            target_date_str = None
-            if target_date:
-                if isinstance(target_date, str):
-                    target_date_str = target_date
-                else:
-                    target_date_str = target_date.isoformat()
-            
-            price_target_data = {
-                "user_id": user_id,
-                "ticker": data['ticker'],
-                "target_price": float(price_target),
-                "target_date": target_date_str
-            }
-            # DON'T set organization_id - price targets follow user's current profile
-            supabase.table("price_targets").insert(price_target_data).execute()
+            rec = RecommendationCreate(**rec_data)
         except Exception as e:
-            # Log error but don't fail the recommendation creation
-            print(f"Warning: Failed to create price target: {str(e)}")
-    
-    # Rebalance weights and calculate position_size for all positions
-    from .performance import rebalance_portfolio_weights
-    background_tasks.add_task(rebalance_portfolio_weights, user_id)
-    
-    # Update portfolio balance
-    background_tasks.add_task(update_portfolio_balance, user_id)
+            print(f"Error creating RecommendationCreate: {e}")
+            print(f"rec_data: {rec_data}")
+            return JSONResponse(
+                status_code=400,
+                content={"detail": f"Invalid recommendation data: {str(e)}"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
         
-    # Trigger performance update (both basic and comprehensive)
-    background_tasks.add_task(update_user_performance, user_id)
-    # Also trigger comprehensive performance recalculation in background
-    background_tasks.add_task(calculate_comprehensive_performance, user_id)
+        # Fetch current benchmark price to store? 
+        # Logic.py handles calculation dynamically, but storing entry bench price is better.
+        # I'll stick to logic.py approach.
+        
+        data = rec.dict()
+        
+        # Extract price_target and target_date before inserting into recommendations table
+        # These are stored separately in the price_targets table
+        price_target = data.pop('price_target', None)
+        target_date = data.pop('target_date', None)
+        
+        data['user_id'] = user_id
+        
+        # DON'T set organization_id on recommendations - they follow the user's profile.organization_id
+        # This allows recommendations to be portable when users move between organizations
+        
+        # Force entry price check - if entry_price is 0 or missing, try to fetch current price
+        entry_price_raw = data.get('entry_price')
+        if entry_price_raw is None or entry_price_raw == 0:
+            try:
+                price = get_current_price(data['ticker'])
+                if price and price > 0:
+                    data['entry_price'] = price
+                else:
+                    return JSONResponse(
+                        status_code=400,
+                        content={"detail": "Could not fetch price for ticker"},
+                        headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                    )
+            except Exception as e:
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": f"Could not fetch price: {str(e)}"},
+                    headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                )
+
+        # Fetch and store entry benchmark price
+        benchmark_ticker = data.get('benchmark_ticker', '^NSEI')
+        try:
+            from .market import get_current_price
+            entry_bench_price = get_current_price(benchmark_ticker)
+            if entry_bench_price:
+                data['entry_benchmark_price'] = entry_bench_price
+        except:
+            pass  # Continue without benchmark price if fetch fails
+        
+        # Initialize portfolio balance if needed
+        from .portfolio import get_portfolio_balance, calculate_position_size, update_portfolio_balance
+        balance = get_portfolio_balance(user_id)
+        available_balance = float(balance.get('available_cash', 1000000))
+        
+        # Handle weight and position_size calculation
+        weight_pct = data.get('weight_pct')
+        entry_price_raw = data.get('entry_price')
+        
+        if entry_price_raw is None:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Entry price is required"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        try:
+            entry_price = float(entry_price_raw)
+        except (ValueError, TypeError):
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Entry price must be a valid number"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        if entry_price <= 0:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Entry price must be greater than 0"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        if weight_pct is not None:
+            # User provided weight, validate it sums to 100% with other positions
+            from .performance import validate_and_rebalance_weights
+            validation_result = validate_and_rebalance_weights(user_id, weight_pct)
+            
+            if not validation_result['valid']:
+                return JSONResponse(
+                    status_code=400,
+                    content={"detail": validation_result['error']},
+                    headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                )
+            
+            # Calculate invested_amount and position_size based on weight
+            invested_amount, position_size = calculate_position_size(weight_pct, entry_price, available_balance)
+            data['weight_pct'] = weight_pct
+            data['invested_amount'] = invested_amount
+            data['position_size'] = position_size
+        else:
+            # No weight provided, will be calculated in rebalance function
+            data['weight_pct'] = None
+            data['invested_amount'] = 0
+            data['position_size'] = None
+        
+        # Use RPC function to bypass RLS (service role can't satisfy auth.uid() = user_id policy)
+        try:
+            # Prepare data for RPC function
+            rpc_data = {
+                "p_user_id": user_id,
+                "p_ticker": data.get('ticker'),
+                "p_action": data.get('action'),
+                "p_entry_price": data.get('entry_price'),
+                "p_current_price": data.get('current_price'),
+                "p_target_price": data.get('target_price'),
+                "p_stop_loss": data.get('stop_loss'),
+                "p_benchmark_ticker": data.get('benchmark_ticker', '^NSEI'),
+                "p_status": data.get('status', 'OPEN'),
+                "p_thesis": data.get('thesis'),
+                "p_images": data.get('images'),
+                "p_entry_benchmark_price": data.get('entry_benchmark_price'),
+                "p_weight_pct": data.get('weight_pct'),
+                "p_invested_amount": data.get('invested_amount'),
+                "p_position_size": data.get('position_size'),
+            }
+            
+            # Call RPC function
+            print(f"Calling RPC create_recommendation with: {rpc_data}")
+            try:
+                rpc_result = supabase.rpc('create_recommendation', rpc_data).execute()
+                print(f"RPC call succeeded. Result: {rpc_result}")
+                print(f"RPC result.data: {rpc_result.data}, type: {type(rpc_result.data)}")
+            except Exception as rpc_call_error:
+                print(f"RPC call exception: {rpc_call_error}")
+                import traceback
+                traceback.print_exc()
+                raise rpc_call_error
+            
+            if not rpc_result or not rpc_result.data:
+                # Fallback to direct insert (might fail due to RLS)
+                print("RPC returned no data, trying direct insert...")
+                res = supabase.table("recommendations").insert(data).execute()
+                if not res.data:
+                    return JSONResponse(
+                        status_code=500,
+                        content={"detail": "Failed to create recommendation"},
+                        headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                    )
+                created_rec = res.data[0]
+                res_data = res.data
+            else:
+                # RPC returns JSONB (full record)
+                # Supabase RPC returns the JSONB directly, might be wrapped in a list or dict
+                print(f"RPC result data type: {type(rpc_result.data)}, value: {rpc_result.data}")
+                
+                if isinstance(rpc_result.data, dict):
+                    # Direct JSONB object
+                    created_rec = rpc_result.data
+                    res_data = [created_rec]
+                elif isinstance(rpc_result.data, list) and len(rpc_result.data) > 0:
+                    # Wrapped in array
+                    created_rec = rpc_result.data[0]
+                    res_data = rpc_result.data
+                elif isinstance(rpc_result.data, str):
+                    # Might be UUID string if function returns UUID
+                    # Fetch the record
+                    rec_id = rpc_result.data
+                    res = supabase.table("recommendations").select("*").eq("id", rec_id).execute()
+                    if not res.data or len(res.data) == 0:
+                        return JSONResponse(
+                            status_code=500,
+                            content={"detail": "Failed to retrieve created recommendation"},
+                            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                        )
+                    res_data = res.data
+                else:
+                    print(f"Unexpected RPC result format: {type(rpc_result.data)}, value: {rpc_result.data}")
+                    # Fallback to direct insert
+                    print("Falling back to direct insert due to unexpected RPC format...")
+                    res = supabase.table("recommendations").insert(data).execute()
+                    if not res.data:
+                        return JSONResponse(
+                            status_code=500,
+                            content={"detail": f"RPC returned unexpected format ({type(rpc_result.data)}) and direct insert also failed"},
+                            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                        )
+                    res_data = res.data
+        except Exception as rpc_error:
+            # Fallback to direct insert if RPC fails
+            print(f"RPC call failed, trying direct insert: {rpc_error}")
+            import traceback
+            traceback.print_exc()
+            try:
+                res = supabase.table("recommendations").insert(data).execute()
+                if not res.data:
+                    return JSONResponse(
+                        status_code=500,
+                        content={"detail": f"Failed to create recommendation: {str(rpc_error)}"},
+                        headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                    )
+                res_data = res.data
+            except Exception as insert_error:
+                import traceback
+                traceback.print_exc()
+                return JSONResponse(
+                    status_code=500,
+                    content={"detail": f"Failed to create recommendation. RPC error: {str(rpc_error)}, Insert error: {str(insert_error)}"},
+                    headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                )
+        
+        # If price_target is provided, create a price target entry in the price_targets table
+        if price_target is not None:
+            try:
+                # target_date might already be a string (ISO format) from frontend
+                target_date_str = None
+                if target_date:
+                    if isinstance(target_date, str):
+                        target_date_str = target_date
+                    else:
+                        target_date_str = target_date.isoformat()
+                
+                price_target_data = {
+                    "user_id": user_id,
+                    "ticker": data['ticker'],
+                    "target_price": float(price_target),
+                    "target_date": target_date_str
+                }
+                # DON'T set organization_id - price targets follow user's current profile
+                supabase.table("price_targets").insert(price_target_data).execute()
+            except Exception as e:
+                # Log error but don't fail the recommendation creation
+                print(f"Warning: Failed to create price target: {str(e)}")
+        
+        # Rebalance weights and calculate position_size for all positions
+        from .performance import rebalance_portfolio_weights
+        background_tasks.add_task(rebalance_portfolio_weights, user_id)
+        
+        # Update portfolio balance
+        background_tasks.add_task(update_portfolio_balance, user_id)
+            
+        # Trigger performance update (both basic and comprehensive)
+        background_tasks.add_task(update_user_performance, user_id)
+        # Also trigger comprehensive performance recalculation in background
+        background_tasks.add_task(calculate_comprehensive_performance, user_id)
+        
+        return JSONResponse(
+            status_code=200,
+            content=res_data[0] if isinstance(res_data, list) else res_data,
+            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+        )
     
-    return res.data[0]
+    except HTTPException as e:
+        return JSONResponse(
+            status_code=e.status_code,
+            content={"detail": e.detail},
+            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+        )
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"Error in create_rec_endpoint: {e}")
+        print(f"Traceback: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {str(e)}"},
+            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+        )
+
+@app.post("/watchlist/create")
+async def create_watchlist_endpoint(request: Request):
+    """
+    Create a watchlist item. Simpler than recommendations - no portfolio calculations needed.
+    """
+    try:
+        body = await request.json()
+        if not body:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Request body is required"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        user_id = body.get('user_id')
+        if not user_id:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "user_id is required in request body"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        ticker = body.get('ticker')
+        if not ticker:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "ticker is required"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        # Prepare watchlist data
+        watchlist_data = {
+            "user_id": user_id,
+            "ticker": ticker.strip().upper(),
+            "action": "WATCH",
+            "status": "WATCHLIST",
+            "entry_price": body.get('entry_price'),  # Optional
+            "benchmark_ticker": body.get('benchmark_ticker', '^NSEI'),
+            "thesis": None,  # Watchlist items don't have thesis
+            "images": None,  # Watchlist items don't have images
+            "weight_pct": None,  # No portfolio allocation for watchlist
+            "invested_amount": 0,
+            "position_size": None,
+        }
+        
+        # Use RPC function to bypass RLS
+        try:
+            rpc_data = {
+                "p_user_id": user_id,
+                "p_ticker": watchlist_data['ticker'],
+                "p_action": watchlist_data['action'],
+                "p_entry_price": watchlist_data['entry_price'] or 0,  # RPC requires numeric
+                "p_current_price": None,
+                "p_target_price": None,
+                "p_stop_loss": None,
+                "p_benchmark_ticker": watchlist_data['benchmark_ticker'],
+                "p_status": watchlist_data['status'],
+                "p_thesis": None,
+                "p_images": None,
+                "p_entry_benchmark_price": None,
+                "p_weight_pct": None,
+                "p_invested_amount": 0,
+                "p_position_size": None,
+            }
+            
+            rpc_result = supabase.rpc('create_recommendation', rpc_data).execute()
+            
+            if not rpc_result or not rpc_result.data:
+                # Fallback to direct insert
+                res = supabase.table("recommendations").insert(watchlist_data).execute()
+                if not res.data:
+                    return JSONResponse(
+                        status_code=500,
+                        content={"detail": "Failed to create watchlist item"},
+                        headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                    )
+                res_data = res.data
+            else:
+                # Parse RPC result
+                if isinstance(rpc_result.data, dict):
+                    res_data = [rpc_result.data]
+                elif isinstance(rpc_result.data, list):
+                    res_data = rpc_result.data
+                elif isinstance(rpc_result.data, str):
+                    # Fetch by ID
+                    rec_id = rpc_result.data
+                    res = supabase.table("recommendations").select("*").eq("id", rec_id).execute()
+                    if not res.data:
+                        return JSONResponse(
+                            status_code=500,
+                            content={"detail": "Failed to retrieve created watchlist item"},
+                            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                        )
+                    res_data = res.data
+                else:
+                    # Fallback
+                    res = supabase.table("recommendations").insert(watchlist_data).execute()
+                    if not res.data:
+                        return JSONResponse(
+                            status_code=500,
+                            content={"detail": "Failed to create watchlist item"},
+                            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                        )
+                    res_data = res.data
+        except Exception as rpc_error:
+            # Fallback to direct insert
+            print(f"RPC call failed for watchlist, trying direct insert: {rpc_error}")
+            import traceback
+            traceback.print_exc()
+            try:
+                res = supabase.table("recommendations").insert(watchlist_data).execute()
+                if not res.data:
+                    return JSONResponse(
+                        status_code=500,
+                        content={"detail": f"Failed to create watchlist item: {str(rpc_error)}"},
+                        headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                    )
+                res_data = res.data
+            except Exception as insert_error:
+                import traceback
+                traceback.print_exc()
+                return JSONResponse(
+                    status_code=500,
+                    content={"detail": f"Failed to create watchlist item. RPC error: {str(rpc_error)}, Insert error: {str(insert_error)}"},
+                    headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+                )
+        
+        return JSONResponse(
+            status_code=200,
+            content=res_data[0] if isinstance(res_data, list) else res_data,
+            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+        )
+    
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"Error in create_watchlist_endpoint: {e}")
+        print(f"Traceback: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {str(e)}"},
+            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+        )
+
+@app.delete("/watchlist/{recommendation_id}")
+async def delete_watchlist_item(request: Request, recommendation_id: str, user_id: str = Query(...)):
+    """
+    Delete a watchlist item (recommendation with status='WATCHLIST').
+    Uses service role to bypass RLS.
+    """
+    try:
+        if not user_id:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "user_id is required"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        # Verify the recommendation exists and belongs to the user
+        res = supabase.table("recommendations").select("*").eq("id", recommendation_id).eq("user_id", user_id).execute()
+        
+        if not res.data or len(res.data) == 0:
+            return JSONResponse(
+                status_code=404,
+                content={"detail": "Watchlist item not found"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        rec = res.data[0]
+        
+        # Verify it's a watchlist item
+        if rec.get('status') != 'WATCHLIST':
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Item is not a watchlist item"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        # Delete using service role (bypasses RLS)
+        delete_res = supabase.table("recommendations").delete().eq("id", recommendation_id).eq("user_id", user_id).execute()
+        
+        return JSONResponse(
+            status_code=200,
+            content={"status": "deleted", "id": recommendation_id},
+            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+        )
+    
+    except Exception as e:
+        error_trace = traceback.format_exc()
+        print(f"Error in delete_watchlist_item: {e}")
+        print(f"Traceback: {error_trace}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {str(e)}"},
+            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+        )
 
 @app.get("/leaderboard")
 def get_leaderboard():

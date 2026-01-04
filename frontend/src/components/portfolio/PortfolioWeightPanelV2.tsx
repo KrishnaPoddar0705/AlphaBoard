@@ -56,7 +56,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                     
                     if (newTickers.length > 0) {
                         // New stocks found - add them with equal weight distribution
-                        console.log('New stocks detected:', newTickers);
                         
                         // Calculate equal weight for all stocks (existing + new)
                         const allTickers = [...fetchedWeights.map(w => w.ticker), ...newTickers];
@@ -70,7 +69,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                         // Auto-save updated weights
                         try {
                             await saveWeights(userId, updatedWeights);
-                            console.log('✓ Added new stocks and auto-saved equal weights');
                             setWeights(updatedWeights);
                             
                             const manual: Record<string, string> = {};
@@ -79,7 +77,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                             });
                             setManualWeights(manual);
                         } catch (saveError) {
-                            console.error('Failed to auto-save updated weights:', saveError);
                             // Still show the updated weights even if save fails
                             setWeights(updatedWeights);
                             const manual: Record<string, string> = {};
@@ -116,12 +113,9 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                     setManualWeights(manual);
                     
                     // AUTO-SAVE default equal weights so performance can be calculated
-                    console.log('Auto-saving default equal weights for', uniqueTickers.length, 'positions');
                     try {
                         await saveWeights(userId, initialWeights);
-                        console.log('✓ Default weights auto-saved successfully');
                     } catch (saveError) {
-                        console.error('Failed to auto-save default weights:', saveError);
                     }
                 }
             } else {
@@ -139,7 +133,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                 }
             }
         } catch (error) {
-            console.error('Error fetching weights:', error);
         } finally {
             setLoading(false);
         }
@@ -224,7 +217,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelV2Props> = ({
                     setRefreshKey(prev => prev + 1);
                 }, 500);
             } catch (error) {
-                console.error('Error rebalancing weights:', error);
             }
         }, 800);
     }, [weights]);

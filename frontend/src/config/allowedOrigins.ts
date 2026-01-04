@@ -49,13 +49,7 @@ export function validateCurrentOrigin(): boolean {
   const origin = getCurrentOrigin();
   const isValid = isAllowedOrigin(origin);
   
-  if (!isValid && import.meta.env.DEV) {
-    console.warn(
-      `⚠️ Current origin "${origin}" is not in the allowed origins list.\n` +
-      `Please add it to Clerk Dashboard → Settings → Paths → Allowed redirect URLs\n` +
-      `Allowed origins: ${ALLOWED_ORIGINS.join(', ')}`
-    );
-  }
+  // Origin validation (console.warn removed)
   
   return isValid;
 }

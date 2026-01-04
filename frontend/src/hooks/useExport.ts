@@ -97,7 +97,6 @@ export function useExport(): UseExportReturn {
     } catch (error: any) {
       const errorMessage = error?.message || 'Failed to export PDF';
       setExportError(errorMessage);
-      console.error('Error exporting PDF:', error);
       throw error;
     } finally {
       setIsExporting(false);
@@ -113,7 +112,6 @@ export function useExport(): UseExportReturn {
     } catch (error: any) {
       const errorMessage = error?.message || 'Failed to export to Notion';
       setExportError(errorMessage);
-      console.error('Error exporting to Notion:', error);
       throw error;
     } finally {
       setIsExporting(false);

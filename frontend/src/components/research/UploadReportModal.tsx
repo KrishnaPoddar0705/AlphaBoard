@@ -97,7 +97,6 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
         throw new Error('Not authenticated. Please log in first.');
       }
 
-      console.log('Session valid, user ID:', session.user?.id);
 
       // Create form data
       const formData = new FormData();
@@ -130,7 +129,6 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
         } catch {
           errorData = { error: errorText };
         }
-        console.error('Upload failed:', errorData);
         throw new Error(errorData.error || errorData.details || `Upload failed (${response.status})`);
       }
 
@@ -138,7 +136,6 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
 
       setUploadStatus('File uploaded! Indexing and parsing...');
 
-      console.log('Upload successful:', result);
 
       // Wait a moment to show success message
       setTimeout(() => {

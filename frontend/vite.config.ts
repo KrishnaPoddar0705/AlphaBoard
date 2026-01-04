@@ -14,6 +14,8 @@ export default defineConfig({
       // Force all imports to use the top-level installed react
       react: path.resolve(__dirname, './node_modules/react'),
       'react-dom': path.resolve(__dirname, './node_modules/react-dom'),
+      // Path alias for @/ imports
+      '@': path.resolve(__dirname, './src'),
     },
   },
   optimizeDeps: {

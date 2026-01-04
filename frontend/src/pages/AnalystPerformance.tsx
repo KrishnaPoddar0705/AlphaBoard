@@ -39,7 +39,6 @@ export default function AnalystPerformance() {
             if (id.startsWith('user_')) {
                 const mappedId = await getSupabaseUserIdForClerkUser(id);
                 if (!mappedId) {
-                    console.error('Could not find Supabase UUID for Clerk user ID:', id);
                     setRecommendations([]);
                     return;
                 }
@@ -54,7 +53,6 @@ export default function AnalystPerformance() {
             if (error) throw error;
             setRecommendations(data || []);
         } catch (err) {
-            console.error('Error fetching recommendations:', err);
             setRecommendations([]);
         } finally {
             fetchingRecommendations.current = false;
@@ -83,7 +81,6 @@ export default function AnalystPerformance() {
             const data = await getRollingPortfolioReturns(userId, range);
 
             if (data && data.error) {
-                console.error('Portfolio returns API error:', data.error);
                 setPortfolioReturns([]);
                 return;
             }
@@ -115,7 +112,6 @@ export default function AnalystPerformance() {
                             count: point.active_count || 0
                         };
                     } catch (e) {
-                        console.error('Error transforming point:', point, e);
                         return null;
                     }
                 }).filter((item: any) => item !== null);
@@ -123,15 +119,12 @@ export default function AnalystPerformance() {
                 if (transformed.length > 0) {
                     setPortfolioReturns(transformed);
                 } else {
-                    console.warn('No valid transformed data');
                     setPortfolioReturns([]);
                 }
             } else {
-                console.warn('No portfolio returns data or empty points array:', data);
                 setPortfolioReturns([]);
             }
         } catch (error) {
-            console.error('Error fetching portfolio returns:', error);
             setPortfolioReturns([]);
         } finally {
             setPortfolioReturnsLoading(false);
@@ -147,7 +140,6 @@ export default function AnalystPerformance() {
             const perf = await getAnalystPerformance(id!);
             setPerformanceData(perf);
         } catch (error) {
-            console.error('Error fetching performance data:', error);
         } finally {
             setLoading(false);
             fetchingData.current = false;

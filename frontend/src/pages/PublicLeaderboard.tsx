@@ -43,7 +43,6 @@ export default function PublicLeaderboard() {
                 });
             }
         } catch (error) {
-            console.error('Error fetching performance leaderboard:', error);
         }
     };
 
@@ -58,9 +57,7 @@ export default function PublicLeaderboard() {
                 .rpc('get_public_leaderboard_users');
 
             if (profilesError) {
-                console.error('Error fetching public leaderboard users:', profilesError);
                 // If RPC function doesn't exist, fall back to secure client-side filtering
-                console.warn('RPC function not available, using fallback method');
                 
                 // Fallback: Get org members and filter securely
                 const { data: orgMembers } = await supabase
@@ -75,7 +72,6 @@ export default function PublicLeaderboard() {
                     .eq('is_private', false);
                 
                 if (fallbackError) {
-                    console.error('Error in fallback query:', fallbackError);
                     setAnalysts([]);
                     setLoading(false);
                     return;
@@ -109,7 +105,6 @@ export default function PublicLeaderboard() {
                             .in('user_id', batch);
                         
                         if (error) {
-                            console.error('Error fetching public performance batch:', error);
                         } else if (data) {
                             publicPerformance = publicPerformance.concat(data);
                         }
@@ -186,7 +181,6 @@ export default function PublicLeaderboard() {
                 return;
             }
 
-            console.log('Public profiles (not in org, not private) count:', publicProfiles.length);
             const publicUserIds = publicProfiles.map((p: any) => p.id);
             
             if (publicUserIds.length === 0) {
@@ -220,7 +214,6 @@ export default function PublicLeaderboard() {
                         .in('user_id', batch);
                     
                     if (error) {
-                        console.error('Error fetching public performance batch:', error);
                         // Continue with other batches
                     } else if (data) {
                         publicPerformance = publicPerformance.concat(data);
@@ -300,7 +293,6 @@ export default function PublicLeaderboard() {
             setAnalysts(allAnalysts);
 
         } catch (err) {
-            console.error(err);
             setAnalysts([]);
         } finally {
             setLoading(false);

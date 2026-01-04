@@ -56,7 +56,6 @@ export default function JoinOrganization() {
           setCheckingOrg(false);
         }
       } catch (err) {
-        console.error('Error checking organization:', err);
         // Allow user to proceed if check fails
         setCheckingOrg(false);
       }

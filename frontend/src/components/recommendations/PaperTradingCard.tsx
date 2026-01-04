@@ -1,4 +1,4 @@
-import React from 'react';
+// import React from 'react';
 import { Wallet, Coins, DollarSign } from 'lucide-react';
 
 interface PaperTradingCardProps {

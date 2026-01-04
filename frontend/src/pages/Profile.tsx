@@ -91,7 +91,6 @@ export default function Profile() {
       const response = await getOrgTeams(organization.id);
       setAllOrgTeams(response.teams || []);
     } catch (err) {
-      console.error('Error fetching all org teams:', err);
     } finally {
       setLoadingAllTeams(false);
     }
@@ -110,7 +109,6 @@ export default function Profile() {
       const requestTeamIds = new Set(requests?.map((r: any) => r.team_id) || []);
       setPendingRequests(requestTeamIds);
     } catch (err) {
-      console.error('Error fetching pending requests:', err);
     }
   };
 
@@ -127,7 +125,6 @@ export default function Profile() {
       
       setIsAdmin(membership?.role === 'admin' || false);
     } catch (err) {
-      console.error('Error fetching user role:', err);
       setIsAdmin(false);
     }
   };
@@ -140,7 +137,6 @@ export default function Profile() {
       const response = await getTeamJoinRequests(organization.id);
       setAdminJoinRequests(response.requests || []);
     } catch (err: any) {
-      console.error('Error fetching admin join requests:', err);
     } finally {
       setLoadingAdminRequests(false);
     }
@@ -203,7 +199,6 @@ export default function Profile() {
         setWebsite(data.website || '');
       }
     } catch (err: any) {
-      console.error('Error fetching profile:', err);
       setError(err.message || 'Failed to load profile');
     } finally {
       setLoading(false);

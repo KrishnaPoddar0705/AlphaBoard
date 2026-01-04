@@ -38,7 +38,6 @@ export const PerformanceMetricsV2: React.FC<PerformanceMetricsV2Props> = ({ user
             setWeights(weightsData.weights || []);
             setPerformanceData(perfData);
         } catch (err) {
-            console.error('Error fetching performance data:', err);
             setError(err instanceof Error ? err.message : 'Failed to load performance data');
         } finally {
             setLoading(false);

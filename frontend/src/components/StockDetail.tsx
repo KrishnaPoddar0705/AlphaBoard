@@ -114,7 +114,6 @@ export default function StockDetail({ stock, onClose }: StockDetailProps) {
           fetchFinancials();
 
       } catch (err) {
-          console.error("Failed to fetch basic details", err);
           setError("Failed to load stock data. Please try again.");
           setLoading(false);
       }
@@ -135,7 +134,6 @@ export default function StockDetail({ stock, onClose }: StockDetailProps) {
           
           await Promise.allSettled(promises);
       } catch (e) {
-          console.error("Background fetch error", e);
       } finally {
           setFinancialsLoading(false);
       }
@@ -148,7 +146,6 @@ export default function StockDetail({ stock, onClose }: StockDetailProps) {
           const newsData = await getStockNews(stock.ticker);
           setData((prev: any) => ({ ...prev, news: newsData.articles || newsData || [] }));
       } catch (e: any) {
-          console.error("Error fetching news", e);
           setError("Failed to load news. Please try again.");
           // Set empty array so UI shows empty state instead of crashing
           setData((prev: any) => ({ ...prev, news: [] }));

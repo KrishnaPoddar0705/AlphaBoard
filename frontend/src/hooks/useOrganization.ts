@@ -29,7 +29,7 @@ export function useOrganization() {
         .from('user_organization_membership')
         .select('organization_id, role, organizations(id, name)')
         .eq('user_id', session!.user!.id)
-        .single();
+        .maybeSingle();
 
       if (!error && data) {
         const org = data.organizations as any;
@@ -42,7 +42,6 @@ export function useOrganization() {
         setOrganization(null);
       }
     } catch (err) {
-      console.error('Error fetching organization:', err);
       setOrganization(null);
     } finally {
       setLoading(false);

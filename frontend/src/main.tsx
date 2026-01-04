@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { ClerkProvider } from '@clerk/clerk-react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { SearchProvider } from './contexts/SearchContext'
 import { validateCurrentOrigin } from './config/allowedOrigins'
 import ErrorBoundary from './components/ErrorBoundary'
 
@@ -12,6 +14,17 @@ const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 if (!PUBLISHABLE_KEY) {
   throw new Error('Missing Clerk Publishable Key')
 }
+
+// Create a QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 10 * 1000, // 10 seconds
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+})
 
 // Validate origin in development
 if (import.meta.env.DEV) {
@@ -47,16 +60,20 @@ if (!checkFor404()) {
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
       <ErrorBoundary>
-        <ClerkProvider
-          publishableKey={PUBLISHABLE_KEY}
-          afterSignOutUrl="/"
-          afterSignInUrl="/"
-          afterSignUpUrl="/"
-        >
-          <ThemeProvider>
-            <App />
-          </ThemeProvider>
-        </ClerkProvider>
+        <QueryClientProvider client={queryClient}>
+          <ClerkProvider
+            publishableKey={PUBLISHABLE_KEY}
+            afterSignOutUrl="/"
+            afterSignInUrl="/"
+            afterSignUpUrl="/"
+          >
+            <ThemeProvider>
+              <SearchProvider>
+                <App />
+              </SearchProvider>
+            </ThemeProvider>
+          </ClerkProvider>
+        </QueryClientProvider>
       </ErrorBoundary>
     </StrictMode>,
   )

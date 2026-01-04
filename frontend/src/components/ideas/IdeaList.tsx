@@ -100,7 +100,6 @@ export function IdeaList({
                     const summary = await getStockSummary(ticker);
                     return { ticker, name: summary?.companyName || null };
                 } catch (error) {
-                    console.warn(`Failed to fetch company name for ${ticker}:`, error);
                     return { ticker, name: null };
                 }
             });
@@ -178,7 +177,6 @@ export function IdeaList({
                         portfolioNews[stock.ticker] = filteredArticles.slice(0, 5); // Limit to top 5 per stock
                     }
                 } catch (error) {
-                    console.error(`Error fetching news for ${stock.ticker}:`, error);
                 }
             }
 
@@ -197,9 +195,7 @@ export function IdeaList({
                 user_id: session?.user?.id,
             };
 
-            console.log('Generating portfolio podcast with user_id:', session?.user?.id);
             const result = await generatePodcast(podcastRequest);
-            console.log('Portfolio podcast generated successfully:', result);
             setPodcastData(result);
             setShowPodcastModal(false);
             setShowSavedPodcasts(true); // Show saved list after generating new podcast
@@ -208,7 +204,6 @@ export function IdeaList({
                 window.dispatchEvent(new Event('podcast-refresh'));
             }, 500);
         } catch (error: any) {
-            console.error('Error generating portfolio podcast:', error);
             const { getUserFriendlyError } = await import('../../lib/errorSanitizer');
             alert(`Failed to generate podcast: ${getUserFriendlyError(error)}`);
         } finally {
