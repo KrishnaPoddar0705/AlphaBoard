@@ -5,6 +5,9 @@
  * It silently creates an anonymous session if one doesn't exist, enabling proper
  * RLS and foreign key constraints.
  * 
+ * IMPORTANT: Anonymous sign-ins must be enabled in Supabase Dashboard:
+ * Authentication > Providers > Anonymous > Enable
+ * 
  * @returns Promise<boolean> - true if session exists or was created, false on error
  */
 
@@ -30,6 +33,14 @@ export async function ensureVoterSession(): Promise<boolean> {
     const { data, error } = await supabase.auth.signInAnonymously();
     
     if (error) {
+      // Handle specific error: anonymous provider disabled
+      if (error.message?.includes('anonymous_provider_disabled') || 
+          error.message?.includes('Anonymous sign-ins are disabled')) {
+        console.error('Anonymous sign-ins are disabled in Supabase. Please enable them in Dashboard > Authentication > Providers > Anonymous');
+        toast.error('Voting requires anonymous authentication. Please contact support.', { duration: 5000 });
+        return false;
+      }
+      
       console.error('Failed to create anonymous session:', error);
       toast.error('Voting temporarily unavailable. Please retry.', { duration: 3000 });
       return false;
@@ -43,7 +54,15 @@ export async function ensureVoterSession(): Promise<boolean> {
     
     // Session created successfully
     return true;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle specific error: anonymous provider disabled
+    if (error?.message?.includes('anonymous_provider_disabled') || 
+        error?.message?.includes('Anonymous sign-ins are disabled')) {
+      console.error('Anonymous sign-ins are disabled in Supabase. Please enable them in Dashboard > Authentication > Providers > Anonymous');
+      toast.error('Voting requires anonymous authentication. Please contact support.', { duration: 5000 });
+      return false;
+    }
+    
     console.error('Unexpected error in ensureVoterSession:', error);
     toast.error('Voting temporarily unavailable. Please retry.', { duration: 3000 });
     return false;

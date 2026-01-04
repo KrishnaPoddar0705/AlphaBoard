@@ -4,8 +4,7 @@
  */
 
 import { Button } from '@/components/ui/button';
-import { ArrowUp, ArrowDown, MessageSquare } from 'lucide-react';
-import { getThreadIconByTicker } from '@/lib/community/threadIcon';
+import { ArrowUp, ArrowDown, MessageSquare, Landmark } from 'lucide-react';
 import { useVote, type VoteTargetType } from '@/hooks/useVote';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -59,7 +58,8 @@ export function CommunityActionStrip({
     initialMyVote: myVote,
   });
 
-  const ThreadIcon = getThreadIconByTicker(ticker);
+  // Always use Landmark icon for threads
+  const ThreadIcon = Landmark;
 
   const handleCommentClick = () => {
     if (onCommentClick) {
@@ -206,7 +206,6 @@ export function CommunityActionStrip({
                 className="h-[34px] px-2 flex items-center gap-1.5 hover:bg-[rgba(28,27,23,0.04)] transition-colors"
               >
                 <ThreadIcon className="h-[16px] w-[16px] text-[#6F6A60]" />
-                <span className="text-xs font-mono text-[#1C1B17]">Thread</span>
               </button>
             </TooltipTrigger>
             <TooltipContent>

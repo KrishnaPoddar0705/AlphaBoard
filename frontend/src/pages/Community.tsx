@@ -177,7 +177,7 @@ export default function Community() {
     priceCache.set(ticker, { price, timestamp: Date.now() })
   }
 
-  const fetchStockPrice = async (ticker: string): Promise<number> => {
+  const fetchStockPrice = async (ticker: string): Promise<number | null> => {
     const cached = getCachedPrice(ticker)
     if (cached !== null) {
       return cached
@@ -185,14 +185,21 @@ export default function Community() {
 
     try {
       const priceData = await getPrice(ticker)
-      const price = priceData.price || 0
+      // Handle case where price is null or unavailable
+      if (!priceData.available || priceData.price === null || priceData.price === undefined) {
+        // Price data unavailable - return null instead of 0
+        return null
+      }
+      
+      const price = priceData.price
       if (price > 0) {
         setCachedPrice(ticker, price)
+        return price
       }
-      return price
+      return null
     } catch (error) {
-      console.error(`Error fetching price for ${ticker}:`, error)
-      return 0
+      // Silently handle errors - price data unavailable
+      return null
     }
   }
 
@@ -434,7 +441,7 @@ export default function Community() {
               changePercent = ((lastPrice - firstPrice) / firstPrice) * 100
               change = lastPrice - firstPrice
             }
-          } else if (price > 0) {
+          } else if (price && price > 0) {
             // Final fallback: use random change if no chart data
             changePercent = (Math.random() * 40 - 10) // -10% to 30%
             change = (price * changePercent) / 100
@@ -443,7 +450,7 @@ export default function Community() {
           return {
             ticker,
             companyName: summaryData?.companyName || undefined,
-            price,
+            price: price ?? 0, // Use 0 as fallback for null prices
             change,
             changePercent,
             upvotes: metrics.upvotes,

@@ -109,14 +109,16 @@ export function CommunityStockCard({
         <div className="grid grid-cols-[1fr,120px] gap-3 items-center">
           <div>
             <div className="text-3xl font-bold font-mono tabular-nums text-[#1C1B17]">
-              {isLoading ? '...' : `$${price.toFixed(2)}`}
+              {isLoading ? '...' : price > 0 ? `$${price.toFixed(2)}` : 'N/A'}
             </div>
-            <div className={`text-sm font-mono tabular-nums mt-0.5 ${
-              isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
-            }`}>
-              {isPositive ? '+' : ''}${Math.abs(change).toFixed(2)} today
-              <span className="text-[#6F6A60] ml-1">from last day</span>
-            </div>
+            {price > 0 && (
+              <div className={`text-sm font-mono tabular-nums mt-0.5 ${
+                isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+              }`}>
+                {isPositive ? '+' : ''}${Math.abs(change).toFixed(2)} today
+                <span className="text-[#6F6A60] ml-1">from last day</span>
+              </div>
+            )}
           </div>
           <div className="h-14 border border-[#D7D0C2] rounded bg-[#FBF7ED] overflow-hidden flex items-center justify-center">
             {isLoading || !sparklineData || sparklineData.length === 0 ? (

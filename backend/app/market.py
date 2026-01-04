@@ -83,7 +83,8 @@ def get_current_price(ticker: str) -> Optional[float]:
         
         return None
     except Exception as e:
-        print(f"Error fetching price for {ticker}: {e}")
+        # Log gracefully - price data unavailable for this ticker
+        print(f"[INFO] Unable to fetch price data for ticker {ticker}: {str(e)}")
         return None
 
 def search_stocks(query: str) -> List[Dict[str, str]]:

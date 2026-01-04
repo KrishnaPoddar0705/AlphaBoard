@@ -16,8 +16,18 @@ export const searchStocks = async (query: string) => {
 };
 
 export const getPrice = async (ticker: string) => {
-    const res = await api.get(`/market/price/${ticker}`);
-    return res.data;
+    try {
+        const res = await api.get(`/market/price/${ticker}`);
+        return res.data;
+    } catch (error: any) {
+        // Handle 404 or other errors gracefully
+        if (error.response?.status === 404 || error.response?.status === 500) {
+            // Return a response indicating price is unavailable
+            return { ticker, price: null, available: false };
+        }
+        // Re-throw unexpected errors
+        throw error;
+    }
 };
 
 // Deprecated: Monolithic fetch (avoid using)

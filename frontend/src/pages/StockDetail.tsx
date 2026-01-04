@@ -40,9 +40,12 @@ export default function StockDetail() {
   const [comments, setComments] = React.useState<Comment[]>([])
   const [newComment, setNewComment] = React.useState("")
   const [loading, setLoading] = React.useState(true)
-  const [upvotes, setUpvotes] = React.useState(0)
-  const [downvotes, setDownvotes] = React.useState(0)
-  const [userVote, setUserVote] = React.useState<"upvote" | "downvote" | null>(null)
+  // Stock-level voting state (same as Community cards)
+  const [stockScore, setStockScore] = React.useState(0)
+  const [stockUpvotes, setStockUpvotes] = React.useState(0)
+  const [stockDownvotes, setStockDownvotes] = React.useState(0)
+  const [stockUserVote, setStockUserVote] = React.useState<number | null>(null) // -1, 1, or null
+  const [isVoting, setIsVoting] = React.useState(false)
   const [timeframe, setTimeframe] = React.useState("1YR")
   const [commentSort, setCommentSort] = React.useState<"latest" | "top">("latest")
   const [financials, setFinancials] = React.useState<any>(null)
@@ -76,7 +79,7 @@ export default function StockDetail() {
     if (ticker) {
       loadStockData()
       loadComments()
-      loadVotes()
+      loadStockVotes() // Use new function name
       loadFinancials()
       loadChartData()
       trackView()
@@ -188,26 +191,54 @@ export default function StockDetail() {
     }
   }
 
-  const loadVotes = async () => {
+  // Load stock-level votes (same system as Community cards)
+  const loadStockVotes = async () => {
     if (!ticker) return
     try {
-      const { data } = await supabase
-        .from("stock_votes")
-        .select("*")
-        .eq("ticker", ticker)
-
-      const upvoteCount = data?.filter((v) => v.vote_type === "upvote").length || 0
-      const downvoteCount = data?.filter((v) => v.vote_type === "downvote").length || 0
-
-      setUpvotes(upvoteCount)
-      setDownvotes(downvoteCount)
-
-      if (user) {
-        const userVoteData = data?.find((v) => v.user_id === user.id)
-        setUserVote(userVoteData?.vote_type || null)
+      // Get stock-level vote data from community_stocks table
+      const { data: stockData } = await supabase
+        .from('community_stocks')
+        .select('score, upvotes, downvotes, ticker')
+        .eq('ticker', ticker)
+        .maybeSingle()
+      
+      if (stockData) {
+        setStockScore(stockData.score ?? 0)
+        setStockUpvotes(stockData.upvotes ?? 0)
+        setStockDownvotes(stockData.downvotes ?? 0)
+      } else {
+        // Default to 0 if stock doesn't exist yet
+        setStockScore(0)
+        setStockUpvotes(0)
+        setStockDownvotes(0)
+      }
+      
+      // Get user's stock-level vote (works for both authenticated and anonymous users)
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user?.id) {
+        const { data: userVoteData } = await supabase
+          .from('community_votes')
+          .select('value')
+          .eq('target_type', 'stock')
+          .eq('target_id', ticker)
+          .eq('user_id', session.user.id)
+          .maybeSingle()
+        
+        if (userVoteData) {
+          setStockUserVote(userVoteData.value as number)
+        } else {
+          setStockUserVote(null)
+        }
+      } else {
+        setStockUserVote(null)
       }
     } catch (error) {
-      console.error("Error loading votes:", error)
+      console.error("Error loading stock votes:", error)
+      // Set defaults on error
+      setStockScore(0)
+      setStockUpvotes(0)
+      setStockDownvotes(0)
+      setStockUserVote(null)
     }
   }
 
@@ -224,20 +255,66 @@ export default function StockDetail() {
     }
   }
 
-  const handleVote = async (voteType: "upvote" | "downvote") => {
-    if (!ticker) return
+  // Handle vote using the same RPC endpoint as cards
+  const handleVote = async (intent: "up" | "down") => {
+    if (!ticker || isVoting) return // Prevent double-clicks
 
-    const userId = user?.id || `anon_${Date.now()}_${Math.random()}`
+    setIsVoting(true)
 
     try {
-      await supabase.from("stock_votes").upsert({
-        ticker,
-        user_id: userId,
-        vote_type: voteType,
+      // Import ensureVoterSession dynamically
+      const { ensureVoterSession } = await import('@/lib/auth/ensureVoterSession')
+      
+      // Ensure we have a Supabase session (creates anonymous session if needed)
+      const hasSession = await ensureVoterSession()
+      if (!hasSession) {
+        setIsVoting(false)
+        return // Error toast is shown by ensureVoterSession
+      }
+
+      // Calculate new vote value based on current vote and intent
+      // Same logic as useVote hook
+      let newValue: number | null = null
+      const currentVote = stockUserVote
+      
+      if (intent === 'up') {
+        if (currentVote === 1) {
+          newValue = null // Remove vote
+        } else {
+          newValue = 1 // Add or switch to upvote
+        }
+      } else {
+        if (currentVote === -1) {
+          newValue = null // Remove vote
+        } else {
+          newValue = -1 // Add or switch to downvote
+        }
+      }
+
+      // Call RPC function (uses auth.uid() from JWT)
+      const { data, error } = await supabase.rpc('rpc_cast_vote', {
+        p_target_type: 'stock',
+        p_target_id: ticker,
+        p_new_value: newValue,
       })
-      loadVotes()
+
+      if (error) {
+        console.error("Error voting:", error)
+        setIsVoting(false)
+        return
+      }
+
+      // Update state with response
+      if (data) {
+        setStockScore(data.score)
+        setStockUpvotes(data.upvotes)
+        setStockDownvotes(data.downvotes)
+        setStockUserVote(data.my_vote)
+      }
     } catch (error) {
       console.error("Error voting:", error)
+    } finally {
+      setIsVoting(false)
     }
   }
 
@@ -320,11 +397,13 @@ export default function StockDetail() {
         price={stockData.price}
         changePercent={changePercent}
         change={change}
-        upvotes={upvotes}
-        downvotes={downvotes}
-        userVote={userVote}
+        score={stockScore}
+        upvotes={stockUpvotes}
+        downvotes={stockDownvotes}
+        userVote={stockUserVote}
         onVote={handleVote}
         onAddToWatchlist={addToWatchlist}
+        isVoting={isVoting}
       />
 
       {/* Main Content */}

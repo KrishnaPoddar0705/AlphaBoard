@@ -83,7 +83,10 @@ def search_market(q: str):
 def get_price(ticker: str):
     price = get_current_price(ticker)
     if price is None:
-        raise HTTPException(status_code=404, detail="Ticker not found")
+        # Log gracefully instead of raising error
+        print(f"[INFO] Unable to fetch price data for ticker: {ticker} - ticker may not exist or data unavailable")
+        # Return a response with price as None instead of raising 404
+        return {"ticker": ticker, "price": None, "available": False}
     
     # Update current_price for all recommendations with this ticker (OPEN and WATCHLIST only)
     try:
@@ -100,7 +103,7 @@ def get_price(ticker: str):
         print(f"Error updating current_price for {ticker}: {e}")
         # Don't fail the request if DB update fails
     
-    return {"ticker": ticker, "price": price}
+    return {"ticker": ticker, "price": price, "available": True}
 
 @app.get("/market/details/{ticker}")
 def get_details(ticker: str):

@@ -20,10 +20,10 @@ export function PostCard({ post, ticker }: PostCardProps) {
     <div className="flex gap-3 p-4 border-b border-[#D7D0C2] bg-[#F7F2E6] hover:bg-[#FBF7ED] transition-colors">
       {/* Post Content */}
       <div className="flex-1 min-w-0">
-        <Link
-          to={`/stock/${ticker}/community/${post.id}`}
-          className="block group"
-        >
+          <Link
+            to={`/stock/${ticker}/community/${post.id}`}
+            className="block group"
+          >
           <h3 className="font-mono font-semibold text-[#1C1B17] mb-1 group-hover:text-[#1C1B17]/80 transition-colors">
             {post.title}
           </h3>

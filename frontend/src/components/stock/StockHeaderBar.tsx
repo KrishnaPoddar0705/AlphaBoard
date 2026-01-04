@@ -11,11 +11,13 @@ interface StockHeaderBarProps {
   price: number
   changePercent: number
   change: number
+  score: number // Net score (upvotes - downvotes)
   upvotes: number
   downvotes: number
-  userVote: 'upvote' | 'downvote' | null
-  onVote: (type: 'upvote' | 'downvote') => void
+  userVote: number | null // -1, 1, or null
+  onVote: (intent: 'up' | 'down') => void
   onAddToWatchlist: () => void
+  isVoting?: boolean // Optional loading state
 }
 
 export function StockHeaderBar({
@@ -26,14 +28,18 @@ export function StockHeaderBar({
   price,
   changePercent,
   change,
+  score,
   upvotes,
   downvotes,
   userVote,
   onVote,
   onAddToWatchlist,
+  isVoting = false,
 }: StockHeaderBarProps) {
   const navigate = useNavigate()
   const isPositive = changePercent >= 0
+  const isUpvoted = userVote === 1
+  const isDownvoted = userVote === -1
 
   return (
     <div className="bg-[#F1EEE0] border-b border-[#D7D0C2]">
@@ -83,34 +89,59 @@ export function StockHeaderBar({
           </div>
         </div>
 
-        {/* Controls row */}
+        {/* Controls row - Voting (same as Community cards) */}
         <div className="flex items-center gap-3">
-          <Button
-            variant={userVote === 'upvote' ? 'default' : 'outline'}
-            onClick={() => onVote('upvote')}
-            className={`gap-2 font-mono ${
-              userVote === 'upvote'
-                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17] hover:bg-[#1C1B17]/90'
-                : 'bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6]'
-            }`}
-            size="sm"
-          >
-            <ArrowUp className="h-4 w-4" />
-            <span className="tabular-nums">{upvotes}</span>
-          </Button>
-          <Button
-            variant={userVote === 'downvote' ? 'default' : 'outline'}
-            onClick={() => onVote('downvote')}
-            className={`gap-2 font-mono ${
-              userVote === 'downvote'
-                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17] hover:bg-[#1C1B17]/90'
-                : 'bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6]'
-            }`}
-            size="sm"
-          >
-            <ArrowDown className="h-4 w-4" />
-            <span className="tabular-nums">{downvotes}</span>
-          </Button>
+          {/* Vote Control - Same style as CommunityActionStrip */}
+          <div className={`
+            flex items-center gap-0 border border-[#D7D0C2] rounded-md bg-[#F7F2E6] overflow-hidden
+            ${isUpvoted ? 'bg-[rgba(47,143,91,0.12)]' : ''}
+            ${isDownvoted ? 'bg-[rgba(178,59,42,0.12)]' : ''}
+          `}>
+            <button
+              onClick={() => onVote('up')}
+              disabled={isVoting}
+              className={`
+                h-[34px] px-2 flex items-center justify-center
+                hover:bg-[rgba(28,27,23,0.04)] transition-colors
+                disabled:opacity-50 disabled:cursor-not-allowed
+                ${isUpvoted ? 'bg-[rgba(47,143,91,0.2)]' : ''}
+              `}
+              aria-label="Upvote"
+            >
+              <ArrowUp
+                className={`h-[16px] w-[16px] ${
+                  isUpvoted ? 'text-[#2F8F5B]' : 'text-[#6F6A60]'
+                }`}
+              />
+            </button>
+
+            <span
+              className={`
+                text-xs font-mono tabular-nums px-2 min-w-[32px] text-center
+                ${score > 0 ? 'text-[#2F8F5B]' : score < 0 ? 'text-[#B23B2A]' : 'text-[#1C1B17]'}
+              `}
+            >
+              {score}
+            </span>
+
+            <button
+              onClick={() => onVote('down')}
+              disabled={isVoting}
+              className={`
+                h-[34px] px-2 flex items-center justify-center
+                hover:bg-[rgba(28,27,23,0.04)] transition-colors
+                disabled:opacity-50 disabled:cursor-not-allowed
+                ${isDownvoted ? 'bg-[rgba(178,59,42,0.2)]' : ''}
+              `}
+              aria-label="Downvote"
+            >
+              <ArrowDown
+                className={`h-[16px] w-[16px] ${
+                  isDownvoted ? 'text-[#B23B2A]' : 'text-[#6F6A60]'
+                }`}
+              />
+            </button>
+          </div>
           <Button
             variant="outline"
             onClick={onAddToWatchlist}
