@@ -685,7 +685,7 @@ export default function Dashboard() {
         }
     };
 
-    const handleDeleteWatchlist = async (rec: any, e: React.MouseEvent) => {
+    const handleDeleteWatchlist = async (_rec: any, e: React.MouseEvent) => {
         e.stopPropagation();
         // Watchlist items persist permanently - deletion disabled
         // This function is kept for API compatibility but does nothing

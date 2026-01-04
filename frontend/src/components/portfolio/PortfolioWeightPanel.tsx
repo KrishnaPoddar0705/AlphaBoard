@@ -199,7 +199,7 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelProps> = ({ us
                 });
             }
 
-            const response = await updatePortfolioWeights(userId, weightUpdates);
+            await updatePortfolioWeights(userId, weightUpdates);
 
             // Wait for backend to process
             await new Promise(resolve => setTimeout(resolve, 1000));

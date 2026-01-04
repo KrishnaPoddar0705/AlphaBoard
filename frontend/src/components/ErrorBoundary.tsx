@@ -22,7 +22,7 @@ class ErrorBoundaryClass extends Component<Props, State> {
         return { hasError: true, error };
     }
 
-    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    componentDidCatch(error: Error, _errorInfo: ErrorInfo) {
 
         // If it's a 404 error from the server, try to redirect
         if (error.message.includes('404') || error.message.includes('Not Found')) {
