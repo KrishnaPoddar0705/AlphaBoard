@@ -23,6 +23,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { useCommunityFeed } from "@/hooks/useCommunityFeed"
 import { supabase } from "@/lib/supabase"
+import { useQueryClient } from "@tanstack/react-query"
 
 // Map UI sort options to feed sort options
 function mapSortOption(sortBy: SortOption): 'mostVoted' | 'mostComments' | 'recent' {
@@ -43,6 +44,7 @@ export default function Community() {
   const { user } = useUser()
   const { searchQuery } = useSearch()
   const debouncedSearchQuery = useDebounce(searchQuery, 300)
+  const queryClient = useQueryClient()
 
   const [sortBy, setSortBy] = React.useState<SortOption>('all')
   const [country, setCountry] = React.useState<'USA' | 'India'>('USA')
@@ -464,6 +466,9 @@ export default function Community() {
     setShowAddStockDialog(false)
     setNewStockTicker('')
     
+    // Optimistically update bookmarks immediately
+    setBookmarkedTickers(prev => new Set([...prev, ticker]))
+    
     try {
       // Ensure stock exists in community_ticker_stats (for feed to pick it up)
       // This creates a placeholder entry if the stock doesn't exist
@@ -484,7 +489,7 @@ export default function Community() {
         })
 
       if (statsError) {
-        // Continue even if stats update fails
+        console.error('Failed to create ticker stats:', statsError)
       }
 
       // Bookmark the stock for the user
@@ -494,6 +499,13 @@ export default function Community() {
       })
 
       if (bookmarkError) {
+        console.error('Failed to bookmark:', bookmarkError)
+        // Revert optimistic update on error
+        setBookmarkedTickers(prev => {
+          const next = new Set(prev)
+          next.delete(ticker)
+          return next
+        })
       }
 
       // Fetch market data for the newly added ticker immediately
@@ -517,7 +529,7 @@ export default function Community() {
           })
 
           if (response.ok) {
-            // Wait a bit for the data to be ingested, then refresh market data
+            // Wait a bit for the data to be ingested, then refresh market data and feed
             setTimeout(async () => {
               // Force reload market data for this ticker by clearing it from the map first
               setMarketDataMap(prev => {
@@ -527,18 +539,40 @@ export default function Community() {
               })
               // Load market data for this ticker
               await loadMarketDataForTickers([ticker])
-            }, 3000) // Wait 3 seconds for ingestion to complete
-          } else {
+              
+              // Refresh feed again after market data is loaded to show updated prices
+              await queryClient.invalidateQueries({ 
+                queryKey: ['community-feed', country, feedSort, 1000] 
+              })
+              await refetchFeed()
+            }, 2000) // Wait 2 seconds for ingestion to complete
           }
         }
       } catch (error) {
-        // Continue even if market data fetch fails
+        console.error('Failed to fetch market data:', error)
       }
 
-      // Refresh bookmarks and feed
-      await loadUserBookmarks()
-      refetchFeed()
+      // Wait a moment for database writes to complete, then invalidate and refetch
+      setTimeout(async () => {
+        // Invalidate query cache to force fresh fetch
+        await queryClient.invalidateQueries({ 
+          queryKey: ['community-feed', country, feedSort, 1000] 
+        })
+        
+        // Also refresh bookmarks to ensure consistency
+        await loadUserBookmarks()
+        
+        // Refetch feed with fresh data
+        await refetchFeed()
+      }, 500) // Small delay to ensure DB writes are complete
     } catch (error) {
+      console.error('Failed to add stock:', error)
+      // Revert optimistic bookmark update on error
+      setBookmarkedTickers(prev => {
+        const next = new Set(prev)
+        next.delete(ticker)
+        return next
+      })
     }
   }
 
