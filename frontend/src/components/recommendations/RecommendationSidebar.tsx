@@ -1,6 +1,7 @@
 // import React from 'react'
 import { Card, CardContent } from '@/components/ui/card-new'
 import { Badge } from '@/components/ui/badge'
+import { formatCurrency } from '@/lib/utils'
 
 interface Recommendation {
   id: string
@@ -81,13 +82,13 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
                     <div className="flex justify-between items-center">
                       <span className="font-mono text-xs text-[#6F6A60]">Current</span>
                       <span className="font-mono font-semibold text-[#1C1B17] tabular-nums">
-                        ${rec.current_price?.toFixed(2) || 'N/A'}
+                        {formatCurrency(rec.current_price, rec.ticker)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="font-mono text-xs text-[#6F6A60]">Entry</span>
                       <span className="font-mono text-sm text-[#1C1B17] tabular-nums">
-                        ${rec.entry_price?.toFixed(2) || 'N/A'}
+                        {formatCurrency(rec.entry_price, rec.ticker)}
                       </span>
                     </div>
                     {returnPct !== null && (

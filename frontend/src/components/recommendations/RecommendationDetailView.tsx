@@ -10,6 +10,7 @@ import { useUser } from '@clerk/clerk-react'
 import { PriceTargetTimeline } from '@/components/stock/PriceTargetTimeline'
 import { createPriceTarget } from '@/lib/api'
 import { AddPriceTargetModal } from '@/components/stock/AddPriceTargetModal'
+import { formatCurrency, getCurrencySymbol } from '@/lib/utils'
 
 interface Recommendation {
   id: string
@@ -116,7 +117,8 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
       ? ((exitPrice - recommendation.entry_price) / recommendation.entry_price * 100) * (recommendation.action === 'SELL' ? -1 : 1)
       : 0
 
-    if (!window.confirm(`Close position in ${recommendation.ticker} at $${exitPrice.toFixed(2)}?`)) {
+    const currencySymbol = getCurrencySymbol(recommendation.ticker)
+    if (!window.confirm(`Close position in ${recommendation.ticker} at ${currencySymbol}${exitPrice.toFixed(2)}?`)) {
       return
     }
 
@@ -247,13 +249,13 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
               <div>
                 <Label className="font-mono text-xs text-[#6F6A60] uppercase tracking-wider">Current Price</Label>
                 <div className="text-2xl font-mono font-bold text-[#1C1B17] tabular-nums mt-1">
-                  ${recommendation.current_price?.toFixed(2) || 'N/A'}
+                  {formatCurrency(recommendation.current_price, recommendation.ticker)}
                 </div>
               </div>
               <div>
                 <Label className="font-mono text-xs text-[#6F6A60] uppercase tracking-wider">Entry Price</Label>
                 <div className="text-2xl font-mono font-bold text-[#1C1B17] tabular-nums mt-1">
-                  ${recommendation.entry_price?.toFixed(2) || 'N/A'}
+                  {formatCurrency(recommendation.entry_price, recommendation.ticker)}
                 </div>
               </div>
               <div>
@@ -270,7 +272,7 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
                         <div className={`text-xl font-mono font-bold tabular-nums ${
                           isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
                         }`}>
-                          {isPositive ? '+' : ''}${gainLoss?.toFixed(2) || '0.00'}
+                          {isPositive ? '+' : ''}{formatCurrency(gainLoss, recommendation.ticker)}
                         </div>
                         <div className={`text-sm font-mono tabular-nums ${
                           isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'

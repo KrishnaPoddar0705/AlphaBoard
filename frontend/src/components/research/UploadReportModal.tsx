@@ -1,8 +1,18 @@
 import { useState, useRef } from 'react';
-import { X, Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
+import { Upload, Loader2, FileText, CheckCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import SectorDropdown from '../ui/SectorDropdown';
 import TickerInput from '../ui/TickerInput';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
 
 interface UploadReportModalProps {
   isOpen: boolean;
@@ -39,7 +49,6 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
   const [error, setError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  if (!isOpen) return null;
 
   const handleFileSelect = (selectedFile: File) => {
     if (!selectedFile.name.toLowerCase().endsWith('.pdf')) {
@@ -166,31 +175,23 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="glass rounded-xl border border-white/10 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10">
-          <h2 className="text-xl font-bold text-white">Upload Research Report</h2>
-          <button
-            onClick={handleClose}
-            disabled={uploading}
-            className="p-2 hover:bg-white/10 rounded-lg transition-colors disabled:opacity-50"
-          >
-            <X className="w-5 h-5 text-gray-400" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && !uploading && handleClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Upload Research Report</DialogTitle>
+        </DialogHeader>
 
-        {/* Body */}
-        <div className="p-6 space-y-4">
+        <div className="space-y-5">
           {/* File Upload Area */}
           <div
             onDrop={handleDrop}
             onDragOver={(e) => e.preventDefault()}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${file
-              ? 'border-green-500/50 bg-green-500/10'
-              : 'border-white/20 hover:border-blue-500/50 hover:bg-blue-500/5'
-              }`}
+            className={`border-2 border-dashed rounded-lg p-6 md:p-8 text-center cursor-pointer transition-all ${
+              file
+                ? 'border-[#2F8F5B] bg-[#2F8F5B]/5'
+                : 'border-[#D7D0C2] hover:border-[#1D4ED8] hover:bg-[#1D4ED8]/5'
+            }`}
           >
             <input
               ref={fileInputRef}
@@ -202,45 +203,43 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
             />
             {file ? (
               <div className="flex items-center justify-center gap-3">
-                <FileText className="w-8 h-8 text-green-400" />
+                <FileText className="w-6 h-6 md:w-8 md:h-8 text-[#2F8F5B]" />
                 <div className="text-left">
-                  <p className="text-white font-medium">{file.name}</p>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-[#1C1B17] font-medium text-sm md:text-base">{file.name}</p>
+                  <p className="text-xs md:text-sm text-[#6F6A60]">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
               </div>
             ) : (
               <div>
-                <Upload className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-white font-medium mb-1">
+                <Upload className="w-10 h-10 md:w-12 md:h-12 text-[#6F6A60] mx-auto mb-3" />
+                <p className="text-[#1C1B17] font-medium mb-1 text-sm md:text-base">
                   Drop your PDF here or click to browse
                 </p>
-                <p className="text-sm text-gray-400">Maximum file size: 50MB</p>
+                <p className="text-xs md:text-sm text-[#6F6A60]">Maximum file size: 50MB</p>
               </div>
             )}
           </div>
 
           {/* Title */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
+          <div className="space-y-2">
+            <Label htmlFor="title" className="text-[#1C1B17]">
               Report Title *
-            </label>
-            <input
+            </Label>
+            <Input
+              id="title"
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g., Goldman Sachs Metals & Mining Q4 2024"
               disabled={uploading}
-              className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-2 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 disabled:opacity-50"
             />
           </div>
 
           {/* Sector */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Sector
-            </label>
+          <div className="space-y-2">
+            <Label className="text-[#1C1B17]">Sector</Label>
             <SectorDropdown
               value={sector}
               onChange={setSector}
@@ -251,67 +250,74 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
           </div>
 
           {/* Tickers */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Tickers
-            </label>
+          <div className="space-y-2">
+            <Label className="text-[#1C1B17]">Tickers</Label>
             <TickerInput
               value={tickers}
               onChange={setTickers}
               disabled={uploading}
               placeholder="e.g., AAPL, MSFT, GOOGL"
             />
+            <p className="text-xs text-[#6F6A60]">
+              Enter ticker symbols separated by commas or search
+            </p>
           </div>
 
           {/* Status */}
           {uploadStatus && (
-            <div className="flex items-center gap-3 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <div className={`flex items-center gap-3 p-4 rounded-lg border ${
+              uploading
+                ? 'bg-[#1D4ED8]/10 border-[#1D4ED8]/20'
+                : 'bg-[#2F8F5B]/10 border-[#2F8F5B]/20'
+            }`}>
               {uploading ? (
-                <Loader2 className="w-5 h-5 text-blue-400 animate-spin" />
+                <Loader2 className="w-5 h-5 text-[#1D4ED8] animate-spin" />
               ) : (
-                <CheckCircle className="w-5 h-5 text-green-400" />
+                <CheckCircle className="w-5 h-5 text-[#2F8F5B]" />
               )}
-              <p className="text-sm text-white">{uploadStatus}</p>
+              <p className="text-sm text-[#1C1B17] font-medium">{uploadStatus}</p>
             </div>
           )}
 
           {/* Error */}
           {error && (
-            <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="p-4 bg-[#B23B2A]/10 border border-[#B23B2A]/20 rounded-lg">
+              <p className="text-sm text-[#B23B2A] font-medium">{error}</p>
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-white/10">
-          <button
+        <DialogFooter className="gap-2 sm:gap-3">
+          <Button
+            variant="outline"
             onClick={handleClose}
             disabled={uploading}
-            className="px-4 py-2 text-gray-300 hover:text-white transition-colors disabled:opacity-50"
+            className="text-[#1C1B17] border-[#D7D0C2] hover:bg-[#F7F2E6]"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={handleUpload}
             disabled={!file || !title.trim() || uploading}
-            className="px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="flex items-center gap-2"
           >
             {uploading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Uploading...
+                <span className="hidden sm:inline">Uploading...</span>
+                <span className="sm:hidden">Uploading</span>
               </>
             ) : (
               <>
                 <Upload className="w-4 h-4" />
-                Upload Report
+                <span className="hidden sm:inline">Upload Report</span>
+                <span className="sm:hidden">Upload</span>
               </>
             )}
-          </button>
-        </div>
-      </div>
-    </div>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

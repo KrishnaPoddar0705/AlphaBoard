@@ -6,6 +6,8 @@ import UploadReportModal from '../components/research/UploadReportModal';
 import RAGSearchBar from '../components/research/RAGSearchBar';
 import SectorDropdown from '../components/ui/SectorDropdown';
 import TickerFilter from '../components/ui/TickerFilter';
+import { Card, CardContent } from '../components/ui/card-new';
+import { Button } from '../components/ui/button';
 
 interface Report {
   id: string;
@@ -143,24 +145,25 @@ export default function ResearchLibrary() {
   const hasActiveFilters = searchTerm || sectorFilter || statusFilter || tickerFilter.length > 0;
 
   return (
-    <div className="space-y-6">
+    <div className="p-5 md:p-7 space-y-5">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+          <h1 className="text-[28px] font-bold text-[#1C1B17] tracking-tight">
             Institutional Memory
           </h1>
-          <p className="text-[var(--text-secondary)] mt-1">
+          <p className="text-[#6F6A60] mt-1 text-sm md:text-base">
             Upload, search, and analyze research reports with AI-powered insights
           </p>
         </div>
-        <button
+        <Button
           onClick={() => setUploadModalOpen(true)}
-          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+          className="flex items-center gap-2"
         >
-          <Plus className="w-5 h-5" />
-          Upload Report
-        </button>
+          <Plus className="w-4 h-4" />
+          <span className="hidden sm:inline">Upload Report</span>
+          <span className="sm:hidden">Upload</span>
+        </Button>
       </div>
 
       {/* RAG Search */}
@@ -173,142 +176,146 @@ export default function ResearchLibrary() {
       {/* Toggle RAG Search */}
       <button
         onClick={() => setShowRAGSearch(!showRAGSearch)}
-        className="text-sm text-indigo-500 hover:text-indigo-600 transition-colors"
+        className="text-sm text-[#1D4ED8] hover:text-[#1D4ED8]/80 transition-colors font-medium"
       >
         {showRAGSearch ? 'Hide' : 'Show'} AI Search
       </button>
 
       {/* Filters */}
-      <div className="glass p-4 rounded-xl border border-[var(--border-color)]">
-        <div className="space-y-4">
-          {/* First Row: Search */}
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[var(--text-secondary)]" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search reports by title, ticker..."
-              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-color)] rounded-lg pl-10 pr-4 py-2 text-[var(--text-primary)] placeholder-[var(--text-tertiary)] focus:outline-none focus:border-blue-500"
-            />
-          </div>
-
-          {/* Second Row: Sector, Status, and Ticker Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Sector Filter */}
-            <div className="relative">
-              <label className="block text-xs font-medium text-[var(--text-primary)] mb-2">
-                Sector
-              </label>
-              <SectorDropdown
-                value={sectorFilter}
-                onChange={setSectorFilter}
-                options={uniqueSectors}
-                placeholder="All Sectors"
+      <Card>
+        <CardContent className="p-4 md:p-6">
+          <div className="space-y-4">
+            {/* First Row: Search */}
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[#6F6A60]" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search reports by title, ticker..."
+                className="w-full bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg pl-9 md:pl-10 pr-4 py-2 text-[#1C1B17] placeholder-[#8B857A] focus:outline-none focus:ring-2 focus:ring-[#1D4ED8]/20 focus:border-[#1D4ED8] transition-all text-sm md:text-base"
               />
             </div>
 
-            {/* Status Filter */}
-            <div className="relative">
-              <label className="block text-xs font-medium text-[var(--text-primary)] mb-2">
-                Status
-              </label>
-              <SectorDropdown
-                value={statusFilter}
-                onChange={setStatusFilter}
-                options={STATUS_OPTIONS}
-                placeholder="All Statuses"
-              />
+            {/* Second Row: Sector, Status, and Ticker Filters */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Sector Filter */}
+              <div className="relative">
+                <label className="block text-xs font-medium text-[#1C1B17] mb-2">
+                  Sector
+                </label>
+                <SectorDropdown
+                  value={sectorFilter}
+                  onChange={setSectorFilter}
+                  options={uniqueSectors}
+                  placeholder="All Sectors"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="relative">
+                <label className="block text-xs font-medium text-[#1C1B17] mb-2">
+                  Status
+                </label>
+                <SectorDropdown
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  options={STATUS_OPTIONS}
+                  placeholder="All Statuses"
+                />
+              </div>
+
+              {/* Ticker Filter */}
+              <div className="relative">
+                <label className="block text-xs font-medium text-[#1C1B17] mb-2">
+                  Tickers
+                </label>
+                <TickerFilter
+                  value={tickerFilter}
+                  onChange={setTickerFilter}
+                  options={allTickers}
+                  placeholder="Select tickers..."
+                />
+              </div>
             </div>
 
-            {/* Ticker Filter */}
-            <div className="relative">
-              <label className="block text-xs font-medium text-[var(--text-primary)] mb-2">
-                Tickers
-              </label>
-              <TickerFilter
-                value={tickerFilter}
-                onChange={setTickerFilter}
-                options={allTickers}
-                placeholder="Select tickers..."
-              />
-            </div>
+            {/* Clear Filters Button */}
+            {hasActiveFilters && (
+              <div className="flex justify-end">
+                <button
+                  onClick={clearAllFilters}
+                  className="px-4 py-2 text-sm text-[#6F6A60] hover:text-[#1C1B17] transition-colors flex items-center gap-2 font-medium"
+                >
+                  <X className="w-4 h-4" />
+                  Clear All Filters
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Clear Filters Button */}
-          {hasActiveFilters && (
-            <div className="flex justify-end">
-              <button
-                onClick={clearAllFilters}
-                className="px-4 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors flex items-center gap-2"
-              >
-                <X className="w-4 h-4" />
-                Clear All Filters
-              </button>
+          {/* Stats */}
+          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-[#D7D0C2]">
+            <div className="text-sm">
+              <span className="text-[#6F6A60]">Showing </span>
+              <span className="text-[#1C1B17] font-semibold">{filteredReports.length}</span>
+              <span className="text-[#6F6A60]"> of {reports.length} reports</span>
             </div>
-          )}
-        </div>
-
-        {/* Stats */}
-        <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-[var(--border-color)]">
-          <div className="text-sm">
-            <span className="text-[var(--text-secondary)]">Showing </span>
-            <span className="text-[var(--text-primary)] font-semibold">{filteredReports.length}</span>
-            <span className="text-[var(--text-secondary)]"> of {reports.length} reports</span>
+            {hasActiveFilters && (
+              <div className="flex flex-wrap items-center gap-2 text-sm text-[#6F6A60]">
+                <span>Filters:</span>
+                {sectorFilter && (
+                  <span className="px-2 py-1 bg-[#1D4ED8]/10 rounded text-[#1C1B17] text-xs font-medium border border-[#1D4ED8]/20">
+                    Sector: {sectorFilter}
+                  </span>
+                )}
+                {statusFilter && (
+                  <span className="px-2 py-1 bg-[#1D4ED8]/10 rounded text-[#1C1B17] text-xs font-medium border border-[#1D4ED8]/20">
+                    Status: {statusFilter}
+                  </span>
+                )}
+                {tickerFilter.length > 0 && (
+                  <span className="px-2 py-1 bg-[#1D4ED8]/10 rounded text-[#1C1B17] text-xs font-medium border border-[#1D4ED8]/20">
+                    Tickers: {tickerFilter.length}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
-          {hasActiveFilters && (
-            <div className="flex flex-wrap items-center gap-2 text-sm text-[var(--text-secondary)]">
-              <span>Filters:</span>
-              {sectorFilter && (
-                <span className="px-2 py-1 bg-blue-500/20 rounded text-[var(--text-primary)] text-xs">
-                  Sector: {sectorFilter}
-                </span>
-              )}
-              {statusFilter && (
-                <span className="px-2 py-1 bg-purple-500/20 rounded text-[var(--text-primary)] text-xs">
-                  Status: {statusFilter}
-                </span>
-              )}
-              {tickerFilter.length > 0 && (
-                <span className="px-2 py-1 bg-green-500/20 rounded text-[var(--text-primary)] text-xs">
-                  Tickers: {tickerFilter.length}
-                </span>
-              )}
-            </div>
-          )}
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
       {/* Reports Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-indigo-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-[#1D4ED8] animate-spin" />
         </div>
       ) : filteredReports.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filteredReports.map((report) => (
             <ReportCard key={report.id} report={report} />
           ))}
         </div>
       ) : (
-        <div className="glass p-12 rounded-xl border border-[var(--border-color)] text-center">
-          <Filter className="w-12 h-12 text-[var(--text-tertiary)] mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-[var(--text-primary)] mb-2">No reports found</h3>
-          <p className="text-[var(--text-secondary)] mb-6">
-            {reports.length === 0
-              ? 'Upload your first research report to get started'
-              : 'Try adjusting your filters or search terms'}
-          </p>
-          {reports.length === 0 && (
-            <button
-              onClick={() => setUploadModalOpen(true)}
-              className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors inline-flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              Upload Your First Report
-            </button>
-          )}
-        </div>
+        <Card>
+          <CardContent className="py-12 text-center space-y-4">
+            <Filter className="w-12 h-12 text-[#8B857A] mx-auto" />
+            <h3 className="text-xl font-semibold text-[#1C1B17]">No reports found</h3>
+            <p className="text-[#6F6A60]">
+              {reports.length === 0
+                ? 'Upload your first research report to get started'
+                : 'Try adjusting your filters or search terms'}
+            </p>
+            {reports.length === 0 && (
+              <Button
+                onClick={() => setUploadModalOpen(true)}
+                className="inline-flex items-center gap-2 mt-4"
+              >
+                <Plus className="w-4 h-4" />
+                Upload Your First Report
+              </Button>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       {/* Upload Modal */}

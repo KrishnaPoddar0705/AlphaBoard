@@ -58,25 +58,32 @@ export default function SectorDropdown({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
       if (
         dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node) &&
+        !dropdownRef.current.contains(target) &&
         menuRef.current &&
-        !menuRef.current.contains(event.target as Node)
+        !menuRef.current.contains(target)
       ) {
         setIsOpen(false);
       }
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
+      // Use a small delay to avoid immediate closure when opening
+      const timeoutId = setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside, true);
+      }, 0);
+      
       // Close on escape key
       const handleEscape = (e: KeyboardEvent) => {
         if (e.key === 'Escape') setIsOpen(false);
       };
       document.addEventListener('keydown', handleEscape);
+      
       return () => {
-        document.removeEventListener('mousedown', handleClickOutside);
+        clearTimeout(timeoutId);
+        document.removeEventListener('mousedown', handleClickOutside, true);
         document.removeEventListener('keydown', handleEscape);
       };
     }
@@ -103,9 +110,11 @@ export default function SectorDropdown({
             top: `${menuPosition.top}px`,
             left: `${menuPosition.left}px`,
             width: `${menuPosition.width}px`,
-            zIndex: 9999,
+            zIndex: 10000,
           }}
-          className="rounded-xl border-2 border-[var(--border-color)] bg-[var(--card-bg)] backdrop-blur-md overflow-hidden shadow-2xl max-h-60 overflow-y-auto"
+          className="rounded-xl border-2 border-[#D7D0C2] bg-[#F7F2E6] backdrop-blur-md overflow-hidden shadow-2xl max-h-60 overflow-y-auto pointer-events-auto"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           {options.length > 0 ? (
             options.map((option, index) => (
@@ -115,13 +124,21 @@ export default function SectorDropdown({
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.15, delay: index * 0.02 }}
-                onClick={() => handleSelect(option)}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleSelect(option);
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
                 className={`w-full px-4 py-3 text-left transition-all duration-150 ${
                   value === option
-                    ? 'bg-indigo-500/30 text-[var(--text-primary)] border-l-2 border-indigo-500'
-                    : 'hover:bg-[var(--list-item-hover)] text-[var(--text-primary)] hover:border-l-2 hover:border-indigo-500/50'
+                    ? 'bg-[#1D4ED8]/10 text-[#1C1B17] border-l-2 border-[#1D4ED8]'
+                    : 'hover:bg-[#FBF7ED] text-[#1C1B17] hover:border-l-2 hover:border-[#1D4ED8]/50'
                 } flex items-center justify-between group ${
-                  index !== options.length - 1 ? 'border-b border-[var(--border-color)]' : ''
+                  index !== options.length - 1 ? 'border-b border-[#D7D0C2]' : ''
                 }`}
               >
                 <span className="font-medium text-sm">{option}</span>
@@ -131,13 +148,13 @@ export default function SectorDropdown({
                     animate={{ scale: 1 }}
                     transition={{ type: 'spring', stiffness: 500, damping: 30 }}
                   >
-                    <Check className="w-5 h-5 text-indigo-500" />
+                    <Check className="w-5 h-5 text-[#1D4ED8]" />
                   </motion.div>
                 )}
               </motion.button>
             ))
           ) : (
-            <div className="px-4 py-3 text-[var(--text-secondary)] text-sm text-center">
+            <div className="px-4 py-3 text-[#6F6A60] text-sm text-center">
               No options available
             </div>
           )}
@@ -155,24 +172,30 @@ export default function SectorDropdown({
           type="button"
           whileHover={disabled ? {} : { scale: 1.01 }}
           whileTap={disabled ? {} : { scale: 0.99 }}
-          onClick={() => !disabled && setIsOpen(!isOpen)}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (!disabled) {
+              setIsOpen(!isOpen);
+            }
+          }}
           disabled={disabled}
           className={`w-full px-4 py-2.5 rounded-lg border-2 transition-all duration-200 ${
             disabled
-              ? 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-tertiary)] cursor-not-allowed opacity-50'
+              ? 'bg-[#FBF7ED] border-[#D7D0C2] text-[#8B857A] cursor-not-allowed opacity-50'
               : isOpen
-              ? 'bg-[var(--list-item-hover)] border-indigo-500 text-[var(--text-primary)] shadow-lg shadow-indigo-500/20'
-              : 'bg-[var(--bg-secondary)] border-[var(--border-color)] text-[var(--text-primary)] hover:bg-[var(--list-item-hover)] hover:border-indigo-500/50'
+              ? 'bg-[#FBF7ED] border-[#1D4ED8] text-[#1C1B17] shadow-lg shadow-[#1D4ED8]/20'
+              : 'bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6] hover:border-[#1D4ED8]/50'
           } flex items-center justify-between group`}
         >
-          <span className={`font-medium text-sm ${!value ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)]'}`}>
+          <span className={`font-medium text-sm ${!value ? 'text-[#6F6A60]' : 'text-[#1C1B17]'}`}>
             {selectedLabel}
           </span>
           <motion.div
             animate={{ rotate: isOpen ? 180 : 0 }}
             transition={{ duration: 0.2 }}
           >
-            <ChevronDown className="w-4 h-4 text-[var(--text-secondary)] group-hover:text-[var(--text-primary)] transition-colors" />
+            <ChevronDown className="w-4 h-4 text-[#6F6A60] group-hover:text-[#1C1B17] transition-colors" />
           </motion.div>
         </motion.button>
       </div>
