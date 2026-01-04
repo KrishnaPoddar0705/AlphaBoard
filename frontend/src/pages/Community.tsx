@@ -4,7 +4,7 @@ import * as React from "react"
 import { useDebounce } from "@/hooks/useDebounce"
 import { Card, CardContent } from "@/components/ui/card-new"
 import { Button } from "@/components/ui/button"
-import { searchStocks, getStockSummary } from "@/lib/api"
+import { searchStocks, getStockSummary, getStockHistory } from "@/lib/api"
 import { useUser } from "@clerk/clerk-react"
 import { SortingBanner } from "@/components/community/SortingBanner"
 import type { SortOption } from "@/components/community/SortingBanner"
@@ -122,11 +122,95 @@ export default function Community() {
     }
 
     setLoadingMarketData(prev => new Set([...prev, ...tickersToLoad]))
-    
+
     try {
       const { getMarketDataForTickers } = await import('@/lib/api/marketData')
       const data = await getMarketDataForTickers(tickersToLoad, country)
-      
+
+      // For searched stocks that don't have sparkline data, fetch history from backend API
+      const tickersNeedingHistory = tickersToLoad.filter(ticker => {
+        const item = data[ticker]
+        return !item?.spark_ts || !item?.spark_close || item.spark_close.length === 0
+      })
+
+      // Fetch history data for stocks that need it (searched stocks)
+      const historyPromises = tickersNeedingHistory.map(async (ticker) => {
+        try {
+          const historyData = await getStockHistory(ticker, '1w', '1d')
+          if (historyData && Array.isArray(historyData) && historyData.length > 0) {
+            // Sort by timestamp/date to ensure chronological order
+            const sortedData = [...historyData].sort((a: any, b: any) => {
+              const tsA = a.timestamp || (a.date ? new Date(a.date).getTime() : 0)
+              const tsB = b.timestamp || (b.date ? new Date(b.date).getTime() : 0)
+              return tsA - tsB
+            })
+
+            // Convert history data to sparkline format
+            const spark_ts: number[] = []
+            const spark_close: number[] = []
+
+            sortedData.forEach((item: any) => {
+              if (item.timestamp) {
+                // Backend returns timestamp in milliseconds, convert to seconds for sparkline
+                spark_ts.push(Math.floor(item.timestamp / 1000))
+              } else if (item.date) {
+                // Fallback: parse date string to timestamp (seconds)
+                const date = new Date(item.date)
+                spark_ts.push(Math.floor(date.getTime() / 1000))
+              }
+
+              if (item.close !== null && item.close !== undefined) {
+                spark_close.push(Number(item.close))
+              }
+            })
+
+            // Extract quote from latest data point
+            const latest = sortedData[sortedData.length - 1]
+            const previous = sortedData.length > 1 ? sortedData[sortedData.length - 2] : null
+
+            let price: number | null = null
+            let change: number | null = null
+            let change_percent: number | null = null
+
+            if (latest && latest.close !== null && latest.close !== undefined) {
+              price = Number(latest.close)
+
+              // Calculate change from previous day if available
+              if (previous && previous.close !== null && previous.close !== undefined) {
+                const prevPrice = Number(previous.close)
+                change = price - prevPrice
+                change_percent = prevPrice !== 0 ? (change / prevPrice) * 100 : 0
+              }
+            }
+
+            // Update data with history-based quote and sparkline
+            if (spark_ts.length > 0 && spark_close.length > 0) {
+              data[ticker] = {
+                ...(data[ticker] || {}),
+                price: data[ticker]?.price ?? price,
+                change: data[ticker]?.change ?? change,
+                change_percent: data[ticker]?.change_percent ?? change_percent,
+                spark_ts,
+                spark_close,
+              }
+            } else if (price !== null) {
+              // Update quote even if sparkline is empty
+              data[ticker] = {
+                ...(data[ticker] || {}),
+                price: data[ticker]?.price ?? price,
+                change: data[ticker]?.change ?? change,
+                change_percent: data[ticker]?.change_percent ?? change_percent,
+              }
+            }
+          }
+        } catch (error) {
+          // Silently fail for history fetch - sparkline will just be empty
+        }
+        return null
+      })
+
+      await Promise.all(historyPromises)
+
       // Always update map with returned data
       setMarketDataMap(prev => {
         const updated = { ...prev }
@@ -188,7 +272,7 @@ export default function Community() {
   // Use a ref to track if we've already initiated loading and debounce
   const marketDataLoadInitiated = React.useRef(false)
   const marketDataLoadTimeout = React.useRef<ReturnType<typeof setTimeout> | null>(null)
-  
+
   React.useEffect(() => {
     // Clear any pending timeout
     if (marketDataLoadTimeout.current) {
@@ -211,23 +295,23 @@ export default function Community() {
         if (!t) return false
         // Load if not in map, or if in map but all values are null (data might have been added)
         const existing = marketDataMap[t]
-        const hasNoData = existing && 
-          existing.price === null && 
-          existing.change === null && 
+        const hasNoData = existing &&
+          existing.price === null &&
+          existing.change === null &&
           existing.change_percent === null &&
           existing.spark_ts === null &&
           existing.spark_close === null
         return !loadingMarketData.has(t) && (!existing || hasNoData)
       })
-      
+
       if (tickersNeedingData.length > 0) {
         marketDataLoadInitiated.current = true
-        
+
         // Load all market data in batches of 100
         const batchSize = 100
         let completedBatches = 0
         const totalBatches = Math.ceil(tickersNeedingData.length / batchSize)
-        
+
         for (let i = 0; i < tickersNeedingData.length; i += batchSize) {
           const batch = tickersNeedingData.slice(i, i + batchSize)
           // Stagger batches to avoid overwhelming the API
@@ -321,8 +405,11 @@ export default function Community() {
 
   // Transform feed items to stock cards
   const stockCards = React.useMemo(() => {
+    // Create a set of tickers already in feed for quick lookup
+    const feedTickerSet = new Set(feedItems.map(item => item.ticker))
+
     // Merge market data from lazy-loaded map
-    return feedItems.map((item) => {
+    const feedCards = feedItems.map((item) => {
       // Get market data from lazy-loaded map (or from feed item if available)
       const marketData = marketDataMap[item.ticker] || {
         price: item.price,
@@ -335,9 +422,9 @@ export default function Community() {
       // Convert sparkline data from arrays to chart format
       const sparklineData = marketData.spark_ts && marketData.spark_close && marketData.spark_close.length > 0
         ? marketData.spark_ts.map((ts: number, i: number) => ({
-            timestamp: ts * 1000, // Convert to milliseconds
-            price: Number(marketData.spark_close![i]),
-          }))
+          timestamp: ts * 1000, // Convert to milliseconds
+          price: Number(marketData.spark_close![i]),
+        }))
         : []
 
       return {
@@ -356,7 +443,55 @@ export default function Community() {
         isBookmarked: bookmarkedTickers.has(item.ticker),
       }
     })
-  }, [feedItems, marketDataMap, loadingMarketData, bookmarkedTickers])
+
+    // Add cards for searched stocks that aren't in the feed
+    const searchCards: typeof feedCards = []
+    if (debouncedSearchQuery.trim() && searchResults.length > 0) {
+      for (const ticker of searchResults) {
+        // Only add if not already in feed to avoid duplicates
+        if (!feedTickerSet.has(ticker)) {
+          // This stock is searched but not in feed - create a card for it
+          const marketData = marketDataMap[ticker] || {
+            price: null,
+            change: null,
+            change_percent: null,
+            spark_ts: null,
+            spark_close: null,
+          }
+
+          const sparklineData = marketData.spark_ts && marketData.spark_close && marketData.spark_close.length > 0
+            ? marketData.spark_ts.map((ts: number, i: number) => ({
+              timestamp: ts * 1000,
+              price: Number(marketData.spark_close![i]),
+            }))
+            : []
+
+          searchCards.push({
+            ticker,
+            price: marketData.price !== null && marketData.price !== undefined ? Number(marketData.price) : null,
+            change: marketData.change !== null && marketData.change !== undefined ? Number(marketData.change) : null,
+            changePercent: marketData.change_percent !== null && marketData.change_percent !== undefined ? Number(marketData.change_percent) : null,
+            threadCount: 0,
+            commentsCount: 0,
+            score: 0,
+            upvotes: 0,
+            downvotes: 0,
+            sparklineData,
+            userVote: null,
+            isLoading: loadingMarketData.has(ticker),
+            isBookmarked: bookmarkedTickers.has(ticker),
+          })
+
+          // Load market data for searched stocks that aren't in feed
+          if (!marketDataMap[ticker] && !loadingMarketData.has(ticker)) {
+            loadMarketDataForTickers([ticker])
+          }
+        }
+      }
+    }
+
+    return [...feedCards, ...searchCards]
+  }, [feedItems, marketDataMap, loadingMarketData, bookmarkedTickers, debouncedSearchQuery, searchResults, loadMarketDataForTickers])
 
   // Sort and filter stocks - bookmarked stocks first
   const filteredStocks = React.useMemo(() => {
@@ -457,7 +592,7 @@ export default function Community() {
       }
     }
   }, [hasNextPage, isFetchingNextPage, isLoading, fetchNextPage, feedItems.length])
-  
+
 
   const handleAddStock = async () => {
     if (!newStockTicker.trim()) return
@@ -465,10 +600,10 @@ export default function Community() {
     const ticker = newStockTicker.trim().toUpperCase()
     setShowAddStockDialog(false)
     setNewStockTicker('')
-    
+
     // Optimistically update bookmarks immediately
     setBookmarkedTickers(prev => new Set([...prev, ticker]))
-    
+
     try {
       // Ensure stock exists in community_ticker_stats (for feed to pick it up)
       // This creates a placeholder entry if the stock doesn't exist
@@ -539,10 +674,10 @@ export default function Community() {
               })
               // Load market data for this ticker
               await loadMarketDataForTickers([ticker])
-              
+
               // Refresh feed again after market data is loaded to show updated prices
-              await queryClient.invalidateQueries({ 
-                queryKey: ['community-feed', country, feedSort, 1000] 
+              await queryClient.invalidateQueries({
+                queryKey: ['community-feed', country, feedSort, 1000]
               })
               await refetchFeed()
             }, 2000) // Wait 2 seconds for ingestion to complete
@@ -552,19 +687,29 @@ export default function Community() {
         console.error('Failed to fetch market data:', error)
       }
 
-      // Wait a moment for database writes to complete, then invalidate and refetch
+      // Immediately invalidate and refetch to show the stock
+      // The stock should appear in feed because it's now in community_ticker_stats
+      // Use resetQueries to clear cache and force fresh fetch
+      await queryClient.resetQueries({
+        queryKey: ['community-feed', country],
+        exact: false
+      })
+
+      // Refetch feed immediately - stock should appear from community_ticker_stats
+      // The updated_at timestamp will ensure it appears near the top among zero-score stocks
+      await refetchFeed()
+
+      // Also refresh bookmarks to ensure consistency
+      await loadUserBookmarks()
+
+      // After market data is ingested, refresh again to show prices
       setTimeout(async () => {
-        // Invalidate query cache to force fresh fetch
-        await queryClient.invalidateQueries({ 
-          queryKey: ['community-feed', country, feedSort, 1000] 
+        await queryClient.invalidateQueries({
+          queryKey: ['community-feed', country],
+          exact: false
         })
-        
-        // Also refresh bookmarks to ensure consistency
-        await loadUserBookmarks()
-        
-        // Refetch feed with fresh data
         await refetchFeed()
-      }, 500) // Small delay to ensure DB writes are complete
+      }, 3000) // Wait 3 seconds for market data ingestion to complete
     } catch (error) {
       console.error('Failed to add stock:', error)
       // Revert optimistic bookmark update on error
@@ -674,7 +819,7 @@ export default function Community() {
                     }}
                   />
                   <p className="text-xs text-[#6F6A60]">
-                    {country === 'India' 
+                    {country === 'India'
                       ? 'Use .NS suffix for NSE stocks (e.g., RELIANCE.NS)'
                       : 'Enter ticker symbol (e.g., AAPL, MSFT)'}
                   </p>
@@ -694,7 +839,7 @@ export default function Community() {
         <Card>
           <CardContent className="py-8 text-center space-y-4">
             <p className="text-[#6F6A60]">
-            {debouncedSearchQuery.trim() ? "No stocks found matching your search." : "No stocks available."}
+              {debouncedSearchQuery.trim() ? "No stocks found matching your search." : "No stocks available."}
             </p>
             {!debouncedSearchQuery.trim() && (
               <Button
@@ -746,8 +891,8 @@ export default function Community() {
           )}
           {!isFetchingNextPage && (
             <div className="text-[#6F6A60] text-xs font-mono">Loading more...</div>
-        )}
-      </div>
+          )}
+        </div>
       )}
       {!hasNextPage && !isFetchingNextPage && filteredStocks.length > 0 && (
         <div className="h-10 flex items-center justify-center py-4">

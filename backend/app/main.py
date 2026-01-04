@@ -100,7 +100,10 @@ def get_price(ticker: str):
             "current_price": price
         }).eq("ticker", ticker).eq("status", "WATCHLIST").execute()
     except Exception as e:
-        print(f"Error updating current_price for {ticker}: {e}")
+        # Only log non-transient errors to reduce noise
+        error_str = str(e)
+        if '[Errno 35]' not in error_str and 'Resource temporarily unavailable' not in error_str:
+            print(f"Error updating current_price for {ticker}: {e}")
         # Don't fail the request if DB update fails
     
     return {"ticker": ticker, "price": price, "available": True}
@@ -2034,9 +2037,20 @@ def update_all_current_prices():
                 price = get_current_price(ticker)
                 if price is not None and price > 0:
                     try:
-                        # First, check how many recommendations exist for this ticker
-                        open_check = supabase.table("recommendations").select("id").eq("ticker", ticker).eq("status", "OPEN").execute()
-                        watchlist_check = supabase.table("recommendations").select("id").eq("ticker", ticker).eq("status", "WATCHLIST").execute()
+                        # First, check how many recommendations exist for this ticker (with retry)
+                        from app.performance import retry_supabase_operation
+                        
+                        def fetch_open_check():
+                            return supabase.table("recommendations").select("id").eq("ticker", ticker).eq("status", "OPEN").execute()
+                        def fetch_watchlist_check():
+                            return supabase.table("recommendations").select("id").eq("ticker", ticker).eq("status", "WATCHLIST").execute()
+                        
+                        open_check = retry_supabase_operation(fetch_open_check)
+                        watchlist_check = retry_supabase_operation(fetch_watchlist_check)
+                        
+                        if open_check is None or watchlist_check is None:
+                            # Skip this ticker if we can't fetch recommendations
+                            continue
                         
                         total_to_update = len(open_check.data or []) + len(watchlist_check.data or [])
                         
@@ -2049,36 +2063,60 @@ def update_all_current_prices():
                             
                             for rec_id in open_ids:
                                 try:
-                                    result = supabase.table("recommendations").update({
-                                        "current_price": price
-                                    }).eq("id", rec_id).execute()
+                                    # Use retry logic for updates
+                                    def update_rec():
+                                        return supabase.table("recommendations").update({
+                                            "current_price": price
+                                        }).eq("id", rec_id).execute()
                                     
-                                    # Verify immediately
-                                    verify = supabase.table("recommendations").select("current_price").eq("id", rec_id).execute()
-                                    if verify.data and verify.data[0].get('current_price'):
+                                    result = retry_supabase_operation(update_rec)
+                                    if result is None:
+                                        continue
+                                    
+                                    # Verify immediately (with retry)
+                                    def verify_rec():
+                                        return supabase.table("recommendations").select("current_price").eq("id", rec_id).execute()
+                                    
+                                    verify = retry_supabase_operation(verify_rec)
+                                    if verify and verify.data and verify.data[0].get('current_price'):
                                         db_price = float(verify.data[0].get('current_price'))
                                         if abs(db_price - price) < 0.01:
                                             open_updated += 1
                                 except Exception as e:
-                                    print(f"  ✗ Error updating record {rec_id[:8]}: {e}")
+                                    # Only log non-transient errors
+                                    error_str = str(e)
+                                    if '[Errno 35]' not in error_str:
+                                        print(f"  ✗ Error updating record {rec_id[:8]}: {type(e).__name__}")
                             
                             watchlist_updated = 0
                             watchlist_ids = [r['id'] for r in (watchlist_check.data or [])]
                             
                             for rec_id in watchlist_ids:
                                 try:
-                                    result = supabase.table("recommendations").update({
-                                        "current_price": price
-                                    }).eq("id", rec_id).execute()
+                                    # Use retry logic for updates
+                                    def update_rec():
+                                        return supabase.table("recommendations").update({
+                                            "current_price": price
+                                        }).eq("id", rec_id).execute()
                                     
-                                    # Verify immediately
-                                    verify = supabase.table("recommendations").select("current_price").eq("id", rec_id).execute()
-                                    if verify.data and verify.data[0].get('current_price'):
+                                    result = retry_supabase_operation(update_rec)
+                                    if result is None:
+                                        continue
+                                    
+                                    # Verify immediately (with retry)
+                                    def verify_rec():
+                                        return supabase.table("recommendations").select("current_price").eq("id", rec_id).execute()
+                                    
+                                    verify = retry_supabase_operation(verify_rec)
+                                    if verify and verify.data and verify.data[0].get('current_price'):
                                         db_price = float(verify.data[0].get('current_price'))
                                         if abs(db_price - price) < 0.01:
                                             watchlist_updated += 1
                                 except Exception as e:
-                                    print(f"  ✗ Error updating record {rec_id[:8]}: {e}")
+                                    # Only log non-transient errors
+                                    error_str = str(e)
+                                    if '[Errno 35]' not in error_str:
+                                        print(f"  ✗ Error updating record {rec_id[:8]}: {type(e).__name__}")
                             
                             total_updated = open_updated + watchlist_updated
                             if total_updated > 0:
@@ -2097,8 +2135,13 @@ def update_all_current_prices():
                     print(f"✗ Could not fetch valid price for {ticker} (got: {price})")
                     error_count += 1
             except Exception as e:
-                print(f"✗ Error fetching price for {ticker}: {e}")
-                error_count += 1
+                # Only log errors that aren't transient network issues
+                error_str = str(e)
+                if '[Errno 35]' not in error_str and 'Resource temporarily unavailable' not in error_str:
+                    print(f"✗ Error fetching price for {ticker}: {e}")
+                # Don't count transient network errors as failures
+                if '[Errno 35]' not in error_str:
+                    error_count += 1
                 # Continue to next ticker even if this one fails
                 continue
         
@@ -2125,7 +2168,8 @@ def get_rolling_portfolio_returns(
         Dictionary with points, cumulative, and meta
     """
     from app.portfolio_returns import compute_rolling_portfolio_returns
-    from app.performance import get_supabase_user_id
+    from app.performance import get_supabase_user_id, retry_supabase_operation
+    from app.db import supabase
     
     # Validate range
     if range not in ['DAY', 'WEEK', 'MONTH']:
@@ -2149,12 +2193,30 @@ def get_rolling_portfolio_returns(
                 }
             }, 404
         
-        # Fetch user's recommendations
+        # Fetch user's recommendations with retry logic
         # Include both OPEN and CLOSED recommendations with entry_date (for historical tracking)
         # WATCHLIST items are excluded as they don't have entry_date
-        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).in_("status", ["OPEN", "CLOSED"]).not_.is_("entry_date", "null").order("entry_date", desc=False).execute()
+        def fetch_recommendations():
+            return supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).in_("status", ["OPEN", "CLOSED"]).not_.is_("entry_date", "null").order("entry_date", desc=False).execute()
         
-        if not response.data:
+        response = retry_supabase_operation(fetch_recommendations)
+        if response is None:
+            print(f"Error: Failed to fetch recommendations after retries for user {user_id}")
+            return {
+                "points": [],
+                "cumulative": [],
+                "meta": {
+                    "window_days": 1 if range == "DAY" else (7 if range == "WEEK" else 30),
+                    "start_date": None,
+                    "end_date": datetime.now().isoformat(),
+                    "method_used": "equal_weight",
+                    "missing_symbols": []
+                }
+            }
+        
+        recommendations_data = response.data if response.data else []
+        
+        if not recommendations_data:
             return {
                 "points": [],
                 "cumulative": [],
@@ -2168,9 +2230,25 @@ def get_rolling_portfolio_returns(
             }
         
         # Compute rolling returns
-        result = compute_rolling_portfolio_returns(response.data, range_type=range)
-        
-        return result
+        try:
+            result = compute_rolling_portfolio_returns(recommendations_data, range_type=range)
+            return result
+        except Exception as compute_error:
+            print(f"Error in compute_rolling_portfolio_returns: {compute_error}")
+            import traceback
+            traceback.print_exc()
+            # Return empty result instead of crashing
+            return {
+                "points": [],
+                "cumulative": [],
+                "meta": {
+                    "window_days": 1 if range == "DAY" else (7 if range == "WEEK" else 30),
+                    "start_date": None,
+                    "end_date": datetime.now().isoformat(),
+                    "method_used": "equal_weight",
+                    "missing_symbols": []
+                }
+            }
         
     except Exception as e:
         print(f"Error computing rolling returns: {e}")

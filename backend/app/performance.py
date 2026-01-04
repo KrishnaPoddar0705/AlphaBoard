@@ -5,10 +5,88 @@ Calculates advanced metrics: Sharpe ratio, drawdown, returns, alpha, etc.
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Callable, Any
 import time
 from .db import supabase
 from .market import get_current_price, get_ticker_obj
+
+
+def retry_supabase_operation(operation: Callable[[], Any], max_retries: int = 3, base_delay: float = 0.5) -> Any:
+    """
+    Retry a Supabase operation with exponential backoff.
+    Handles transient network errors (ReadError, ConnectionError, etc.)
+    
+    Args:
+        operation: A callable that performs the Supabase operation
+        max_retries: Maximum number of retry attempts
+        base_delay: Base delay in seconds for exponential backoff
+        
+    Returns:
+        The result of the operation, or None if all retries fail
+    """
+    import httpx
+    import httpcore
+    
+    for attempt in range(max_retries):
+        try:
+            result = operation()
+            # Check if result has an error indicating table doesn't exist (don't retry for this)
+            if hasattr(result, 'error') and result.error:
+                error_dict = result.error if isinstance(result.error, dict) else {}
+                error_code = error_dict.get('code', '')
+                if error_code == 'PGRST205':  # Table not found in schema cache
+                    print(f"Table not found error (PGRST205): {error_dict.get('message', 'Unknown')}")
+                    return None  # Return None so caller can handle gracefully
+            return result
+        except RuntimeError as e:
+            # Handle "deque mutated during iteration" error - this can happen with concurrent Supabase requests
+            error_str = str(e)
+            if 'deque' in error_str.lower() and 'mutated' in error_str.lower():
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)
+                    # Don't log intermediate retries - reduce noise
+                    # print(f"Deque mutation error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay:.2f}s...")
+                    time.sleep(delay)
+                else:
+                    # Only log final failures
+                    print(f"Deque mutation error after {max_retries} attempts: {type(e).__name__}")
+                    return None
+            else:
+                # Other RuntimeError - don't retry
+                print(f"RuntimeError in Supabase operation: {e}")
+                return None
+        except Exception as e:
+            # Check if it's a table not found error (PGRST205)
+            error_str = str(e)
+            error_repr = repr(e)
+            
+            # Check for PGRST205 error code in exception message or attributes
+            if 'PGRST205' in error_str or 'PGRST205' in error_repr:
+                print(f"Table not found error (PGRST205): {e}")
+                return None
+            
+            # Check if error message indicates table not found
+            if ('table' in error_str.lower() and 'not found' in error_str.lower()) or \
+               ('could not find the table' in error_str.lower()):
+                print(f"Table not found error: {e}")
+                return None
+            
+            # Check if it's a network error (retry these)
+            if isinstance(e, (httpx.ReadError, httpx.ConnectError, httpcore.ReadError, httpcore.ConnectError)):
+                if attempt < max_retries - 1:
+                    delay = base_delay * (2 ** attempt)  # Exponential backoff
+                    # Only log retries for debugging - reduce noise in production
+                    # print(f"Network error (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay:.2f}s...")
+                    time.sleep(delay)
+                else:
+                    # Only log final failures, not intermediate retries
+                    print(f"Network error after {max_retries} attempts: {type(e).__name__}")
+                    return None
+            else:
+                # For other non-network errors, don't retry
+                print(f"Non-network error in Supabase operation: {e}")
+                return None
+    return None
 
 
 def get_supabase_user_id(clerk_user_id: str) -> Optional[str]:
@@ -29,51 +107,49 @@ def get_supabase_user_id(clerk_user_id: str) -> Optional[str]:
     if len(clerk_user_id) == 36 and clerk_user_id.count('-') == 4:
         return clerk_user_id
     
-    # Look up in clerk_user_mapping table
-    try:
-        # First try the direct query
-        result = supabase.table("clerk_user_mapping") \
+    # Look up in clerk_user_mapping table with retry logic
+    def query_mapping():
+        return supabase.table("clerk_user_mapping") \
             .select("supabase_user_id") \
             .eq("clerk_user_id", clerk_user_id) \
             .limit(1) \
             .execute()
-        
-        # Check for errors first
-        if hasattr(result, 'error') and result.error:
-            print(f"Supabase query error: {result.error}")
-            return None
-        
-        # Check if data exists
-        if result.data and len(result.data) > 0:
-            supabase_uuid = result.data[0].get("supabase_user_id")
-            if supabase_uuid:
+    
+    # First try the direct query with retry
+    result = retry_supabase_operation(query_mapping)
+    if result is None:
+        print(f"Error: Could not query clerk_user_mapping for Clerk ID: {clerk_user_id}")
+        return None
+    
+    # Check for errors first
+    if hasattr(result, 'error') and result.error:
+        print(f"Supabase query error: {result.error}")
+        return None
+    
+    # Check if data exists
+    if result.data and len(result.data) > 0:
+        supabase_uuid = result.data[0].get("supabase_user_id")
+        if supabase_uuid:
+            return supabase_uuid
+    
+    # Fallback: Query all mappings and filter manually (in case eq() filter isn't working)
+    print(f"Direct query returned no results, trying fallback query for Clerk ID: {clerk_user_id}")
+    def query_all_mappings():
+        return supabase.table("clerk_user_mapping") \
+            .select("clerk_user_id, supabase_user_id") \
+            .execute()
+    
+    all_mappings = retry_supabase_operation(query_all_mappings)
+    if all_mappings and all_mappings.data:
+        for mapping in all_mappings.data:
+            if mapping.get("clerk_user_id") == clerk_user_id:
+                supabase_uuid = mapping.get("supabase_user_id")
+                print(f"Found mapping via fallback query: {supabase_uuid}")
                 return supabase_uuid
-        
-        # Fallback: Query all mappings and filter manually (in case eq() filter isn't working)
-        print(f"Direct query returned no results, trying fallback query for Clerk ID: {clerk_user_id}")
-        try:
-            all_mappings = supabase.table("clerk_user_mapping") \
-                .select("clerk_user_id, supabase_user_id") \
-                .execute()
-            
-            if all_mappings.data:
-                for mapping in all_mappings.data:
-                    if mapping.get("clerk_user_id") == clerk_user_id:
-                        supabase_uuid = mapping.get("supabase_user_id")
-                        print(f"Found mapping via fallback query: {supabase_uuid}")
-                        return supabase_uuid
-        except Exception as fallback_error:
-            print(f"Fallback query also failed: {fallback_error}")
-        
-        # If no data found, the mapping doesn't exist
-        print(f"Warning: No clerk_user_mapping found for Clerk ID: {clerk_user_id}")
-        return None
-        
-    except Exception as e:
-        print(f"Error looking up Supabase UUID for Clerk ID {clerk_user_id}: {e}")
-        import traceback
-        traceback.print_exc()
-        return None
+    
+    # If no data found, the mapping doesn't exist
+    print(f"Warning: No clerk_user_mapping found for Clerk ID: {clerk_user_id}")
+    return None
 
 
 def get_historical_price_data(ticker: str, start_date: str, end_date: str) -> pd.DataFrame:
@@ -106,13 +182,17 @@ def calculate_daily_portfolio_value(user_id: str, date: datetime, price_cache: O
         print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
         return (0.0, 0.0)
     
-    # Fetch all OPEN recommendations as of this date
-    try:
-        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").lte("entry_date", date.isoformat()).execute()
-        open_recs = response.data if response.data else []
-    except Exception as e:
-        print(f"Error fetching recommendations: {e}")
+    # Fetch all OPEN recommendations as of this date (with retry logic)
+    def fetch_recommendations():
+        return supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").lte("entry_date", date.isoformat()).execute()
+    
+    response = retry_supabase_operation(fetch_recommendations)
+    if response is None:
+        # Only log if this is a critical operation (not background task)
+        # Background tasks can fail silently
         return (0.0, 0.0)
+    
+    open_recs = response.data if response.data else []
     
     if not open_recs:
         return (0.0, 0.0)
@@ -186,23 +266,30 @@ def compute_daily_returns(user_id: str, start_date: datetime, end_date: datetime
     now = datetime.now().replace(tzinfo=None) if datetime.now().tzinfo else datetime.now()
     if end_date > now:
         end_date = now
+    # Define expected columns for the DataFrame
+    expected_columns = ['date', 'daily_return', 'portfolio_value', 'benchmark_return', 'benchmark_value']
+    
     if start_date > end_date:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=expected_columns)
     
     # Get user's recommendations to determine which tickers we need
     supabase_user_id = get_supabase_user_id(user_id)
     if not supabase_user_id:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=expected_columns)
     
-    try:
-        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").lte("entry_date", end_date.isoformat()).execute()
-        open_recs = response.data if response.data else []
-    except Exception as e:
-        print(f"Error fetching recommendations: {e}")
-        return pd.DataFrame()
+    def fetch_recommendations():
+        return supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").lte("entry_date", end_date.isoformat()).execute()
+    
+    response = retry_supabase_operation(fetch_recommendations)
+    if response is None:
+        # Don't log errors for background tasks - they can fail silently
+        # Only log if this is a user-facing request
+        return pd.DataFrame(columns=expected_columns)
+    
+    open_recs = response.data if response.data else []
     
     if not open_recs:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=expected_columns)
     
     # Get unique tickers (including benchmark)
     unique_tickers = list(set(rec['ticker'] for rec in open_recs))
@@ -266,7 +353,11 @@ def compute_daily_returns(user_id: str, start_date: datetime, end_date: datetime
         prev_portfolio_value = portfolio_value
         prev_benchmark_value = benchmark_value
     
-    return pd.DataFrame(returns_data)
+    # Ensure DataFrame has expected columns even if returns_data is empty
+    if returns_data:
+        return pd.DataFrame(returns_data)
+    else:
+        return pd.DataFrame(columns=expected_columns)
 
 
 def compute_sharpe_ratio(returns: pd.Series, risk_free_rate: float = 0.05, periods_per_year: int = 252) -> float:
@@ -423,7 +514,13 @@ def compute_portfolio_allocation(user_id: str) -> List[Dict]:
                 print(f"Fallback query also failed: {fallback_error}")
             return []
         
-        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
+        def fetch_open_recommendations():
+            return supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
+        
+        response = retry_supabase_operation(fetch_open_recommendations)
+        if response is None:
+            print(f"Error: Failed to fetch open recommendations after retries")
+            return []
         open_recs = response.data if response.data else []
         
         if not open_recs:
@@ -554,10 +651,12 @@ def compute_profitable_weeks(user_id: str) -> float:
         print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
         return 0.0
     
-    # Get date range from first recommendation
-    response = supabase.table("recommendations").select("entry_date").eq("user_id", supabase_user_id).order("entry_date", desc=False).limit(1).execute()
+    # Get date range from first recommendation with retry
+    def fetch_first_recommendation():
+        return supabase.table("recommendations").select("entry_date").eq("user_id", supabase_user_id).order("entry_date", desc=False).limit(1).execute()
     
-    if not response.data:
+    response = retry_supabase_operation(fetch_first_recommendation)
+    if response is None or not response.data:
         return 0.0
     
     first_date = datetime.fromisoformat(response.data[0]['entry_date'].replace('Z', '+00:00'))
@@ -597,8 +696,13 @@ def get_cached_performance_summary(user_id: str) -> Optional[Dict]:
             print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
             return None
         
-        # Query performance table (fast, no calculations)
-        res = supabase.table("performance").select("*").eq("user_id", supabase_user_id).limit(1).execute()
+        # Query performance table (fast, no calculations) with retry
+        def fetch_performance():
+            return supabase.table("performance").select("*").eq("user_id", supabase_user_id).limit(1).execute()
+        
+        res = retry_supabase_operation(fetch_performance)
+        if res is None or not res.data or len(res.data) == 0:
+            return None
         
         if res.data and len(res.data) > 0:
             perf = res.data[0]
@@ -630,7 +734,23 @@ def get_cached_monthly_returns(user_id: str) -> List[Dict]:
             print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
             return []
         
-        res = supabase.table("monthly_returns_matrix").select("*").eq("user_id", supabase_user_id).order("year", desc=False).order("month", desc=False).execute()
+        def fetch_monthly_returns():
+            return supabase.table("monthly_returns_matrix").select("*").eq("user_id", supabase_user_id).order("year", desc=False).order("month", desc=False).execute()
+        
+        res = retry_supabase_operation(fetch_monthly_returns)
+        if res is None:
+            # Table might not exist - return empty list gracefully
+            print(f"Warning: Could not fetch monthly_returns_matrix (table may not exist). Returning empty list.")
+            return []
+        
+        # Check if response has error indicating table doesn't exist
+        if hasattr(res, 'error') and res.error:
+            error_code = res.error.get('code', '') if isinstance(res.error, dict) else ''
+            if error_code == 'PGRST205':  # Table not found in schema cache
+                print(f"Warning: monthly_returns_matrix table does not exist. Returning empty list.")
+                return []
+            print(f"Error fetching monthly returns: {res.error}")
+            return []
         if res.data:
             return res.data
     except Exception as e:
@@ -692,8 +812,15 @@ def get_cached_performance_data(user_id: str) -> Optional[Dict]:
         # Convert Clerk user ID to Supabase UUID if needed
         supabase_user_id = get_supabase_user_id(user_id)
         if supabase_user_id:
-            response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).execute()
-            recs = response.data if response.data else []
+            def fetch_recommendations():
+                return supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).execute()
+            
+            response = retry_supabase_operation(fetch_recommendations)
+            if response is None:
+                print(f"Error: Failed to fetch recommendations after retries")
+                recs = []
+            else:
+                recs = response.data if response.data else []
             portfolio_recs = [r for r in recs if r.get('status') != 'WATCHLIST']
             if portfolio_recs:
                 trades = compute_trade_pnl(portfolio_recs)
@@ -737,7 +864,13 @@ def validate_and_rebalance_weights(user_id: str, new_weight: float) -> Dict:
             print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
             return 0.0
         
-        response = supabase.table("recommendations").select("weight_pct").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
+        def fetch_weight_recommendations():
+            return supabase.table("recommendations").select("weight_pct").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
+        
+        response = retry_supabase_operation(fetch_weight_recommendations)
+        if response is None:
+            print(f"Error: Failed to fetch weight recommendations after retries")
+            return 0.0
         open_recs = response.data if response.data else []
         
         total_weight = sum(rec.get('weight_pct', 0) or 0 for rec in open_recs)
@@ -774,7 +907,13 @@ def rebalance_portfolio_weights(user_id: str):
             print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
             return []
         
-        response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
+        def fetch_open_recommendations():
+            return supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).eq("status", "OPEN").execute()
+        
+        response = retry_supabase_operation(fetch_open_recommendations)
+        if response is None:
+            print(f"Error: Failed to fetch open recommendations after retries")
+            return []
         open_recs = response.data if response.data else []
         
         if not open_recs:
@@ -866,9 +1005,16 @@ def calculate_comprehensive_performance(user_id: str) -> Dict:
             "worst_trades": []
         }
     
-    # Fetch all recommendations
-    response = supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).execute()
-    recs = response.data if response.data else []
+    # Fetch all recommendations with retry
+    def fetch_all_recommendations():
+        return supabase.table("recommendations").select("*").eq("user_id", supabase_user_id).execute()
+    
+    response = retry_supabase_operation(fetch_all_recommendations)
+    if response is None:
+        print(f"Error: Failed to fetch recommendations after retries for user {user_id}")
+        recs = []
+    else:
+        recs = response.data if response.data else []
     
     if not recs:
         return {
@@ -893,12 +1039,18 @@ def calculate_comprehensive_performance(user_id: str) -> Dict:
     # Calculate daily returns
     returns_df = compute_daily_returns(user_id, first_date, end_date)
     
-    # Calculate metrics
-    daily_returns_series = returns_df['daily_return']
-    portfolio_values_series = returns_df['portfolio_value']
+    # Ensure DataFrame has required columns (handle empty DataFrame case)
+    required_columns = ['daily_return', 'portfolio_value', 'benchmark_return']
+    if returns_df.empty or not all(col in returns_df.columns for col in required_columns):
+        # Create empty DataFrame with required columns
+        returns_df = pd.DataFrame(columns=required_columns + ['date', 'benchmark_value'])
     
-    sharpe = compute_sharpe_ratio(daily_returns_series)
-    max_drawdown = compute_drawdown(daily_returns_series)
+    # Calculate metrics
+    daily_returns_series = returns_df['daily_return'] if 'daily_return' in returns_df.columns else pd.Series(dtype=float)
+    portfolio_values_series = returns_df['portfolio_value'] if 'portfolio_value' in returns_df.columns else pd.Series(dtype=float)
+    
+    sharpe = compute_sharpe_ratio(daily_returns_series) if len(daily_returns_series) > 0 else 0.0
+    max_drawdown = compute_drawdown(daily_returns_series) if len(daily_returns_series) > 0 else 0.0
     win_rate = compute_win_rate(portfolio_recs)
     risk_score = compute_volatility_risk_score(user_id, days=7)
     profitable_weeks_pct = compute_profitable_weeks(user_id)
@@ -910,7 +1062,7 @@ def calculate_comprehensive_performance(user_id: str) -> Dict:
         total_return = 0.0
     
     # Calculate alpha (simplified - portfolio return vs benchmark)
-    benchmark_returns = returns_df['benchmark_return']
+    benchmark_returns = returns_df['benchmark_return'] if 'benchmark_return' in returns_df.columns else pd.Series(dtype=float)
     if len(benchmark_returns) > 0:
         benchmark_total_return = ((1 + benchmark_returns).prod() - 1) * 100
         alpha = total_return - benchmark_total_return

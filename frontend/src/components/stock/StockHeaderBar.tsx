@@ -1,6 +1,6 @@
 // import React from 'react'
 import { Button } from '@/components/ui/button'
-import { ArrowUp, ArrowDown, Plus, ArrowLeft } from 'lucide-react'
+import { ArrowUp, ArrowDown, Plus, ArrowLeft, Users, Loader2 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 
 interface StockHeaderBarProps {
@@ -17,7 +17,9 @@ interface StockHeaderBarProps {
   userVote: number | null // -1, 1, or null
   onVote: (intent: 'up' | 'down') => void
   onAddToWatchlist: () => void
+  onAddToCommunity?: () => void
   isVoting?: boolean // Optional loading state
+  isAddingToCommunity?: boolean // Loading state for adding to community
 }
 
 export function StockHeaderBar({
@@ -34,7 +36,9 @@ export function StockHeaderBar({
   userVote,
   onVote,
   onAddToWatchlist,
+  onAddToCommunity,
   isVoting = false,
+  isAddingToCommunity = false,
 }: StockHeaderBarProps) {
   const navigate = useNavigate()
   const isPositive = changePercent >= 0
@@ -151,6 +155,27 @@ export function StockHeaderBar({
             <Plus className="h-4 w-4" />
             Add To Watchlist
           </Button>
+          {onAddToCommunity && (
+            <Button
+              variant="outline"
+              onClick={onAddToCommunity}
+              disabled={isAddingToCommunity}
+              className="gap-2 font-mono bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6] active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+              size="sm"
+            >
+              {isAddingToCommunity ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                <>
+                  <Users className="h-4 w-4" />
+                  Add to Community
+                </>
+              )}
+            </Button>
+          )}
           <div className="ml-auto">
             <Button
               variant="ghost"

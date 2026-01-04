@@ -2,6 +2,8 @@
 // Purpose: Infinite query with cursor pagination
 
 import { useInfiniteQuery } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 import { getCommunityFeed } from '@/lib/api/communityFeed'
 import type { FeedItem } from '@/lib/api/communityFeed'
 
@@ -36,6 +38,45 @@ export function useCommunityFeed(
     enabled = true,
   } = options
 
+  // Track if Supabase session is ready
+  const [sessionReady, setSessionReady] = useState(false)
+
+  // Wait for Supabase session to be initialized
+  useEffect(() => {
+    let mounted = true
+
+    const checkSession = async () => {
+      try {
+        // Wait for session to be ready (with timeout)
+        const { data: { session } } = await supabase.auth.getSession()
+        if (mounted) {
+          setSessionReady(true)
+        }
+      } catch (error) {
+        // Even if there's an error, allow the query to proceed (anonymous access)
+        if (mounted) {
+          setSessionReady(true)
+        }
+      }
+    }
+
+    // Small delay to allow Supabase to initialize
+    const timeout = setTimeout(checkSession, 100)
+    
+    // Also listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      if (mounted) {
+        setSessionReady(true)
+      }
+    })
+
+    return () => {
+      mounted = false
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
+  }, [])
+
   const query = useInfiniteQuery<{
     items: FeedItem[]
     nextCursor: string | null
@@ -64,9 +105,13 @@ export function useCommunityFeed(
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     staleTime: 10 * 1000, // 10 seconds
     placeholderData: (previousData) => previousData, // Keep previous data while fetching
-    enabled,
+    enabled: enabled && sessionReady, // Wait for session to be ready
     retry: (failureCount, error) => {
-      // Don't retry on 4xx errors
+      // Retry 401 errors once (auth might not be ready yet)
+      if (error instanceof Error && error.message.includes('HTTP 401')) {
+        return failureCount < 1 // Retry once for 401
+      }
+      // Don't retry other 4xx errors
       if (error instanceof Error && error.message.includes('HTTP 4')) {
         return false
       }

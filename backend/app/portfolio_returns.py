@@ -601,20 +601,6 @@ def compute_rolling_portfolio_returns(
     # Increase lookback period for monthly to ensure we have enough data
     if range_type == 'MONTH':
         max_days_back = max(max_days_back, 180)  # At least 6 months of data
-    """
-    Main function to compute rolling portfolio returns.
-    
-    Args:
-        recommendations: List of recommendation dicts
-        range_type: 'DAY', 'WEEK', or 'MONTH'
-        max_days_back: Maximum days to look back (default 365)
-    
-    Returns:
-        Dictionary with:
-        - points: List of {date: str, value: float, active_count: int}
-        - cumulative: List of {date: str, value: float, active_count: int} (optional)
-        - meta: {window_days, start_date, end_date, method_used, missing_symbols}
-    """
     now = datetime.now()
     
     # Determine date range

@@ -92,38 +92,58 @@ serve(async (req) => {
     }
 
     // Get user ID from auth token if present
+    // Note: Auth is optional - the feed works without authentication (anonymous access)
     const authHeader = req.headers.get('authorization')
     let userId: string | null = null
     
-    if (authHeader) {
+    if (authHeader && authHeader.startsWith('Bearer ')) {
       try {
         // Decode JWT to get user ID directly (more reliable)
-        const token = authHeader.replace('Bearer ', '')
-        const parts = token.split('.')
-        if (parts.length === 3) {
-          const payload = JSON.parse(atob(parts[1]))
-          userId = payload.sub || payload.user_id || null
+        const token = authHeader.replace('Bearer ', '').trim()
+        if (token && token.length > 0) {
+          const parts = token.split('.')
+          if (parts.length === 3) {
+            try {
+              const payload = JSON.parse(atob(parts[1]))
+              userId = payload.sub || payload.user_id || null
+            } catch (e) {
+              // Invalid JWT format - continue without user ID
+              console.debug('Invalid JWT format, continuing without user ID')
+            }
+          }
         }
         
         // Fallback: try to get user via Supabase client if JWT decode fails
-        if (!userId) {
-          const userClient = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-            {
-              global: {
-                headers: { Authorization: authHeader },
-              },
-            }
-          )
-          const { data: { user } } = await userClient.auth.getUser()
-          userId = user?.id || null
+        if (!userId && token) {
+          try {
+            const userClient = createClient(
+              Deno.env.get('SUPABASE_URL') ?? '',
+              Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+              {
+                global: {
+                  headers: { Authorization: authHeader },
+                },
+              }
+            )
+            const { data: { user } } = await userClient.auth.getUser()
+            userId = user?.id || null
+          } catch (error) {
+            // Failed to get user - continue without user ID (anonymous access)
+            console.debug('Could not get user from token, continuing without user ID')
+          }
         }
       } catch (error) {
-        console.warn('Could not extract user ID from token:', error)
-        // Continue without user ID (anonymous access)
+        // Any error extracting user ID - continue without user ID (anonymous access)
+        console.debug('Could not extract user ID from token, continuing without user ID:', error)
       }
     }
+    
+    // Log for debugging (userId will be null for anonymous access, which is fine)
+    console.log('[community-feed] Request:', {
+      hasAuthHeader: !!authHeader,
+      hasUserId: !!userId,
+      region: url.searchParams.get('region'),
+    })
 
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',

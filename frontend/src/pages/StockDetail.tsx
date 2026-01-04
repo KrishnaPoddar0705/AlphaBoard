@@ -19,6 +19,8 @@ import { CompanyFactsCard } from "@/components/stock/CompanyFactsCard"
 import { RatingsSnapshot } from "@/components/stock/RatingsSnapshot"
 import { CommunityTab } from "@/components/community/CommunityTab"
 import { listPosts } from "@/lib/community/api"
+import { useQueryClient } from "@tanstack/react-query"
+import toast from "react-hot-toast"
 
 interface Comment {
   id: string
@@ -35,6 +37,7 @@ export default function StockDetail() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useUser()
+  const queryClient = useQueryClient()
   const [stockData, setStockData] = React.useState<any>(null)
   const [comments, setComments] = React.useState<Comment[]>([])
   const [newComment, setNewComment] = React.useState("")
@@ -356,6 +359,111 @@ export default function StockDetail() {
     }
   }
 
+  // Determine region based on ticker format
+  const getRegion = (ticker: string): 'USA' | 'India' => {
+    if (ticker.includes('.NS') || ticker.includes('.BO')) {
+      return 'India'
+    }
+    return 'USA'
+  }
+
+  const [isAddingToCommunity, setIsAddingToCommunity] = React.useState(false)
+
+  const handleAddToCommunity = async () => {
+    if (!ticker || isAddingToCommunity) return
+
+    setIsAddingToCommunity(true)
+    const region = getRegion(ticker)
+    
+    try {
+      // Ensure stock exists in community_ticker_stats
+      const { error: statsError } = await supabase
+        .from('community_ticker_stats')
+        .upsert({
+          ticker: ticker,
+          region: region,
+          threads_count: 0,
+          comments_count: 0,
+          score: 0,
+          upvotes: 0,
+          downvotes: 0,
+          last_activity_at: null,
+        }, {
+          onConflict: 'ticker,region',
+          ignoreDuplicates: false
+        })
+
+      if (statsError) {
+        console.error('Failed to create ticker stats:', statsError)
+        throw new Error('Failed to create ticker stats')
+      }
+
+      // Bookmark the stock for the user
+      if (user) {
+        const { error: bookmarkError } = await supabase.rpc('toggle_community_bookmark', {
+          p_ticker: ticker,
+          p_region: region,
+        })
+
+        if (bookmarkError) {
+          console.error('Failed to bookmark:', bookmarkError)
+          // Don't throw - bookmarking is optional
+        }
+      }
+
+      // Fetch market data for the newly added ticker
+      try {
+        const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+        if (supabaseUrl) {
+          const { data: { session } } = await supabase.auth.getSession()
+          const token = session?.access_token
+
+          const ingestUrl = `${supabaseUrl}/functions/v1/market-ingest`
+          await fetch(ingestUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify({
+              region: region,
+              tickers: [ticker],
+            }),
+          })
+        }
+      } catch (error) {
+        console.error('Failed to fetch market data:', error)
+        // Don't throw - market data fetch is optional
+      }
+
+      // Show success message with toast
+      toast.success(`${ticker} added to community dashboard!`, {
+        duration: 4000,
+        position: 'top-right',
+        icon: '✅',
+        style: {
+          background: '#F7F2E6',
+          color: '#1C1B17',
+          border: '1px solid #2F8F5B',
+        },
+      })
+    } catch (error) {
+      console.error('Failed to add stock to community:', error)
+      toast.error('Failed to add stock to community. Please try again.', {
+        duration: 4000,
+        position: 'top-right',
+        icon: '❌',
+        style: {
+          background: '#F7F2E6',
+          color: '#B23B2A',
+          border: '1px solid #B23B2A',
+        },
+      })
+    } finally {
+      setIsAddingToCommunity(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-[#F1EEE0]">
@@ -392,7 +500,9 @@ export default function StockDetail() {
         userVote={stockUserVote}
         onVote={handleVote}
         onAddToWatchlist={addToWatchlist}
+        onAddToCommunity={handleAddToCommunity}
         isVoting={isVoting}
+        isAddingToCommunity={isAddingToCommunity}
       />
 
       {/* Main Content */}

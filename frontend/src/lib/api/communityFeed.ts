@@ -63,8 +63,15 @@ export async function getCommunityFeed(params: FeedParams): Promise<FeedResponse
   }
 
   // Get auth token for Edge Function
-  const { data: { session } } = await supabase.auth.getSession()
-  const token = session?.access_token
+  // Try to get session, but don't fail if it's not ready yet
+  let token: string | undefined
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    token = session?.access_token
+  } catch (error) {
+    // Session not ready yet - continue without token (anonymous access)
+    console.debug('Session not ready, proceeding without auth token')
+  }
 
   const url = `${supabaseUrl}/functions/v1/community-feed?${queryParams.toString()}`
   
@@ -77,6 +84,7 @@ export async function getCommunityFeed(params: FeedParams): Promise<FeedResponse
     // We could store ETag from previous response, but for now just include cursor
   }
 
+  // Only add Authorization header if we have a valid token
   if (token) {
     headers['Authorization'] = `Bearer ${token}`
   }
