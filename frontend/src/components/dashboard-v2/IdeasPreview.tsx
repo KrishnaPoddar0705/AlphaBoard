@@ -8,9 +8,9 @@
  * - Link to full ideas page
  */
 
-import React from 'react';
+// import React from 'react';
 import { Link } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui-v2/Card';
+import { Card, CardHeader, CardContent } from '../ui-v2/Card';
 import { SectionHeader } from '../ui-v2/SectionHeader';
 import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
 import clsx from 'clsx';

@@ -4,10 +4,10 @@
  * Income statement table with Quarterly/Annually toggle and mini chart.
  */
 
-import React from 'react';
+// import React from 'react';
 import { PaperCard } from '../paper/PaperCard';
 import { SectionHeader } from '../paper/SectionHeader';
-import { HairlineDivider } from '../paper/HairlineDivider';
+// import { HairlineDivider } from '../paper/HairlineDivider'; // Unused
 import clsx from 'clsx';
 
 interface IncomeStatementItem {

@@ -8,8 +8,8 @@
  * - Price chart
  */
 
-import React from 'react';
-import { Plus } from 'lucide-react';
+// import React from 'react';
+// import { Plus } from 'lucide-react'; // Unused
 import { PaperCard } from '../paper/PaperCard';
 import { RangePills, type RangeOption } from '../paper/RangePills';
 import { PaperChart } from '../../charts/PaperChart';

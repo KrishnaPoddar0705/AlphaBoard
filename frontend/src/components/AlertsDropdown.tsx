@@ -62,7 +62,6 @@ export default function AlertsDropdown() {
             if (error) throw error;
             setAlerts(data || []);
         } catch (err) {
-            console.error('Error fetching alerts:', err);
         } finally {
             setIsLoading(false);
         }
@@ -84,7 +83,6 @@ export default function AlertsDropdown() {
                 alert.id === alertId ? { ...alert, is_read: true } : alert
             ));
         } catch (err) {
-            console.error('Error marking alert as read:', err);
         }
     };
 
@@ -102,7 +100,6 @@ export default function AlertsDropdown() {
 
             setAlerts(prev => prev.filter(alert => alert.id !== alertId));
         } catch (err) {
-            console.error('Error deleting alert:', err);
         }
     };
 
@@ -125,7 +122,6 @@ export default function AlertsDropdown() {
                 !alert.is_read ? { ...alert, is_read: true } : alert
             ));
         } catch (err) {
-            console.error('Error marking all as read:', err);
         }
     };
 

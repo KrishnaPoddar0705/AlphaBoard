@@ -11,7 +11,6 @@ import { PortfolioAllocationDonut } from "@/components/charts/PortfolioAllocatio
 import { DailyReturnsCalendar } from "@/components/charts/DailyReturnsCalendar"
 import { MonthlyReturnsHeatmap } from "@/components/charts/MonthlyReturnsHeatmap"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { getReturnFromCacheOrCalculate } from "@/lib/returnsCache"
 
 export default function Performance() {
   const { user } = useUser()
@@ -48,7 +47,6 @@ export default function Performance() {
       const data = await getAnalystPerformance(user.id)
       setPerformance(data)
     } catch (error) {
-      console.error("Error loading performance:", error)
     } finally {
       setLoading(false)
     }
@@ -74,7 +72,6 @@ export default function Performance() {
         setRecommendations(data || [])
       }
     } catch (err) {
-      console.error('Error fetching recommendations:', err)
       setRecommendations([])
     } finally {
       fetchingRecommendations.current = false
@@ -97,7 +94,6 @@ export default function Performance() {
       const data = await getRollingPortfolioReturns(user.id, range)
 
       if (data && data.error) {
-        console.error('Portfolio returns API error:', data.error)
         setPortfolioReturns([])
         return
       }
@@ -111,7 +107,7 @@ export default function Performance() {
           })
         }
 
-        const transformed = data.points.map((point: any, index: number) => {
+        const transformed = data.points.map((point: any) => {
           try {
             const date = new Date(point.date)
             let label = ''
@@ -132,7 +128,6 @@ export default function Performance() {
               count: point.active_count || 0 // API returns 'active_count' not 'count'
             }
           } catch (err) {
-            console.error('Error transforming point:', err, point)
             return null
           }
         }).filter((item: any) => item !== null)
@@ -146,7 +141,6 @@ export default function Performance() {
         setPortfolioReturns([])
       }
     } catch (error) {
-      console.error('Error fetching portfolio returns:', error)
       setPortfolioReturns([])
     } finally {
       setPortfolioReturnsLoading(false)

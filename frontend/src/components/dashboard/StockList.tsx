@@ -5,7 +5,7 @@
  * Matches the design from the reference image.
  */
 
-import { Card } from '../ui/card';
+import { Card } from '../ui/Card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

@@ -17,7 +17,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Skeleton } from "@/components/ui/Skeleton"
 import {
   Tooltip,
   TooltipContent,
@@ -624,12 +624,12 @@ function SidebarMenuSkeleton({
           data-sidebar="menu-skeleton-icon"
         />
       )}
-      <Skeleton
-        className="h-4 max-w-(--skeleton-width) flex-1"
+      <div
+        className="h-4 flex-1 bg-slate-700/50 rounded animate-pulse"
         data-sidebar="menu-skeleton-text"
         style={
           {
-            "--skeleton-width": width,
+            maxWidth: width,
           } as React.CSSProperties
         }
       />

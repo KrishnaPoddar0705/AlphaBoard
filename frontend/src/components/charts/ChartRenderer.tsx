@@ -75,7 +75,6 @@ const ChartRenderer: React.FC<ChartRendererProps> = ({ chartId, stockTicker: _st
                 </div>
             );
         } catch (err: any) {
-            console.error("Chart render error", err);
             setError(err.message);
             return null;
         }

@@ -4,7 +4,7 @@
  * Displays company details: CEO, Industry, Sector, IPO date, Employees.
  */
 
-import React from 'react';
+// import React from 'react';
 import { PaperCard } from '../paper/PaperCard';
 import { StatList } from '../paper/StatList';
 import { StatRow } from '../paper/StatRow';

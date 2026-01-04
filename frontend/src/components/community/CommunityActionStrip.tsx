@@ -3,11 +3,12 @@
  * Paper terminal theme with clean, professional design
  */
 
-import { Button } from '@/components/ui/button';
+// import { Button } from '@/components/ui/button'; // Unused
 import { ArrowUp, ArrowDown, MessageSquare, Landmark } from 'lucide-react';
 import { useVote, type VoteTargetType } from '@/hooks/useVote';
 import { useNavigate } from 'react-router-dom';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import * as React from 'react';
 
 interface CommunityActionStripProps {
   variant: 'stock' | 'post' | 'comment';
@@ -22,6 +23,7 @@ interface CommunityActionStripProps {
   threadCount?: number; // Only for stock variant
   onCommentClick?: () => void;
   onThreadClick?: () => void;
+  onVote?: () => void; // Callback after vote is cast
   className?: string;
 }
 
@@ -38,14 +40,24 @@ export function CommunityActionStrip({
   threadCount = 0,
   onCommentClick,
   onThreadClick,
+  onVote,
   className = '',
 }: CommunityActionStripProps) {
   const navigate = useNavigate();
+  const lastVoteRef = React.useRef<number | null>(myVote);
+  const updateCountRef = React.useRef(0);
+  
+  // Sync lastVoteRef when myVote prop changes (e.g., on page reload)
+  React.useEffect(() => {
+    if (lastVoteRef.current !== myVote) {
+      lastVoteRef.current = myVote;
+      // Reset update count when myVote changes from external source (page reload)
+      updateCountRef.current = 0;
+    }
+  }, [myVote]);
   
   const {
     score: currentScore,
-    upvotes: currentUpvotes,
-    downvotes: currentDownvotes,
     myVote: currentMyVote,
     isVoting,
     castVote,
@@ -56,6 +68,24 @@ export function CommunityActionStrip({
     initialUpvotes: upvotes,
     initialDownvotes: downvotes,
     initialMyVote: myVote,
+    onUpdate: (updatedState) => {
+      // onUpdate is called twice: once optimistically, once after server response
+      // We only want to refetch after the server response (second call)
+      updateCountRef.current += 1;
+      
+      // Only refetch after server response (second update call) and if vote changed
+      if (onVote && updateCountRef.current === 2 && updatedState.myVote !== lastVoteRef.current) {
+        lastVoteRef.current = updatedState.myVote;
+        updateCountRef.current = 0; // Reset for next vote
+        // Small delay to ensure DB update is complete
+        setTimeout(() => {
+          onVote();
+        }, 500);
+      } else if (updateCountRef.current >= 2) {
+        // Reset counter if we've processed both updates
+        updateCountRef.current = 0;
+      }
+    },
   });
 
   // Always use Landmark icon for threads

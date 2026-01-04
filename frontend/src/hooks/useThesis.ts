@@ -34,7 +34,6 @@ function getCachedThesis(ticker: string): ThesisCacheEntry | null {
     localStorage.removeItem(cacheKey);
     return null;
   } catch (error) {
-    console.error('Error reading thesis cache:', error);
     return null;
   }
 }
@@ -50,7 +49,6 @@ function setCachedThesis(ticker: string, thesis: Thesis, regeneratedCount: numbe
     };
     localStorage.setItem(cacheKey, JSON.stringify(entry));
   } catch (error) {
-    console.error('Error caching thesis:', error);
   }
 }
 
@@ -98,7 +96,6 @@ export function useThesis(ticker: string | null, analystNotes?: string): UseThes
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to generate thesis';
       setError(errorMessage);
-      console.error('Error generating thesis:', err);
 
       // If we have cached data, keep it even if regeneration failed
       const cached = getCachedThesis(ticker);

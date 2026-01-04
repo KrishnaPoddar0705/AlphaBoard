@@ -11,7 +11,7 @@
 
 import React from 'react';
 import clsx from 'clsx';
-import { cardPadding, radius, shadows } from '../../design-tokens';
+import { cardPadding, radius } from '../../design-tokens';
 
 interface CardProps {
   children: React.ReactNode;

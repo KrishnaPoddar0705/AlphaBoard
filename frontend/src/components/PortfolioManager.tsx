@@ -58,7 +58,6 @@ export const PortfolioManager: React.FC<PortfolioManagerProps> = ({ userId, isOp
             });
             setWeights(initialWeights);
         } catch (err) {
-            console.error('Error fetching portfolio data:', err);
             setError('Failed to load portfolio data');
         } finally {
             setLoading(false);

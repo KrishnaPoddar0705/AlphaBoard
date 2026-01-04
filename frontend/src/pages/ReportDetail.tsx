@@ -99,7 +99,6 @@ export default function ReportDetail() {
         }
       }
     } catch (err: any) {
-      console.error('Error fetching report:', err);
     } finally {
       setLoading(false);
     }

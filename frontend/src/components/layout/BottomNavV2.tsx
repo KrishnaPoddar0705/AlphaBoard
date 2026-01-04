@@ -10,7 +10,7 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { LayoutDashboard, Lightbulb, Trophy, User } from 'lucide-react';
+import { LayoutDashboard, Trophy, User } from 'lucide-react';
 import clsx from 'clsx';
 import { bottomNav } from '../../design-tokens';
 
@@ -31,7 +31,7 @@ const navItems: NavItem[] = [
 
 export function BottomNavV2() {
   const location = useLocation();
-  const { user } = useUser();
+  const { user: _user } = useUser();
 
   const isActive = (item: NavItem) => {
     if (item.matchPath) {

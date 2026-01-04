@@ -27,7 +27,6 @@ export const PortfolioBalance: React.FC<PortfolioBalanceProps> = ({ userId }) =>
             const data = await getPortfolioBalance(userId);
             setBalance(data);
         } catch (error) {
-            console.error('Error fetching portfolio balance:', error);
         } finally {
             setLoading(false);
         }

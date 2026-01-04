@@ -4,11 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Upload, X, Edit2, Save, Calendar, Target, TrendingUp, TrendingDown } from 'lucide-react'
+import { Plus, Upload, X, Edit2, Save, Target, TrendingUp, TrendingDown } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { PriceTargetTimeline } from '@/components/stock/PriceTargetTimeline'
-import { getPriceTargets, createPriceTarget } from '@/lib/api'
+import { createPriceTarget } from '@/lib/api'
 import { AddPriceTargetModal } from '@/components/stock/AddPriceTargetModal'
 
 interface Recommendation {
@@ -77,7 +77,6 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
         .maybeSingle()
 
       if (!mapping) {
-        console.error('User mapping not found')
         return
       }
 
@@ -90,7 +89,6 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
       setIsEditingThesis(false)
       onUpdate()
     } catch (error) {
-      console.error('Error updating thesis:', error)
     }
   }
 
@@ -131,7 +129,6 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
         .maybeSingle()
 
       if (!mapping) {
-        console.error('User mapping not found')
         return
       }
 
@@ -148,7 +145,6 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
 
       onUpdate()
     } catch (error) {
-      console.error('Error closing position:', error)
       alert('Failed to close position')
     }
   }
@@ -166,7 +162,6 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
         .maybeSingle()
 
       if (!mapping) {
-        console.error('User mapping not found')
         return
       }
 
@@ -199,7 +194,6 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
       setSelectedFiles([])
       onUpdate()
     } catch (error) {
-      console.error('Error uploading files:', error)
     } finally {
       setUploading(false)
     }

@@ -37,7 +37,6 @@ export function PostList({ ticker, onCreatePost }: PostListProps) {
       }
       setNextCursor(result.nextCursor);
     } catch (error) {
-      console.error('Failed to load posts:', error);
     } finally {
       setLoading(false);
     }

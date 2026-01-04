@@ -8,7 +8,7 @@
  * - Click to view details
  */
 
-import React from 'react';
+// import React from 'react';
 import { Card } from '../ui-v2/Card';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import clsx from 'clsx';

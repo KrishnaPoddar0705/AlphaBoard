@@ -21,13 +21,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       return savedTheme;
     }
     
-    // Fallback to system preference
-    if (typeof window !== 'undefined') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      return prefersDark ? 'dark' : 'light';
-    }
-    
-    // Default to light (Editorial Paper Terminal theme)
+    // Default to light (Editorial Paper Terminal theme) for all users
     return 'light';
   });
 

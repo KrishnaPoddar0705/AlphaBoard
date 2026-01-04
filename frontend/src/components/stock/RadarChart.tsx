@@ -1,5 +1,5 @@
-import React from 'react'
-import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer } from 'recharts'
+// import React from 'react'
+import { RadarChart as RechartsRadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
 interface RadarChartProps {
@@ -10,7 +10,7 @@ interface RadarChartProps {
 export function RadarChart({ data, height = 200 }: RadarChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className={`h-[${height}px] w-full bg-[#FBF7ED] border border-[#E3DDCF] flex items-center justify-center`}>
+      <div className="w-full bg-[#FBF7ED] border border-[#E3DDCF] flex items-center justify-center" style={{ height: `${height}px` }}>
         <p className="text-xs font-mono text-[#6F6A60]">No data available</p>
       </div>
     )
@@ -24,7 +24,7 @@ export function RadarChart({ data, height = 200 }: RadarChartProps) {
   }
 
   return (
-    <ChartContainer config={config} className={`h-[${height}px] w-full`}>
+    <ChartContainer config={config} className="w-full" style={{ height: `${height}px`, width: '100%' }}>
       <RechartsRadarChart data={data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
         <PolarGrid stroke="#E3DDCF" />
         <PolarAngleAxis

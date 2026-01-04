@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { isUIV2Enabled, setUIV2Enabled, isUIV3Enabled, setUIV3Enabled, type FeatureFlag } from '../config/featureFlags';
+import { isUIV2Enabled, setUIV2Enabled, isUIV3Enabled, setUIV3Enabled } from '../config/featureFlags';
 
 /**
  * Hook to check if UI_V2 is enabled

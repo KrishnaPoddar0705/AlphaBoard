@@ -13,7 +13,7 @@
  * All functionality preserved from DashboardNew, only presentation changed.
  */
 
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import {
@@ -22,10 +22,10 @@ import {
   getIncomeStatement,
   getBalanceSheet,
   getQuarterly,
-  getPrice,
+  // getPrice, // Unused
 } from '../lib/api';
-import { safeLog, safeWarn, safeError } from '../lib/logger';
-import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
+import { safeWarn, safeError } from '../lib/logger';
+// import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache'; // Unused
 
 // Tear Sheet Components
 import { PriceChartPanel } from '../components/dashboard-v2/tearsheet/PriceChartPanel';
@@ -34,7 +34,7 @@ import { AboutPanel } from '../components/dashboard-v2/tearsheet/AboutPanel';
 import { IncomeStatementBlock } from '../components/dashboard-v2/tearsheet/IncomeStatementBlock';
 import { BalanceStatementBlock } from '../components/dashboard-v2/tearsheet/BalanceStatementBlock';
 import { CompanyDetailsCard } from '../components/dashboard-v2/tearsheet/CompanyDetailsCard';
-import { RangePills, type RangeOption } from '../components/dashboard-v2/paper/RangePills';
+import { type RangeOption } from '../components/dashboard-v2/paper/RangePills';
 import { StockPanelSlideOut } from '../components/dashboard-v2/StockPanelSlideOut';
 import { useUIV2 } from '../hooks/useFeatureFlag';
 import { useStockPanel } from '../contexts/StockPanelContext';
@@ -68,7 +68,7 @@ export default function DashboardV2() {
   const [range, setRange] = useState<RangeOption>('1M');
   const [incomePeriod, setIncomePeriod] = useState<'quarterly' | 'annually'>('quarterly');
   const [balancePeriod, setBalancePeriod] = useState<'quarterly' | 'annually'>('quarterly');
-  const [isLoading, setIsLoading] = useState(false);
+  const [_isLoading, setIsLoading] = useState(false);
   const [isLoadingChart, setIsLoadingChart] = useState(false);
   const [isLoadingFinancials, setIsLoadingFinancials] = useState(false);
 
@@ -206,7 +206,7 @@ export default function DashboardV2() {
       });
 
       if (error) throw error;
-      
+
       // Refresh recommendations via context
       await refreshRecommendations();
     } catch (err) {
@@ -312,32 +312,35 @@ export default function DashboardV2() {
     }
   }, [recommendations, viewMode, companyNames]);
 
-  const handleNewIdea = useCallback(() => {
-    // This would open a modal - for now just log
-    console.log('New idea clicked');
-  }, []);(async (rec: any, actionType: 'BUY' | 'SELL', e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!session?.user) return;
+  // Unused handlers - commented out
+  // const _handleNewIdea = useCallback(() => {
+  //   // This would open a modal - for now just log
+  //   
+  // }, []);
 
-    const entryPrice = rec.current_price || 0;
-    
-    try {
-      // Update the watchlist item to become an active recommendation
-      await supabase
-        .from('recommendations')
-        .update({
-          action: actionType,
-          status: 'OPEN',
-          entry_price: entryPrice,
-          entry_date: new Date().toISOString(),
-        })
-        .eq('id', rec.id);
+  // const _handleRecommendationAction = useCallback(async (rec: any, actionType: 'BUY' | 'SELL', e: React.MouseEvent) => {
+  //   e.stopPropagation();
+  //   if (!session?.user) return;
 
-      await refreshRecommendations();
-    } catch (err) {
-      safeError('Failed to promote watchlist', err);
-    }
-  }, [session?.user, refreshRecommendations]);
+  //   const entryPrice = rec.current_price || 0;
+
+  //   try {
+  //     // Update the watchlist item to become an active recommendation
+  //     await supabase
+  //       .from('recommendations')
+  //       .update({
+  //         action: actionType,
+  //         status: 'OPEN',
+  //         entry_price: entryPrice,
+  //         entry_date: new Date().toISOString(),
+  //       })
+  //       .eq('id', rec.id);
+
+  //     await refreshRecommendations();
+  //   } catch (err) {
+  //     safeError('Failed to promote watchlist', err);
+  //   }
+  // }, [session?.user, refreshRecommendations]);
 
   // Calculate price change
   const priceChange = stockSummary?.currentPrice && stockSummary?.previousClose
@@ -408,89 +411,89 @@ export default function DashboardV2() {
       <div className="max-w-[1600px] mx-auto">
         {/* Main Content: Tear Sheet (Full Width) */}
         <div className="space-y-6">
-            {/* Top Section: 3-column layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-              {/* Price Chart Panel - Left (50%) */}
-              <div className="lg:col-span-7">
-                <PriceChartPanel
-                  ticker={selectedTicker}
-                  companyName={stockSummary?.companyName}
-                  exchange={stockSummary?.exchange}
-                  currentPrice={stockSummary?.currentPrice}
-                  priceChange={priceChange}
-                  priceChangePercent={priceChangePercent}
-                  onAddToWatchlist={handleAddToWatchlist}
-                  chartData={chartData}
-                  range={range}
-                  onRangeChange={setRange}
-                  isLoading={isLoadingChart}
-                />
-              </div>
-
-              {/* Key Stats Column - Middle (25%) */}
-              <div className="lg:col-span-5">
-                <KeyStatsColumn stats={keyStats} ticker={selectedTicker || undefined} />
-              </div>
-      </div>
-
-            {/* Second Row: About Panel */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-              <div className="lg:col-span-12">
-                <AboutPanel
-                  companyName={stockSummary?.companyName || selectedTicker}
-                  website={stockSummary?.website}
-                  description={stockSummary?.description || stockSummary?.longDescription}
-                />
-              </div>
+          {/* Top Section: 3-column layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+            {/* Price Chart Panel - Left (50%) */}
+            <div className="lg:col-span-7">
+              <PriceChartPanel
+                ticker={selectedTicker}
+                companyName={stockSummary?.companyName}
+                exchange={stockSummary?.exchange}
+                currentPrice={stockSummary?.currentPrice}
+                priceChange={priceChange}
+                priceChangePercent={priceChangePercent}
+                onAddToWatchlist={handleAddToWatchlist}
+                chartData={chartData}
+                range={range}
+                onRangeChange={setRange}
+                isLoading={isLoadingChart}
+              />
             </div>
 
-            {/* Third Section: Income Statement + Company Details */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-              {/* Income Statement - Left (60%) */}
-              <div className="lg:col-span-7">
-                <IncomeStatementBlock
-                  data={incomePeriod === 'quarterly' && quarterlyData.length > 0
-                    ? quarterlyData.map((q: any) => ({
-                        period: q.period || q.date || 'N/A',
-                        revenue: q.revenue,
-                        operatingExpense: q.operatingExpense,
-                        netIncome: q.netIncome,
-                        netProfitMargin: q.netProfitMargin,
-                        eps: q.eps,
-                        ebitda: q.ebitda,
-                      }))
-                    : incomeStatement}
-                  period={incomePeriod}
-                  onPeriodChange={setIncomePeriod}
-                  ticker={selectedTicker || undefined}
-                  isLoading={isLoadingFinancials}
-                />
-              </div>
+            {/* Key Stats Column - Middle (25%) */}
+            <div className="lg:col-span-5">
+              <KeyStatsColumn stats={keyStats} ticker={selectedTicker || undefined} />
+            </div>
+          </div>
 
-              {/* Company Details Card - Right (40%) */}
-              <div className="lg:col-span-5">
-                <CompanyDetailsCard details={companyDetails} />
-              </div>
-      </div>
+          {/* Second Row: About Panel */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+            <div className="lg:col-span-12">
+              <AboutPanel
+                companyName={stockSummary?.companyName || selectedTicker}
+                website={stockSummary?.website}
+                description={stockSummary?.description || stockSummary?.longDescription}
+              />
+            </div>
+          </div>
 
-            {/* Fourth Section: Balance Statement */}
-            <div className="grid grid-cols-1">
-              <BalanceStatementBlock
-                data={balancePeriod === 'quarterly' && quarterlyData.length > 0
+          {/* Third Section: Income Statement + Company Details */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+            {/* Income Statement - Left (60%) */}
+            <div className="lg:col-span-7">
+              <IncomeStatementBlock
+                data={incomePeriod === 'quarterly' && quarterlyData.length > 0
                   ? quarterlyData.map((q: any) => ({
-                      period: q.period || q.date || 'N/A',
-                      cashAndShortTerm: q.cash,
-                      totalAssets: q.totalAssets,
-                      totalLiabilities: q.totalLiabilities,
-                      totalEquity: q.totalEquity,
-                    }))
-                  : balanceSheet}
-                period={balancePeriod}
-                onPeriodChange={setBalancePeriod}
+                    period: q.period || q.date || 'N/A',
+                    revenue: q.revenue,
+                    operatingExpense: q.operatingExpense,
+                    netIncome: q.netIncome,
+                    netProfitMargin: q.netProfitMargin,
+                    eps: q.eps,
+                    ebitda: q.ebitda,
+                  }))
+                  : incomeStatement}
+                period={incomePeriod}
+                onPeriodChange={setIncomePeriod}
                 ticker={selectedTicker || undefined}
                 isLoading={isLoadingFinancials}
               />
             </div>
+
+            {/* Company Details Card - Right (40%) */}
+            <div className="lg:col-span-5">
+              <CompanyDetailsCard details={companyDetails} />
+            </div>
+          </div>
+
+          {/* Fourth Section: Balance Statement */}
+          <div className="grid grid-cols-1">
+            <BalanceStatementBlock
+              data={balancePeriod === 'quarterly' && quarterlyData.length > 0
+                ? quarterlyData.map((q: any) => ({
+                  period: q.period || q.date || 'N/A',
+                  cashAndShortTerm: q.cash,
+                  totalAssets: q.totalAssets,
+                  totalLiabilities: q.totalLiabilities,
+                  totalEquity: q.totalEquity,
+                }))
+                : balanceSheet}
+              period={balancePeriod}
+              onPeriodChange={setBalancePeriod}
+              ticker={selectedTicker || undefined}
+              isLoading={isLoadingFinancials}
+            />
+          </div>
         </div>
       </div>
 

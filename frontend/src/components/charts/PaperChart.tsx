@@ -5,7 +5,7 @@
  * Ensures charts blend with the warm paper background.
  */
 
-import React from 'react';
+// import React from 'react'; // Unused
 import ChartRenderer from './ChartRenderer';
 
 interface PaperChartProps {

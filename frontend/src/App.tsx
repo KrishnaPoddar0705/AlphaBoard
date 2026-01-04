@@ -51,7 +51,6 @@ function App() {
     // This is non-blocking and doesn't show errors to users
     ensureVoterSession().catch((error) => {
       // Silently handle errors - voting will work when user tries to vote
-      console.debug('Anonymous session initialization:', error);
     });
   }, []);
 

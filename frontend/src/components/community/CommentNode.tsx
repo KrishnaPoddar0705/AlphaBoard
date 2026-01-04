@@ -56,7 +56,6 @@ export function CommentNode({
       await onEdit(comment.id, editBody);
       setIsEditing(false);
     } catch (error) {
-      console.error('Failed to edit comment:', error);
     }
   };
 
@@ -65,7 +64,6 @@ export function CommentNode({
     try {
       await onDelete(comment.id);
     } catch (error) {
-      console.error('Failed to delete comment:', error);
     }
   };
 

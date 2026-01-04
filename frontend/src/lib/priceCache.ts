@@ -26,7 +26,6 @@ function getCache(): PriceCache {
         if (!cached) return {};
         return JSON.parse(cached);
     } catch (error) {
-        console.warn('Failed to read price cache from localStorage', error);
         return {};
     }
 }
@@ -38,7 +37,6 @@ function saveCache(cache: PriceCache): void {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
     } catch (error) {
-        console.warn('Failed to save price cache to localStorage', error);
     }
 }
 
@@ -140,7 +138,6 @@ export function clearAllPrices(): void {
     try {
         localStorage.removeItem(CACHE_KEY);
     } catch (error) {
-        console.warn('Failed to clear price cache', error);
     }
 }
 

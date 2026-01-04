@@ -5,10 +5,10 @@
  * Displays list of stocks with their current status and allows selection.
  */
 
-import React from 'react';
+// import React from 'react';
 import clsx from 'clsx';
 import { PaperCard } from './paper/PaperCard';
-import { HairlineDivider } from './paper/HairlineDivider';
+// import { HairlineDivider } from './paper/HairlineDivider'; // Unused
 
 interface StockSelectionPanelProps {
   recommendations: any[];

@@ -3,9 +3,8 @@
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card-new"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Plus, X, TrendingUp, TrendingDown } from "lucide-react"
+import { Plus, X } from "lucide-react"
 import { getPrice, createRecommendation, deleteWatchlistItem } from "@/lib/api"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@clerk/clerk-react"
@@ -20,6 +19,8 @@ interface WatchlistItem {
   ticker: string
   current_price?: number
   entry_date: string
+  thesis?: string | null
+  images?: string[] | null
 }
 
 export default function Watchlist() {
@@ -78,7 +79,6 @@ export default function Watchlist() {
         setWatchlist(watchlistWithPrices)
       }
     } catch (error) {
-      console.error("Error loading watchlist:", error)
     } finally {
       setLoading(false)
     }
@@ -104,7 +104,6 @@ export default function Watchlist() {
         loadWatchlist()
       }
     } catch (error) {
-      console.error("Error removing from watchlist:", error)
     }
   }
 
@@ -162,9 +161,7 @@ export default function Watchlist() {
       // This bypasses RLS since there's no DELETE policy in the database
       try {
         await deleteWatchlistItem(selectedItem.id, mapping.supabase_user_id)
-        console.log("Successfully deleted watchlist item:", selectedItem.id)
       } catch (deleteError: any) {
-        console.error("Error deleting watchlist item:", deleteError)
         // Don't throw error - recommendation was created successfully
         // Just show a warning to the user
         alert(`Recommendation created successfully, but failed to remove from watchlist: ${deleteError.message || 'Unknown error'}`)
@@ -175,7 +172,6 @@ export default function Watchlist() {
       setPromoteEntryPrice('')
       loadWatchlist()
     } catch (error: any) {
-      console.error("Error promoting watchlist item:", error)
       alert(error.message || "Failed to promote watchlist item")
     }
   }

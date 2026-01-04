@@ -9,7 +9,7 @@
  * @component
  */
 
-import React from 'react';
+// import React from 'react';
 import { TrendingUp, TrendingDown, PieChart, BarChart3, Target, Percent } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 import { Skeleton } from '../ui/Skeleton';

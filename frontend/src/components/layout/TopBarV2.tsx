@@ -10,10 +10,10 @@
  */
 
 import { useUser } from '@clerk/clerk-react';
-import { Search, Bell, Settings, LogOut, User as UserIcon } from 'lucide-react';
+import { Search, LogOut, User as UserIcon } from 'lucide-react';
 import { useState } from 'react';
 import AlertsDropdown from '../AlertsDropdown';
-import clsx from 'clsx';
+// import clsx from 'clsx'; // Unused
 
 interface TopBarV2Props {
   organization?: { id: string; name: string; role: string } | null;

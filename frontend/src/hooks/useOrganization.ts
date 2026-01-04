@@ -42,7 +42,6 @@ export function useOrganization() {
         setOrganization(null);
       }
     } catch (err) {
-      console.error('Error fetching organization:', err);
       setOrganization(null);
     } finally {
       setLoading(false);

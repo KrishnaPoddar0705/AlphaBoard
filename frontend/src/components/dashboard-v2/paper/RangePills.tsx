@@ -4,7 +4,7 @@
  * Compact pill buttons for selecting time ranges (1D, 1W, 1M, etc.).
  */
 
-import React from 'react';
+// import React from 'react';
 import clsx from 'clsx';
 
 export type RangeOption = '1D' | '1W' | '1M' | '3M' | '6M' | 'YTD' | '1Y' | '5Y' | '10Y' | 'All';

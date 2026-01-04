@@ -4,7 +4,7 @@
  * Middle column displaying vertical list of key financial statistics.
  */
 
-import React from 'react';
+// import React from 'react';
 import { PaperCard } from '../paper/PaperCard';
 import { StatList } from '../paper/StatList';
 import { StatRow } from '../paper/StatRow';

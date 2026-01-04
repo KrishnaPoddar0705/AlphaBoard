@@ -4,7 +4,7 @@
  * Thin 1px horizontal divider rule matching paper theme.
  */
 
-import React from 'react';
+// import React from 'react';
 import clsx from 'clsx';
 
 interface HairlineDividerProps {

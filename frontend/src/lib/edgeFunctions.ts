@@ -30,7 +30,6 @@ const getEdgeFunctionUrl = () => {
 
 const EDGE_FUNCTION_URL = getEdgeFunctionUrl();
 
-console.log('Edge Function URL:', EDGE_FUNCTION_URL);
 
 interface Weight {
   ticker: string;
@@ -168,12 +167,10 @@ export async function calculatePortfolioReturns(
 
   // Validate response structure
   if (!data.returns || typeof data.returns !== 'object') {
-    console.error('Invalid response structure:', data);
     throw new Error('Invalid response structure from portfolio-returns function. Expected returns object.');
   }
 
   if (typeof data.volatility !== 'number' || typeof data.sharpe !== 'number' || typeof data.drawdown !== 'number') {
-    console.error('Invalid response structure:', data);
     throw new Error('Invalid response structure from portfolio-returns function. Missing required metrics.');
   }
 

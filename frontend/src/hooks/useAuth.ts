@@ -32,7 +32,7 @@ export function useAuth() {
       syncingRef.current = false;
       lastClerkUserIdRef.current = null;
       // Clear Supabase session
-      supabase.auth.signOut().catch(err => console.warn('Error clearing session:', err));
+      supabase.auth.signOut().catch(() => {});
       // Clear Supabase auth data from localStorage
       const supabaseKeys = Object.keys(localStorage).filter(key => 
         key.includes('supabase') || key.includes('sb-') || key.startsWith('sb_')
@@ -45,13 +45,12 @@ export function useAuth() {
     const currentClerkUserId = clerkUser.id;
     if (lastClerkUserIdRef.current && lastClerkUserIdRef.current !== currentClerkUserId) {
       // User changed - clear everything and reset sync flags
-      console.log('Clerk user changed, clearing previous session');
       setSupabaseSession(null);
       setSupabaseUserId(null);
       hasSyncedRef.current = false;
       syncingRef.current = false;
       // Clear Supabase session
-      supabase.auth.signOut().catch(err => console.warn('Error clearing session:', err));
+      supabase.auth.signOut().catch(() => {});
       // Clear Supabase auth data from localStorage
       const supabaseKeys = Object.keys(localStorage).filter(key => 
         key.includes('supabase') || key.includes('sb-') || key.startsWith('sb_')
@@ -95,7 +94,6 @@ export function useAuth() {
               return;
             } else {
               // Session exists but doesn't match current Clerk user - clear it
-              console.log('Supabase session does not match current Clerk user, clearing...');
               await supabase.auth.signOut();
               // Clear Supabase auth data from localStorage
               const supabaseKeys = Object.keys(localStorage).filter(key => 
@@ -161,7 +159,6 @@ export function useAuth() {
                 setSupabaseUserId(finalSession.user.id);
               } else {
                 // Only use compatibility session as last resort
-                console.warn('Using compatibility session - real session not available');
                 setSupabaseUserId(supabaseUser.id);
               }
             }
@@ -177,10 +174,8 @@ export function useAuth() {
               setSupabaseSession(session);
             }
           }
-          console.warn('Failed to sync Clerk user with Supabase');
         }
       } catch (error) {
-        console.error('Error syncing Clerk user:', error);
       } finally {
         setLoading(false);
         syncingRef.current = false;

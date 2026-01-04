@@ -46,7 +46,6 @@ export function WhatsAppConnect() {
       const data = await response.json();
       setStatus(data);
     } catch (error) {
-      console.error('Failed to fetch WhatsApp status:', error);
       setStatus({ is_linked: false });
     } finally {
       setLoading(false);
@@ -81,7 +80,6 @@ export function WhatsAppConnect() {
         setLinkCode('');
       }
     } catch (error) {
-      console.error('Failed to verify code:', error);
       setVerifyResult({ success: false, message: 'Connection error. Please try again.' });
     } finally {
       setVerifying(false);
@@ -106,7 +104,6 @@ export function WhatsAppConnect() {
         setStatus({ is_linked: false });
       }
     } catch (error) {
-      console.error('Failed to unlink:', error);
     } finally {
       setUnlinking(false);
     }

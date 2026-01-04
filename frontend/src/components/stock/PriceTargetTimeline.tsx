@@ -70,7 +70,6 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
             const targets = await getPriceTargets(ticker, effectiveUserId);
             setPriceTargets(targets || []);
         } catch (error) {
-            console.error('Error fetching price targets:', error);
         } finally {
             setLoading(false);
         }
@@ -84,7 +83,6 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
             await fetchPriceTargets();
             setShowAddModal(false);
         } catch (error) {
-            console.error('Error creating price target:', error);
             throw error;
         }
     };

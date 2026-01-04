@@ -10,7 +10,7 @@
 
 import { Link, useLocation } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
-import { Menu, X, FileText, Building2, Settings, XCircle } from 'lucide-react';
+import { Menu, X, FileText, Building2, Settings } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 
@@ -21,7 +21,7 @@ interface MobileMenuV2Props {
 export function MobileMenuV2({ organization }: MobileMenuV2Props) {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
-  const { user } = useUser();
+  const { user: _user } = useUser();
 
   const menuItems = [
     {

@@ -14,19 +14,81 @@ const ChartContainer = React.forwardRef<
 >(({ id, className, children, config, ...props }, ref) => {
   const uniqueId = React.useId()
   const chartId = `chart-${id || uniqueId.replace(/:/g, "")}`
+  const containerRef = React.useRef<HTMLDivElement>(null)
+  const [isReady, setIsReady] = React.useState(false)
+
+  // Combine refs
+  const combinedRef = React.useCallback(
+    (node: HTMLDivElement | null) => {
+      containerRef.current = node
+      if (typeof ref === 'function') {
+        ref(node)
+      } else if (ref) {
+        ref.current = node
+      }
+    },
+    [ref]
+  )
+
+  // Wait for container to have dimensions before rendering chart
+  React.useEffect(() => {
+    let rafId: number
+    let retryId: number | null = null
+
+    const checkDimensions = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect()
+        if (rect.width > 0 && rect.height > 0) {
+          setIsReady(true)
+          return true
+        }
+      }
+      return false
+    }
+
+    // Use requestAnimationFrame to ensure layout is complete
+    rafId = requestAnimationFrame(() => {
+      if (!checkDimensions()) {
+        // If still not ready, check again on next frame
+        retryId = requestAnimationFrame(() => {
+          checkDimensions()
+        })
+      }
+    })
+
+    // Use ResizeObserver to watch for size changes
+    const resizeObserver = new ResizeObserver(() => {
+      checkDimensions()
+    })
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current)
+    }
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      if (retryId) cancelAnimationFrame(retryId)
+      resizeObserver.disconnect()
+    }
+  }, [])
 
   return (
     <div
       data-chart={chartId}
-      ref={ref}
+      ref={combinedRef}
       className={cn(
-        "flex aspect-video justify-center text-xs [&_.recharts-cartesian-axis-tick_text]:fill-[#6F6A60] [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-[#E3DDCF] [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[#D7D0C2] [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-[#E3DDCF] [&_.recharts-radial-bar-background-sector]:fill-[#F7F2E6] [&_.recharts-reference-line-line]:stroke-[#D7D0C2] [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
+        "relative w-full min-w-[200px] min-h-[200px] text-xs [&_.recharts-cartesian-axis-tick_text]:fill-[#6F6A60] [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-[#E3DDCF] [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[#D7D0C2] [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-[#E3DDCF] [&_.recharts-radial-bar-background-sector]:fill-[#F7F2E6] [&_.recharts-reference-line-line]:stroke-[#D7D0C2] [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
         className
       )}
+      style={{ width: '100%', minWidth: '200px', minHeight: '200px', ...props.style }}
       {...props}
     >
       <ChartStyle id={chartId} config={config} />
-      <RechartsPrimitive.ResponsiveContainer>{children}</RechartsPrimitive.ResponsiveContainer>
+      {isReady && (
+        <RechartsPrimitive.ResponsiveContainer width="100%" height="100%" minHeight={200} minWidth={200}>
+          {children}
+        </RechartsPrimitive.ResponsiveContainer>
+      )}
     </div>
   )
 })
@@ -53,6 +115,14 @@ const ChartStyle = ({ id, config }: { id: string; config: Record<string, { label
 
 const ChartTooltip = RechartsPrimitive.Tooltip
 
+interface TooltipPayload {
+  name?: string;
+  value?: any;
+  dataKey?: string;
+  color?: string;
+  [key: string]: any;
+}
+
 const ChartTooltipContent = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<typeof RechartsPrimitive.Tooltip> &
@@ -62,12 +132,14 @@ const ChartTooltipContent = React.forwardRef<
       indicator?: "line" | "dot" | "dashed"
       nameKey?: string
       labelKey?: string
+      payload?: TooltipPayload[]
+      label?: string | number
     }
 >(
   (
     {
       active,
-      payload,
+      payload = [],
       className,
       indicator = "dot",
       hideLabel = false,
@@ -120,7 +192,7 @@ const ChartTooltipContent = React.forwardRef<
       >
         {tooltipLabel}
         <div className="grid gap-1.5">
-          {payload.map((item, index) => {
+          {payload.map((item: TooltipPayload, index: number) => {
             const key = `${nameKey || item.name || item.dataKey || "value"}`
             const itemConfig = item.payload?.chartConfig?.[key]
             const indicatorColor = color || item.payload.fill || item.color
@@ -192,8 +264,9 @@ const ChartLegendContent = React.forwardRef<
     React.HTMLAttributes<HTMLDivElement> & {
       hideIcon?: boolean
       nameKey?: string
+      payload?: TooltipPayload[]
     }
->(({ payload, className, hideIcon = false, nameKey, ...props }, ref) => {
+>(({ payload = [], className, hideIcon = false, nameKey, ...props }, ref) => {
   if (!payload?.length) {
     return null
   }
@@ -204,7 +277,7 @@ const ChartLegendContent = React.forwardRef<
       className={cn("flex items-center justify-center gap-4", className)}
       {...props}
     >
-      {payload.map((item) => {
+      {payload.map((item: TooltipPayload) => {
         const key = `${nameKey || item.dataKey || "value"}`
         const itemConfig = item.payload?.chartConfig?.[key]
 

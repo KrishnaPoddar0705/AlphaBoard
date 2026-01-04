@@ -52,7 +52,6 @@ export function CommentComposer({
       setImages([]);
       onSuccess();
     } catch (error: any) {
-      console.error('Failed to create comment:', error);
       alert(error.message || 'Failed to create comment');
     } finally {
       setSubmitting(false);

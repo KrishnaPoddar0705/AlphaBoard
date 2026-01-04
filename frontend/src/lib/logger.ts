@@ -58,7 +58,6 @@ export function safeLog(...args: any[]): void {
   }
 
   const sanitized = args.map(arg => sanitize(arg));
-  console.log(...sanitized);
 }
 
 /**
@@ -70,7 +69,6 @@ export function safeWarn(...args: any[]): void {
   }
 
   const sanitized = args.map(arg => sanitize(arg));
-  console.warn(...sanitized);
 }
 
 /**
@@ -87,7 +85,6 @@ export function safeError(...args: any[]): void {
     }
     return sanitize(arg);
   });
-  console.error(...sanitized);
 }
 
 /**
@@ -99,6 +96,5 @@ export function safeDebug(...args: any[]): void {
   }
 
   const sanitized = args.map(arg => sanitize(arg));
-  console.debug(...sanitized);
 }
 

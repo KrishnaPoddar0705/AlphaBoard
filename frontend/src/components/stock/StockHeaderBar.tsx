@@ -1,4 +1,4 @@
-import React from 'react'
+// import React from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowUp, ArrowDown, Plus, ArrowLeft } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
@@ -29,8 +29,8 @@ export function StockHeaderBar({
   changePercent,
   change,
   score,
-  upvotes,
-  downvotes,
+  upvotes: _upvotes,
+  downvotes: _downvotes,
   userVote,
   onVote,
   onAddToWatchlist,

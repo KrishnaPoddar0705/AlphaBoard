@@ -1,5 +1,5 @@
-import React from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
+// import React from 'react'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
 interface VolumeChartProps {
@@ -25,7 +25,7 @@ export function VolumeChart({ data, height = 150 }: VolumeChartProps) {
   }
 
   return (
-    <ChartContainer config={config} className={`h-[${height}px] w-full`}>
+    <ChartContainer config={config} className="w-full" style={{ height: `${height}px`, width: '100%' }}>
       <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E3DDCF" />
         <XAxis

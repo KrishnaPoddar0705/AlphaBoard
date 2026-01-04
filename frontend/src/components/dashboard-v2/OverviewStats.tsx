@@ -8,7 +8,7 @@
  * - Alerts
  */
 
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { StatCard } from '../ui-v2/StatCard';
 import { TrendingUp, Target, AlertCircle, Lightbulb } from 'lucide-react';
 

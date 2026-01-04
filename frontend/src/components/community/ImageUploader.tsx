@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { X, Image as ImageIcon } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+// import { Button } from '@/components/ui/button'; // Unused
 
 const MAX_IMAGES = 4;
 const MAX_SIZE = 5 * 1024 * 1024; // 5MB
@@ -91,7 +91,7 @@ export function ImageUploader({ images, onChange, disabled }: ImageUploaderProps
     <div className="space-y-2">
       {images.length > 0 && (
         <div className="grid grid-cols-2 gap-2">
-          {images.map((image, index) => (
+          {images.map((_image, index) => (
             <div key={index} className="relative group">
               <img
                 src={previews[index]}

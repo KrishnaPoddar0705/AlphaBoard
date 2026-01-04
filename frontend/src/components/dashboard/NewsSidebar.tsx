@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { Card } from '../ui/card';
+// import { Card } from '../ui/Card'; // Unused
 import { Separator } from '../ui/separator';
 import { getStockNews } from '../../lib/api';
 import NewsCard from '../NewsCard';
@@ -17,7 +17,7 @@ interface NewsSidebarProps {
   companyName?: string;
 }
 
-export function NewsSidebar({ ticker, companyName }: NewsSidebarProps) {
+export function NewsSidebar({ ticker, companyName: _companyName }: NewsSidebarProps) {
   const [news, setNews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +29,6 @@ export function NewsSidebar({ ticker, companyName }: NewsSidebarProps) {
         const newsData = await getStockNews(ticker);
         setNews(newsData.articles || newsData || []);
       } catch (error) {
-        console.error('Error fetching news:', error);
         setNews([]);
       } finally {
         setLoading(false);

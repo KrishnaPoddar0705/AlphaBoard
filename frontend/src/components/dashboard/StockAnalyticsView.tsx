@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/Card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
@@ -43,7 +43,6 @@ export function StockAnalyticsView({ stock, onAddToWatchlist }: StockAnalyticsVi
         setPriceData(historyData);
         setLastUpdated(new Date());
       } catch (error) {
-        console.error('Error fetching stock data:', error);
       } finally {
         setLoading(false);
       }
@@ -53,7 +52,7 @@ export function StockAnalyticsView({ stock, onAddToWatchlist }: StockAnalyticsVi
   }, [stock?.ticker]);
 
   const currentPrice = stock.current_price || summary?.currentPrice || stock.entry_price || 0;
-  const priceChange = summary?.priceChange || 0;
+  // const _priceChange = summary?.priceChange || 0; // Unused
   const priceChangePercent = summary?.priceChangePercent || ((currentPrice - stock.entry_price) / stock.entry_price) * 100;
   const isPositive = priceChangePercent >= 0;
   const currencySymbol = stock.ticker?.includes('.NS') ? '₹' : '$';
@@ -88,7 +87,9 @@ export function StockAnalyticsView({ stock, onAddToWatchlist }: StockAnalyticsVi
           <div className="h-16 bg-muted animate-pulse rounded" />
           <div className="grid grid-cols-4 gap-4">
             {[1, 2, 3, 4].map((i) => (
-              <Card key={i} className="h-32 bg-muted animate-pulse" />
+              <Card key={i} className="h-32 bg-muted animate-pulse">
+                <div />
+              </Card>
             ))}
           </div>
         </div>

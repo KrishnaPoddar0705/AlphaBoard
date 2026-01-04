@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
 import { PostList } from './PostList';
 import { PostDetail } from './PostDetail';
 import { PostComposerDialog } from './PostComposerDialog';
@@ -7,7 +7,7 @@ import { PostComposerDialog } from './PostComposerDialog';
 export function CommunityTab() {
   const { ticker, postId } = useParams<{ ticker: string; postId?: string }>();
   const location = useLocation();
-  const navigate = useNavigate();
+  // const _navigate = useNavigate(); // Unused
   const [showComposer, setShowComposer] = useState(false);
 
   if (!ticker) return null;

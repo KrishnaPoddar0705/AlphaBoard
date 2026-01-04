@@ -103,12 +103,13 @@ export function useVote({
   // Initialize state on mount and sync when initial values change
   useEffect(() => {
     if (!isVoting) {
-      // Check if initial values have changed
+      // Check if initial values have changed (use strict equality to handle null/undefined)
+      const myVoteChanged = prevInitials.current.myVote !== initialMyVote;
       const hasChanged = 
         prevInitials.current.score !== initialScore ||
         prevInitials.current.upvotes !== initialUpvotes ||
         prevInitials.current.downvotes !== initialDownvotes ||
-        prevInitials.current.myVote !== initialMyVote;
+        myVoteChanged;
       
       if (hasChanged) {
         prevInitials.current = {
@@ -118,6 +119,7 @@ export function useVote({
           myVote: initialMyVote,
         };
         
+        // Always update state when initial values change (especially on page reload)
         setState({
           score: initialScore,
           upvotes: initialUpvotes,
@@ -184,7 +186,6 @@ export function useVote({
         setState(state);
         onUpdate?.(state);
         
-        console.error('Vote error:', error);
         toast.error('Failed to cast vote. Please try again.', { duration: 3000 });
       } finally {
         setIsVoting(false);

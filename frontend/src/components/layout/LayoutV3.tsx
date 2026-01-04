@@ -25,28 +25,28 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger,
+  // SidebarTrigger, // Unused
   SidebarInset,
   SidebarFooter,
 } from '../ui/sidebar';
 import {
   LayoutDashboard,
-  Trophy,
+  // Trophy, // Unused
   LogOut,
-  User,
-  BarChart2,
-  Building2,
+  // User, // Unused
+  // BarChart2, // Unused
+  // Building2, // Unused
   Settings,
   Users,
   FileText,
-  Menu,
+  // Menu, // Unused
   Eye,
   Briefcase,
   FileCheck,
   ArrowRight,
 } from 'lucide-react';
-import AlertsDropdown from '../AlertsDropdown';
-import { Button } from '../ui/button';
+// import AlertsDropdown from '../AlertsDropdown'; // Unused
+// import { Button } from '../ui/button'; // Unused
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
 import { TopNavBar } from './TopNavBar';
@@ -84,7 +84,6 @@ export default function LayoutV3() {
 
       if (!supabaseUserId) {
         // Retry after a short delay if session isn't ready yet
-        console.log('No Supabase user ID available yet, will retry...');
         setTimeout(() => {
           if (user?.id) {
             fetchOrganization();
@@ -103,7 +102,6 @@ export default function LayoutV3() {
 
       if (!mapping || mapping.clerk_user_id !== user.id) {
         // Session doesn't match current Clerk user - clear organization
-        console.log('Supabase session does not match current Clerk user');
         setOrganization(null);
         setLoadingOrg(false);
         return;
@@ -126,7 +124,6 @@ export default function LayoutV3() {
         setOrganization(null);
       }
     } catch (err) {
-      console.error('Error fetching organization:', err);
       setOrganization(null);
     } finally {
       setLoadingOrg(false);
@@ -185,7 +182,6 @@ export default function LayoutV3() {
       // Navigate to login
       navigate('/');
     } catch (error) {
-      console.error('Error during logout:', error);
       // Still try to sign out from Clerk even if Supabase signout fails
       await signOut();
       navigate('/');
@@ -215,7 +211,7 @@ export default function LayoutV3() {
 
 function AppSidebar({
   organization,
-  loadingOrg,
+  loadingOrg: _loadingOrg,
   user,
   isActive,
   onLogout,
@@ -230,7 +226,7 @@ function AppSidebar({
     ? `${user.firstName} ${user.lastName}`
     : user?.username || user?.emailAddresses?.[0]?.emailAddress?.split('@')[0] || 'User';
   const userRole = organization?.role === 'admin' ? 'Senior Analyst' : 'Analyst';
-  const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  const userInitials = userName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
 
   return (
     <Sidebar collapsible="icon">

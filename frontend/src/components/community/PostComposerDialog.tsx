@@ -52,7 +52,6 @@ export function PostComposerDialog({ ticker, open, onClose }: PostComposerDialog
       onClose();
       navigate(`/stock/${ticker}/community/${post.id}`);
     } catch (error: any) {
-      console.error('Failed to create post:', error);
       alert(error.message || 'Failed to create post');
     } finally {
       setSubmitting(false);

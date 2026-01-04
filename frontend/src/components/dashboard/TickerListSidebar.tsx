@@ -12,7 +12,7 @@ import {
   SidebarContent,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
+  // SidebarGroupLabel, // Unused
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,

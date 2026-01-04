@@ -7,7 +7,7 @@
  * - Responsive grid layout
  */
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui-v2/Card';
 import { SectionHeader } from '../ui-v2/SectionHeader';
 import { SegmentedControl } from '../ui-v2/SegmentedControl';
@@ -24,7 +24,7 @@ interface PortfolioChartsProps {
 
 export function PortfolioCharts({
   portfolioReturns,
-  recommendations,
+  recommendations: _recommendations,
   loading = false,
   onPeriodChange,
   currentPeriod = 'day',
@@ -87,8 +87,7 @@ export function PortfolioCharts({
               </div>
             ) : (
               <DailyReturnsCalendar
-                recommendations={recommendations}
-                height={250}
+                data={[]}
               />
             )}
           </CardContent>

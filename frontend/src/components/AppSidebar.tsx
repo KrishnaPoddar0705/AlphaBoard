@@ -11,8 +11,8 @@ import {
   Building2,
   Settings,
   User,
-  Play,
-  Music,
+  // Play, // Unused
+  // Music, // Unused
   History,
   BarChart3,
   FileText,
@@ -35,7 +35,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Button } from "@/components/ui/button"
+// import { Button } from "@/components/ui/button" // Unused
 import { SignedOut, SignInButton, SignUpButton } from "@clerk/clerk-react"
 
 const navItems = {
@@ -146,7 +146,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       await signOut()
       navigate('/')
     } catch (error) {
-      console.error('Error signing out:', error)
     }
   }
 

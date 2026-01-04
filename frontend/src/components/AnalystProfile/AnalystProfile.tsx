@@ -44,7 +44,6 @@ export default function AnalystProfile({ analyst, onClose }: AnalystProfileProps
                 setRecommendations(recs);
             }
         } catch (err) {
-            console.error("Failed to fetch analyst data", err);
         } finally {
             setLoading(false);
         }

@@ -47,7 +47,6 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
       await exportToPDF(thesis);
       setShowExportMenu(false);
     } catch (err) {
-      console.error('PDF export failed:', err);
     }
   };
 
@@ -57,7 +56,6 @@ export function InvestmentThesisCard({ ticker, analystNotes }: InvestmentThesisC
       await exportToNotion(thesis, `Investment Thesis: ${ticker}`);
       setShowExportMenu(false);
     } catch (err) {
-      console.error('Notion export failed:', err);
     }
   };
 

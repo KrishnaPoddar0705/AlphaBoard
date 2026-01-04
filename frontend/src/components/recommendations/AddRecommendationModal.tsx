@@ -22,7 +22,7 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   const [ticker, setTicker] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
-  const [isSearching, setIsSearching] = useState(false)
+  const [_isSearching, setIsSearching] = useState(false)
   const [entryPrice, setEntryPrice] = useState('')
   const [currentPrice, setCurrentPrice] = useState<number | null>(null)
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
@@ -63,7 +63,6 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       const results = await searchStocks(query)
       setSearchResults(results || [])
     } catch (err) {
-      console.error('Search error:', err)
       setSearchResults([])
     } finally {
       setIsSearching(false)
@@ -80,7 +79,6 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       setCurrentPrice(priceData.price)
       setEntryPrice(priceData.price.toString())
     } catch (err) {
-      console.error('Error fetching price:', err)
     }
   }
 

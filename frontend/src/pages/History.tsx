@@ -85,7 +85,6 @@ export default function History() {
         setHistory(historyWithPrices)
       }
     } catch (error) {
-      console.error("Error loading history:", error)
     } finally {
       setLoading(false)
     }
@@ -122,7 +121,6 @@ export default function History() {
         setPriceTargets(targets || [])
       }
     } catch (error) {
-      console.error("Error loading price targets:", error)
     } finally {
       setLoadingTargets(false)
     }

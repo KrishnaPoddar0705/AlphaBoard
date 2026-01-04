@@ -87,7 +87,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelProps> = ({ us
             });
             setManualWeights(initialManualWeights);
         } catch (error) {
-            console.error('Error fetching portfolio data:', error);
         } finally {
             setLoading(false);
         }
@@ -165,7 +164,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelProps> = ({ us
                     setRefreshKey(prev => prev + 1);
                 }, 500);
             } catch (error) {
-                console.error('Error rebalancing weights:', error);
             }
         }, 800); // Debounce for 800ms
     }, [userId]);
@@ -201,9 +199,7 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelProps> = ({ us
                 });
             }
 
-            console.log('Saving weights:', weightUpdates);
             const response = await updatePortfolioWeights(userId, weightUpdates);
-            console.log('Save response:', response);
 
             // Wait for backend to process
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -219,7 +215,6 @@ export const PortfolioWeightPanelV2: React.FC<PortfolioWeightPanelProps> = ({ us
 
             onUpdate();
         } catch (error) {
-            console.error('Error saving weights:', error);
             alert('Failed to save weights. Please try again.');
         } finally {
             setSaving(false);

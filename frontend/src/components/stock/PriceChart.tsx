@@ -1,6 +1,6 @@
-import React from 'react'
-import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+// import React from 'react'
+import { ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
+import { ChartContainer, ChartTooltip } from '@/components/ui/chart'
 
 interface PriceChartProps {
   data: Array<{ date: string; open: number; high: number; low: number; close: number; volume: number }>
@@ -8,7 +8,7 @@ interface PriceChartProps {
   height?: number
 }
 
-export function PriceChart({ data, timeframe, height = 400 }: PriceChartProps) {
+export function PriceChart({ data, timeframe, height: _height = 400 }: PriceChartProps) {
   if (!data || data.length === 0) {
     return (
       <div className="h-[400px] w-full bg-[#FBF7ED] border border-[#E3DDCF] flex items-center justify-center">
@@ -63,7 +63,7 @@ export function PriceChart({ data, timeframe, height = 400 }: PriceChartProps) {
   }
 
   return (
-    <ChartContainer config={config} className="h-[400px] w-full">
+    <ChartContainer config={config} className="h-[400px] w-full" style={{ height: '400px', width: '100%' }}>
       <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E3DDCF" />
         <XAxis

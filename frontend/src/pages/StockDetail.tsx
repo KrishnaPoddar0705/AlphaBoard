@@ -1,10 +1,9 @@
 "use client"
 
 import * as React from "react"
-import { useParams, useLocation, useNavigate, Outlet } from "react-router-dom"
+import { useParams, useLocation, useNavigate } from "react-router-dom"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card-new"
 import { ArrowUp, ArrowDown } from "lucide-react"
 import { getPrice, getStockSummary, getStockHistory, getIncomeStatement, getBalanceSheet, getCashFlow } from "@/lib/api"
 import { supabase } from "@/lib/supabase"
@@ -51,7 +50,7 @@ export default function StockDetail() {
   const [financials, setFinancials] = React.useState<any>(null)
   const [loadingFinancials, setLoadingFinancials] = React.useState(false)
   const [chartData, setChartData] = React.useState<any[]>([])
-  const [loadingChart, setLoadingChart] = React.useState(false)
+  const [, setLoadingChart] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<'overview' | 'financials' | 'community'>('overview')
   const [communityPostCount, setCommunityPostCount] = React.useState(0)
 
@@ -109,7 +108,6 @@ export default function StockDetail() {
         ...summaryData,
       })
     } catch (error) {
-      console.error("Error loading stock data:", error)
     } finally {
       setLoading(false)
     }
@@ -140,7 +138,6 @@ export default function StockDetail() {
         setChartData(historyData)
       }
     } catch (error) {
-      console.error("Error loading chart data:", error)
     } finally {
       setLoadingChart(false)
     }
@@ -170,7 +167,6 @@ export default function StockDetail() {
         setComments(data)
       }
     } catch (error) {
-      console.error("Error loading comments:", error)
     }
   }
 
@@ -185,7 +181,6 @@ export default function StockDetail() {
       ])
       setFinancials({ income, balance, cashflow })
     } catch (error) {
-      console.error("Error loading financials:", error)
     } finally {
       setLoadingFinancials(false)
     }
@@ -233,7 +228,6 @@ export default function StockDetail() {
         setStockUserVote(null)
       }
     } catch (error) {
-      console.error("Error loading stock votes:", error)
       // Set defaults on error
       setStockScore(0)
       setStockUpvotes(0)
@@ -299,7 +293,6 @@ export default function StockDetail() {
       })
 
       if (error) {
-        console.error("Error voting:", error)
         setIsVoting(false)
         return
       }
@@ -312,7 +305,6 @@ export default function StockDetail() {
         setStockUserVote(data.my_vote)
       }
     } catch (error) {
-      console.error("Error voting:", error)
     } finally {
       setIsVoting(false)
     }
@@ -335,7 +327,6 @@ export default function StockDetail() {
         loadComments()
       }
     } catch (error) {
-      console.error("Error posting comment:", error)
     }
   }
 
@@ -350,7 +341,6 @@ export default function StockDetail() {
       })
       loadComments()
     } catch (error) {
-      console.error("Error voting on comment:", error)
     }
   }
 
@@ -363,7 +353,6 @@ export default function StockDetail() {
         ticker,
       })
     } catch (error) {
-      console.error("Error adding to watchlist:", error)
     }
   }
 

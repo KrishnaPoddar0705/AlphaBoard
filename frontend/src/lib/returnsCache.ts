@@ -35,7 +35,6 @@ function getCache(): ReturnsCache {
         if (!cached) return {};
         return JSON.parse(cached);
     } catch (error) {
-        console.warn('Failed to read returns cache from localStorage', error);
         return {};
     }
 }
@@ -47,7 +46,6 @@ function saveCache(cache: ReturnsCache): void {
     try {
         localStorage.setItem(CACHE_KEY, JSON.stringify(cache));
     } catch (error) {
-        console.warn('Failed to save returns cache to localStorage', error);
     }
 }
 
@@ -170,7 +168,6 @@ export function clearAllReturns(): void {
     try {
         localStorage.removeItem(CACHE_KEY);
     } catch (error) {
-        console.warn('Failed to clear returns cache', error);
     }
 }
 

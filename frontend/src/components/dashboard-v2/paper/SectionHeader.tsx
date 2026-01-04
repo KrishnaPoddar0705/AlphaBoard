@@ -4,7 +4,7 @@
  * Section title with optional toggle pills (e.g., Quarterly/Annually).
  */
 
-import React from 'react';
+// import React from 'react';
 import clsx from 'clsx';
 
 interface SectionHeaderProps {

@@ -66,7 +66,6 @@ export default function Recommendations() {
         }
       }
     } catch (error) {
-      console.error("Error loading recommendations:", error)
     } finally {
       setLoading(false)
     }

@@ -20,9 +20,9 @@ import {
   Building2,
   User,
   Settings,
-  Users,
+  // Users, // Unused
   ChevronRight,
-  GripVertical,
+  // GripVertical, // Unused
 } from 'lucide-react';
 import { useResizableSidebar } from '../../hooks/useResizableSidebar';
 import { sidebar } from '../../design-tokens';
@@ -53,7 +53,7 @@ interface SidebarV2Props {
 
 export function SidebarV2({
   organization,
-  onLogout,
+  onLogout: _onLogout,
   recommendations = [],
   selectedTicker = null,
   onSelectTicker,

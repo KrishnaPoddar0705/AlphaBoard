@@ -29,7 +29,6 @@ export function PostDetail() {
       setEditTitle(data.title);
       setEditBody(data.body);
     } catch (error) {
-      console.error('Failed to load post:', error);
     } finally {
       setLoading(false);
     }
@@ -57,10 +56,23 @@ export function PostDetail() {
   const handleVote = async (value: -1 | 1 | 0) => {
     if (!post || !user) return;
     try {
-      await votePost(post.id, value, user.id);
-      await loadPost(); // Reload to get updated score
+      const result = await votePost(post.id, value, user.id);
+      // Update post state with returned vote counts
+      if (result) {
+        setPost(prev => prev ? {
+          ...prev,
+          score: result.score,
+          upvotes: result.upvotes,
+          downvotes: result.downvotes,
+          user_vote: result.my_vote,
+        } : null);
+      } else {
+        // Fallback: reload if no result
+        await loadPost();
+      }
     } catch (error) {
-      console.error('Failed to vote:', error);
+      // Reload on error to get correct state
+      await loadPost();
     }
   };
 
@@ -74,7 +86,6 @@ export function PostDetail() {
       setIsEditing(false);
       await loadPost();
     } catch (error) {
-      console.error('Failed to edit post:', error);
     }
   };
 
@@ -85,7 +96,6 @@ export function PostDetail() {
       // Navigate back to community
       navigate(`/stock/${ticker}/community`);
     } catch (error) {
-      console.error('Failed to delete post:', error);
     }
   };
 

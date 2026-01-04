@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ComboChart } from './ComboChart'
 import { explainFinancials } from '@/lib/api'
@@ -26,7 +26,6 @@ export function IncomeStatementSection({ incomeData, loading, ticker = 'AAPL' }:
       const result = await explainFinancials(ticker, incomeData)
       setExplanation(result.explanation || 'Unable to generate explanation.')
     } catch (error) {
-      console.error('Error getting explanation:', error)
       setExplanation('Unable to generate explanation at this time.')
     } finally {
       setLoadingExplanation(false)

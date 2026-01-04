@@ -43,7 +43,6 @@ export default function NewsCard({ article }: NewsCardProps) {
       setEli5Summary(response.eli5_summary);
       setShowELI5(true);
     } catch (error) {
-      console.error('Error fetching ELI5 summary:', error);
       setEli5Summary('Unable to generate simplified summary. Please try again.');
       setShowELI5(true);
     } finally {

@@ -20,7 +20,6 @@ export function CommentTree({ postId }: CommentTreeProps) {
       const data = await listComments(postId, user?.id);
       setComments(data);
     } catch (error) {
-      console.error('Failed to load comments:', error);
     } finally {
       setLoading(false);
     }
@@ -33,11 +32,37 @@ export function CommentTree({ postId }: CommentTreeProps) {
   const handleVote = async (commentId: string, value: -1 | 1 | 0) => {
     if (!user) return;
     try {
-      await voteComment(commentId, value, user.id);
-      // Reload comments to get updated scores
-      await loadComments();
+      const result = await voteComment(commentId, value, user.id);
+      // Update the specific comment in state
+      if (result) {
+        const updateCommentInTree = (comments: CommunityComment[]): CommunityComment[] => {
+          return comments.map(comment => {
+            if (comment.id === commentId) {
+              return {
+                ...comment,
+                score: result.score,
+                upvotes: result.upvotes,
+                downvotes: result.downvotes,
+                user_vote: result.my_vote,
+              };
+            }
+            if (comment.replies && comment.replies.length > 0) {
+              return {
+                ...comment,
+                replies: updateCommentInTree(comment.replies),
+              };
+            }
+            return comment;
+          });
+        };
+        setComments(prev => updateCommentInTree(prev));
+      } else {
+        // Fallback: reload if no result
+        await loadComments();
+      }
     } catch (error) {
-      console.error('Failed to vote:', error);
+      // Reload on error to get correct state
+      await loadComments();
     }
   };
 
@@ -53,7 +78,6 @@ export function CommentTree({ postId }: CommentTreeProps) {
       });
       await loadComments();
     } catch (error) {
-      console.error('Failed to reply:', error);
       throw error;
     }
   };
@@ -61,10 +85,9 @@ export function CommentTree({ postId }: CommentTreeProps) {
   const handleEdit = async (commentId: string, body: string) => {
     if (!user) return;
     try {
-      await updateComment(commentId, { body }, user.id);
+      await updateComment(commentId, { body });
       await loadComments();
     } catch (error) {
-      console.error('Failed to edit:', error);
       throw error;
     }
   };
@@ -75,7 +98,6 @@ export function CommentTree({ postId }: CommentTreeProps) {
       await deleteComment(commentId, user.id);
       await loadComments();
     } catch (error) {
-      console.error('Failed to delete:', error);
       throw error;
     }
   };

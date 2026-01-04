@@ -30,7 +30,7 @@ function AppShellV2Content() {
   const { signOut } = useClerk();
   const location = useLocation();
   const [organization, setOrganization] = useState<{ id: string; name: string; role: string } | null>(null);
-  const [loadingOrg, setLoadingOrg] = useState(true);
+  const [_loadingOrg, setLoadingOrg] = useState(true);
   
   // Stock panel state from context
   const {
@@ -40,7 +40,7 @@ function AppShellV2Content() {
     setSelectedTicker,
     viewMode,
     setViewMode,
-    refreshRecommendations,
+    refreshRecommendations: _refreshRecommendations,
     setRefreshCallback,
   } = useStockPanel();
   
@@ -97,7 +97,6 @@ function AppShellV2Content() {
         setOrganization(null);
       }
     } catch (err) {
-      console.error('Error fetching organization:', err);
       setOrganization(null);
     } finally {
       setLoadingOrg(false);
@@ -241,7 +240,7 @@ function AppShellV2Content() {
   // Register refresh callback with context
   useEffect(() => {
     if (isDashboardActive) {
-      setRefreshCallback(() => handleRefresh);
+      setRefreshCallback(handleRefresh);
     }
   }, [isDashboardActive, handleRefresh, setRefreshCallback]);
 
@@ -264,7 +263,6 @@ function AppShellV2Content() {
       setSelectedTicker(null);
       await signOut();
     } catch (error) {
-      console.error('Error during logout:', error);
       await signOut();
     }
   };

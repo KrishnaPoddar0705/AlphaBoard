@@ -79,7 +79,6 @@ export default function ResearchLibrary() {
 
       setReports(transformedData);
     } catch (err: any) {
-      console.error('Error fetching reports:', err);
     } finally {
       setLoading(false);
     }

@@ -1,5 +1,5 @@
 import { ChevronUp, ChevronDown } from 'lucide-react';
-import { useState } from 'react';
+import * as React from 'react';
 
 interface VoteRailProps {
   score: number;
@@ -9,7 +9,13 @@ interface VoteRailProps {
 }
 
 export function VoteRail({ score, userVote, onVote, disabled }: VoteRailProps) {
-  const [isVoting, setIsVoting] = useState(false);
+  const [isVoting, setIsVoting] = React.useState(false);
+  const [currentVote, setCurrentVote] = React.useState<number | null | undefined>(userVote);
+
+  // Sync currentVote when userVote prop changes (e.g., on page reload)
+  React.useEffect(() => {
+    setCurrentVote(userVote);
+  }, [userVote]);
 
   const handleVote = async (value: -1 | 1) => {
     if (disabled || isVoting) return;
@@ -17,15 +23,22 @@ export function VoteRail({ score, userVote, onVote, disabled }: VoteRailProps) {
     setIsVoting(true);
     try {
       // If clicking the same vote, remove it (value = 0)
-      const newValue = userVote === value ? 0 : value;
+      const newValue = currentVote === value ? 0 : value;
+      // Optimistically update local state
+      setCurrentVote(newValue === 0 ? null : newValue);
       await onVote(newValue);
+      // State will be synced from prop after API response
+    } catch (error) {
+      // Rollback on error
+      setCurrentVote(userVote);
+      throw error;
     } finally {
       setIsVoting(false);
     }
   };
 
-  const upvoteActive = userVote === 1;
-  const downvoteActive = userVote === -1;
+  const upvoteActive = currentVote === 1;
+  const downvoteActive = currentVote === -1;
 
   return (
     <div className="flex flex-col items-center gap-1 py-2">

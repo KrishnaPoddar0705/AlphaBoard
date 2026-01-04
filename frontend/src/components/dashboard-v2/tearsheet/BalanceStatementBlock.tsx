@@ -4,7 +4,7 @@
  * Balance sheet table with Quarterly/Annually toggle.
  */
 
-import React from 'react';
+// import React from 'react';
 import { PaperCard } from '../paper/PaperCard';
 import { SectionHeader } from '../paper/SectionHeader';
 

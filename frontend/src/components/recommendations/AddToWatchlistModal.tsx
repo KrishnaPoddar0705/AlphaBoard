@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { X } from 'lucide-react'
+// import { X } from 'lucide-react' // Unused
 import { searchStocks, getPrice, createWatchlistItem } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
@@ -20,7 +20,7 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
   const [ticker, setTicker] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
-  const [isSearching, setIsSearching] = useState(false)
+  const [_isSearching, setIsSearching] = useState(false)
   const [entryPrice, setEntryPrice] = useState('')
   const [currentPrice, setCurrentPrice] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
@@ -51,7 +51,6 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
       const results = await searchStocks(query)
       setSearchResults(results || [])
     } catch (err) {
-      console.error('Search error:', err)
       setSearchResults([])
     } finally {
       setIsSearching(false)
@@ -71,7 +70,6 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
         setEntryPrice(priceData.price.toFixed(2))
       }
     } catch (err) {
-      console.error('Error fetching price:', err)
     }
   }
 

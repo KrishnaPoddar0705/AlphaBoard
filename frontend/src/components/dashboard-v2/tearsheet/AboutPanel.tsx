@@ -4,7 +4,7 @@
  * Right column displaying company description and website link.
  */
 
-import React from 'react';
+// import React from 'react';
 import { PaperCard } from '../paper/PaperCard';
 import { ExternalLink } from 'lucide-react';
 

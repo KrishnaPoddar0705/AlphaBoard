@@ -32,7 +32,6 @@ export async function getStockComments(ticker: string): Promise<StockComment[]> 
     .order("created_at", { ascending: false })
 
   if (error) {
-    console.error("Error fetching comments:", error)
     return []
   }
 
@@ -60,7 +59,6 @@ export async function createStockComment(
     .single()
 
   if (error) {
-    console.error("Error creating comment:", error)
     return null
   }
 
@@ -84,7 +82,6 @@ export async function voteOnStock(
   })
 
   if (error) {
-    console.error("Error voting on stock:", error)
     return false
   }
 
@@ -105,7 +102,6 @@ export async function getStockVotes(ticker: string): Promise<{
     .eq("ticker", ticker)
 
   if (error) {
-    console.error("Error fetching votes:", error)
     return { upvotes: 0, downvotes: 0, userVote: null }
   }
 
@@ -136,7 +132,6 @@ export async function voteOnComment(
   })
 
   if (error) {
-    console.error("Error voting on comment:", error)
     return false
   }
 
@@ -156,7 +151,6 @@ export async function addToWatchlist(
   })
 
   if (error) {
-    console.error("Error adding to watchlist:", error)
     return false
   }
 
@@ -177,7 +171,6 @@ export async function removeFromWatchlist(
     .eq("ticker", ticker)
 
   if (error) {
-    console.error("Error removing from watchlist:", error)
     return false
   }
 
@@ -195,7 +188,6 @@ export async function getWatchlist(userId: string): Promise<string[]> {
     .order("added_at", { ascending: false })
 
   if (error) {
-    console.error("Error fetching watchlist:", error)
     return []
   }
 
@@ -228,7 +220,6 @@ export async function getStockHistory(userId: string): Promise<string[]> {
     .limit(50)
 
   if (error) {
-    console.error("Error fetching history:", error)
     return []
   }
 

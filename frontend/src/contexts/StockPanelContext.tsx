@@ -4,7 +4,7 @@
  * Shares stock panel state between AppShellV2 and DashboardV2.
  */
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
 
 interface StockPanelContextType {
   recommendations: any[];

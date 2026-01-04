@@ -36,7 +36,6 @@ export default function AIInvestmentThesis({ ticker, companyName }: AIInvestment
       const data = await generateThesis(ticker);
       setThesis(data);
     } catch (err: any) {
-      console.error('Failed to generate thesis:', err);
       setError(err.response?.data?.detail || 'Failed to generate investment thesis. Please try again.');
     } finally {
       setLoading(false);

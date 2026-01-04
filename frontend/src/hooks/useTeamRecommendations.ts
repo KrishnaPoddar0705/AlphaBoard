@@ -24,7 +24,6 @@ export function useTeamRecommendations(options: UseTeamRecommendationsOptions = 
         } catch (err) {
             const errorMessage = err instanceof Error ? err.message : 'Failed to fetch recommendations';
             setError(errorMessage);
-            console.error('Error fetching recommendations:', err);
         } finally {
             setLoading(false);
         }

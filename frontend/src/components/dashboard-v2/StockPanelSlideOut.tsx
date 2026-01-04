@@ -33,7 +33,7 @@ export function StockPanelSlideOut({
   onSelectTicker,
   viewMode,
   onViewModeChange,
-  onRefresh,
+  onRefresh: _onRefresh,
   onCloseIdea,
   onPromoteWatchlist,
   companyNames = {},

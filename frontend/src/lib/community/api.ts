@@ -7,9 +7,6 @@ import type {
   ListPostsParams,
   CreatePostParams,
   CreateCommentParams,
-  VoteParams,
-  SortOption,
-  TopTimeframe,
 } from './types';
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -36,7 +33,7 @@ async function uploadImage(
   file: File,
   ticker: string,
   targetId: string,
-  targetType: 'post' | 'comment'
+  _targetType: 'post' | 'comment'
 ): Promise<string> {
   const validation = validateImage(file);
   if (!validation.valid) {
@@ -99,7 +96,7 @@ export async function listPosts(params: ListPostsParams & { clerkUserId?: string
     query = query.order('created_at', { ascending: false });
   } else if (sort === 'top') {
     query = query.order('score', { ascending: false });
-    
+
     // Apply timeframe filter for top
     if (timeframe === '24h') {
       const yesterday = new Date();
@@ -127,16 +124,14 @@ export async function listPosts(params: ListPostsParams & { clerkUserId?: string
   const { data, error } = await query;
 
   if (error) {
-    console.error('Query error:', error);
     throw new Error(`Failed to fetch posts: ${error.message}`);
   }
 
   // Debug logging
-  console.log('listPosts - ticker:', ticker, 'data length:', data?.length, 'clerkUserId:', clerkUserId);
 
   // Get current user's votes
   let userVotes: Record<string, number> = {};
-  
+
   if (clerkUserId && data && data.length > 0) {
     const supabaseUserId = await getSupabaseUserIdForClerkUser(clerkUserId);
     if (supabaseUserId) {
@@ -147,7 +142,7 @@ export async function listPosts(params: ListPostsParams & { clerkUserId?: string
         .eq('user_id', supabaseUserId)
         .eq('target_type', 'post')
         .in('target_id', postIds);
-      
+
       if (votes) {
         votes.forEach((v: any) => {
           userVotes[v.target_id] = v.value;
@@ -160,21 +155,20 @@ export async function listPosts(params: ListPostsParams & { clerkUserId?: string
   const posts: CommunityPost[] = [];
   const hasMore = data && data.length > limit;
   const postsToReturn = hasMore ? data.slice(0, limit) : (data || []);
-  
+
   // Debug logging
-  console.log('listPosts - postsToReturn length:', postsToReturn.length, 'raw data:', data);
 
   // Fetch attachments for all posts in batch
   const postIds = postsToReturn.map((p: any) => p.id);
   let attachmentsMap: Record<string, CommunityAttachment[]> = {};
-  
+
   if (postIds.length > 0) {
     const { data: attachmentsData } = await supabase
       .from('community_attachments')
       .select('*')
       .eq('target_type', 'post')
       .in('target_id', postIds);
-    
+
     if (attachmentsData) {
       for (const att of attachmentsData) {
         if (!attachmentsMap[att.target_id]) {
@@ -187,7 +181,6 @@ export async function listPosts(params: ListPostsParams & { clerkUserId?: string
             url,
           });
         } catch (err) {
-          console.error('Failed to get image URL:', err);
         }
       }
     }
@@ -240,7 +233,7 @@ export async function getPost(postId: string, clerkUserId?: string): Promise<Com
 
   // Get user vote
   let userVote: number | null = null;
-  
+
   if (clerkUserId) {
     const supabaseUserId = await getSupabaseUserIdForClerkUser(clerkUserId);
     if (supabaseUserId) {
@@ -251,7 +244,7 @@ export async function getPost(postId: string, clerkUserId?: string): Promise<Com
         .eq('target_type', 'post')
         .eq('target_id', postId)
         .maybeSingle();
-      
+
       userVote = vote?.value || null;
     }
   }
@@ -274,7 +267,6 @@ export async function getPost(postId: string, clerkUserId?: string): Promise<Com
           url,
         });
       } catch (err) {
-        console.error('Failed to get image URL:', err);
       }
     }
   }
@@ -343,17 +335,25 @@ export async function createPost(params: CreatePostParams & { clerkUserId: strin
 
   // Upload images and create attachments
   if (images.length > 0) {
-    const attachments = [];
+    // const attachments = []; // Not used currently
     for (const img of images) {
       try {
         const storagePath = await uploadImage(img, ticker, post.id, 'post');
-        
+
         // Get image dimensions (optional, can be done client-side)
         const imgElement = await new Promise<HTMLImageElement>((resolve, reject) => {
-          const img = new Image();
-          img.onload = () => resolve(img);
-          img.onerror = reject;
-          img.src = URL.createObjectURL(img);
+          const imgEl = new Image();
+          // Create object URL from the file blob
+          const objectUrl = URL.createObjectURL(img);
+          imgEl.onload = () => {
+            URL.revokeObjectURL(objectUrl);
+            resolve(imgEl);
+          };
+          imgEl.onerror = () => {
+            URL.revokeObjectURL(objectUrl);
+            reject(new Error('Failed to load image'));
+          };
+          imgEl.src = objectUrl;
         });
 
         const { error: attError } = await supabase.rpc('create_community_attachment', {
@@ -367,10 +367,8 @@ export async function createPost(params: CreatePostParams & { clerkUserId: strin
         });
 
         if (attError) {
-          console.error('Failed to create attachment:', attError);
         }
       } catch (err) {
-        console.error('Failed to upload image:', err);
       }
     }
   }
@@ -427,13 +425,16 @@ export async function deletePost(postId: string, clerkUserId: string): Promise<v
 }
 
 /**
- * Vote on a post (legacy function - consider using useVote hook instead)
- * @deprecated Use the useVote hook with rpc_cast_vote instead
+ * Vote on a post - returns updated vote counts
  */
-export async function votePost(postId: string, value: -1 | 1 | 0, clerkUserId: string): Promise<void> {
+export async function votePost(
+  postId: string,
+  value: -1 | 1 | 0,
+  _clerkUserId: string
+): Promise<{ score: number; upvotes: number; downvotes: number; my_vote: number | null }> {
   // Import ensureVoterSession dynamically to avoid circular dependencies
   const { ensureVoterSession } = await import('@/lib/auth/ensureVoterSession');
-  
+
   // Ensure we have a Supabase session (creates anonymous session if needed)
   const hasSession = await ensureVoterSession();
   if (!hasSession) {
@@ -444,15 +445,26 @@ export async function votePost(postId: string, value: -1 | 1 | 0, clerkUserId: s
   const newValue = value === 0 ? null : value;
 
   // Vote using new RPC function (uses auth.uid() from JWT)
-  const { error } = await supabase.rpc('rpc_cast_vote', {
+  const { data, error } = await supabase.rpc('rpc_cast_vote', {
     p_target_type: 'post',
     p_target_id: postId,
     p_new_value: newValue,
   });
-  
+
   if (error) {
     throw new Error(`Failed to vote: ${error.message}`);
   }
+
+  if (!data) {
+    throw new Error('No data returned from vote');
+  }
+
+  return {
+    score: data.score,
+    upvotes: data.upvotes,
+    downvotes: data.downvotes,
+    my_vote: data.my_vote,
+  };
 }
 
 /**
@@ -476,7 +488,7 @@ export async function listComments(postId: string, clerkUserId?: string): Promis
 
   // Get user votes
   let userVotes: Record<string, number> = {};
-  
+
   if (clerkUserId) {
     const supabaseUserId = await getSupabaseUserIdForClerkUser(clerkUserId);
     if (supabaseUserId) {
@@ -487,7 +499,7 @@ export async function listComments(postId: string, clerkUserId?: string): Promis
         .eq('user_id', supabaseUserId)
         .eq('target_type', 'comment')
         .in('target_id', commentIds);
-      
+
       if (votes) {
         votes.forEach((v: any) => {
           userVotes[v.target_id] = v.value;
@@ -499,14 +511,14 @@ export async function listComments(postId: string, clerkUserId?: string): Promis
   // Fetch attachments for all comments in batch
   const commentIds = data.map((c: any) => c.id);
   let attachmentsMap: Record<string, CommunityAttachment[]> = {};
-  
+
   if (commentIds.length > 0) {
     const { data: attachmentsData } = await supabase
       .from('community_attachments')
       .select('*')
       .eq('target_type', 'comment')
       .in('target_id', commentIds);
-    
+
     if (attachmentsData) {
       for (const att of attachmentsData) {
         if (!attachmentsMap[att.target_id]) {
@@ -519,7 +531,6 @@ export async function listComments(postId: string, clerkUserId?: string): Promis
             url,
           });
         } catch (err) {
-          console.error('Failed to get image URL:', err);
         }
       }
     }
@@ -616,7 +627,7 @@ export async function createComment(params: CreateCommentParams & { clerkUserId:
     }
 
     depth = parent.depth + 1;
-    
+
     // Generate path (simplified - in production, use the SQL function)
     const { data: siblings } = await supabase
       .from('community_comments')
@@ -693,7 +704,7 @@ export async function createComment(params: CreateCommentParams & { clerkUserId:
     for (const img of images) {
       try {
         const storagePath = await uploadImage(img, post.ticker, comment.id, 'comment');
-        
+
         const imgElement = await new Promise<HTMLImageElement>((resolve, reject) => {
           const imgEl = new Image();
           imgEl.onload = () => resolve(imgEl);
@@ -712,10 +723,8 @@ export async function createComment(params: CreateCommentParams & { clerkUserId:
         });
 
         if (attError) {
-          console.error('Failed to create attachment:', attError);
         }
       } catch (err) {
-        console.error('Failed to upload image:', err);
       }
     }
   }
@@ -781,13 +790,16 @@ export async function deleteComment(commentId: string, clerkUserId: string): Pro
 }
 
 /**
- * Vote on a comment (legacy function - consider using useVote hook instead)
- * @deprecated Use the useVote hook with rpc_cast_vote instead
+ * Vote on a comment - returns updated vote counts
  */
-export async function voteComment(commentId: string, value: -1 | 1 | 0, clerkUserId: string): Promise<void> {
+export async function voteComment(
+  commentId: string,
+  value: -1 | 1 | 0,
+  _clerkUserId: string
+): Promise<{ score: number; upvotes: number; downvotes: number; my_vote: number | null }> {
   // Import ensureVoterSession dynamically to avoid circular dependencies
   const { ensureVoterSession } = await import('@/lib/auth/ensureVoterSession');
-  
+
   // Ensure we have a Supabase session (creates anonymous session if needed)
   const hasSession = await ensureVoterSession();
   if (!hasSession) {
@@ -798,14 +810,25 @@ export async function voteComment(commentId: string, value: -1 | 1 | 0, clerkUse
   const newValue = value === 0 ? null : value;
 
   // Vote using new RPC function (uses auth.uid() from JWT)
-  const { error } = await supabase.rpc('rpc_cast_vote', {
+  const { data, error } = await supabase.rpc('rpc_cast_vote', {
     p_target_type: 'comment',
     p_target_id: commentId,
     p_new_value: newValue,
   });
-  
+
   if (error) {
     throw new Error(`Failed to vote: ${error.message}`);
   }
+
+  if (!data) {
+    throw new Error('No data returned from vote');
+  }
+
+  return {
+    score: data.score,
+    upvotes: data.upvotes,
+    downvotes: data.downvotes,
+    my_vote: data.my_vote,
+  };
 }
 

@@ -1,5 +1,5 @@
-import React from 'react'
-import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Legend } from 'recharts'
+// import React from 'react'
+import { ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Legend } from 'recharts'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 
 interface ComboChartProps {
@@ -44,7 +44,7 @@ export function ComboChart({ data, height = 300 }: ComboChartProps) {
   }
 
   return (
-    <ChartContainer config={config} className={`h-[${height}px] w-full`}>
+    <ChartContainer config={config} className="w-full" style={{ height: `${height}px`, width: '100%' }}>
       <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
         <CartesianGrid strokeDasharray="3 3" stroke="#E3DDCF" />
         <XAxis

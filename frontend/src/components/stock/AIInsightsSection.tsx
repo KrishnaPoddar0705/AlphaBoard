@@ -12,7 +12,7 @@
  * @todo Implement actual AI integration when backend is ready
  */
 
-import React from 'react';
+// import React from 'react';
 import { Brain, Sparkles, TrendingUp, Shield, AlertTriangle, Zap, Lock } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
 
