@@ -50,6 +50,12 @@ export const getStockHistory = async (ticker: string, period: string = "1y", int
     return res.data;
 };
 
+export const getPriceForDate = async (ticker: string, dateStr: string) => {
+    // dateStr should be in YYYY-MM-DD format
+    const res = await api.get(`/market/price/${ticker}/date/${dateStr}`);
+    return res.data;
+};
+
 export const getIncomeStatement = async (ticker: string) => {
     const res = await api.get(`/market/financials/income/${ticker}`);
     return res.data;
@@ -324,14 +330,14 @@ export const getRollingPortfolioReturns = async (userId: string, range: 'DAY' | 
     } catch (error: any) {
         // Handle CORS errors, network errors, and API errors gracefully
         console.error('Error fetching rolling portfolio returns:', error);
-        
+
         // Return empty result structure to prevent UI crashes
         // The backend now returns 200 with error in body, but handle network errors here
         if (error.response?.data) {
             // Backend returned an error response (with CORS headers)
             return error.response.data;
         }
-        
+
         // Network error or CORS error - return empty structure
         return {
             points: [],

@@ -5,9 +5,14 @@ import { supabase } from '../../lib/supabase';
 import { getVisibleRecommendations, updateMemberRole } from '../../lib/edgeFunctions';
 import { useTeams } from '../../hooks/useTeams';
 import TeamSelector from './TeamSelector';
-import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon, Shield, ShieldOff } from 'lucide-react';
+import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon, Shield, ShieldOff, Download } from 'lucide-react';
 import { safeLog, safeWarn, safeError } from '../../lib/logger';
 import { getUserFriendlyError } from '../../lib/errorSanitizer';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Label } from '../ui/label';
+import { getPrice, getStockSummary, getStockHistory, getPriceForDate } from '../../lib/api';
 
 interface OrganizationUser {
   userId: string;
@@ -79,6 +84,9 @@ export default function AdminDashboard() {
   const [teamMemberIds, setTeamMemberIds] = useState<Set<string>>(new Set());
   const [actionFilter, setActionFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'CLOSED'>('ALL');
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [baseDate, setBaseDate] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
   const { teams } = useTeams({ orgId: organizationId || undefined, autoFetch: !!organizationId });
 
   useEffect(() => {
@@ -392,6 +400,257 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleExportPerformance = async () => {
+    if (!baseDate || !organizationId) {
+      alert('Please select a base date');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // Fetch all recommendations for the organization
+      const { data: membersData } = await supabase
+        .from('user_organization_membership')
+        .select('user_id')
+        .eq('organization_id', organizationId);
+
+      if (!membersData || membersData.length === 0) {
+        alert('No members found in the organization');
+        setIsExporting(false);
+        return;
+      }
+
+      const userIds = membersData.map((m: any) => m.user_id);
+
+      // Fetch all recommendations (excluding watchlist) - include exit_price and exit_date for closed positions
+      const { data: recommendations, error: recsError } = await supabase
+        .from('recommendations')
+        .select('id, ticker, user_id, action, entry_price, entry_date, status, exit_price, exit_date')
+        .in('user_id', userIds)
+        .neq('status', 'WATCHLIST')
+        .neq('action', 'WATCH')
+        .order('entry_date', { ascending: false });
+
+      if (recsError) {
+        throw new Error('Failed to fetch recommendations: ' + getUserFriendlyError(recsError));
+      }
+
+      if (!recommendations || recommendations.length === 0) {
+        alert('No recommendations found to export');
+        setIsExporting(false);
+        return;
+      }
+
+      // Fetch user profiles for analyst names
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .in('id', userIds);
+
+      const profilesMap = new Map(profiles?.map((p: any) => [p.id, p.username || 'Unknown']) || []);
+
+      // Fetch team memberships
+      const { data: teamMemberships } = await supabase
+        .from('team_members')
+        .select('user_id, team_id, teams(id, name)')
+        .in('user_id', userIds);
+
+      const userTeamsMap = new Map<string, string[]>();
+      teamMemberships?.forEach((tm: any) => {
+        const team = tm.teams as any;
+        if (!userTeamsMap.has(tm.user_id)) {
+          userTeamsMap.set(tm.user_id, []);
+        }
+        userTeamsMap.get(tm.user_id)!.push(team.name);
+      });
+
+      // Fetch teams for team names (teams table uses org_id, not organization_id)
+      const { data: teamsData } = await supabase
+        .from('teams')
+        .select('id, name')
+        .eq('org_id', organizationId);
+
+      const teamsMap = new Map(teamsData?.map((t: any) => [t.id, t.name]) || []);
+
+      // Process each recommendation
+      const exportData = await Promise.all(
+        recommendations.map(async (rec: any) => {
+          try {
+            // Get company name
+            let companyName = rec.ticker;
+            try {
+              const summary = await getStockSummary(rec.ticker);
+              companyName = summary?.companyName || rec.ticker;
+            } catch {
+              // Use ticker as fallback
+            }
+
+            // Get current price
+            let currentPrice = 0;
+            try {
+              const priceData = await getPrice(rec.ticker);
+              currentPrice = priceData.price || 0;
+            } catch {
+              // Keep 0 as fallback
+            }
+
+            // Get price on base date using the new endpoint
+            let basePrice = 0;
+            try {
+              const baseDateObj = new Date(baseDate);
+              baseDateObj.setHours(0, 0, 0, 0);
+              
+              // Use the new endpoint to get price for the specific date
+              const priceData = await getPriceForDate(rec.ticker, baseDate);
+              
+              if (priceData && priceData.found && priceData.close && priceData.close > 0) {
+                basePrice = priceData.close;
+              } else {
+                // If no price found for base date, try using entry price if entry date is before base date
+                const entryDate = new Date(rec.entry_date);
+                entryDate.setHours(0, 0, 0, 0);
+                if (entryDate <= baseDateObj) {
+                  basePrice = rec.entry_price;
+                }
+              }
+            } catch (error) {
+              safeWarn('Error fetching price for base date:', error);
+              // Fallback: use entry price if entry date is before base date
+              try {
+                const entryDate = new Date(rec.entry_date);
+                entryDate.setHours(0, 0, 0, 0);
+                const baseDateObj = new Date(baseDate);
+                baseDateObj.setHours(0, 0, 0, 0);
+                if (entryDate <= baseDateObj) {
+                  basePrice = rec.entry_price;
+                }
+              } catch {
+                // Keep basePrice as 0
+              }
+            }
+
+            // Calculate percentage gain/loss from recommendation price to current price
+            const recommendedPrice = rec.entry_price;
+            let percentageGainLoss = 0;
+            if (recommendedPrice > 0 && currentPrice > 0) {
+              percentageGainLoss = ((currentPrice - recommendedPrice) / recommendedPrice) * 100;
+            }
+
+            // Get analyst name
+            const analystName = profilesMap.get(rec.user_id) || 'Unknown';
+
+            // Get team names
+            const teamNames = userTeamsMap.get(rec.user_id) || [];
+            const teamName = teamNames.join(', ') || 'No Team';
+
+            // Handle closed position data
+            const isClosed = rec.status === 'CLOSED';
+            const closedStatus = isClosed ? 'Yes' : '';
+            const exitPrice = isClosed && rec.exit_price ? rec.exit_price.toFixed(2) : '';
+            const exitDate = isClosed && rec.exit_date ? new Date(rec.exit_date).toLocaleDateString('en-US') : '';
+
+            return {
+              companyName,
+              basePrice: basePrice.toFixed(2),
+              currentPrice: currentPrice.toFixed(2),
+              recommendationAction: rec.action || 'BUY',
+              recommendedPrice: recommendedPrice.toFixed(2),
+              recommendedDate: new Date(rec.entry_date).toLocaleDateString('en-US'),
+              percentageGainLoss: percentageGainLoss.toFixed(2),
+              analyst: analystName,
+              team: teamName,
+              closed: closedStatus,
+              exitPrice: exitPrice,
+              exitDate: exitDate,
+            };
+          } catch (error) {
+            safeError('Error processing recommendation:', error);
+            return null;
+          }
+        })
+      );
+
+      // Filter out null values
+      const validData = exportData.filter((item) => item !== null);
+
+      // Helper function to escape CSV values
+      const escapeCsvValue = (value: string): string => {
+        // Always escape headers and values that might contain commas, quotes, or newlines
+        const stringValue = String(value);
+        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('(') || stringValue.includes(')')) {
+          return `"${stringValue.replace(/"/g, '""')}"`;
+        }
+        return stringValue;
+      };
+
+      // Format dates for headers (use format without commas to avoid CSV issues)
+      const formatDateForHeader = (dateString: string): string => {
+        const date = new Date(dateString);
+        // Use format without commas: "Jan 14 2026" instead of "Jan 14, 2026"
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(',', '');
+      };
+
+      const currentDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(',', '');
+      const baseDateFormatted = formatDateForHeader(baseDate);
+
+      // Generate CSV - escape all headers to ensure proper alignment
+      const headers = [
+        'Company Name',
+        `Price on ${baseDateFormatted}`,
+        `Current Market Price (${currentDate})`,
+        'Recommendation Action',
+        'Recommended Price',
+        'Recommended Date',
+        'Percentage Gain/Loss',
+        'Analyst',
+        'Team',
+        'Closed',
+        'Exit Price',
+        'Exit Date',
+      ].map(header => escapeCsvValue(header));
+
+      const csvRows = [
+        headers.join(','),
+        ...validData.map((row: any) =>
+          [
+            escapeCsvValue(row.companyName),
+            row.basePrice,
+            row.currentPrice,
+            row.recommendationAction,
+            row.recommendedPrice,
+            escapeCsvValue(row.recommendedDate),
+            row.percentageGainLoss,
+            escapeCsvValue(row.analyst),
+            escapeCsvValue(row.team),
+            row.closed,
+            row.exitPrice,
+            escapeCsvValue(row.exitDate),
+          ].join(',')
+        ),
+      ];
+
+      const csvContent = csvRows.join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.setAttribute('href', url);
+      link.setAttribute('download', `performance_export_${baseDate}_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setShowExportModal(false);
+      setBaseDate('');
+      alert(`Successfully exported ${validData.length} recommendations`);
+    } catch (error: any) {
+      safeError('Error exporting performance:', error);
+      alert('Failed to export performance: ' + getUserFriendlyError(error));
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const toggleAnalystDetails = async (userId: string) => {
     if (expandedAnalyst === userId) {
       setExpandedAnalyst(null);
@@ -493,10 +752,21 @@ export default function AdminDashboard() {
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-            Admin Dashboard
-          </h1>
-          <p className="text-[var(--text-secondary)] mb-4">{organizationName}</p>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
+                Admin Dashboard
+              </h1>
+              <p className="text-[var(--text-secondary)]">{organizationName}</p>
+            </div>
+            <Button
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center gap-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-400 hover:to-purple-400 transition-all duration-200 shadow-lg shadow-indigo-500/25"
+            >
+              <Download className="w-4 h-4" />
+              Export Performance
+            </Button>
+          </div>
 
           {/* Join Code Section */}
           {joinCode && (
@@ -1015,6 +1285,51 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Export Performance Modal */}
+        <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Export Performance</DialogTitle>
+              <DialogDescription>
+                Select a base date to calculate performance metrics. The export will include all recommendations with prices on the selected date and current prices.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label>Base Date for Price Calculation</Label>
+                <Input
+                  type="date"
+                  value={baseDate}
+                  onChange={(e) => setBaseDate(e.target.value)}
+                  max={new Date().toISOString().split('T')[0]}
+                />
+                <p className="text-xs text-[#6F6A60]">
+                  Select the date to use as the base price reference point
+                </p>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowExportModal(false);
+                    setBaseDate('');
+                  }}
+                  disabled={isExporting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleExportPerformance}
+                  disabled={!baseDate || isExporting}
+                  className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-400 hover:to-purple-400"
+                >
+                  {isExporting ? 'Exporting...' : 'Export CSV'}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

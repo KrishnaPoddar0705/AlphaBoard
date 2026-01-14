@@ -18,6 +18,7 @@ from .market import (
     get_stock_details,
     get_stock_summary,
     get_stock_history_data,
+    get_price_for_date,
     get_financials_data,
     get_balance_sheet_data,
     get_cash_flow_data,
@@ -123,6 +124,14 @@ def get_summary_endpoint(ticker: str):
 @app.get("/market/history/{ticker}")
 def get_history_endpoint(ticker: str, period: str = "1y", interval: str = "1d"):
     return get_stock_history_data(ticker, period, interval)
+
+@app.get("/market/price/{ticker}/date/{date_str}")
+def get_price_for_date_endpoint(ticker: str, date_str: str):
+    """
+    Get the close price for a specific date.
+    date_str should be in YYYY-MM-DD format.
+    """
+    return get_price_for_date(ticker, date_str)
 
 @app.get("/market/financials/income/{ticker}")
 def get_income_endpoint(ticker: str):

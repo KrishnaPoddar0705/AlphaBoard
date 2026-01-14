@@ -266,6 +266,75 @@ def get_stock_summary(ticker: str) -> Dict[str, Any]:
         print(f"Error fetching summary for {ticker}: {e}")
         return {}
 
+def get_price_for_date(ticker: str, date_str: str) -> Dict[str, Any]:
+    """
+    Get the close price for a specific date.
+    Uses yfinance history with start and end dates to fetch only the specific date.
+    
+    Args:
+        ticker: Stock ticker symbol
+        date_str: Date in YYYY-MM-DD format
+    
+    Returns:
+        Dictionary with date and close price, or None if not found
+    """
+    from datetime import datetime, timedelta
+    
+    cache_key = f"{ticker}_price_{date_str}"
+    cached = get_cached_data(cache_key)
+    if cached: return cached
+    
+    stock = get_ticker_obj(ticker)
+    try:
+        # Parse the date
+        target_date = datetime.strptime(date_str, "%Y-%m-%d")
+        # Fetch data for the target date (use a small window to ensure we get the date)
+        start_date = target_date.strftime("%Y-%m-%d")
+        end_date = (target_date + timedelta(days=1)).strftime("%Y-%m-%d")
+        
+        hist = stock.history(start=start_date, end=end_date)
+        
+        if hist.empty:
+            # If no data for exact date, try to find closest date before
+            # Fetch a wider range (30 days before to 1 day after)
+            start_date_wide = (target_date - timedelta(days=30)).strftime("%Y-%m-%d")
+            hist = stock.history(start=start_date_wide, end=end_date)
+            
+            if hist.empty:
+                return {"date": date_str, "close": None, "found": False}
+            
+            # Find the closest date on or before the target date
+            hist = hist[hist.index <= target_date]
+            if hist.empty:
+                return {"date": date_str, "close": None, "found": False}
+            
+            # Get the most recent date (closest to target)
+            closest_row = hist.iloc[-1]
+            closest_date = hist.index[-1]
+            
+            return {
+                "date": closest_date.strftime("%Y-%m-%d"),
+                "close": float(closest_row["Close"]) if "Close" in closest_row else float(closest_row.get("close", 0)),
+                "found": True,
+                "exact_match": closest_date.date() == target_date.date()
+            }
+        
+        # Get the price for the exact date
+        price_row = hist.iloc[0]
+        result = {
+            "date": date_str,
+            "close": float(price_row["Close"]) if "Close" in price_row else float(price_row.get("close", 0)),
+            "found": True,
+            "exact_match": True
+        }
+        
+        set_cached_data(cache_key, result)
+        return result
+        
+    except Exception as e:
+        print(f"Error fetching price for {ticker} on {date_str}: {e}")
+        return {"date": date_str, "close": None, "found": False, "error": str(e)}
+
 def get_stock_history_data(ticker: str, period: str = "1y", interval: str = "1d") -> List[Dict[str, Any]]:
     cache_key = f"{ticker}_history_{period}_{interval}"
     cached = get_cached_data(cache_key)
