@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { X, Target, Calendar } from 'lucide-react';
+import { getCurrencySymbol } from '../../lib/utils';
 
 interface AddPriceTargetModalProps {
     ticker: string;
@@ -84,7 +85,7 @@ export function AddPriceTargetModal({ ticker, onClose, onSubmit }: AddPriceTarge
                                 </label>
                                 <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span className="text-[#6F6A60] sm:text-sm font-mono">$</span>
+                                        <span className="text-[#6F6A60] sm:text-sm font-mono">{getCurrencySymbol(ticker)}</span>
                                     </div>
                                     <input
                                         type="number"

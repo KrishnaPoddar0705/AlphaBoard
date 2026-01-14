@@ -9,6 +9,7 @@ import { getPrice, getPriceTargets } from "@/lib/api"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@clerk/clerk-react"
 import { TrendingUp, TrendingDown, X } from "lucide-react"
+import { getCurrencySymbol } from "@/lib/utils"
 
 interface ClosedRecommendation {
   id: string
@@ -323,7 +324,7 @@ export default function History() {
                       >
                         <div>
                           <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
-                            ${target.target_price.toFixed(2)}
+                            {selectedStock ? getCurrencySymbol(selectedStock.ticker) : '$'}{target.target_price.toFixed(2)}
                           </p>
                           {target.target_date && (
                             <p className="font-mono text-xs text-[#6F6A60] mt-1">

@@ -13,6 +13,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { getPrice, getStockSummary, getPriceForDate } from '../../lib/api';
+import { getCurrencySymbol } from '../../lib/utils';
 
 interface OrganizationUser {
   userId: string;
@@ -1104,12 +1105,12 @@ export default function AdminDashboard() {
                                         <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-[var(--bg-secondary)] rounded border border-[var(--border-color)]">
                                           <div>
                                             <div className="text-xs text-[var(--text-secondary)] mb-1">Entry Price</div>
-                                            <div className="text-lg font-semibold text-[var(--text-primary)]">${rec.entry_price}</div>
+                                            <div className="text-lg font-semibold text-[var(--text-primary)]">{getCurrencySymbol(rec.ticker)}{rec.entry_price}</div>
                                           </div>
                                           {rec.exit_price && (
                                             <div>
                                               <div className="text-xs text-[var(--text-secondary)] mb-1">Exit Price</div>
-                                              <div className="text-lg font-semibold text-[var(--text-primary)]">${rec.exit_price}</div>
+                                              <div className="text-lg font-semibold text-[var(--text-primary)]">{getCurrencySymbol(rec.ticker)}{rec.exit_price}</div>
                                             </div>
                                           )}
                                           {tickerTargets.length > 0 && (
@@ -1118,7 +1119,7 @@ export default function AdminDashboard() {
                                               <div className="flex gap-2 flex-wrap">
                                                 {tickerTargets.map(t => (
                                                   <span key={t.id} className="text-sm font-semibold text-purple-400">
-                                                    ${t.target_price}
+                                                    {getCurrencySymbol(rec.ticker)}{t.target_price}
                                                   </span>
                                                 ))}
                                               </div>
@@ -1146,7 +1147,7 @@ export default function AdminDashboard() {
                                             <div className="flex gap-3 overflow-x-auto pb-2">
                                               {tickerTargets.map(target => (
                                                 <div key={target.id} className="bg-purple-500/20 p-3 rounded border border-purple-500/30 min-w-[150px]">
-                                                  <div className="text-lg font-bold text-purple-400">${target.target_price}</div>
+                                                  <div className="text-lg font-bold text-purple-400">{getCurrencySymbol(rec.ticker)}{target.target_price}</div>
                                                   {target.target_date && (
                                                     <div className="text-xs text-[var(--text-secondary)] mt-1">
                                                       Target: {formatDate(target.target_date)}
