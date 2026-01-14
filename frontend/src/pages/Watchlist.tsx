@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import { useNavigate } from "react-router-dom"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card-new"
+import { Card, CardContent } from "@/components/ui/card-new"
 import { Button } from "@/components/ui/button"
-import { Plus, X } from "lucide-react"
-import { getPrice, createRecommendation, deleteWatchlistItem } from "@/lib/api"
+import { Plus, X, TrendingUp, TrendingDown, ChevronUp, ChevronDown, ChevronsUpDown } from "lucide-react"
+import { getPrice, createRecommendation, deleteWatchlistItem, getStockSummary, getStockHistory } from "@/lib/api"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@clerk/clerk-react"
 import { AddToWatchlistModal } from "@/components/recommendations/AddToWatchlistModal"
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { getCurrencySymbol, formatCurrency } from "@/lib/utils"
 
 interface WatchlistItem {
   id: string
@@ -21,7 +22,15 @@ interface WatchlistItem {
   entry_date: string
   thesis?: string | null
   images?: string[] | null
+  companyName?: string
+  marketCap?: number
+  oneDayReturn?: number
+  oneWeekReturn?: number
+  oneMonthReturn?: number
 }
+
+type SortField = 'companyName' | 'current_price' | 'oneDayReturn' | 'oneWeekReturn' | 'oneMonthReturn' | 'marketCap' | 'entry_date'
+type SortDirection = 'asc' | 'desc' | null
 
 export default function Watchlist() {
   const navigate = useNavigate()
@@ -33,6 +42,8 @@ export default function Watchlist() {
   const [selectedItem, setSelectedItem] = React.useState<WatchlistItem | null>(null)
   const [promoteAction, setPromoteAction] = React.useState<'BUY' | 'SELL'>('BUY')
   const [promoteEntryPrice, setPromoteEntryPrice] = React.useState('')
+  const [sortField, setSortField] = React.useState<SortField | null>(null)
+  const [sortDirection, setSortDirection] = React.useState<SortDirection>(null)
 
   React.useEffect(() => {
     if (user) {
@@ -65,18 +76,67 @@ export default function Watchlist() {
         .order("entry_date", { ascending: false })
 
       if (!error && data) {
-        // Fetch current prices
-        const watchlistWithPrices = await Promise.all(
+        // Fetch current prices, company names, market cap, and returns
+        const watchlistWithData = await Promise.all(
           data.map(async (rec) => {
             try {
-              const priceData = await getPrice(rec.ticker)
-              return { ...rec, current_price: priceData.price || rec.current_price }
+              const [priceData, summaryData, historyData1d, historyData1m] = await Promise.all([
+                getPrice(rec.ticker).catch(() => ({ price: rec.current_price })),
+                getStockSummary(rec.ticker).catch(() => null),
+                getStockHistory(rec.ticker, "7d", "1d").catch(() => null),
+                getStockHistory(rec.ticker, "1mo", "1d").catch(() => null)
+              ])
+
+              const currentPrice = priceData.price || rec.current_price || 0
+
+              // Calculate 1D return from yesterday's close vs current price
+              let oneDayReturn: number | undefined = undefined
+              if (historyData1d && Array.isArray(historyData1d) && historyData1d.length >= 2) {
+                const yesterdayClose = historyData1d[historyData1d.length - 2]?.close
+                if (yesterdayClose && currentPrice) {
+                  oneDayReturn = ((currentPrice - yesterdayClose) / yesterdayClose) * 100
+                }
+              }
+
+              // Calculate 1W return (7 days ago vs current)
+              let oneWeekReturn: number | undefined = undefined
+              if (historyData1m && Array.isArray(historyData1m) && historyData1m.length >= 7) {
+                const weekAgoClose = historyData1m[historyData1m.length - 7]?.close
+                if (weekAgoClose && currentPrice) {
+                  oneWeekReturn = ((currentPrice - weekAgoClose) / weekAgoClose) * 100
+                }
+              }
+
+              // Calculate 1M return (oldest available data point vs current)
+              // Use the first element which should be approximately 1 month ago
+              let oneMonthReturn: number | undefined = undefined
+              if (historyData1m && Array.isArray(historyData1m) && historyData1m.length > 0) {
+                // Get the oldest data point (first element) which should be ~1 month ago
+                const monthAgoClose = historyData1m[0]?.close
+                if (monthAgoClose && currentPrice && monthAgoClose > 0) {
+                  oneMonthReturn = ((currentPrice - monthAgoClose) / monthAgoClose) * 100
+                }
+              }
+
+              return {
+                ...rec,
+                current_price: currentPrice,
+                companyName: summaryData?.companyName || rec.ticker,
+                marketCap: summaryData?.marketCap,
+                oneDayReturn,
+                oneWeekReturn,
+                oneMonthReturn
+              }
             } catch {
-              return rec
+              return {
+                ...rec,
+                current_price: rec.current_price || 0,
+                companyName: rec.ticker
+              }
             }
           })
         )
-        setWatchlist(watchlistWithPrices)
+        setWatchlist(watchlistWithData)
       }
     } catch (error) {
     } finally {
@@ -138,8 +198,8 @@ export default function Watchlist() {
       }
 
       // Determine benchmark ticker based on ticker format
-      const benchmarkTicker = selectedItem.ticker.includes('.NS') || selectedItem.ticker.includes('.INVO') 
-        ? '^NSEI' 
+      const benchmarkTicker = selectedItem.ticker.includes('.NS') || selectedItem.ticker.includes('.INVO')
+        ? '^NSEI'
         : '^GSPC'
 
       // Create new recommendation using the API
@@ -176,6 +236,59 @@ export default function Watchlist() {
     }
   }
 
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      if (sortDirection === 'asc') {
+        setSortDirection('desc')
+      } else if (sortDirection === 'desc') {
+        setSortField(null)
+        setSortDirection(null)
+      }
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const sortedWatchlist = React.useMemo(() => {
+    if (!sortField || !sortDirection) return watchlist
+
+    return [...watchlist].sort((a, b) => {
+      let aValue: any = a[sortField]
+      let bValue: any = b[sortField]
+
+      // Handle undefined/null values
+      if (aValue === undefined || aValue === null) return 1
+      if (bValue === undefined || bValue === null) return -1
+
+      // Handle date sorting
+      if (sortField === 'entry_date') {
+        aValue = new Date(aValue).getTime()
+        bValue = new Date(bValue).getTime()
+      }
+
+      // Handle string sorting (company name)
+      if (sortField === 'companyName') {
+        const comparison = (aValue || '').localeCompare(bValue || '')
+        return sortDirection === 'asc' ? comparison : -comparison
+      }
+
+      // Handle numeric sorting
+      const comparison = Number(aValue) - Number(bValue)
+      return sortDirection === 'asc' ? comparison : -comparison
+    })
+  }, [watchlist, sortField, sortDirection])
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ChevronsUpDown className="w-3 h-3 text-[#6F6A60]" />
+    }
+    if (sortDirection === 'asc') {
+      return <ChevronUp className="w-3 h-3 text-[#1C1B17]" />
+    }
+    return <ChevronDown className="w-3 h-3 text-[#1C1B17]" />
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full bg-[#F1EEE0]">
@@ -199,7 +312,7 @@ export default function Watchlist() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {watchlist.length === 0 ? (
           <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
             <CardContent className="py-12 text-center">
@@ -208,53 +321,286 @@ export default function Watchlist() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {watchlist.map((item) => (
-              <Card
-                key={item.id}
-                className="bg-[#F7F2E6] border-[#D7D0C2] hover:border-[#1C1B17] transition-all cursor-pointer"
-                onClick={() => navigate(`/stock/${item.ticker}`)}
-              >
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-mono font-bold text-[#1C1B17]">{item.ticker}</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => handleRemove(item, e)}
-                      className="h-8 w-8 text-[#6F6A60] hover:text-[#B23B2A]"
+          <div className="overflow-x-auto">
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <table className="w-full border-collapse bg-[#F7F2E6] rounded-lg overflow-hidden">
+                <thead>
+                  <tr className="border-b-2 border-[#D7D0C2] bg-[#FBF7ED]">
+                    <th
+                      className="px-4 py-3 text-left text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      onClick={() => handleSort('companyName')}
                     >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="font-mono text-xs text-[#6F6A60] mt-1">
-                    Added {new Date(item.entry_date).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </p>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="text-2xl font-mono font-bold text-[#1C1B17] tabular-nums">
-                    ${item.current_price?.toFixed(2) || "N/A"}
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedItem(item)
-                      setPromoteEntryPrice(item.current_price?.toFixed(2) || '')
-                      setShowPromoteModal(true)
-                    }}
-                    className="w-full font-mono text-xs border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                      <div className="flex items-center gap-1.5">
+                        Company Name
+                        {getSortIcon('companyName')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      onClick={() => handleSort('current_price')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        Current Price
+                        {getSortIcon('current_price')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      onClick={() => handleSort('oneDayReturn')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        1D Return
+                        {getSortIcon('oneDayReturn')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      onClick={() => handleSort('oneWeekReturn')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        1W Return
+                        {getSortIcon('oneWeekReturn')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      onClick={() => handleSort('oneMonthReturn')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        1M Return
+                        {getSortIcon('oneMonthReturn')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      onClick={() => handleSort('marketCap')}
+                    >
+                      <div className="flex items-center justify-end gap-1.5">
+                        Market Cap
+                        {getSortIcon('marketCap')}
+                      </div>
+                    </th>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      onClick={() => handleSort('entry_date')}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        Date Added
+                        {getSortIcon('entry_date')}
+                      </div>
+                    </th>
+                    <th className="px-4 py-3 text-center text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#D7D0C2]">
+                  {sortedWatchlist.map((item) => {
+                    const currencySymbol = getCurrencySymbol(item.ticker)
+                    const isPositive1D = (item.oneDayReturn ?? 0) >= 0
+                    const isPositive1W = (item.oneWeekReturn ?? 0) >= 0
+                    const isPositive1M = (item.oneMonthReturn ?? 0) >= 0
+                    const formatMarketCap = (cap?: number) => {
+                      if (!cap) return 'N/A'
+                      if (cap >= 1e12) return `${currencySymbol}${(cap / 1e12).toFixed(2)}T`
+                      if (cap >= 1e9) return `${currencySymbol}${(cap / 1e9).toFixed(2)}B`
+                      if (cap >= 1e6) return `${currencySymbol}${(cap / 1e6).toFixed(2)}M`
+                      return `${currencySymbol}${cap.toFixed(2)}`
+                    }
+
+                    const renderReturn = (returnValue: number | undefined, isPositive: boolean) => {
+                      if (returnValue === undefined) {
+                        return <span className="text-[#6F6A60]">N/A</span>
+                      }
+                      return (
+                        <div className={`flex items-center justify-end gap-1 ${isPositive ? 'text-green-700' : 'text-red-700'}`}>
+                          {isPositive ? (
+                            <TrendingUp className="h-3 w-3" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3" />
+                          )}
+                          <span className="font-semibold">
+                            {isPositive ? '+' : ''}{returnValue.toFixed(2)}%
+                          </span>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-[#FBF7ED] transition-colors cursor-pointer"
+                        onClick={() => navigate(`/stock/${item.ticker}`)}
+                      >
+                        <td className="px-4 py-3 text-sm font-mono text-[#1C1B17]">
+                          <div className="font-semibold">{item.companyName || item.ticker}</div>
+                          <div className="text-xs text-[#6F6A60] mt-0.5">{item.ticker}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-right text-[#1C1B17] tabular-nums font-semibold">
+                          {formatCurrency(item.current_price, item.ticker)}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-right tabular-nums">
+                          {renderReturn(item.oneDayReturn, isPositive1D)}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-right tabular-nums">
+                          {renderReturn(item.oneWeekReturn, isPositive1W)}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-right tabular-nums">
+                          {renderReturn(item.oneMonthReturn, isPositive1M)}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-right text-[#1C1B17] tabular-nums">
+                          {formatMarketCap(item.marketCap)}
+                        </td>
+                        <td className="px-4 py-3 text-sm font-mono text-[#6F6A60]">
+                          {new Date(item.entry_date).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedItem(item)
+                                setPromoteEntryPrice(item.current_price?.toFixed(2) || '')
+                                setShowPromoteModal(true)
+                              }}
+                              className="font-mono text-xs border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED] h-7 px-2"
+                            >
+                              Promote
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => handleRemove(item, e)}
+                              className="h-7 w-7 text-[#6F6A60] hover:text-[#B23B2A]"
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {sortedWatchlist.map((item) => {
+                const currencySymbol = getCurrencySymbol(item.ticker)
+                const isPositive1D = (item.oneDayReturn ?? 0) >= 0
+                const isPositive1W = (item.oneWeekReturn ?? 0) >= 0
+                const isPositive1M = (item.oneMonthReturn ?? 0) >= 0
+                const formatMarketCap = (cap?: number) => {
+                  if (!cap) return 'N/A'
+                  if (cap >= 1e12) return `${currencySymbol}${(cap / 1e12).toFixed(2)}T`
+                  if (cap >= 1e9) return `${currencySymbol}${(cap / 1e9).toFixed(2)}B`
+                  if (cap >= 1e6) return `${currencySymbol}${(cap / 1e6).toFixed(2)}M`
+                  return `${currencySymbol}${cap.toFixed(2)}`
+                }
+
+                const renderReturnMobile = (returnValue: number | undefined, isPositive: boolean) => {
+                  if (returnValue === undefined) {
+                    return <div className="font-mono text-[#6F6A60]">N/A</div>
+                  }
+                  return (
+                    <div className={`font-mono font-semibold tabular-nums flex items-center gap-1 ${isPositive ? 'text-green-700' : 'text-red-700'}`}>
+                      {isPositive ? (
+                        <TrendingUp className="h-3 w-3" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3" />
+                      )}
+                      <span>{isPositive ? '+' : ''}{returnValue.toFixed(2)}%</span>
+                    </div>
+                  )
+                }
+
+                return (
+                  <Card
+                    key={item.id}
+                    className="bg-[#F7F2E6] border-[#D7D0C2]"
+                    onClick={() => navigate(`/stock/${item.ticker}`)}
                   >
-                    Promote to BUY/SELL
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <div className="font-mono font-bold text-[#1C1B17] text-base">
+                            {item.companyName || item.ticker}
+                          </div>
+                          <div className="font-mono text-xs text-[#6F6A60] mt-0.5">{item.ticker}</div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => handleRemove(item, e)}
+                          className="h-8 w-8 text-[#6F6A60] hover:text-[#B23B2A] flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                          <div className="font-mono text-xs text-[#6F6A60] mb-1">Current Price</div>
+                          <div className="font-mono font-bold text-[#1C1B17] tabular-nums">
+                            {formatCurrency(item.current_price, item.ticker)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-mono text-xs text-[#6F6A60] mb-1">1D Return</div>
+                          {renderReturnMobile(item.oneDayReturn, isPositive1D)}
+                        </div>
+                        <div>
+                          <div className="font-mono text-xs text-[#6F6A60] mb-1">1W Return</div>
+                          {renderReturnMobile(item.oneWeekReturn, isPositive1W)}
+                        </div>
+                        <div>
+                          <div className="font-mono text-xs text-[#6F6A60] mb-1">1M Return</div>
+                          {renderReturnMobile(item.oneMonthReturn, isPositive1M)}
+                        </div>
+                        <div>
+                          <div className="font-mono text-xs text-[#6F6A60] mb-1">Market Cap</div>
+                          <div className="font-mono text-[#1C1B17] tabular-nums">
+                            {formatMarketCap(item.marketCap)}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="font-mono text-xs text-[#6F6A60] mb-1">Date Added</div>
+                          <div className="font-mono text-[#1C1B17] text-xs">
+                            {new Date(item.entry_date).toLocaleDateString('en-US', {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelectedItem(item)
+                          setPromoteEntryPrice(item.current_price?.toFixed(2) || '')
+                          setShowPromoteModal(true)
+                        }}
+                        className="w-full font-mono text-xs border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                      >
+                        Promote to BUY/SELL
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
           </div>
         )}
       </div>

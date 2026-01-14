@@ -77,6 +77,8 @@ export default function AdminDashboard() {
   const [analystPriceTargets, setAnalystPriceTargets] = useState<Record<string, PriceTarget[]>>({});
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamMemberIds, setTeamMemberIds] = useState<Set<string>>(new Set());
+  const [actionFilter, setActionFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'CLOSED'>('ALL');
   const { teams } = useTeams({ orgId: organizationId || undefined, autoFetch: !!organizationId });
 
   useEffect(() => {
@@ -220,11 +222,13 @@ export default function AdminDashboard() {
           const userIds = membersData.map((m: any) => m.user_id);
           
           // Fetch recommendations for all analysts to calculate metrics
+          // Exclude watchlist items (by status or action)
           const { data: allRecommendations, error: recsError } = await supabase
             .from('recommendations')
-            .select('id, user_id, status, final_return_pct, entry_date')
+            .select('id, user_id, status, action, final_return_pct, entry_date')
             .in('user_id', userIds)
-            .neq('status', 'WATCHLIST'); // Exclude watchlist items
+            .neq('status', 'WATCHLIST') // Exclude watchlist items by status
+            .neq('action', 'WATCH'); // Exclude watchlist items by action
 
           if (recsError) {
             safeError('Error fetching recommendations:', recsError);
@@ -403,10 +407,13 @@ export default function AdminDashboard() {
 
         // Fetch recommendations with all details
         // Use getVisibleRecommendations to respect team-based RLS
+        // Exclude WATCHLIST items from admin dashboard (by status or action)
         let recs: Recommendation[] = [];
         try {
           const response = await getVisibleRecommendations(selectedTeamId || undefined, undefined);
-          recs = (response.recommendations || []).filter((r: any) => r.user_id === userId);
+          recs = (response.recommendations || [])
+            .filter((r: any) => r.user_id === userId)
+            .filter((r: any) => r.status !== 'WATCHLIST' && r.action !== 'WATCH'); // Exclude watchlist items
         } catch (err) {
           safeWarn('Failed to fetch via Edge Function, using direct query', err);
         }
@@ -417,6 +424,8 @@ export default function AdminDashboard() {
             .from('recommendations')
             .select('id, ticker, action, entry_price, exit_price, status, thesis, entry_date, images, final_return_pct, final_alpha_pct')
             .eq('user_id', userId)
+            .neq('status', 'WATCHLIST') // Exclude watchlist items by status
+            .neq('action', 'WATCH') // Exclude watchlist items by action
             .order('entry_date', { ascending: false });
           if (recData) recs = recData;
         }
@@ -692,14 +701,110 @@ export default function AdminDashboard() {
                           <div className="space-y-6">
                             {/* All Recommendations with Details */}
                             <div>
-                              <h4 className="font-semibold text-[var(--text-primary)] mb-3 flex items-center gap-2 text-lg">
-                                <FileText className="w-5 h-5" />
-                                All Recommendations ({analystRecommendations[analyst.userId]?.length || 0})
-                              </h4>
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+                                <h4 className="font-semibold text-[var(--text-primary)] flex items-center gap-2 text-lg">
+                                  <FileText className="w-5 h-5" />
+                                  All Recommendations ({analystRecommendations[analyst.userId]?.filter((r) => {
+                                    const isNotWatchlist = r.status !== 'WATCHLIST' && r.action !== 'WATCH';
+                                    const matchesAction = actionFilter === 'ALL' || r.action === actionFilter;
+                                    const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter;
+                                    return isNotWatchlist && matchesAction && matchesStatus;
+                                  }).length || 0})
+                                </h4>
+                                
+                                {/* Filters */}
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                                  {/* Action Filter */}
+                                  <div className="flex items-center gap-2">
+                                    <label className="text-xs text-[var(--text-secondary)] font-medium">Action:</label>
+                                    <div className="flex gap-1 bg-[var(--card-bg)] rounded-lg p-1 border border-[var(--border-color)]">
+                                      <button
+                                        onClick={() => setActionFilter('ALL')}
+                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                          actionFilter === 'ALL'
+                                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                        }`}
+                                      >
+                                        All
+                                      </button>
+                                      <button
+                                        onClick={() => setActionFilter('BUY')}
+                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                          actionFilter === 'BUY'
+                                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                        }`}
+                                      >
+                                        BUY
+                                      </button>
+                                      <button
+                                        onClick={() => setActionFilter('SELL')}
+                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                          actionFilter === 'SELL'
+                                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                        }`}
+                                      >
+                                        SELL
+                                      </button>
+                                    </div>
+                                  </div>
 
-                              {analystRecommendations[analyst.userId]?.length > 0 ? (
+                                  {/* Status Filter */}
+                                  <div className="flex items-center gap-2">
+                                    <label className="text-xs text-[var(--text-secondary)] font-medium">Status:</label>
+                                    <div className="flex gap-1 bg-[var(--card-bg)] rounded-lg p-1 border border-[var(--border-color)]">
+                                      <button
+                                        onClick={() => setStatusFilter('ALL')}
+                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                          statusFilter === 'ALL'
+                                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                        }`}
+                                      >
+                                        All
+                                      </button>
+                                      <button
+                                        onClick={() => setStatusFilter('OPEN')}
+                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                          statusFilter === 'OPEN'
+                                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
+                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                        }`}
+                                      >
+                                        OPEN
+                                      </button>
+                                      <button
+                                        onClick={() => setStatusFilter('CLOSED')}
+                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
+                                          statusFilter === 'CLOSED'
+                                            ? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
+                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                                        }`}
+                                      >
+                                        CLOSED
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {analystRecommendations[analyst.userId]?.filter((r) => {
+                                const isNotWatchlist = r.status !== 'WATCHLIST' && r.action !== 'WATCH';
+                                const matchesAction = actionFilter === 'ALL' || r.action === actionFilter;
+                                const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter;
+                                return isNotWatchlist && matchesAction && matchesStatus;
+                              }).length > 0 ? (
                                 <div className="space-y-4">
-                                  {analystRecommendations[analyst.userId].map((rec) => {
+                                  {analystRecommendations[analyst.userId]
+                                    .filter((r) => {
+                                      const isNotWatchlist = r.status !== 'WATCHLIST' && r.action !== 'WATCH';
+                                      const matchesAction = actionFilter === 'ALL' || r.action === actionFilter;
+                                      const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter;
+                                      return isNotWatchlist && matchesAction && matchesStatus;
+                                    })
+                                    .map((rec) => {
                                     // Get price targets for this ticker
                                     const tickerTargets = analystPriceTargets[analyst.userId]?.filter(
                                       t => t.ticker === rec.ticker
@@ -818,7 +923,10 @@ export default function AdminDashboard() {
                                 </div>
                               ) : (
                                 <div className="text-center py-8 text-[var(--text-secondary)] bg-[var(--card-bg)] rounded border border-[var(--border-color)]">
-                                  No recommendations yet
+                                  {analystRecommendations[analyst.userId]?.filter((r) => r.status !== 'WATCHLIST' && r.action !== 'WATCH').length === 0
+                                    ? 'No recommendations yet'
+                                    : `No recommendations match the selected filters (${actionFilter !== 'ALL' ? actionFilter : ''} ${statusFilter !== 'ALL' ? statusFilter : ''})`.trim()
+                                  }
                                 </div>
                               )}
                             </div>

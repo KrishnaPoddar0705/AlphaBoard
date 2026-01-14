@@ -8,6 +8,7 @@
 const FEATURE_FLAGS = {
   UI_V2: 'UI_V2',
   UI_V3: 'UI_V3',
+  ORG_LEADERBOARD: 'ORG_LEADERBOARD',
 } as const;
 
 type FeatureFlag = typeof FEATURE_FLAGS[keyof typeof FEATURE_FLAGS];
@@ -73,6 +74,20 @@ export function isUIV3Enabled(): boolean {
  */
 export function setUIV3Enabled(enabled: boolean): void {
   setFeatureFlag(FEATURE_FLAGS.UI_V3, enabled);
+}
+
+/**
+ * Check if ORG_LEADERBOARD is enabled
+ */
+export function isOrgLeaderboardEnabled(): boolean {
+  return getFeatureFlag(FEATURE_FLAGS.ORG_LEADERBOARD);
+}
+
+/**
+ * Enable/disable ORG_LEADERBOARD
+ */
+export function setOrgLeaderboardEnabled(enabled: boolean): void {
+  setFeatureFlag(FEATURE_FLAGS.ORG_LEADERBOARD, enabled);
 }
 
 // Note: React hook version is in hooks/useFeatureFlag.ts

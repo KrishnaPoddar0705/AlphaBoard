@@ -4,11 +4,13 @@ import { Award, TrendingUp, TrendingDown, Globe, Building2 } from 'lucide-react'
 import { useOrganization } from '../hooks/useOrganization';
 import AnalystProfile from '../components/AnalystProfile/AnalystProfile';
 import { safeLog, safeError } from '../lib/logger';
+import { useOrgLeaderboard } from '../hooks/useFeatureFlag';
 
 type LeaderboardType = 'organization' | 'public';
 
 export default function Leaderboard() {
     const { organization, loading: orgLoading } = useOrganization();
+    const [orgLeaderboardEnabled] = useOrgLeaderboard();
     const [analysts, setAnalysts] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [selectedAnalyst, setSelectedAnalyst] = useState<any>(null);
@@ -18,11 +20,12 @@ export default function Leaderboard() {
     // Set initial tab based on organization membership - only once when org loading completes
     useEffect(() => {
         if (!orgLoading && !hasInitialized) {
-            const initialTab = organization?.id ? 'organization' : 'public';
+            // Only show org tab if feature flag is enabled
+            const initialTab = (organization?.id && orgLeaderboardEnabled) ? 'organization' : 'public';
             setActiveTab(initialTab);
             setHasInitialized(true);
         }
-    }, [orgLoading, organization, hasInitialized]);
+    }, [orgLoading, organization, hasInitialized, orgLeaderboardEnabled]);
 
     // Recalculate leaderboard when tab changes or organization changes
     // Only trigger after initialization is complete
@@ -41,11 +44,13 @@ export default function Leaderboard() {
         setLoading(true);
         try {
             if (activeTab === 'organization') {
-                if (organization?.id) {
+                // Only allow org leaderboard if feature flag is enabled
+                if (organization?.id && orgLeaderboardEnabled) {
                     await calculateOrganizationLeaderboard(organization.id);
                 } else {
-                    // User switched to org tab but has no org - show empty
-                    setAnalysts([]);
+                    // Feature flag disabled or no org - fallback to public
+                    setActiveTab('public');
+                    await calculatePublicLeaderboard();
                 }
             } else if (activeTab === 'public') {
                 await calculatePublicLeaderboard();
@@ -381,7 +386,7 @@ export default function Leaderboard() {
             </div>
 
             {/* Tabs */}
-            {organization?.id && (
+            {organization?.id && orgLeaderboardEnabled && (
                 <div className="flex gap-3">
                     <button
                         onClick={() => setActiveTab('organization')}

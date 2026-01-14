@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { isUIV2Enabled, setUIV2Enabled, isUIV3Enabled, setUIV3Enabled } from '../config/featureFlags';
+import { isUIV2Enabled, setUIV2Enabled, isUIV3Enabled, setUIV3Enabled, isOrgLeaderboardEnabled, setOrgLeaderboardEnabled } from '../config/featureFlags';
 
 /**
  * Hook to check if UI_V2 is enabled
@@ -59,3 +59,28 @@ export function useUIV3() {
   ] as const;
 }
 
+/**
+ * Hook to check if ORG_LEADERBOARD is enabled
+ */
+export function useOrgLeaderboard() {
+  const [enabled, setEnabled] = useState(() => isOrgLeaderboardEnabled());
+
+  useEffect(() => {
+    const handleChange = () => {
+      setEnabled(isOrgLeaderboardEnabled());
+    };
+
+    window.addEventListener('featureFlagChanged', handleChange);
+    return () => {
+      window.removeEventListener('featureFlagChanged', handleChange);
+    };
+  }, []);
+
+  return [
+    enabled,
+    (newValue: boolean) => {
+      setOrgLeaderboardEnabled(newValue);
+      setEnabled(newValue);
+    },
+  ] as const;
+}
