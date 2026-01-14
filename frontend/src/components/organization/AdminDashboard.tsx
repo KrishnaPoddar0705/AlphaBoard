@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { getPrice, getStockSummary, getStockHistory, getPriceForDate } from '../../lib/api';
+import { getPrice, getStockSummary, getPriceForDate } from '../../lib/api';
 
 interface OrganizationUser {
   userId: string;
@@ -464,13 +464,8 @@ export default function AdminDashboard() {
         userTeamsMap.get(tm.user_id)!.push(team.name);
       });
 
-      // Fetch teams for team names (teams table uses org_id, not organization_id)
-      const { data: teamsData } = await supabase
-        .from('teams')
-        .select('id, name')
-        .eq('org_id', organizationId);
-
-      const teamsMap = new Map(teamsData?.map((t: any) => [t.id, t.name]) || []);
+      // Teams data is already fetched via userTeamsMap from team_members table above
+      // No need to fetch teams separately as we're using team names from team_memberships
 
       // Process each recommendation
       const exportData = await Promise.all(
