@@ -2173,25 +2173,32 @@ def get_rolling_portfolio_returns(
     
     # Validate range
     if range not in ['DAY', 'WEEK', 'MONTH']:
-        return {"error": "Invalid range. Must be DAY, WEEK, or MONTH"}, 400
+        return JSONResponse(
+            status_code=400,
+            content={"error": "Invalid range. Must be DAY, WEEK, or MONTH"}
+        )
     
     try:
         # Convert Clerk user ID to Supabase UUID if needed
         supabase_user_id = get_supabase_user_id(user_id)
         if not supabase_user_id:
             print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
-            return {
-                "error": f"User not found. Please ensure your account is synced with Supabase.",
-                "points": [],
-                "cumulative": [],
-                "meta": {
-                    "window_days": 1 if range == "DAY" else (7 if range == "WEEK" else 30),
-                    "start_date": None,
-                    "end_date": datetime.now().isoformat(),
-                    "method_used": "equal_weight",
-                    "missing_symbols": []
+            # Return 200 with error in body to avoid CORS issues, frontend will handle gracefully
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "error": f"User not found. Please ensure your account is synced with Supabase.",
+                    "points": [],
+                    "cumulative": [],
+                    "meta": {
+                        "window_days": 1 if range == "DAY" else (7 if range == "WEEK" else 30),
+                        "start_date": None,
+                        "end_date": datetime.now().isoformat(),
+                        "method_used": "equal_weight",
+                        "missing_symbols": []
+                    }
                 }
-            }, 404
+            )
         
         # Fetch user's recommendations with retry logic
         # Include both OPEN and CLOSED recommendations with entry_date (for historical tracking)
@@ -2254,7 +2261,22 @@ def get_rolling_portfolio_returns(
         print(f"Error computing rolling returns: {e}")
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        # Return JSONResponse with CORS headers instead of raising HTTPException
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error": str(e),
+                "points": [],
+                "cumulative": [],
+                "meta": {
+                    "window_days": 1 if range == "DAY" else (7 if range == "WEEK" else 30),
+                    "start_date": None,
+                    "end_date": datetime.now().isoformat(),
+                    "method_used": "equal_weight",
+                    "missing_symbols": []
+                }
+            }
+        )
 
 
 @app.post("/admin/update-prices")

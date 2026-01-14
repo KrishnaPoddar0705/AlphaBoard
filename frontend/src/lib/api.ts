@@ -316,10 +316,36 @@ export const getPriceTargets = async (ticker: string, userId: string) => {
 };
 
 export const getRollingPortfolioReturns = async (userId: string, range: 'DAY' | 'WEEK' | 'MONTH' = 'DAY') => {
-    const res = await api.get(`/api/portfolio/rolling-returns`, {
-        params: { user_id: userId, range }
-    });
-    return res.data;
+    try {
+        const res = await api.get(`/api/portfolio/rolling-returns`, {
+            params: { user_id: userId, range }
+        });
+        return res.data;
+    } catch (error: any) {
+        // Handle CORS errors, network errors, and API errors gracefully
+        console.error('Error fetching rolling portfolio returns:', error);
+        
+        // Return empty result structure to prevent UI crashes
+        // The backend now returns 200 with error in body, but handle network errors here
+        if (error.response?.data) {
+            // Backend returned an error response (with CORS headers)
+            return error.response.data;
+        }
+        
+        // Network error or CORS error - return empty structure
+        return {
+            points: [],
+            cumulative: [],
+            meta: {
+                window_days: range === 'DAY' ? 1 : (range === 'WEEK' ? 7 : 30),
+                start_date: null,
+                end_date: new Date().toISOString(),
+                method_used: 'equal_weight',
+                missing_symbols: []
+            },
+            error: 'Failed to fetch portfolio returns. Please try again later.'
+        };
+    }
 };
 
 export const getAnalystPriceTargets = async (analystUserId: string, ticker: string) => {
