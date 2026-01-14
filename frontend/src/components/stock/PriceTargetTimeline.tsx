@@ -14,6 +14,7 @@ import { getPriceTargets, createPriceTarget } from '../../lib/api';
 import { useUser } from '@clerk/clerk-react';
 import { supabase } from '../../lib/supabase';
 import { AddPriceTargetModal } from './AddPriceTargetModal';
+import { getCurrencySymbol } from '../../lib/utils';
 
 interface PriceTarget {
     id: string;
@@ -175,7 +176,7 @@ export function PriceTargetTimeline({ ticker, userId }: PriceTargetTimelineProps
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <span className="text-lg font-mono font-bold text-[#1C1B17] tabular-nums">
-                                                    ${target.target_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    {getCurrencySymbol(ticker)}{target.target_price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                 </span>
                                                 {isLatest && timeRemaining && (
                                                     <span className={`text-xs font-mono px-2 py-0.5 rounded ${

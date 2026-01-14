@@ -224,3 +224,5 @@ CREATE TRIGGER trigger_update_comment_vote_counts
     AFTER INSERT OR UPDATE OR DELETE ON public.comment_votes
     FOR EACH ROW EXECUTE FUNCTION update_comment_vote_counts();
 
+
+

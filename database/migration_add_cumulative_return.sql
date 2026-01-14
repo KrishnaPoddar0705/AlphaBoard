@@ -20,3 +20,5 @@ COMMENT ON COLUMN public.performance.cumulative_portfolio_return_pct IS
 COMMENT ON COLUMN public.performance.cumulative_return_updated_at IS 
 'Timestamp when cumulative_portfolio_return_pct was last updated.';
 
+
+

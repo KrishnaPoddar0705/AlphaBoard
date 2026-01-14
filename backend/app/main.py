@@ -2173,13 +2173,14 @@ def get_rolling_portfolio_returns(
     
     # Validate range
     if range not in ['DAY', 'WEEK', 'MONTH']:
-        return {"error": "Invalid range. Must be DAY, WEEK, or MONTH"}, 400
+        raise HTTPException(status_code=400, detail="Invalid range. Must be DAY, WEEK, or MONTH")
     
     try:
         # Convert Clerk user ID to Supabase UUID if needed
         supabase_user_id = get_supabase_user_id(user_id)
         if not supabase_user_id:
             print(f"Error: Could not find Supabase UUID for user_id: {user_id}")
+            # Return empty result instead of 404 to avoid breaking the UI
             return {
                 "error": f"User not found. Please ensure your account is synced with Supabase.",
                 "points": [],
@@ -2191,7 +2192,7 @@ def get_rolling_portfolio_returns(
                     "method_used": "equal_weight",
                     "missing_symbols": []
                 }
-            }, 404
+            }
         
         # Fetch user's recommendations with retry logic
         # Include both OPEN and CLOSED recommendations with entry_date (for historical tracking)

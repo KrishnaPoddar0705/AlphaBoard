@@ -6,6 +6,7 @@ import { Separator } from '@/components/ui/separator';
 import { MessageSquare, Bookmark } from 'lucide-react';
 import { MiniLineChart } from '@/components/charts/MiniLineChart';
 import { CommunityActionStrip } from './CommunityActionStrip';
+import { formatCurrency, getCurrencySymbol } from '@/lib/utils';
 
 interface CommunityStockCardProps {
   ticker: string;
@@ -113,13 +114,13 @@ export function CommunityStockCard({
         <div className="grid grid-cols-[1fr,120px] gap-3 items-center">
           <div>
             <div className="text-3xl font-bold font-mono tabular-nums text-[#1C1B17]">
-              {isLoading ? '...' : price !== null && price > 0 ? `$${price.toFixed(2)}` : 'N/A'}
+              {isLoading ? '...' : price !== null && price > 0 ? formatCurrency(price, ticker) : 'N/A'}
             </div>
             {price !== null && price > 0 && change !== null && (
               <div className={`text-sm font-mono tabular-nums mt-0.5 ${
                 isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
               }`}>
-                {isPositive ? '+' : ''}${Math.abs(change).toFixed(2)} today
+                {isPositive ? '+' : ''}{getCurrencySymbol(ticker)}{Math.abs(change).toFixed(2)} today
                 <span className="text-[#6F6A60] ml-1">from last day</span>
               </div>
             )}

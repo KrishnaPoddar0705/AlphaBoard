@@ -13,3 +13,5 @@ CREATE POLICY IF NOT EXISTS "Service role can update performance records."
   USING ( true )
   WITH CHECK ( true );
 
+
+

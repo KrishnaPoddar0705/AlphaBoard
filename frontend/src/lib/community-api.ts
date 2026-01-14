@@ -228,3 +228,5 @@ export async function getStockHistory(userId: string): Promise<string[]> {
   return uniqueTickers
 }
 
+
+

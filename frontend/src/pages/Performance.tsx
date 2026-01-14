@@ -91,7 +91,15 @@ export default function Performance() {
       const range = rangeMap[portfolioReturnsPeriod]
 
       // API accepts Clerk user ID directly (format: user_xxx)
-      const data = await getRollingPortfolioReturns(user.id, range)
+      let data
+      try {
+        data = await getRollingPortfolioReturns(user.id, range)
+      } catch (error: any) {
+        // Handle API errors gracefully - don't break the UI
+        console.error('Error fetching rolling portfolio returns:', error)
+        setPortfolioReturns([])
+        return
+      }
 
       if (data && data.error) {
         setPortfolioReturns([])

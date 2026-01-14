@@ -47,12 +47,21 @@ export default function Community() {
   const queryClient = useQueryClient()
 
   const [sortBy, setSortBy] = React.useState<SortOption>('all')
-  const [country, setCountry] = React.useState<'USA' | 'India'>('USA')
+  // Initialize country from localStorage or default to 'USA'
+  const [country, setCountry] = React.useState<'USA' | 'India'>(() => {
+    const saved = localStorage.getItem('community-market-selection')
+    return (saved === 'USA' || saved === 'India') ? saved : 'USA'
+  })
   const [searchResults, setSearchResults] = React.useState<string[]>([])
   const [showAddStockDialog, setShowAddStockDialog] = React.useState(false)
   const [newStockTicker, setNewStockTicker] = React.useState('')
   const [isRefreshing, setIsRefreshing] = React.useState(false)
   const [bookmarkedTickers, setBookmarkedTickers] = React.useState<Set<string>>(new Set())
+
+  // Save country selection to localStorage whenever it changes
+  React.useEffect(() => {
+    localStorage.setItem('community-market-selection', country)
+  }, [country])
 
   // Map sort option to feed sort
   const feedSort = mapSortOption(sortBy)
@@ -371,9 +380,16 @@ export default function Community() {
 
       await response.json()
 
-      // Wait a bit for data to be written, then reload page to show updated data
-      setTimeout(() => {
-        window.location.reload()
+      // Wait a bit for data to be written, then refetch feed and market data
+      setTimeout(async () => {
+        // Refetch the feed to get updated data
+        await refetchFeed()
+        
+        // Clear market data cache to force reload of market data
+        setMarketDataMap({})
+        
+        // Reload bookmarks for the current country
+        await loadUserBookmarks()
       }, 2000)
     } catch (error) {
       alert('Failed to refresh market data. Please try again.')

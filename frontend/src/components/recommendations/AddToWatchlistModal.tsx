@@ -8,6 +8,7 @@ import { searchStocks, getPrice, createWatchlistItem } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { formatCurrency } from '@/lib/utils'
 
 interface AddToWatchlistModalProps {
   open: boolean
@@ -204,7 +205,7 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
             />
             {currentPrice && (
               <p className="font-mono text-xs text-[#6F6A60]">
-                Current price: <span className="font-semibold text-[#1C1B17]">${currentPrice.toFixed(2)}</span>
+                Current price: <span className="font-semibold text-[#1C1B17]">{formatCurrency(currentPrice, ticker)}</span>
               </p>
             )}
           </div>

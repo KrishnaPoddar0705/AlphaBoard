@@ -9,6 +9,7 @@ import { getPrice, getPriceTargets } from "@/lib/api"
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@clerk/clerk-react"
 import { TrendingUp, TrendingDown, X } from "lucide-react"
+import { formatCurrency, getCurrencySymbol } from "@/lib/utils"
 
 interface ClosedRecommendation {
   id: string
@@ -195,13 +196,13 @@ export default function History() {
                       <div>
                         <p className="font-mono text-xs text-[#6F6A60] mb-1">Entry</p>
                         <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
-                          ${rec.entry_price?.toFixed(2) || 'N/A'}
+                          {rec.entry_price ? formatCurrency(rec.entry_price, rec.ticker) : 'N/A'}
                         </p>
                       </div>
                       <div>
                         <p className="font-mono text-xs text-[#6F6A60] mb-1">Exit</p>
                         <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
-                          ${rec.exit_price?.toFixed(2) || 'N/A'}
+                          {rec.exit_price ? formatCurrency(rec.exit_price, rec.ticker) : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -266,13 +267,13 @@ export default function History() {
                 <div>
                   <p className="font-mono text-xs text-[#6F6A60] mb-1">Entry Price</p>
                   <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
-                    ${selectedStock.entry_price?.toFixed(2) || 'N/A'}
+                    {selectedStock.entry_price ? formatCurrency(selectedStock.entry_price, selectedStock.ticker) : 'N/A'}
                   </p>
                 </div>
                 <div>
                   <p className="font-mono text-xs text-[#6F6A60] mb-1">Exit Price</p>
                   <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
-                    ${selectedStock.exit_price?.toFixed(2) || 'N/A'}
+                    {selectedStock.exit_price ? formatCurrency(selectedStock.exit_price, selectedStock.ticker) : 'N/A'}
                   </p>
                 </div>
                 <div>
@@ -323,7 +324,7 @@ export default function History() {
                       >
                         <div>
                           <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
-                            ${target.target_price.toFixed(2)}
+                            {selectedStock.ticker ? formatCurrency(target.target_price, selectedStock.ticker) : `$${target.target_price.toFixed(2)}`}
                           </p>
                           {target.target_date && (
                             <p className="font-mono text-xs text-[#6F6A60] mt-1">

@@ -9,6 +9,7 @@ import { X, Upload } from 'lucide-react'
 import { searchStocks, getPrice, createRecommendation } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
+import { formatCurrency } from '@/lib/utils'
 
 interface AddRecommendationModalProps {
   open: boolean
@@ -267,7 +268,7 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
             />
             {currentPrice && (
               <p className="font-mono text-xs text-[#6F6A60]">
-                Current price: ${currentPrice.toFixed(2)}
+                Current price: {formatCurrency(currentPrice, ticker)}
               </p>
             )}
           </div>

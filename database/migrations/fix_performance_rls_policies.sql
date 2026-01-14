@@ -21,3 +21,5 @@ CREATE POLICY "Allow update performance records"
   USING ( true )
   WITH CHECK ( true );
 
+
+

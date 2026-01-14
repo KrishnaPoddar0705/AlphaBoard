@@ -149,3 +149,5 @@ Where:
 - `analyst_supabase_uuid` = UUID from `public.profiles.id`
 - `status_filter` = OPEN, CLOSED, WATCHLIST, or NULL (for ALL)
 
+
+

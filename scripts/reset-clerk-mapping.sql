@@ -29,3 +29,5 @@ WHERE email = 'your-email@example.com';
 -- SELECT * FROM clerk_user_mapping
 -- WHERE supabase_user_id = 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx';
 
+
+

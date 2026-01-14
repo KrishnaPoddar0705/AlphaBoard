@@ -316,10 +316,31 @@ export const getPriceTargets = async (ticker: string, userId: string) => {
 };
 
 export const getRollingPortfolioReturns = async (userId: string, range: 'DAY' | 'WEEK' | 'MONTH' = 'DAY') => {
-    const res = await api.get(`/api/portfolio/rolling-returns`, {
-        params: { user_id: userId, range }
-    });
-    return res.data;
+    try {
+        const res = await api.get(`/api/portfolio/rolling-returns`, {
+            params: { user_id: userId, range }
+        });
+        return res.data;
+    } catch (error: any) {
+        // Handle 404 and other errors gracefully
+        if (error.response?.status === 404) {
+            // Return empty result structure instead of throwing
+            return {
+                points: [],
+                cumulative: [],
+                meta: {
+                    window_days: range === 'DAY' ? 1 : (range === 'WEEK' ? 7 : 30),
+                    start_date: null,
+                    end_date: new Date().toISOString(),
+                    method_used: 'equal_weight',
+                    missing_symbols: []
+                },
+                error: 'User not found or no data available'
+            };
+        }
+        // Re-throw other errors
+        throw error;
+    }
 };
 
 export const getAnalystPriceTargets = async (analystUserId: string, ticker: string) => {

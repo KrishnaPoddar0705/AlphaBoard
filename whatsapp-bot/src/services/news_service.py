@@ -248,3 +248,5 @@ def get_news_service(
         )
     return _news_service
 
+
+
