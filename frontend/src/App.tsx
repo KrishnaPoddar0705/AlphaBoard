@@ -140,8 +140,9 @@ function App() {
             </PrivateRoute>
           } />
 
-          {/* Redirect root to community */}
+          {/* Redirect root and index.html to community */}
           <Route path="/" element={<Navigate to="/community" replace />} />
+          <Route path="/index.html" element={<Navigate to="/community" replace />} />
         </Route>
         {/* Catch-all route for 404 errors */}
         <Route path="*" element={<NotFound />} />
