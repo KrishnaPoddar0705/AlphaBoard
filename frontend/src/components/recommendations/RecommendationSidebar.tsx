@@ -1,7 +1,7 @@
 // import React from 'react'
 import { Card, CardContent } from '@/components/ui/card-new'
 import { Badge } from '@/components/ui/badge'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, getCurrencySymbol } from '@/lib/utils'
 
 interface Recommendation {
   id: string
@@ -11,6 +11,7 @@ interface Recommendation {
   status: string
   entry_date: string
   action?: string
+  position_size?: number
 }
 
 interface RecommendationSidebarProps {
@@ -26,6 +27,12 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
     return rec.action === 'SELL' ? -returnPct : returnPct
   }
 
+  const calculateUnrealizedPnL = (rec: Recommendation) => {
+    if (!rec.entry_price || !rec.current_price || !rec.position_size) return null
+    const pnl = (rec.current_price - rec.entry_price) * rec.position_size
+    return rec.action === 'SELL' ? -pnl : pnl
+  }
+
   return (
     <div className="w-80 border-r border-[#D7D0C2] bg-[#F7F2E6] h-full overflow-y-auto">
       <div className="p-4 space-y-2">
@@ -36,8 +43,10 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
         ) : (
           recommendations.map((rec) => {
             const returnPct = calculateReturn(rec)
+            const unrealizedPnL = calculateUnrealizedPnL(rec)
             const isSelected = selectedId === rec.id
             const isPositive = returnPct !== null && returnPct >= 0
+            const currencySymbol = getCurrencySymbol(rec.ticker)
 
             return (
               <Card
@@ -91,6 +100,15 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
                         {formatCurrency(rec.entry_price, rec.ticker)}
                       </span>
                     </div>
+                    {/* Show Quantity if available */}
+                    {rec.position_size && rec.position_size > 0 && (
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono text-xs text-[#6F6A60]">Qty</span>
+                        <span className="font-mono text-sm text-[#1C1B17] tabular-nums">
+                          {rec.position_size.toLocaleString()}
+                        </span>
+                      </div>
+                    )}
                     {returnPct !== null && (
                       <div className="flex justify-between items-center pt-1 border-t border-[#E3DDCF]">
                         <span className="font-mono text-xs text-[#6F6A60]">Return</span>
@@ -101,6 +119,20 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
                         >
                           {isPositive ? '+' : ''}
                           {returnPct.toFixed(2)}%
+                        </span>
+                      </div>
+                    )}
+                    {/* Show Unrealized P&L if quantity is available */}
+                    {unrealizedPnL !== null && (
+                      <div className="flex justify-between items-center">
+                        <span className="font-mono text-xs text-[#6F6A60]">P&L</span>
+                        <span
+                          className={`font-mono font-semibold tabular-nums ${
+                            isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                          }`}
+                        >
+                          {isPositive ? '+' : ''}{currencySymbol}
+                          {Math.abs(unrealizedPnL).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       </div>
                     )}

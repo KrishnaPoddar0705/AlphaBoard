@@ -5,10 +5,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, Upload } from 'lucide-react'
-import { searchStocks, getPrice, createRecommendation } from '@/lib/api'
+import { X, Upload, Wallet, AlertTriangle } from 'lucide-react'
+import { searchStocks, getPrice, createRecommendation, getPortfolioCash, executeBuyTrade, executeShortSellTrade } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
+import { cn } from '@/lib/utils'
 
 interface AddRecommendationModalProps {
   open: boolean
@@ -33,6 +34,18 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedMarket, setSelectedMarket] = useState<'US' | 'IN'>('US')
+  
+  // Paper trading fields
+  const [quantity, setQuantity] = useState('')
+  const [cashBalance, setCashBalance] = useState<number | null>(null)
+  const [_loadingCash, setLoadingCash] = useState(false)
+
+  // Calculate required cash and validate
+  const numericQty = parseFloat(quantity) || 0
+  const numericPrice = parseFloat(entryPrice) || currentPrice || 0
+  const requiredCash = numericQty * numericPrice
+  const hasInsufficientCash = cashBalance !== null && requiredCash > cashBalance
+  const currencySymbol = selectedMarket === 'IN' ? '₹' : '$'
 
   useEffect(() => {
     if (!open) {
@@ -48,8 +61,31 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       setTargetDate('')
       setSelectedImages([])
       setError(null)
+      setQuantity('')
+      setCashBalance(null)
     }
   }, [open])
+
+  // Fetch cash balance when modal opens or market changes
+  useEffect(() => {
+    if (open && user && !watchlistMode) {
+      fetchCashBalance()
+    }
+  }, [open, user, selectedMarket, watchlistMode])
+
+  const fetchCashBalance = async () => {
+    if (!user) return
+    setLoadingCash(true)
+    try {
+      const data = await getPortfolioCash(user.id, selectedMarket)
+      setCashBalance(data.cash_balance)
+    } catch (err) {
+      console.error('Error fetching cash balance:', err)
+      setCashBalance(null)
+    } finally {
+      setLoadingCash(false)
+    }
+  }
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query)
@@ -160,7 +196,49 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
         target_date: targetDate ? new Date(targetDate).toISOString() : null,
       }
 
-      await createRecommendation(newRec, mapping.supabase_user_id)
+      // Create the recommendation
+      const recResult = await createRecommendation(newRec, mapping.supabase_user_id)
+      
+      // If quantity is provided, execute paper trade based on action type
+      const numericQtySubmit = parseFloat(quantity) || 0
+      if (!watchlistMode && numericQtySubmit > 0 && user) {
+        try {
+          // Get the recommendation ID from the result
+          const recommendationId = recResult?.id || recResult?.recommendation?.id
+          
+          if (action === 'BUY') {
+            // Execute buy trade with the entry price
+            await executeBuyTrade(
+              user.id,
+              ticker.trim().toUpperCase(),
+              numericQtySubmit,
+              selectedMarket,
+              recommendationId,
+              entryPriceNum || undefined
+            )
+          } else if (action === 'SELL') {
+            // Execute short sell trade with the entry price
+            await executeShortSellTrade(
+              user.id,
+              ticker.trim().toUpperCase(),
+              numericQtySubmit,
+              selectedMarket,
+              recommendationId,
+              entryPriceNum || undefined
+            )
+          }
+        } catch (tradeError: any) {
+          // Log the error but don't fail the whole operation
+          console.error('Paper trade failed:', tradeError)
+          setError(`Recommendation created, but paper trade failed: ${tradeError.message || 'Unknown error'}`)
+          setTimeout(() => {
+            onSuccess()
+            onClose()
+          }, 2000)
+          return
+        }
+      }
+      
       onSuccess()
       onClose()
     } catch (err: any) {
@@ -267,10 +345,71 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
             />
             {currentPrice && (
               <p className="font-mono text-xs text-[#6F6A60]">
-                Current price: ${currentPrice.toFixed(2)}
+                Current price: {currencySymbol}{currentPrice.toFixed(2)}
               </p>
             )}
           </div>
+
+          {/* Quantity for Paper Trading - Show for both BUY and SELL recommendations, not watchlist */}
+          {!watchlistMode && (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="font-mono text-sm text-[#1C1B17]">
+                    Quantity (Shares) {action === 'SELL' && <span className="text-[#6F6A60]">- Short Sell</span>}
+                  </Label>
+                  {cashBalance !== null && (
+                    <div className="flex items-center gap-1 text-xs font-mono text-[#6F6A60]">
+                      <Wallet className="w-3 h-3" />
+                      Cash: {currencySymbol}{cashBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                    </div>
+                  )}
+                </div>
+                <Input
+                  type="number"
+                  min="0"
+                  step="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  placeholder="Enter number of shares"
+                  className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums"
+                />
+              </div>
+              
+              {/* Cash Display - Required for BUY, Proceeds for SELL */}
+              {numericQty > 0 && numericPrice > 0 && (
+                <div className={cn(
+                  "p-3 rounded-lg border font-mono text-sm",
+                  action === 'BUY' && hasInsufficientCash 
+                    ? "bg-[#B23B2A]/10 border-[#B23B2A]/30 text-[#B23B2A]"
+                    : "bg-[#2A6B4F]/10 border-[#2A6B4F]/30 text-[#2A6B4F]"
+                )}>
+                  <div className="flex justify-between">
+                    <span>{action === 'BUY' ? 'Required Cash:' : 'Cash Proceeds:'}</span>
+                    <span className="font-semibold">{currencySymbol}{requiredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  {action === 'BUY' && hasInsufficientCash && (
+                    <div className="flex items-center gap-1 mt-2 text-xs">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span>Insufficient cash balance</span>
+                    </div>
+                  )}
+                  {action === 'SELL' && (
+                    <div className="text-xs mt-1 text-[#6F6A60]">
+                      This will create a short position. Buy back to close.
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              <p className="font-mono text-xs text-[#6F6A60]">
+                {action === 'BUY' 
+                  ? 'Optional: Enter quantity to track as a paper trade in your portfolio'
+                  : 'Optional: Enter quantity to short sell in your paper portfolio'
+                }
+              </p>
+            </div>
+          )}
 
           {/* Thesis */}
           <div className="space-y-2">
@@ -362,10 +501,10 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
             </Button>
             <Button
               type="submit"
-              disabled={loading || !ticker}
+              disabled={loading || !ticker || (numericQty > 0 && hasInsufficientCash)}
               className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
             >
-              {loading ? 'Creating...' : 'Create Recommendation'}
+              {loading ? 'Creating...' : numericQty > 0 ? `Create & Buy ${numericQty} shares` : 'Create Recommendation'}
             </Button>
           </div>
         </form>

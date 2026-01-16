@@ -20,6 +20,7 @@ import {
   LogOut,
   LogIn,
   UserPlus,
+  Wallet,
 } from "lucide-react"
 import {
   Sidebar,
@@ -74,6 +75,12 @@ const navItems = {
       title: "My Performance",
       url: "/performance",
       icon: Target,
+      isActive: false,
+    },
+    {
+      title: "Paper Portfolio",
+      url: "/portfolio",
+      icon: Wallet,
       isActive: false,
     },
   ],

@@ -10,6 +10,7 @@ import Recommendations from './pages/Recommendations';
 import Watchlist from './pages/Watchlist';
 import History from './pages/History';
 import Performance from './pages/Performance';
+import Portfolio from './pages/Portfolio';
 import Leaderboard from './pages/Leaderboard';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import AnalystPerformance from './pages/AnalystPerformance';
@@ -86,6 +87,11 @@ function App() {
           <Route path="/performance" element={
             <PrivateRoute>
               <Performance />
+            </PrivateRoute>
+          } />
+          <Route path="/portfolio" element={
+            <PrivateRoute>
+              <Portfolio />
             </PrivateRoute>
           } />
 

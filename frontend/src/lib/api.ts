@@ -358,3 +358,222 @@ export const getAnalystPriceTargets = async (analystUserId: string, ticker: stri
     const res = await api.get(`/price-targets/analyst/${analystUserId}/${ticker}`);
     return res.data;
 };
+
+// --- Paper Trading Portfolio Endpoints ---
+
+export interface PortfolioSummary {
+    id: string;
+    market: 'US' | 'IN';
+    base_currency: 'USD' | 'INR';
+    initial_capital: number;
+    cash_balance: number;
+    positions_value: number;
+    nav: number;
+    unrealized_pnl: number;
+    realized_pnl: number;
+    created_at: string;
+    updated_at: string;
+}
+
+export interface PortfolioPosition {
+    id: string;
+    symbol: string;
+    exchange?: string;
+    quantity: number;
+    avg_cost: number;
+    current_price: number;
+    market_value: number;
+    unrealized_pnl: number;
+    unrealized_pnl_pct: number;
+    realized_pnl: number;
+    updated_at: string;
+}
+
+export interface PortfolioTrade {
+    id: string;
+    portfolio_id: string;
+    recommendation_id?: string;
+    side: 'BUY' | 'SELL';
+    symbol: string;
+    quantity: number;
+    price: number;
+    notional: number;
+    executed_at: string;
+    price_source?: string;
+    realized_pnl?: number;
+    created_at: string;
+}
+
+export interface PortfolioSnapshot {
+    id: string;
+    portfolio_id: string;
+    snapshot_date: string;
+    cash_balance: number;
+    positions_value: number;
+    nav: number;
+    realized_pnl_to_date: number;
+    unrealized_pnl: number;
+    created_at: string;
+}
+
+export interface BuyTradeResult {
+    success: boolean;
+    trade_id: string;
+    symbol: string;
+    side: 'BUY';
+    quantity: number;
+    price: number;
+    notional: number;
+    cash_remaining: number;
+}
+
+export interface SellTradeResult {
+    success: boolean;
+    trade_id: string;
+    symbol: string;
+    side: 'SELL';
+    quantity: number;
+    price: number;
+    proceeds: number;
+    realized_pnl: number;
+    cash_balance: number;
+}
+
+export const getUserPortfolios = async (userId: string): Promise<{ portfolios: PortfolioSummary[] }> => {
+    const res = await api.get('/api/portfolio', {
+        params: { user_id: userId }
+    });
+    return res.data;
+};
+
+export const getPortfolioPositions = async (portfolioId: string, userId: string): Promise<{ positions: PortfolioPosition[] }> => {
+    const res = await api.get(`/api/portfolio/${portfolioId}/positions`, {
+        params: { user_id: userId }
+    });
+    return res.data;
+};
+
+export const getPortfolioTrades = async (portfolioId: string, userId: string, limit?: number): Promise<{ trades: PortfolioTrade[] }> => {
+    const res = await api.get(`/api/portfolio/${portfolioId}/trades`, {
+        params: { user_id: userId, limit: limit || 50 }
+    });
+    return res.data;
+};
+
+export const getPortfolioSnapshots = async (portfolioId: string, userId: string, days?: number): Promise<{ snapshots: PortfolioSnapshot[] }> => {
+    const res = await api.get(`/api/portfolio/${portfolioId}/snapshots`, {
+        params: { user_id: userId, days: days || 365 }
+    });
+    return res.data;
+};
+
+export const getPortfolioCash = async (userId: string, market: 'US' | 'IN' = 'US'): Promise<{
+    portfolio_id: string;
+    market: string;
+    base_currency: string;
+    cash_balance: number;
+    initial_capital: number;
+}> => {
+    const res = await api.get('/api/portfolio/cash', {
+        params: { user_id: userId, market }
+    });
+    return res.data;
+};
+
+export const executeBuyTrade = async (
+    userId: string,
+    symbol: string,
+    quantity: number,
+    market?: 'US' | 'IN',
+    recommendationId?: string,
+    entryPrice?: number  // Optional: use this price instead of current market price
+): Promise<BuyTradeResult> => {
+    const res = await api.post('/api/portfolio/buy', {
+        user_id: userId,
+        symbol,
+        quantity,
+        market,
+        recommendation_id: recommendationId,
+        price: entryPrice  // Pass the entry price to use as buy price
+    });
+    return res.data;
+};
+
+export const executeSellTrade = async (
+    userId: string,
+    symbol: string,
+    quantity: number
+): Promise<SellTradeResult> => {
+    const res = await api.post('/api/portfolio/sell', {
+        user_id: userId,
+        symbol,
+        quantity
+    });
+    return res.data;
+};
+
+// Execute a short sell trade (sell shares you don't own)
+export const executeShortSellTrade = async (
+    userId: string,
+    symbol: string,
+    quantity: number,
+    market?: 'US' | 'IN',
+    recommendationId?: string,
+    entryPrice?: number
+): Promise<SellTradeResult> => {
+    const res = await api.post('/api/portfolio/short-sell', {
+        user_id: userId,
+        symbol,
+        quantity,
+        market,
+        recommendation_id: recommendationId,
+        price: entryPrice
+    });
+    return res.data;
+};
+
+// Buy to cover a short position
+export const executeBuyToCover = async (
+    userId: string,
+    symbol: string,
+    quantity: number
+): Promise<BuyTradeResult> => {
+    const res = await api.post('/api/portfolio/buy-to-cover', {
+        user_id: userId,
+        symbol,
+        quantity
+    });
+    return res.data;
+};
+
+// Get portfolio info for a specific ticker (position, trades, P&L)
+export interface TickerPortfolioInfo {
+    ticker: string;
+    position: {
+        total_shares: number;
+        avg_cost: number;
+        current_price: number | null;
+        realized_pnl: number;
+        unrealized_pnl: number;
+    } | null;
+    trades: {
+        id: string;
+        side: 'BUY' | 'SELL';
+        quantity: number;
+        price: number;
+        notional: number;
+        executed_at: string;
+        realized_pnl: number | null;
+        price_source: string | null;
+    }[];
+    realized_pnl: number;
+    unrealized_pnl: number;
+    total_shares: number;
+}
+
+export const getTickerPortfolioInfo = async (ticker: string, userId: string): Promise<TickerPortfolioInfo> => {
+    const res = await api.get(`/api/portfolio/ticker/${ticker}`, {
+        params: { user_id: userId }
+    });
+    return res.data;
+};

@@ -5,7 +5,32 @@ import { useParams, useLocation, useNavigate } from "react-router-dom"
 import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, ArrowDown } from "lucide-react"
-import { getPrice, getStockSummary, getStockHistory, getIncomeStatement, getBalanceSheet, getCashFlow } from "@/lib/api"
+import { getPrice, getStockSummary, getStockHistory, getIncomeStatement, getBalanceSheet, getCashFlow, getTickerPortfolioInfo } from "@/lib/api"
+
+// Local interface definition to avoid Vite HMR issues with TypeScript exports
+interface TickerPortfolioInfo {
+  ticker: string;
+  position: {
+    total_shares: number;
+    avg_cost: number;
+    current_price: number | null;
+    realized_pnl: number;
+    unrealized_pnl: number;
+  } | null;
+  trades: {
+    id: string;
+    side: 'BUY' | 'SELL';
+    quantity: number;
+    price: number;
+    notional: number;
+    executed_at: string;
+    realized_pnl: number | null;
+    price_source: string | null;
+  }[];
+  realized_pnl: number;
+  unrealized_pnl: number;
+  total_shares: number;
+}
 import { supabase } from "@/lib/supabase"
 import { useUser } from "@clerk/clerk-react"
 import { StockHeaderBar } from "@/components/stock/StockHeaderBar"
@@ -54,6 +79,8 @@ export default function StockDetail() {
   const [, setLoadingChart] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState<'overview' | 'financials' | 'community'>('overview')
   const [communityPostCount, setCommunityPostCount] = React.useState(0)
+  const [tradingActivity, setTradingActivity] = React.useState<TickerPortfolioInfo | null>(null)
+  const [loadingTradingActivity, setLoadingTradingActivity] = React.useState(false)
 
   // Determine active tab from URL
   React.useEffect(() => {
@@ -85,6 +112,24 @@ export default function StockDetail() {
       trackView()
     }
   }, [ticker, timeframe])
+
+  // Load trading activity for this ticker
+  React.useEffect(() => {
+    const loadTradingActivity = async () => {
+      if (!ticker || !user) return
+      setLoadingTradingActivity(true)
+      try {
+        const data = await getTickerPortfolioInfo(ticker, user.id)
+        setTradingActivity(data)
+      } catch (error) {
+        console.error('Failed to load trading activity:', error)
+        setTradingActivity(null)
+      } finally {
+        setLoadingTradingActivity(false)
+      }
+    }
+    loadTradingActivity()
+  }, [ticker, user])
 
   React.useEffect(() => {
     if (ticker) {
@@ -593,6 +638,110 @@ export default function StockDetail() {
             />
           </div>
         </div>
+
+        {/* Trading Activity Section - Only show if user has trades */}
+        {user && tradingActivity && (tradingActivity.trades.length > 0 || tradingActivity.position) && (
+          <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5 mb-8">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#D7D0C2]">
+              <h2 className="text-base font-mono font-bold text-[#1C1B17] flex items-center gap-2">
+                <span>📊</span> Your Trading Activity
+              </h2>
+            </div>
+
+            {/* Position Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-4 rounded">
+                <p className="font-mono text-xs text-[#6F6A60] mb-1">Shares Held</p>
+                <p className="font-mono text-xl font-bold text-[#1C1B17]">
+                  {tradingActivity.total_shares.toLocaleString()}
+                </p>
+              </div>
+              <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-4 rounded">
+                <p className="font-mono text-xs text-[#6F6A60] mb-1">Avg Cost</p>
+                <p className="font-mono text-xl font-bold text-[#1C1B17]">
+                  {tradingActivity.position?.avg_cost
+                    ? `${stockData.ticker?.includes('.NS') || stockData.ticker?.includes('.BO') ? '₹' : '$'}${tradingActivity.position.avg_cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                    : '-'}
+                </p>
+              </div>
+              <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-4 rounded">
+                <p className="font-mono text-xs text-[#6F6A60] mb-1">Unrealized P&L</p>
+                <p className={`font-mono text-xl font-bold ${tradingActivity.unrealized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+                  {tradingActivity.unrealized_pnl >= 0 ? '+' : ''}
+                  {stockData.ticker?.includes('.NS') || stockData.ticker?.includes('.BO') ? '₹' : '$'}
+                  {Math.abs(tradingActivity.unrealized_pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-4 rounded">
+                <p className="font-mono text-xs text-[#6F6A60] mb-1">Realized P&L</p>
+                <p className={`font-mono text-xl font-bold ${tradingActivity.realized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+                  {tradingActivity.realized_pnl >= 0 ? '+' : ''}
+                  {stockData.ticker?.includes('.NS') || stockData.ticker?.includes('.BO') ? '₹' : '$'}
+                  {Math.abs(tradingActivity.realized_pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            </div>
+
+            {/* Trade History */}
+            {tradingActivity.trades.length > 0 && (
+              <div>
+                <h3 className="font-mono text-sm font-semibold text-[#6F6A60] mb-3">Recent Activity</h3>
+                <div className="space-y-2">
+                  {tradingActivity.trades.slice(0, 10).map((trade) => {
+                    const currencySymbol = stockData.ticker?.includes('.NS') || stockData.ticker?.includes('.BO') ? '₹' : '$'
+                    return (
+                      <div
+                        key={trade.id}
+                        className="flex items-center justify-between py-3 border-b border-[#E3DDCF] last:border-b-0"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`px-2 py-0.5 rounded text-xs font-mono font-semibold ${
+                              trade.side === 'BUY'
+                                ? 'bg-[#E6F4ED] text-[#2F8F5B]'
+                                : 'bg-[#FDECEA] text-[#B23B2A]'
+                            }`}
+                          >
+                            {trade.side}
+                          </span>
+                          <span className="font-mono text-sm text-[#1C1B17]">
+                            {trade.quantity.toLocaleString()} shares
+                          </span>
+                          <span className="font-mono text-xs text-[#6F6A60]">
+                            @ {currencySymbol}{trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-mono text-sm font-semibold text-[#1C1B17] tabular-nums">
+                            {currencySymbol}{trade.notional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                          <p className="font-mono text-xs text-[#6F6A60]">
+                            {new Date(trade.executed_at).toLocaleDateString('en-GB', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                            })}
+                          </p>
+                          {trade.realized_pnl !== null && trade.realized_pnl !== 0 && (
+                            <p className={`font-mono text-xs ${trade.realized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+                              P&L: {trade.realized_pnl >= 0 ? '+' : ''}{currencySymbol}{Math.abs(trade.realized_pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {loadingTradingActivity && (
+              <div className="text-center py-4 text-[#6F6A60] font-mono text-sm">
+                Loading trading activity...
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Divider */}
         <div className="border-b border-[#D7D0C2] my-8" />

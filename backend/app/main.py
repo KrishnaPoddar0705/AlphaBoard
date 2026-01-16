@@ -62,9 +62,11 @@ app.add_middleware(
         "https://alphaboard.onrender.com",
         "http://localhost:5173",
         "http://localhost:5174",
+        "http://localhost:5175",
         "http://localhost:3000",
-        "http://127.0.0.1:5174",
         "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+        "http://127.0.0.1:5175",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
@@ -2287,6 +2289,861 @@ def get_rolling_portfolio_returns(
             }
         )
 
+
+# ============================================================================
+# PAPER TRADING PORTFOLIO ENDPOINTS
+# ============================================================================
+
+def determine_market_from_symbol(symbol: str) -> str:
+    """Determine market (US or IN) from symbol suffix."""
+    if symbol.endswith('.NS') or symbol.endswith('.BO'):
+        return 'IN'
+    return 'US'
+
+def get_execution_price(symbol: str):
+    """Get price for trade execution with source tracking."""
+    try:
+        price = get_current_price(symbol)
+        if price and price > 0:
+            return (price, 'realtime')
+    except:
+        pass
+    
+    # Fallback: last close
+    try:
+        hist = get_stock_history_data(symbol, period="5d", interval="1d")
+        if hist and len(hist) > 0:
+            last_close = hist[-1].get('close')
+            if last_close and last_close > 0:
+                return (last_close, 'close')
+    except:
+        pass
+    
+    raise ValueError(f"Unable to get price for {symbol}")
+
+
+@app.get("/api/portfolio")
+async def get_portfolio(request: Request, user_id: str = Query(...)):
+    """
+    Get user's portfolio(s) with computed values.
+    Returns all portfolios (US and IN) for the user.
+    """
+    try:
+        # Get Supabase user ID from clerk mapping
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data or len(mapping_res.data) == 0:
+            return JSONResponse(
+                status_code=404,
+                content={"error": "User not found"},
+                headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+            )
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Get all portfolios for this user
+        portfolios_res = supabase.table("portfolios").select("*").eq("user_id", supabase_user_id).execute()
+        portfolios = portfolios_res.data if portfolios_res.data else []
+        
+        result = []
+        for portfolio in portfolios:
+            portfolio_id = portfolio['id']
+            
+            # Get positions for this portfolio
+            positions_res = supabase.table("portfolio_positions").select("*").eq("portfolio_id", portfolio_id).gt("quantity", 0).execute()
+            positions = positions_res.data if positions_res.data else []
+            
+            # Calculate positions value and unrealized P&L
+            positions_value = 0
+            unrealized_pnl = 0
+            realized_pnl = 0
+            
+            for pos in positions:
+                symbol = pos['symbol']
+                qty = float(pos['quantity'])
+                avg_cost = float(pos['avg_cost'])
+                realized_pnl += float(pos.get('realized_pnl', 0))
+                
+                # Try to get current price
+                try:
+                    current_price = get_current_price(symbol)
+                    if current_price and current_price > 0:
+                        pos_value = qty * current_price
+                        positions_value += pos_value
+                        unrealized_pnl += (current_price - avg_cost) * qty
+                    else:
+                        # Use avg_cost as fallback
+                        positions_value += qty * avg_cost
+                except:
+                    positions_value += qty * avg_cost
+            
+            cash_balance = float(portfolio['cash_balance'])
+            nav = cash_balance + positions_value
+            
+            result.append({
+                'id': portfolio['id'],
+                'market': portfolio['market'],
+                'base_currency': portfolio['base_currency'],
+                'initial_capital': float(portfolio['initial_capital']),
+                'cash_balance': cash_balance,
+                'positions_value': positions_value,
+                'nav': nav,
+                'unrealized_pnl': unrealized_pnl,
+                'realized_pnl': realized_pnl,
+                'created_at': portfolio['created_at'],
+                'updated_at': portfolio['updated_at']
+            })
+        
+        return {'portfolios': result}
+        
+    except Exception as e:
+        print(f"Error getting portfolio: {e}")
+        traceback.print_exc()
+        return JSONResponse(
+            status_code=500,
+            content={"error": str(e)},
+            headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
+        )
+
+
+@app.get("/api/portfolio/{portfolio_id}/positions")
+async def get_portfolio_positions(request: Request, portfolio_id: str, user_id: str = Query(...)):
+    """Get positions for a specific portfolio with current prices."""
+    try:
+        # Verify ownership
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Verify portfolio belongs to user
+        portfolio_res = supabase.table("portfolios").select("*").eq("id", portfolio_id).eq("user_id", supabase_user_id).execute()
+        if not portfolio_res.data:
+            return JSONResponse(status_code=403, content={"error": "Portfolio not found or access denied"})
+        
+        # Get positions
+        positions_res = supabase.table("portfolio_positions").select("*").eq("portfolio_id", portfolio_id).execute()
+        positions = positions_res.data if positions_res.data else []
+        
+        result = []
+        for pos in positions:
+            symbol = pos['symbol']
+            qty = float(pos['quantity'])
+            avg_cost = float(pos['avg_cost'])
+            
+            # Get current price
+            current_price = None
+            try:
+                current_price = get_current_price(symbol)
+            except:
+                pass
+            
+            if not current_price or current_price <= 0:
+                current_price = avg_cost
+            
+            market_value = qty * current_price
+            unrealized_pnl = (current_price - avg_cost) * qty
+            unrealized_pnl_pct = ((current_price / avg_cost) - 1) * 100 if avg_cost > 0 else 0
+            
+            result.append({
+                'id': pos['id'],
+                'symbol': symbol,
+                'exchange': pos.get('exchange'),
+                'quantity': qty,
+                'avg_cost': avg_cost,
+                'current_price': current_price,
+                'market_value': market_value,
+                'unrealized_pnl': unrealized_pnl,
+                'unrealized_pnl_pct': unrealized_pnl_pct,
+                'realized_pnl': float(pos.get('realized_pnl', 0)),
+                'updated_at': pos['updated_at']
+            })
+        
+        return {'positions': result}
+        
+    except Exception as e:
+        print(f"Error getting positions: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/portfolio/{portfolio_id}/trades")
+async def get_portfolio_trades(request: Request, portfolio_id: str, user_id: str = Query(...), limit: int = 50):
+    """Get trade history for a portfolio."""
+    try:
+        # Verify ownership
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Verify portfolio belongs to user
+        portfolio_res = supabase.table("portfolios").select("*").eq("id", portfolio_id).eq("user_id", supabase_user_id).execute()
+        if not portfolio_res.data:
+            return JSONResponse(status_code=403, content={"error": "Portfolio not found or access denied"})
+        
+        # Get trades
+        trades_res = supabase.table("portfolio_trades").select("*").eq("portfolio_id", portfolio_id).order("executed_at", desc=True).limit(limit).execute()
+        trades = trades_res.data if trades_res.data else []
+        
+        return {'trades': trades}
+        
+    except Exception as e:
+        print(f"Error getting trades: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/portfolio/{portfolio_id}/snapshots")
+async def get_portfolio_snapshots(request: Request, portfolio_id: str, user_id: str = Query(...), days: int = 365):
+    """Get daily NAV snapshots for a portfolio."""
+    try:
+        # Verify ownership
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Verify portfolio belongs to user
+        portfolio_res = supabase.table("portfolios").select("*").eq("id", portfolio_id).eq("user_id", supabase_user_id).execute()
+        if not portfolio_res.data:
+            return JSONResponse(status_code=403, content={"error": "Portfolio not found or access denied"})
+        
+        # Get snapshots
+        snapshots_res = supabase.table("portfolio_daily_snapshots").select("*").eq("portfolio_id", portfolio_id).order("snapshot_date", desc=True).limit(days).execute()
+        snapshots = snapshots_res.data if snapshots_res.data else []
+        
+        # Reverse to get chronological order
+        snapshots.reverse()
+        
+        return {'snapshots': snapshots}
+        
+    except Exception as e:
+        print(f"Error getting snapshots: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/portfolio/buy")
+async def execute_portfolio_buy(request: Request):
+    """
+    Execute a buy trade in the portfolio.
+    Automatically creates portfolio if it doesn't exist.
+    If 'price' is provided in the request, use that instead of fetching current market price.
+    """
+    try:
+        body = await request.json()
+        user_id = body.get('user_id')
+        symbol = body.get('symbol')
+        quantity = body.get('quantity')
+        recommendation_id = body.get('recommendation_id')
+        provided_price = body.get('price')  # Optional: use entry price instead of market price
+        
+        if not user_id:
+            return JSONResponse(status_code=400, content={"error": "user_id is required"})
+        if not symbol:
+            return JSONResponse(status_code=400, content={"error": "symbol is required"})
+        if not quantity or quantity <= 0:
+            return JSONResponse(status_code=400, content={"error": "quantity must be positive"})
+        
+        # Get Supabase user ID
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Determine market from symbol
+        market = body.get('market') or determine_market_from_symbol(symbol)
+        
+        # Get or create portfolio
+        portfolio_result = supabase.rpc('create_or_get_portfolio', {
+            'p_user_id': supabase_user_id,
+            'p_market': market
+        }).execute()
+        
+        if not portfolio_result.data:
+            return JSONResponse(status_code=500, content={"error": "Failed to get/create portfolio"})
+        
+        portfolio = portfolio_result.data
+        portfolio_id = portfolio['id']
+        
+        # Use provided price (entry price) if available, otherwise fetch current market price
+        if provided_price and provided_price > 0:
+            price = float(provided_price)
+            price_source = 'entry_price'
+            print(f"[BUY] Using provided entry price: {price} for {symbol}")
+        else:
+            # Get execution price from market
+            try:
+                price, price_source = get_execution_price(symbol)
+            except ValueError as e:
+                return JSONResponse(status_code=400, content={"error": str(e)})
+        
+        # Execute buy via RPC
+        buy_result = supabase.rpc('execute_buy', {
+            'p_portfolio_id': portfolio_id,
+            'p_symbol': symbol,
+            'p_quantity': quantity,
+            'p_price': price,
+            'p_price_source': price_source,
+            'p_recommendation_id': recommendation_id
+        }).execute()
+        
+        if not buy_result.data:
+            return JSONResponse(status_code=500, content={"error": "Failed to execute buy"})
+        
+        result = buy_result.data
+        if isinstance(result, dict) and result.get('success') == False:
+            return JSONResponse(status_code=400, content={"error": result.get('error', 'Buy failed')})
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error executing buy: {e}")
+        traceback.print_exc()
+        error_msg = str(e)
+        # Parse Postgres errors
+        if 'Insufficient cash' in error_msg:
+            return JSONResponse(status_code=400, content={"error": error_msg})
+        return JSONResponse(status_code=500, content={"error": error_msg})
+
+
+@app.post("/api/portfolio/sell")
+async def execute_portfolio_sell(request: Request):
+    """Execute a sell trade in the portfolio and close recommendation if position is fully closed."""
+    try:
+        body = await request.json()
+        user_id = body.get('user_id')
+        symbol = body.get('symbol')
+        quantity = body.get('quantity')
+        
+        if not user_id:
+            return JSONResponse(status_code=400, content={"error": "user_id is required"})
+        if not symbol:
+            return JSONResponse(status_code=400, content={"error": "symbol is required"})
+        if not quantity or quantity <= 0:
+            return JSONResponse(status_code=400, content={"error": "quantity must be positive"})
+        
+        # Get Supabase user ID
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Determine market from symbol
+        market = determine_market_from_symbol(symbol)
+        
+        # Get portfolio
+        portfolio_res = supabase.table("portfolios").select("*").eq("user_id", supabase_user_id).eq("market", market).execute()
+        if not portfolio_res.data:
+            return JSONResponse(status_code=404, content={"error": f"No portfolio found for market {market}"})
+        
+        portfolio_id = portfolio_res.data[0]['id']
+        
+        # Get execution price
+        try:
+            price, price_source = get_execution_price(symbol)
+        except ValueError as e:
+            return JSONResponse(status_code=400, content={"error": str(e)})
+        
+        # Execute sell via RPC
+        sell_result = supabase.rpc('execute_sell', {
+            'p_portfolio_id': portfolio_id,
+            'p_symbol': symbol,
+            'p_quantity': quantity,
+            'p_price': price,
+            'p_price_source': price_source
+        }).execute()
+        
+        if not sell_result.data:
+            return JSONResponse(status_code=500, content={"error": "Failed to execute sell"})
+        
+        result = sell_result.data
+        if isinstance(result, dict) and result.get('success') == False:
+            return JSONResponse(status_code=400, content={"error": result.get('error', 'Sell failed')})
+        
+        # Check if position is now fully closed (quantity = 0)
+        # If so, close any OPEN recommendations for this symbol
+        position_res = supabase.table("portfolio_positions").select("quantity").eq("portfolio_id", portfolio_id).eq("symbol", symbol).execute()
+        
+        position_closed = False
+        if position_res.data:
+            remaining_qty = float(position_res.data[0].get('quantity', 0))
+            if remaining_qty <= 0:
+                position_closed = True
+        else:
+            # Position doesn't exist anymore - it's closed
+            position_closed = True
+        
+        if position_closed:
+            # Close all OPEN recommendations for this user/symbol
+            try:
+                recs_res = supabase.table("recommendations").select("id").eq("user_id", supabase_user_id).eq("ticker", symbol).eq("status", "OPEN").execute()
+                
+                if recs_res.data:
+                    for rec in recs_res.data:
+                        supabase.table("recommendations").update({
+                            "status": "CLOSED",
+                            "exit_date": datetime.utcnow().isoformat(),
+                            "exit_price": price,
+                            "sell_price": price
+                        }).eq("id", rec['id']).execute()
+                        print(f"[SELL] Closed recommendation {rec['id']} for {symbol}")
+            except Exception as close_err:
+                print(f"[SELL] Warning: Could not close recommendations: {close_err}")
+                # Don't fail the sell if recommendation close fails
+        
+        # Add position_closed to result
+        if isinstance(result, dict):
+            result['position_closed'] = position_closed
+        
+        return result
+        
+    except Exception as e:
+        print(f"Error executing sell: {e}")
+        traceback.print_exc()
+        error_msg = str(e)
+        # Parse Postgres errors
+        if 'No position' in error_msg or 'Cannot sell' in error_msg:
+            return JSONResponse(status_code=400, content={"error": error_msg})
+        return JSONResponse(status_code=500, content={"error": error_msg})
+
+
+@app.post("/api/portfolio/short-sell")
+async def execute_portfolio_short_sell(request: Request):
+    """
+    Execute a short sell trade - sell shares you don't own.
+    Creates a negative position (short) and increases cash.
+    """
+    try:
+        body = await request.json()
+        user_id = body.get('user_id')
+        symbol = body.get('symbol')
+        quantity = body.get('quantity')
+        recommendation_id = body.get('recommendation_id')
+        provided_price = body.get('price')
+        
+        if not user_id:
+            return JSONResponse(status_code=400, content={"error": "user_id is required"})
+        if not symbol:
+            return JSONResponse(status_code=400, content={"error": "symbol is required"})
+        if not quantity or quantity <= 0:
+            return JSONResponse(status_code=400, content={"error": "quantity must be positive"})
+        
+        # Get Supabase user ID
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Determine market
+        market = body.get('market')
+        if not market:
+            market = 'IN' if '.NS' in symbol or '.BO' in symbol else 'US'
+        
+        # Get or create portfolio
+        portfolio_result = supabase.rpc('create_or_get_portfolio', {
+            'p_user_id': supabase_user_id,
+            'p_market': market
+        }).execute()
+        
+        if not portfolio_result.data:
+            return JSONResponse(status_code=500, content={"error": "Failed to get/create portfolio"})
+        
+        portfolio = portfolio_result.data
+        portfolio_id = portfolio['id']
+        
+        # Use provided price or fetch current price
+        if provided_price and provided_price > 0:
+            price = float(provided_price)
+            price_source = 'entry_price'
+            print(f"[SHORT SELL] Using provided entry price: {price} for {symbol}")
+        else:
+            price = get_current_price(symbol)
+            if not price:
+                return JSONResponse(status_code=400, content={"error": f"Cannot get current price for {symbol}"})
+            price_source = 'realtime'
+        
+        notional = price * quantity
+        
+        # Record the short sell trade (SELL side)
+        # Note: 'notional' is a generated column, so we don't include it
+        trade_data = {
+            'portfolio_id': portfolio_id,
+            'side': 'SELL',
+            'symbol': symbol,
+            'quantity': quantity,
+            'price': price,
+            'price_source': price_source,
+            'recommendation_id': recommendation_id
+        }
+        
+        trade_res = supabase.table("portfolio_trades").insert(trade_data).execute()
+        
+        # Update cash (increase for short sell)
+        new_cash = float(portfolio['cash_balance']) + notional
+        supabase.table("portfolios").update({'cash_balance': new_cash}).eq('id', portfolio_id).execute()
+        
+        # Update or create position (negative quantity for short)
+        position_res = supabase.table("portfolio_positions").select("*").eq("portfolio_id", portfolio_id).eq("symbol", symbol).execute()
+        
+        if position_res.data and len(position_res.data) > 0:
+            # Existing position - update
+            pos = position_res.data[0]
+            current_qty = float(pos['quantity'])
+            current_cost = float(pos.get('avg_cost', 0)) * abs(current_qty) if current_qty != 0 else 0
+            
+            new_qty = current_qty - quantity  # Subtract for short
+            new_cost = current_cost + notional
+            new_avg_cost = new_cost / abs(new_qty) if new_qty != 0 else price
+            
+            supabase.table("portfolio_positions").update({
+                'quantity': new_qty,
+                'avg_cost': new_avg_cost,
+                'updated_at': datetime.utcnow().isoformat()
+            }).eq('id', pos['id']).execute()
+        else:
+            # New short position
+            supabase.table("portfolio_positions").insert({
+                'portfolio_id': portfolio_id,
+                'symbol': symbol,
+                'quantity': -quantity,  # Negative for short
+                'avg_cost': price,
+                'realized_pnl': 0
+            }).execute()
+        
+        return {
+            'success': True,
+            'trade_id': trade_res.data[0]['id'] if trade_res.data else None,
+            'symbol': symbol,
+            'quantity': quantity,
+            'price': price,
+            'notional': notional,
+            'cash_proceeds': notional,
+            'new_cash_balance': new_cash,
+            'trade_type': 'SHORT_SELL'
+        }
+        
+    except Exception as e:
+        print(f"Error executing short sell: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/api/portfolio/buy-to-cover")
+async def execute_portfolio_buy_to_cover(request: Request):
+    """
+    Buy to cover a short position - buy back shares to close a short.
+    """
+    try:
+        body = await request.json()
+        user_id = body.get('user_id')
+        symbol = body.get('symbol')
+        quantity = body.get('quantity')
+        
+        if not user_id:
+            return JSONResponse(status_code=400, content={"error": "user_id is required"})
+        if not symbol:
+            return JSONResponse(status_code=400, content={"error": "symbol is required"})
+        if not quantity or quantity <= 0:
+            return JSONResponse(status_code=400, content={"error": "quantity must be positive"})
+        
+        # Get Supabase user ID
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Determine market
+        market = 'IN' if '.NS' in symbol or '.BO' in symbol else 'US'
+        
+        # Get portfolio
+        portfolio_res = supabase.table("portfolios").select("*").eq("user_id", supabase_user_id).eq("market", market).execute()
+        if not portfolio_res.data:
+            return JSONResponse(status_code=404, content={"error": "Portfolio not found"})
+        
+        portfolio = portfolio_res.data[0]
+        portfolio_id = portfolio['id']
+        
+        # Get current position
+        position_res = supabase.table("portfolio_positions").select("*").eq("portfolio_id", portfolio_id).eq("symbol", symbol).execute()
+        if not position_res.data:
+            return JSONResponse(status_code=400, content={"error": f"No short position found for {symbol}"})
+        
+        pos = position_res.data[0]
+        current_qty = float(pos['quantity'])
+        
+        if current_qty >= 0:
+            return JSONResponse(status_code=400, content={"error": f"No short position to cover for {symbol}"})
+        
+        if quantity > abs(current_qty):
+            return JSONResponse(status_code=400, content={"error": f"Cannot cover more than short position: {abs(current_qty)}"})
+        
+        # Get current price
+        price = get_current_price(symbol)
+        if not price:
+            return JSONResponse(status_code=400, content={"error": f"Cannot get current price for {symbol}"})
+        
+        notional = price * quantity
+        
+        # Check if we have enough cash
+        cash_balance = float(portfolio['cash_balance'])
+        if notional > cash_balance:
+            return JSONResponse(status_code=400, content={"error": f"Insufficient cash to cover. Need {notional}, have {cash_balance}"})
+        
+        # Calculate realized P&L
+        # Short P&L = (sell price - buy price) * quantity = (avg_cost - current_price) * quantity
+        avg_cost = float(pos['avg_cost'])
+        realized_pnl = (avg_cost - price) * quantity  # Positive if price went down
+        
+        # Record the buy-to-cover trade (BUY side)
+        # Note: 'notional' is a generated column, so we don't include it
+        trade_data = {
+            'portfolio_id': portfolio_id,
+            'side': 'BUY',
+            'symbol': symbol,
+            'quantity': quantity,
+            'price': price,
+            'price_source': 'realtime',
+            'realized_pnl': realized_pnl
+        }
+        
+        trade_res = supabase.table("portfolio_trades").insert(trade_data).execute()
+        
+        # Update cash (decrease)
+        new_cash = cash_balance - notional
+        supabase.table("portfolios").update({'cash_balance': new_cash}).eq('id', portfolio_id).execute()
+        
+        # Update position
+        new_qty = current_qty + quantity  # Add back to short position
+        total_realized = float(pos.get('realized_pnl', 0)) + realized_pnl
+        
+        position_closed = (new_qty == 0)
+        
+        if position_closed:
+            # Position fully covered - can keep record or delete
+            supabase.table("portfolio_positions").update({
+                'quantity': 0,
+                'realized_pnl': total_realized,
+                'updated_at': datetime.utcnow().isoformat()
+            }).eq('id', pos['id']).execute()
+            
+            # Close any associated SELL recommendations
+            try:
+                supabase.table("recommendations").update({
+                    'status': 'CLOSED',
+                    'exit_price': price,
+                    'exit_date': datetime.utcnow().isoformat(),
+                    'sell_price': price
+                }).eq('ticker', symbol).eq('user_id', supabase_user_id).eq('status', 'OPEN').eq('action', 'SELL').execute()
+            except Exception as rec_err:
+                print(f"Warning: Failed to close recommendations: {rec_err}")
+        else:
+            supabase.table("portfolio_positions").update({
+                'quantity': new_qty,
+                'realized_pnl': total_realized,
+                'updated_at': datetime.utcnow().isoformat()
+            }).eq('id', pos['id']).execute()
+        
+        return {
+            'success': True,
+            'trade_id': trade_res.data[0]['id'] if trade_res.data else None,
+            'symbol': symbol,
+            'quantity': quantity,
+            'price': price,
+            'notional': notional,
+            'realized_pnl': realized_pnl,
+            'new_cash_balance': new_cash,
+            'position_closed': position_closed,
+            'trade_type': 'BUY_TO_COVER'
+        }
+        
+    except Exception as e:
+        print(f"Error executing buy to cover: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/portfolio/cash")
+async def get_portfolio_cash(request: Request, user_id: str = Query(...), market: str = Query(default='US')):
+    """Get available cash for a specific market portfolio."""
+    try:
+        # Get Supabase user ID
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Get or create portfolio
+        portfolio_result = supabase.rpc('create_or_get_portfolio', {
+            'p_user_id': supabase_user_id,
+            'p_market': market
+        }).execute()
+        
+        if not portfolio_result.data:
+            return JSONResponse(status_code=500, content={"error": "Failed to get/create portfolio"})
+        
+        portfolio = portfolio_result.data
+        
+        return {
+            'portfolio_id': portfolio['id'],
+            'market': portfolio['market'],
+            'base_currency': portfolio['base_currency'],
+            'cash_balance': float(portfolio['cash_balance']),
+            'initial_capital': float(portfolio['initial_capital'])
+        }
+        
+    except Exception as e:
+        print(f"Error getting portfolio cash: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.get("/api/portfolio/ticker/{ticker}")
+async def get_ticker_portfolio_info(ticker: str, user_id: str = Query(...)):
+    """
+    Get portfolio information for a specific ticker including:
+    - Current position (shares held, avg cost)
+    - Trading history (all buys/sells)
+    - Realized and unrealized P&L
+    """
+    try:
+        # Get Supabase user ID
+        mapping_res = supabase.table("clerk_user_mapping").select("supabase_user_id").eq("clerk_user_id", user_id).execute()
+        if not mapping_res.data:
+            return JSONResponse(status_code=404, content={"error": "User not found"})
+        
+        supabase_user_id = mapping_res.data[0]['supabase_user_id']
+        
+        # Get all portfolios for this user
+        portfolios_res = supabase.table("portfolios").select("id, market, base_currency").eq("user_id", supabase_user_id).execute()
+        portfolios = portfolios_res.data if portfolios_res.data else []
+        
+        if not portfolios:
+            return {
+                'ticker': ticker,
+                'position': None,
+                'trades': [],
+                'realized_pnl': 0,
+                'unrealized_pnl': 0,
+                'total_shares': 0
+            }
+        
+        portfolio_ids = [p['id'] for p in portfolios]
+        
+        # Get current position for this ticker
+        positions_res = supabase.table("portfolio_positions").select("*").in_("portfolio_id", portfolio_ids).eq("symbol", ticker).execute()
+        positions = positions_res.data if positions_res.data else []
+        
+        # Calculate totals across all portfolios (handles both long and short positions)
+        total_shares = 0
+        total_realized_pnl = 0
+        total_cost_basis = 0
+        avg_cost = 0
+        
+        for pos in positions:
+            qty = float(pos.get('quantity', 0))
+            if qty != 0:  # Include both positive (long) and negative (short) positions
+                total_shares += qty
+                total_cost_basis += abs(qty) * float(pos.get('avg_cost', 0))
+                total_realized_pnl += float(pos.get('realized_pnl', 0))
+        
+        if total_shares != 0:
+            avg_cost = total_cost_basis / abs(total_shares)
+        
+        # Get current price for unrealized P&L calculation
+        current_price = None
+        unrealized_pnl = 0
+        try:
+            current_price = get_current_price(ticker)
+            if current_price and total_shares != 0:
+                if total_shares > 0:
+                    # Long position: profit when price goes up
+                    unrealized_pnl = (current_price - avg_cost) * total_shares
+                else:
+                    # Short position: profit when price goes down
+                    unrealized_pnl = (avg_cost - current_price) * abs(total_shares)
+        except:
+            pass
+        
+        # Get all trades for this ticker
+        trades_res = supabase.table("portfolio_trades").select("*").in_("portfolio_id", portfolio_ids).eq("symbol", ticker).order("executed_at", desc=True).execute()
+        trades = trades_res.data if trades_res.data else []
+        
+        # Format trades
+        formatted_trades = []
+        for trade in trades:
+            formatted_trades.append({
+                'id': trade['id'],
+                'side': trade['side'],
+                'quantity': float(trade['quantity']),
+                'price': float(trade['price']),
+                'notional': float(trade['notional']),
+                'executed_at': trade['executed_at'],
+                'realized_pnl': float(trade.get('realized_pnl', 0)) if trade.get('realized_pnl') else None,
+                'price_source': trade.get('price_source')
+            })
+        
+        return {
+            'ticker': ticker,
+            'position': {
+                'total_shares': total_shares,
+                'avg_cost': avg_cost,
+                'current_price': current_price,
+                'realized_pnl': total_realized_pnl,
+                'unrealized_pnl': unrealized_pnl
+            } if total_shares != 0 or total_realized_pnl != 0 else None,
+            'trades': formatted_trades,
+            'realized_pnl': total_realized_pnl,
+            'unrealized_pnl': unrealized_pnl,
+            'total_shares': total_shares
+        }
+        
+    except Exception as e:
+        print(f"Error getting ticker portfolio info: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/admin/portfolio/backfill")
+async def admin_backfill_portfolios():
+    """
+    Admin endpoint to run the portfolio backfill for existing recommendations.
+    Creates 1-unit trades for all existing OPEN recommendations.
+    """
+    try:
+        result = supabase.rpc('backfill_portfolios_from_recommendations', {}).execute()
+        return {"status": "success", "result": result.data}
+    except Exception as e:
+        print(f"Error running backfill: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/admin/portfolio/create-snapshots")
+async def admin_create_portfolio_snapshots():
+    """
+    Admin endpoint to manually create daily snapshots for all portfolios.
+    """
+    try:
+        result = supabase.rpc('create_daily_snapshots', {}).execute()
+        return {"status": "success", "result": result.data}
+    except Exception as e:
+        print(f"Error creating snapshots: {e}")
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+# ============================================================================
+# EXISTING ADMIN ENDPOINTS
+# ============================================================================
 
 @app.post("/admin/update-prices")
 def admin_update_prices():
