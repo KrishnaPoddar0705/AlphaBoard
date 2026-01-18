@@ -20,7 +20,7 @@ import {
   Loader2,
   ChevronDown
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Accordion, AccordionItem } from '../ui/Accordion';
 import { Skeleton } from '../ui/Skeleton';
 import { useThesis } from '../../hooks/useThesis';

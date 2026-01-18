@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Play, Pause, Download, Loader2, X, Save, Check } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { savePodcast } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 

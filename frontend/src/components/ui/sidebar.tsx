@@ -28,7 +28,6 @@ import {
 const SIDEBAR_COOKIE_NAME = "sidebar_state"
 const SIDEBAR_COOKIE_MAX_AGE = 60 * 60 * 24 * 7
 const SIDEBAR_WIDTH = "16rem"
-const SIDEBAR_WIDTH_MOBILE = "18rem"
 const SIDEBAR_WIDTH_ICON = "3rem"
 const SIDEBAR_KEYBOARD_SHORTCUT = "b"
 
@@ -182,18 +181,26 @@ function Sidebar({
 
   if (isMobile) {
     return (
-      <Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
+      // IMPORTANT: Don't spread arbitrary `div` props onto Radix `Sheet` root.
+      // It can lead to subtle portal/unmount issues in some browsers/extensions.
+      <Sheet open={openMobile} onOpenChange={setOpenMobile}>
         <SheetContent
           data-sidebar="sidebar"
           data-slot="sidebar"
           data-mobile="true"
-          className="bg-sidebar text-sidebar-foreground w-(--sidebar-width) p-0 [&>button]:hidden"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH_MOBILE,
-            } as React.CSSProperties
-          }
-          side={side}
+          className={cn(
+            // Mobile sidebar sheet (exact requirements):
+            // - opaque panel with strong opacity
+            // - blur only on overlay (panel has `backdrop-blur-none`)
+            // - stable z-index layering above overlay
+            // - consistent shadcn tokens for text/accents
+            "p-0 w-[84vw] max-w-[320px] bg-background/98 supports-[backdrop-filter]:bg-background/96 text-foreground",
+            "border-r border-border/60 shadow-2xl backdrop-blur-none z-[60]",
+            // iOS notch / dynamic island safety
+            "pt-[env(safe-area-inset-top)]",
+            className
+          )}
+          side="left"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Sidebar</SheetTitle>

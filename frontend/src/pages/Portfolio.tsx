@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import axios from "axios"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -92,6 +93,11 @@ export default function Portfolio() {
   const [trades, setTrades] = React.useState<PortfolioTrade[]>([])
   const [_snapshots, setSnapshots] = React.useState<PortfolioSnapshot[]>([])
   const [loading, setLoading] = React.useState(true)
+  const [portfolioError, setPortfolioError] = React.useState<string | null>(null)
+  const [positionsLoading, setPositionsLoading] = React.useState(false)
+  const [positionsError, setPositionsError] = React.useState<string | null>(null)
+  const [tradesLoading, setTradesLoading] = React.useState(false)
+  const [tradesError, setTradesError] = React.useState<string | null>(null)
   const [selectedMarket, setSelectedMarket] = React.useState<MarketTab>('IN')
   const [sellModalOpen, setSellModalOpen] = React.useState(false)
   const [coverModalOpen, setCoverModalOpen] = React.useState(false)
@@ -112,9 +118,29 @@ export default function Portfolio() {
     }
   }, [currentPortfolio?.id, user])
 
+  const getErrorMessage = (error: unknown): string => {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status
+      const serverMsg =
+        typeof error.response?.data === "object" && error.response?.data
+          ? // common FastAPI-ish shapes
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            ((error.response.data as any).detail ??
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (error.response.data as any).error ??
+              undefined)
+          : undefined
+      const msg = typeof serverMsg === "string" ? serverMsg : error.message
+      return status ? `${status}: ${msg}` : msg
+    }
+    if (error instanceof Error) return error.message
+    return "Something went wrong. Please try again."
+  }
+
   const loadPortfolioData = async () => {
     if (!user) return
     setLoading(true)
+    setPortfolioError(null)
     try {
       const response = await getUserPortfolios(user.id)
       setPortfolios(response.portfolios || [])
@@ -129,6 +155,7 @@ export default function Portfolio() {
       }
     } catch (error) {
       console.error('Error loading portfolios:', error)
+      setPortfolioError(getErrorMessage(error))
     } finally {
       setLoading(false)
     }
@@ -137,16 +164,47 @@ export default function Portfolio() {
   const loadPositionsAndTrades = async (portfolioId: string) => {
     if (!user) return
     try {
-      const [positionsRes, tradesRes, snapshotsRes] = await Promise.all([
+      setPositionsLoading(true)
+      setTradesLoading(true)
+      setPositionsError(null)
+      setTradesError(null)
+
+      // Use allSettled so one 500 doesn't block the rest
+      const [positionsRes, tradesRes, snapshotsRes] = await Promise.allSettled([
         getPortfolioPositions(portfolioId, user.id),
         getPortfolioTrades(portfolioId, user.id, 20),
-        getPortfolioSnapshots(portfolioId, user.id, 90)
+        getPortfolioSnapshots(portfolioId, user.id, 90),
       ])
-      setPositions(positionsRes.positions || [])
-      setTrades(tradesRes.trades || [])
-      setSnapshots(snapshotsRes.snapshots || [])
+
+      if (positionsRes.status === "fulfilled") {
+        setPositions(positionsRes.value.positions || [])
+      } else {
+        console.error("Error loading positions:", positionsRes.reason)
+        setPositionsError(getErrorMessage(positionsRes.reason))
+      }
+
+      if (tradesRes.status === "fulfilled") {
+        setTrades(tradesRes.value.trades || [])
+      } else {
+        console.error("Error loading trades:", tradesRes.reason)
+        setTradesError(getErrorMessage(tradesRes.reason))
+      }
+
+      if (snapshotsRes.status === "fulfilled") {
+        setSnapshots(snapshotsRes.value.snapshots || [])
+      } else {
+        // Snapshots are currently not rendered on this page; keep this silent-ish.
+        console.error("Error loading snapshots:", snapshotsRes.reason)
+      }
     } catch (error) {
       console.error('Error loading positions/trades:', error)
+      // This should be rare now (allSettled), but keep a fallback.
+      const msg = getErrorMessage(error)
+      setPositionsError(prev => prev ?? msg)
+      setTradesError(prev => prev ?? msg)
+    } finally {
+      setPositionsLoading(false)
+      setTradesLoading(false)
     }
   }
 
@@ -213,6 +271,24 @@ export default function Portfolio() {
   return (
     <div className="min-h-screen bg-[#F1EEE0] p-4 sm:p-6">
       <div className="max-w-6xl mx-auto space-y-6">
+        {portfolioError && (
+          <div className="bg-[#FBF7ED] border border-[#B23B2A]/30 rounded-lg p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="font-mono text-sm font-semibold text-[#1C1B17]">Couldn’t load portfolio</div>
+                <div className="font-mono text-xs text-[#6F6A60] mt-1">{portfolioError}</div>
+              </div>
+              <Button
+                variant="outline"
+                className="border-[#D7D0C2] bg-[#FBF7ED] hover:bg-[#F7F2E6] font-mono"
+                onClick={handleRefresh}
+              >
+                Retry
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -350,7 +426,33 @@ export default function Portfolio() {
                 </h2>
               </div>
               <div className="p-4">
-                {activePositions.length > 0 ? (
+                {positionsError && (
+                  <div className="mb-4 bg-[#F7F2E6] border border-[#B23B2A]/30 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-mono text-xs font-semibold text-[#1C1B17]">Couldn’t refresh positions</div>
+                        <div className="font-mono text-[11px] text-[#6F6A60] mt-1">{positionsError}</div>
+                      </div>
+                      {currentPortfolio && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-[#D7D0C2] bg-[#FBF7ED] hover:bg-[#F7F2E6] font-mono"
+                          onClick={() => loadPositionsAndTrades(currentPortfolio.id)}
+                        >
+                          Retry
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {positionsLoading && activePositions.length === 0 ? (
+                  <div className="text-center py-12 text-[#6F6A60]">
+                    <PieChart className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-mono">Loading positions…</p>
+                  </div>
+                ) : activePositions.length > 0 ? (
                   <div className="overflow-x-auto">
                     <table className="w-full">
                       <thead>
@@ -465,7 +567,33 @@ export default function Portfolio() {
                 </h2>
               </div>
               <div className="p-4">
-                {trades.length > 0 ? (
+                {tradesError && (
+                  <div className="mb-4 bg-[#F7F2E6] border border-[#B23B2A]/30 rounded-lg p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-mono text-xs font-semibold text-[#1C1B17]">Couldn’t refresh trades</div>
+                        <div className="font-mono text-[11px] text-[#6F6A60] mt-1">{tradesError}</div>
+                      </div>
+                      {currentPortfolio && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="border-[#D7D0C2] bg-[#FBF7ED] hover:bg-[#F7F2E6] font-mono"
+                          onClick={() => loadPositionsAndTrades(currentPortfolio.id)}
+                        >
+                          Retry
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {tradesLoading && trades.length === 0 ? (
+                  <div className="text-center py-12 text-[#6F6A60]">
+                    <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p className="font-mono">Loading trades…</p>
+                  </div>
+                ) : trades.length > 0 ? (
                   <div className="space-y-3">
                     {trades.map((trade) => (
                       <div 

@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { X, Upload, Wallet, AlertTriangle } from 'lucide-react'
-import { searchStocks, getPrice, createRecommendation, getPortfolioCash, executeBuyTrade, executeShortSellTrade } from '@/lib/api'
+import { searchStocks, getPrice, createRecommendation, getUserPortfolios, executeBuyTrade, executeShortSellTrade } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { cn } from '@/lib/utils'
@@ -38,6 +38,7 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   // Paper trading fields
   const [quantity, setQuantity] = useState('')
   const [cashBalance, setCashBalance] = useState<number | null>(null)
+  const [portfolioNav, setPortfolioNav] = useState<number | null>(null)
   const [_loadingCash, setLoadingCash] = useState(false)
 
   // Calculate required cash and validate
@@ -46,6 +47,11 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   const requiredCash = numericQty * numericPrice
   const hasInsufficientCash = cashBalance !== null && requiredCash > cashBalance
   const currencySymbol = selectedMarket === 'IN' ? '₹' : '$'
+  const pctOfNav =
+    portfolioNav && portfolioNav > 0 && numericQty > 0 && numericPrice > 0
+      ? (requiredCash / portfolioNav) * 100
+      : null
+  const navQuickPercents = [5, 10, 15, 20, 25] as const
 
   useEffect(() => {
     if (!open) {
@@ -77,14 +83,25 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
     if (!user) return
     setLoadingCash(true)
     try {
-      const data = await getPortfolioCash(user.id, selectedMarket)
-      setCashBalance(data.cash_balance)
+      const data = await getUserPortfolios(user.id)
+      const portfolio = data?.portfolios?.find((p) => p.market === selectedMarket) ?? null
+      setCashBalance(portfolio?.cash_balance ?? null)
+      setPortfolioNav(portfolio?.nav ?? null)
     } catch (err) {
       console.error('Error fetching cash balance:', err)
       setCashBalance(null)
+      setPortfolioNav(null)
     } finally {
       setLoadingCash(false)
     }
+  }
+
+  const applyNavPercent = (percent: number) => {
+    if (!portfolioNav || portfolioNav <= 0) return
+    if (!numericPrice || numericPrice <= 0) return
+    const targetNotional = (portfolioNav * percent) / 100
+    const shares = Math.floor(targetNotional / numericPrice)
+    setQuantity(String(Math.max(0, shares)))
   }
 
   const handleSearch = async (query: string) => {
@@ -358,12 +375,21 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
                   <Label className="font-mono text-sm text-[#1C1B17]">
                     Quantity (Shares) {action === 'SELL' && <span className="text-[#6F6A60]">- Short Sell</span>}
                   </Label>
-                  {cashBalance !== null && (
-                    <div className="flex items-center gap-1 text-xs font-mono text-[#6F6A60]">
-                      <Wallet className="w-3 h-3" />
-                      Cash: {currencySymbol}{cashBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                    </div>
-                  )}
+                  <div className="flex items-center gap-3 text-xs font-mono text-[#6F6A60]">
+                    {portfolioNav !== null && (
+                      <span className="whitespace-nowrap">
+                        NAV: {currencySymbol}
+                        {portfolioNav.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </span>
+                    )}
+                    {cashBalance !== null && (
+                      <span className="flex items-center gap-1 whitespace-nowrap">
+                        <Wallet className="w-3 h-3" />
+                        Cash: {currencySymbol}
+                        {cashBalance.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <Input
                   type="number"
@@ -374,6 +400,33 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
                   placeholder="Enter number of shares"
                   className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums"
                 />
+                {/* Quick sizing based on NAV */}
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-mono text-[#6F6A60] mr-1">Quick size:</span>
+                  {navQuickPercents.map((p) => (
+                    <Button
+                      key={p}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyNavPercent(p)}
+                      disabled={!portfolioNav || portfolioNav <= 0 || !numericPrice || numericPrice <= 0}
+                      className="h-8 px-3 font-mono text-xs bg-[#FBF7ED] border-[#D7D0C2]"
+                      title={
+                        portfolioNav && portfolioNav > 0 && numericPrice > 0
+                          ? `≈ ${Math.floor(((portfolioNav * p) / 100) / numericPrice).toLocaleString()} shares`
+                          : 'Select a ticker / price first'
+                      }
+                    >
+                      {p}%
+                    </Button>
+                  ))}
+                  {pctOfNav !== null && (
+                    <span className="text-xs font-mono text-[#6F6A60]">
+                      ≈ {pctOfNav.toFixed(pctOfNav < 1 ? 2 : 1)}% NAV
+                    </span>
+                  )}
+                </div>
               </div>
               
               {/* Cash Display - Required for BUY, Proceeds for SELL */}
@@ -388,6 +441,11 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
                     <span>{action === 'BUY' ? 'Required Cash:' : 'Cash Proceeds:'}</span>
                     <span className="font-semibold">{currencySymbol}{requiredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
+                  {pctOfNav !== null && (
+                    <div className="mt-1 text-xs text-[#6F6A60]">
+                      ≈ {pctOfNav.toFixed(pctOfNav < 1 ? 2 : 1)}% of NAV
+                    </div>
+                  )}
                   {action === 'BUY' && hasInsufficientCash && (
                     <div className="flex items-center gap-1 mt-2 text-xs">
                       <AlertTriangle className="w-3 h-3" />

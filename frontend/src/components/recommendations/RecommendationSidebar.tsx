@@ -34,8 +34,8 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
   }
 
   return (
-    <div className="w-80 border-r border-[#D7D0C2] bg-[#F7F2E6] h-full overflow-y-auto">
-      <div className="p-4 space-y-2">
+    <div className="w-full max-w-full min-w-0 bg-[#F7F2E6] overflow-x-hidden border-b border-[#D7D0C2] md:border-b-0 md:border-r md:h-full md:overflow-y-auto">
+      <div className="p-3 sm:p-4 space-y-2 min-w-0">
         {recommendations.length === 0 ? (
           <div className="text-center py-8 text-[#6F6A60] font-mono text-sm">
             No open recommendations
@@ -52,7 +52,7 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
               <Card
                 key={rec.id}
                 onClick={() => onSelect(rec.id)}
-                className={`cursor-pointer transition-all ${
+                className={`w-full max-w-full min-w-0 cursor-pointer transition-all ${
                   isSelected
                     ? 'bg-[#FBF7ED] border-[#1C1B17] border-2'
                     : 'bg-[#F7F2E6] border-[#D7D0C2] hover:border-[#1C1B17]'
@@ -60,7 +60,7 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1">
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h3 className="font-mono font-bold text-[#1C1B17] text-base">{rec.ticker}</h3>
                         {rec.action && rec.action !== 'WATCH' && (

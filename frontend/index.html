@@ -51,6 +51,8 @@
 
 <body>
   <div id="root"></div>
+  <!-- Stable portal container for Radix (prevents portal cleanup `removeChild` crashes) -->
+  <div id="radix-portal-root"></div>
   <script type="module" src="/src/main.tsx"></script>
   <script>
     // Register service worker for offline and routing support

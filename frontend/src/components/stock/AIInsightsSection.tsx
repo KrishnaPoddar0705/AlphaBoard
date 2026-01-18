@@ -14,7 +14,7 @@
 
 // import React from 'react';
 import { Brain, Sparkles, TrendingUp, Shield, AlertTriangle, Zap, Lock } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 
 interface AIInsightsSectionProps {
     stockTicker: string;

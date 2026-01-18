@@ -35,6 +35,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import { useIsMobile } from "@/hooks/use-mobile"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 // import { Button } from "@/components/ui/button" // Unused
 import { SignedOut, SignInButton, SignUpButton } from "@clerk/clerk-react"
@@ -119,6 +120,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const navigate = useNavigate()
   const { user } = useUser()
   const { signOut } = useClerk()
+  const isMobile = useIsMobile()
   const [showUserMenu, setShowUserMenu] = React.useState(false)
   const userMenuRef = React.useRef<HTMLDivElement>(null)
 
@@ -272,18 +274,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         ) : (
           <SignedOut>
             <div className="space-y-2">
-              <SignInButton mode="modal">
-                <button className="flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90 transition-colors font-mono text-sm">
-                  <LogIn className="h-4 w-4" />
-                  <span>Sign In</span>
-                </button>
-              </SignInButton>
-              <SignUpButton mode="modal">
-                <button className="flex items-center gap-2 px-3 py-2 w-full rounded-lg border border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6] transition-colors font-mono text-sm">
-                  <UserPlus className="h-4 w-4" />
-                  <span>Create Account</span>
-                </button>
-              </SignUpButton>
+              {isMobile ? (
+                <>
+                  <button
+                    onClick={() => navigate("/login")}
+                    className="flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90 transition-colors font-mono text-sm"
+                  >
+                    <LogIn className="h-4 w-4" />
+                    <span>Sign In</span>
+                  </button>
+                  <button
+                    onClick={() => navigate("/sign-up")}
+                    className="flex items-center gap-2 px-3 py-2 w-full rounded-lg border border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6] transition-colors font-mono text-sm"
+                  >
+                    <UserPlus className="h-4 w-4" />
+                    <span>Create Account</span>
+                  </button>
+                </>
+              ) : (
+                <>
+                  <SignInButton mode="modal">
+                    <button className="flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90 transition-colors font-mono text-sm">
+                      <LogIn className="h-4 w-4" />
+                      <span>Sign In</span>
+                    </button>
+                  </SignInButton>
+                  <SignUpButton mode="modal">
+                    <button className="flex items-center gap-2 px-3 py-2 w-full rounded-lg border border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6] transition-colors font-mono text-sm">
+                      <UserPlus className="h-4 w-4" />
+                      <span>Create Account</span>
+                    </button>
+                  </SignUpButton>
+                </>
+              )}
             </div>
           </SignedOut>
         )}

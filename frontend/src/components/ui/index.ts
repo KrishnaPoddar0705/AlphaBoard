@@ -4,7 +4,7 @@
  * Barrel export for reusable UI components.
  */
 
-export { Card, CardHeader, CardTitle, CardContent } from './Card';
+export { Card, CardHeader, CardTitle, CardContent } from './card';
 export { 
     Skeleton, 
     StockDetailSkeleton, 

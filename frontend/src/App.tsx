@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import LayoutV2 from './components/LayoutV2';
 import Login from './pages/Login';
+import SignUpPage from './pages/SignUp';
 import AuthCallback from './pages/AuthCallback';
 import Community from './pages/Community';
 import StockDetail from './pages/StockDetail';
@@ -59,6 +60,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/sign-up" element={<SignUpPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route element={<LayoutV2 />}>
           {/* Community routes - accessible to all */}

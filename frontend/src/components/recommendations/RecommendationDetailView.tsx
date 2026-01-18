@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Upload, X, Edit2, Save, Target, TrendingUp, TrendingDown, Clock } from 'lucide-react'
+import { ArrowLeft, Plus, Upload, X, Edit2, Save, Target, TrendingUp, TrendingDown, Clock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { PriceTargetTimeline } from '@/components/stock/PriceTargetTimeline'
@@ -55,9 +55,10 @@ interface Recommendation {
 interface RecommendationDetailViewProps {
   recommendation: Recommendation | null
   onUpdate: () => void
+  onBack?: () => void
 }
 
-export function RecommendationDetailView({ recommendation, onUpdate }: RecommendationDetailViewProps) {
+export function RecommendationDetailView({ recommendation, onUpdate, onBack }: RecommendationDetailViewProps) {
   const { user } = useUser()
   const [isEditingThesis, setIsEditingThesis] = useState(false)
   const [editedThesis, setEditedThesis] = useState('')
@@ -156,7 +157,7 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
 
   const handleClosePosition = () => {
     if (!user || !recommendation) return
-    
+
     if (recommendation.action === 'SELL') {
       // SELL recommendation = short position, need to buy to cover
       if (tradingActivity && tradingActivity.total_shares < 0) {
@@ -180,7 +181,7 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
 
   const closeRecommendationOnly = async () => {
     if (!user || !recommendation) return
-    
+
     const exitPrice = recommendation.current_price || recommendation.entry_price
     if (!exitPrice) {
       alert('Cannot close position: current price not available')
@@ -256,7 +257,7 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
       for (const file of selectedFiles) {
         const fileExt = file.name.split('.').pop()
         const fileName = `${mapping.supabase_user_id}/${recommendation.ticker}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-        
+
         const { error: uploadError } = await supabase.storage
           .from('recommendation-images')
           .upload(fileName, file)
@@ -285,28 +286,48 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-[#F1EEE0]">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-mono font-bold text-[#1C1B17]">{recommendation.ticker}</h1>
+    <div className="w-full max-w-full min-w-0 bg-[#F1EEE0] overflow-x-hidden md:flex-1 md:overflow-y-auto">
+      <div className="max-w-4xl mx-auto w-full max-w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 min-w-0">
+        {onBack ? (
+          <div className="flex items-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onBack}
+              className="font-mono text-sm"
+            >
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to list
+            </Button>
+          </div>
+        ) : null}
+        {/* Header (mobile-first, desktop unchanged) */}
+        <div className="flex flex-col gap-3 min-w-0 md:flex-row md:items-start md:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
+              <h1 className="text-3xl sm:text-4xl font-mono font-bold text-[#1C1B17] break-words">
+                {recommendation.ticker}
+              </h1>
               {recommendation.action && recommendation.action !== 'WATCH' && (
                 <Badge
                   variant={recommendation.action === 'BUY' ? 'default' : 'destructive'}
-                  className="font-mono text-sm px-3 py-1"
+                  className="font-mono text-sm px-3 py-1 whitespace-nowrap"
                 >
                   {recommendation.action}
                 </Badge>
               )}
             </div>
-            <div className="flex items-center gap-4">
-              <Badge variant={recommendation.status === 'OPEN' ? 'default' : 'secondary'} className="font-mono">
+
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 min-w-0">
+              <Badge
+                variant={recommendation.status === 'OPEN' ? 'default' : 'secondary'}
+                className="font-mono whitespace-nowrap"
+              >
                 {recommendation.status}
               </Badge>
-              <span className="font-mono text-sm text-[#6F6A60]">
-                Added {new Date(recommendation.entry_date).toLocaleDateString('en-US', {
+              <span className="font-mono text-sm text-[#6F6A60] break-words">
+                Added{' '}
+                {new Date(recommendation.entry_date).toLocaleDateString('en-US', {
                   month: 'long',
                   day: 'numeric',
                   year: 'numeric',
@@ -314,33 +335,43 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
               </span>
             </div>
           </div>
+
           {recommendation.status === 'OPEN' && (
             <Button
               variant="outline"
               onClick={handleClosePosition}
               className={cn(
-                "font-mono text-sm",
+                "font-mono text-sm w-full md:w-auto shrink-0 whitespace-nowrap overflow-hidden text-ellipsis",
                 recommendation.action === 'SELL'
                   ? "border-[#2A6B4F] text-[#2A6B4F] hover:bg-[#2A6B4F] hover:text-[#F7F2E6]"
                   : "border-[#B23B2A] text-[#B23B2A] hover:bg-[#B23B2A] hover:text-[#F7F2E6]"
               )}
-            >
-              {recommendation.action === 'SELL' 
-                ? (tradingActivity && tradingActivity.total_shares < 0 
+              title={
+                recommendation.action === 'SELL'
+                  ? (tradingActivity && tradingActivity.total_shares < 0
                     ? `Buy to Cover (${Math.abs(tradingActivity.total_shares).toLocaleString()} shares)`
                     : 'Close Position')
-                : (tradingActivity && tradingActivity.total_shares > 0 
+                  : (tradingActivity && tradingActivity.total_shares > 0
                     ? `Sell Position (${tradingActivity.total_shares.toLocaleString()} shares)`
                     : 'Close Position')
+              }
+            >
+              {recommendation.action === 'SELL'
+                ? (tradingActivity && tradingActivity.total_shares < 0
+                  ? `Buy to Cover (${Math.abs(tradingActivity.total_shares).toLocaleString()} shares)`
+                  : 'Close Position')
+                : (tradingActivity && tradingActivity.total_shares > 0
+                  ? `Sell Position (${tradingActivity.total_shares.toLocaleString()} shares)`
+                  : 'Close Position')
               }
             </Button>
           )}
         </div>
 
         {/* Price and Return Card */}
-        <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+        <Card className="bg-[#F7F2E6] border-[#D7D0C2] w-full max-w-full">
           <CardContent className="p-6">
-            <div className="grid grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 min-w-0">
               <div>
                 <Label className="font-mono text-xs text-[#6F6A60] uppercase tracking-wider">Current Price</Label>
                 <div className="text-2xl font-mono font-bold text-[#1C1B17] tabular-nums mt-1">
@@ -364,14 +395,12 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
                         <TrendingDown className="h-5 w-5 text-[#B23B2A]" />
                       )}
                       <div>
-                        <div className={`text-xl font-mono font-bold tabular-nums ${
-                          isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
-                        }`}>
+                        <div className={`text-xl font-mono font-bold tabular-nums ${isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                          }`}>
                           {isPositive ? '+' : ''}{formatCurrency(gainLoss, recommendation.ticker)}
                         </div>
-                        <div className={`text-sm font-mono tabular-nums ${
-                          isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
-                        }`}>
+                        <div className={`text-sm font-mono tabular-nums ${isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                          }`}>
                           {isPositive ? '+' : ''}{returnPct.toFixed(2)}%
                         </div>
                       </div>
@@ -437,11 +466,10 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
                     >
                       <div className="flex items-center gap-3">
                         <span
-                          className={`px-2 py-0.5 rounded text-xs font-mono font-semibold ${
-                            trade.side === 'BUY'
+                          className={`px-2 py-0.5 rounded text-xs font-mono font-semibold ${trade.side === 'BUY'
                               ? 'bg-[#E6F4ED] text-[#2F8F5B]'
                               : 'bg-[#FDECEA] text-[#B23B2A]'
-                          }`}
+                            }`}
                         >
                           {trade.side}
                         </span>
@@ -713,7 +741,7 @@ export function RecommendationDetailView({ recommendation, onUpdate }: Recommend
             current_price: recommendation.current_price || tradingActivity.position?.current_price || 0,
             market_value: Math.abs(tradingActivity.total_shares) * (recommendation.current_price || tradingActivity.position?.current_price || 0),
             // For shorts: P&L = (sell price - buy price) = (avg_cost - current_price)
-            unrealized_pnl: tradingActivity.position?.avg_cost 
+            unrealized_pnl: tradingActivity.position?.avg_cost
               ? (tradingActivity.position.avg_cost - (recommendation.current_price || 0)) * Math.abs(tradingActivity.total_shares)
               : 0,
             unrealized_pnl_pct: tradingActivity.position?.avg_cost && recommendation.current_price

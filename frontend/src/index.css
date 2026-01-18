@@ -41,6 +41,14 @@
   --color-sidebar-accent: rgba(28, 27, 23, 0.04);
   --color-sidebar-accent-foreground: #1C1B17;
   --color-sidebar-border: #D7D0C2;
+
+  /* shadcn/ui semantic tokens used by Tailwind classes like `bg-background`, `text-foreground`, etc. */
+  --color-background: var(--color-paper);
+  --color-foreground: var(--color-ink);
+  --color-border: var(--color-border-editorial);
+  --color-muted-foreground: var(--color-ink-muted);
+  --color-accent: var(--color-sidebar-accent);
+  --color-accent-foreground: var(--color-ink);
 }
 
 /* ===========================
@@ -58,6 +66,22 @@
   --card-bg: rgba(30, 41, 59, 0.5);
   --list-item-bg: rgba(30, 41, 59, 0.3);
   --list-item-hover: rgba(255, 255, 255, 0.05);
+
+  /* Sidebar Variables (match shadcn/ui sidebar tokens) */
+  --sidebar-background: #0f172a;
+  --sidebar-foreground: #f1f5f9;
+  --sidebar-accent: rgba(255, 255, 255, 0.06);
+  --sidebar-accent-foreground: #f1f5f9;
+  --sidebar-border: rgba(255, 255, 255, 0.12);
+  --sidebar-ring: rgba(99, 102, 241, 0.45);
+
+  /* Tailwind v4 semantic color tokens (for shadcn/ui) */
+  --color-background: #0f172a;
+  --color-foreground: #f1f5f9;
+  --color-border: rgba(255, 255, 255, 0.12);
+  --color-muted-foreground: #94a3b8;
+  --color-accent: rgba(255, 255, 255, 0.06);
+  --color-accent-foreground: #f1f5f9;
 }
 
 :root[data-theme="light"] {
@@ -95,6 +119,14 @@
   --sidebar-accent-foreground: #1C1B17;
   --sidebar-border: #D7D0C2;
   --sidebar-ring: rgba(29, 78, 216, 0.35);
+
+  /* Tailwind v4 semantic color tokens (for shadcn/ui) */
+  --color-background: #F1EEE0;
+  --color-foreground: #1C1B17;
+  --color-border: #D7D0C2;
+  --color-muted-foreground: #6F6A60;
+  --color-accent: rgba(28, 27, 23, 0.04);
+  --color-accent-foreground: #1C1B17;
   
   /* Legacy compatibility (will be removed gradually) */
   --glass-bg: #F7F2E6;

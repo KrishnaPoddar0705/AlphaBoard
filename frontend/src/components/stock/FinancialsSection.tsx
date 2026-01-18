@@ -15,7 +15,7 @@
  */
 
 import { TrendingUp, TrendingDown, FileSpreadsheet, Wallet, Banknote } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../ui/Card';
+import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Skeleton } from '../ui/Skeleton';
 
 interface FinancialsSectionProps {
