@@ -55,11 +55,20 @@
   <div id="radix-portal-root"></div>
   <script type="module" src="/src/main.tsx"></script>
   <script>
-    // Register service worker for offline and routing support
+    // The service worker that used to be registered here existed only to force
+    // SPA routing on Render, which does not serve index.html for unknown paths.
+    // Cloudflare Pages does that natively via public/_redirects, so the worker
+    // is redundant and its network-first fetch only added latency.
+    //
+    // Registration is kept — pointing at a tombstone sw.js that unregisters
+    // itself — because browsers that already installed the old worker will not
+    // drop it just because this site stopped asking. They have to fetch the new
+    // script and let it tear itself down. Delete this block once traffic from
+    // pre-migration browsers has aged out.
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js').catch(() => {
-          // Service worker registration failed, that's okay
+          // Nothing to clean up in this browser.
         });
       });
     }

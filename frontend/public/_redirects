@@ -1,3 +1,19 @@
-/index.html    /community   301
+# Cloudflare Pages redirect rules.
+#
+# Rules are evaluated top to bottom; the first match wins.
+#
+# NOTE: this file was inert on Render (Render configures rewrites in its
+# dashboard and ignores _redirects). Cloudflare Pages honours it, so the
+# contents are load-bearing for the first time.
+
+# SPA fallback: serve index.html for any path that is not a real file, with a
+# 200 rather than a redirect so React Router sees the original URL. Without
+# this, a hard refresh on /stock/AAPL or /community returns a 404.
 /*    /index.html   200
 
+# REMOVED: `/index.html  /community  301`
+#
+# That rule was harmless on Render only because Render never read this file. On
+# Pages it would fire before any SPA handling and rewrite deep links to the
+# community page — /stock/AAPL shared in a chat would open /community instead.
+# Pages already normalises /index.html to /, so no replacement is needed.

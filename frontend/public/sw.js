@@ -1,54 +1,46 @@
-// Service Worker for handling SPA routing
-// This intercepts requests and serves index.html for routes that don't exist
+// Tombstone service worker.
+//
+// The previous worker intercepted every navigation and responded with
+// fetch('/index.html') to force SPA routing on Render, which does not serve
+// index.html for unknown paths. Cloudflare Pages handles that natively through
+// public/_redirects, so the worker is now pure overhead: an extra network
+// round-trip on every page load, and a cache that can pin users to a stale
+// bundle.
+//
+// It cannot simply be deleted. A registered service worker lives in the
+// browser's storage, not on the server — removing sw.js from the deploy would
+// leave the OLD worker installed and running against the new origin forever,
+// with no way to reach it. The only way to retire a worker is to ship a new one
+// that removes itself, which is what this file does.
+//
+// Safe to delete this file and the registration block in index.html once
+// pre-migration browsers have aged out.
 
-const CACHE_NAME = 'alphaboard-v1';
-
-// Install event - cache static assets
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
+  // Replace the outgoing worker immediately rather than waiting for every tab
+  // using it to close.
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    })
-  );
-  self.clients.claim();
-});
+    (async () => {
+      // Drop everything the old worker cached, including any stale index.html.
+      const names = await caches.keys();
+      await Promise.all(names.map((name) => caches.delete(name)));
 
-// Fetch event - handle routing
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
+      await self.registration.unregister();
 
-  // Only handle same-origin requests
-  if (url.origin !== location.origin) {
-    return;
-  }
-
-  // For navigation requests (page loads), always serve index.html
-  // This ensures React Router can handle all routes
-  if (request.mode === 'navigate') {
-    event.respondWith(
-      fetch('/index.html').catch(() => {
-        // Fallback: try to get from cache
-        return caches.match('/index.html');
-      })
-    );
-    return;
-  }
-
-  // For other requests (assets, API calls), use network first
-  event.respondWith(
-    fetch(request).catch(() => {
-      return caches.match(request);
-    })
+      // Reload open tabs so they detach from this worker and load normally.
+      // Without this, pages already open keep talking to a worker that is
+      // unregistered but still controlling them until navigation.
+      const clients = await self.clients.matchAll({ type: 'window' });
+      for (const client of clients) {
+        client.navigate(client.url);
+      }
+    })()
   );
 });
 
+// Deliberately no fetch handler. A worker with no fetch listener is fully
+// transparent — requests go straight to the network as if it were not there.
