@@ -34,3 +34,17 @@ logs/
 !*.env.example
 
 node_modules
+
+# Xcode build output
+#
+# ios/DerivedData was committed (2,354 files) until the Cloudflare Pages
+# migration. SwiftPM checks out capacitor-swift-pm inside it with its own .git,
+# so `git add` recorded a gitlink (mode 160000) with no matching .gitmodules
+# entry. That is invisible to local git but fatal to any CI that runs
+# `git submodule update --init --recursive` — which is what broke the first
+# Pages builds. Never commit this directory.
+ios/DerivedData/
+ios/App/build/
+*.xcuserstate
+xcuserdata/
+
