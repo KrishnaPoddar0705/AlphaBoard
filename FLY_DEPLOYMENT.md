@@ -207,11 +207,23 @@ four are outside the repo and are the easiest to forget:
    save** and confirm Meta's GET challenge succeeds.
 
 2. **Supabase edge function** — set the backend URL for the price-alert
-   function so it stops calling Render:
+   function so it stops calling Render. **Run from the repository root**, not
+   from `backend/` or `whatsapp-bot/` where the previous steps leave you:
    ```bash
+   cd /Users/krishna.poddar/leaderboard      # repo root — required
    supabase secrets set BACKEND_API_URL=https://alphaboard-backend.fly.dev
    supabase functions deploy check-price-alerts
    ```
+   The Supabase CLI resolves `./supabase/functions/<name>/index.ts` against the
+   current directory and does not search parent directories the way git or npm
+   do. From the wrong directory the deploy fails with `entrypoint path does not
+   exist` — and the CLI quietly creates a stray `supabase/.temp/` there, which
+   is where the empty `frontend/supabase/` and `whatsapp-bot/supabase/`
+   directories came from.
+
+   `supabase secrets set` is an API call against the linked project ref and
+   works from anywhere, so a failed deploy after a successful secrets set does
+   not need the secret re-applied.
 
 3. **Clerk allowed origins** — add the Pages origin
    (`https://alphaboard.pages.dev`) plus your custom domain. Either run
