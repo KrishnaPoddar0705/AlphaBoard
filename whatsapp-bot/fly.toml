@@ -1,0 +1,64 @@
+# AlphaBoard WhatsApp bot — Fly.io
+#
+# Replaces the Render service behind alphaboard-whatsapp-bot.onrender.com.
+#
+# Deploy:  fly deploy --config fly.toml   (run from whatsapp-bot/)
+
+app = 'alphaboard-whatsapp-bot'
+# Singapore — must match the backend's primary_region, since this app reaches
+# it over Fly's private network. Mumbai (bom) had no capacity available.
+primary_region = 'sin'
+
+[build]
+
+[env]
+  PORT = '8001'
+  # Must be exactly 'prod' — config.py:174 types this as
+  # Literal["local", "dev", "prod"] and pydantic rejects anything else at
+  # startup. Also disables /docs and /redoc (main.py:79).
+  ENVIRONMENT = 'prod'
+
+  # Reach the backend over Fly's private WireGuard mesh instead of the public
+  # internet. Both apps live in the same Fly organization, so this resolves to
+  # the backend machine's private IPv6 address: no TLS handshake, no public
+  # round-trip, no egress billing, and it keeps working even if the backend's
+  # public hostname changes.
+  #
+  # Note the scheme is http, not https — traffic inside the mesh is already
+  # encrypted at the network layer, and the backend does not terminate TLS
+  # itself (Fly's proxy does that for public traffic only).
+  ALPHABOARD_API_BASE_URL = 'http://alphaboard-backend.internal:8000'
+
+[http_service]
+  internal_port = 8001
+  force_https = true
+  processes = ['app']
+
+  # Opposite of the backend: this service is safe to stop when idle.
+  #
+  # It has no scheduler — src/tasks/daily_close_job.py is invoked through a
+  # route, not a timer — so nothing is lost while the machine sleeps. Meta
+  # retries webhook deliveries on failure, and Fly cold-starts a stopped
+  # machine in roughly 300ms, well inside Meta's delivery timeout.
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+
+  [http_service.concurrency]
+    type = 'requests'
+    soft_limit = 100
+    hard_limit = 150
+
+  [[http_service.checks]]
+    method = 'GET'
+    path = '/health'
+    interval = '30s'
+    timeout = '5s'
+    grace_period = '10s'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  # 512MB is enough here: the dependency tree is fastapi + httpx + supabase,
+  # with none of the pandas/numpy weight that forces the backend up to 1GB.
+  memory = '512mb'
+  cpus = 1

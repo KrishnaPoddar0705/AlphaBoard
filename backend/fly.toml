@@ -1,0 +1,69 @@
+# AlphaBoard backend — Fly.io
+#
+# Replaces the Render web service "AlphaBoard_Backend" (srv-d4mvrpvpm1nc73d9jpvg),
+# whose settings lived only in the Render dashboard. Everything is in git now.
+#
+# Deploy:  fly deploy --config fly.toml   (run from backend/)
+
+app = 'alphaboard-backend'
+# Singapore. Mumbai (bom) was the first choice on latency, but Fly had no
+# capacity there ("no capacity available in bom") — it is one of Fly's smaller
+# regions and frequently cannot allocate. sin is the nearest large region and
+# adds roughly 30-40ms for India-based users.
+#
+# Keep this in the same region as the WhatsApp bot: the two apps talk over Fly's
+# private network, and splitting them across regions turns an intra-datacenter
+# hop into a cross-region one.
+primary_region = 'sin'
+
+[build]
+
+[env]
+  PORT = '8000'
+  # Fly injects FLY_REGION/FLY_APP_NAME automatically; nothing else belongs here.
+  # Every credential goes through `fly secrets set` — see FLY_DEPLOYMENT.md.
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  processes = ['app']
+
+  # ---------------------------------------------------------------------------
+  # DO NOT enable auto-stop on this service.
+  #
+  # app/main.py:53 starts a BackgroundScheduler with two CronTrigger jobs at
+  # 10:00 UTC (main.py:3173-3186): the daily price update and the performance
+  # cache refresh. A stopped machine has no running process, so a stopped
+  # machine silently skips both jobs — with no error anywhere, because nothing
+  # was alive to fail. Traffic is quiet at 10:00 UTC, which is exactly when
+  # auto-stop would have kicked in.
+  #
+  # This is the single most important line in this file.
+  # ---------------------------------------------------------------------------
+  auto_stop_machines = 'off'
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type = 'requests'
+    soft_limit = 200
+    hard_limit = 250
+
+  # Fly checks /health rather than /, because / at main.py:78 is a real route
+  # and we do not want the health checker exercising application code every 30s.
+  [[http_service.checks]]
+    method = 'GET'
+    path = '/health'
+    interval = '30s'
+    timeout = '5s'
+    # yfinance/pandas/numpy imports make first boot slow; 20s avoids a restart
+    # loop where Fly kills the machine before the app finishes importing.
+    grace_period = '20s'
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  # 1GB, not the 512MB default. pandas + numpy + yfinance resident in one
+  # process, plus DataFrame allocations during the performance calculations in
+  # performance.py, will OOM a 512MB machine under real load.
+  memory = '1gb'
+  cpus = 1

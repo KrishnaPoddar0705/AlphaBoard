@@ -59,6 +59,11 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://www.alphaboard.theunicornlabs.com",
+        "https://alphaboard.theunicornlabs.com",
+        # Cloudflare Pages production alias (frontend host after the Render migration)
+        "https://alphaboard.pages.dev",
+        # Render origins, kept alive only for the parallel-running window during
+        # the Fly cutover. Remove once the Render services are deleted.
         "https://alphaboard.onrender.com",
         "http://localhost:5173",
         "http://localhost:5174",
@@ -68,6 +73,10 @@ app.add_middleware(
         "http://127.0.0.1:5174",
         "http://127.0.0.1:5175",
     ],
+    # Cloudflare Pages gives every branch and every commit its own preview
+    # hostname (<hash>.alphaboard.pages.dev), so preview builds cannot be
+    # enumerated in a static list the way Render's single URL could.
+    allow_origin_regex=r"https://[a-z0-9-]+\.alphaboard\.pages\.dev",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
@@ -77,6 +86,17 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "Analyst Leaderboard API"}
+
+
+@app.get("/health")
+def health():
+    """Liveness probe for the Fly.io health check.
+
+    Deliberately does no work — no database call, no market data lookup. Fly
+    polls this every 30s, and a health check that touched Supabase would turn a
+    transient database blip into a machine restart.
+    """
+    return {"status": "healthy"}
 
 @app.get("/market/search")
 def search_market(q: str):

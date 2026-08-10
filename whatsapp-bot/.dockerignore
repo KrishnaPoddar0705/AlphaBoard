@@ -1,0 +1,25 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Secrets — these arrive via `fly secrets`, never baked into the image
+.env
+.env.*
+!env.example
+
+# Tests and local dev helpers
+tests/
+test_*.py
+pytest.ini
+.pytest_cache/
+start.sh
+
+# Docs
+*.md
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/

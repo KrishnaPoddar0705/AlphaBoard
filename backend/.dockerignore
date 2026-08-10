@@ -1,0 +1,27 @@
+# Local virtualenv — never ship this, it is macOS-native and ~hundreds of MB
+venv/
+.venv/
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Secrets — these arrive via `fly secrets`, never baked into the image
+.env
+.env.*
+!.env.example
+
+# Tests and local dev scripts
+tests/
+pytest.ini
+.pytest_cache/
+
+# Stray nested frontend copy
+frontend/
+
+# Editor / OS noise
+.DS_Store
+*.swp
+.idea/
+.vscode/

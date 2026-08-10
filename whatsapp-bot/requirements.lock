@@ -1,0 +1,139 @@
+# Pinned production dependencies for the Fly.io image.
+#
+# Regenerate after editing requirements.txt:
+#   grep -v -i 'pytest\|# Testing' requirements.txt > /tmp/prod-reqs.txt
+#   uv pip compile /tmp/prod-reqs.txt --python-version 3.13 \
+#       --python-platform x86_64-unknown-linux-gnu --output-file requirements.lock
+#
+# The pytest/pytest-asyncio entries in requirements.txt are stripped on
+# purpose: test frameworks have no business in a production image.
+annotated-doc==0.0.5
+    # via fastapi
+annotated-types==0.8.0
+    # via pydantic
+anyio==4.14.2
+    # via
+    #   httpx
+    #   starlette
+    #   watchfiles
+certifi==2026.7.22
+    # via
+    #   httpcore
+    #   httpx
+cffi==2.1.1
+    # via cryptography
+click==8.4.2
+    # via uvicorn
+cryptography==50.0.0
+    # via pyjwt
+deprecation==2.1.0
+    # via
+    #   postgrest
+    #   storage3
+fastapi==0.141.1
+    # via -r /private/tmp/claude-504/-Users-krishna-poddar-leaderboard/80e6afb0-fe70-4b84-904f-e768a762e0a9/scratchpad/wa-prod-reqs.txt
+h11==0.16.0
+    # via
+    #   httpcore
+    #   uvicorn
+h2==4.4.1
+    # via httpx
+hpack==4.2.0
+    # via h2
+httpcore==1.0.9
+    # via httpx
+httptools==0.8.0
+    # via uvicorn
+httpx==0.28.1
+    # via
+    #   -r /private/tmp/claude-504/-Users-krishna-poddar-leaderboard/80e6afb0-fe70-4b84-904f-e768a762e0a9/scratchpad/wa-prod-reqs.txt
+    #   postgrest
+    #   storage3
+    #   supabase
+    #   supabase-auth
+    #   supabase-functions
+hyperframe==6.1.0
+    # via h2
+idna==3.18
+    # via
+    #   anyio
+    #   httpx
+    #   yarl
+multidict==6.7.1
+    # via yarl
+packaging==26.3
+    # via deprecation
+postgrest==2.31.0
+    # via supabase
+propcache==0.5.2
+    # via yarl
+pycparser==3.0
+    # via cffi
+pydantic==2.13.4
+    # via
+    #   -r /private/tmp/claude-504/-Users-krishna-poddar-leaderboard/80e6afb0-fe70-4b84-904f-e768a762e0a9/scratchpad/wa-prod-reqs.txt
+    #   fastapi
+    #   postgrest
+    #   pydantic-settings
+    #   realtime
+    #   storage3
+    #   supabase-auth
+pydantic-core==2.46.4
+    # via pydantic
+pydantic-settings==2.15.0
+    # via -r /private/tmp/claude-504/-Users-krishna-poddar-leaderboard/80e6afb0-fe70-4b84-904f-e768a762e0a9/scratchpad/wa-prod-reqs.txt
+pyjwt==2.13.0
+    # via supabase-auth
+python-dateutil==2.9.0.post0
+    # via -r /private/tmp/claude-504/-Users-krishna-poddar-leaderboard/80e6afb0-fe70-4b84-904f-e768a762e0a9/scratchpad/wa-prod-reqs.txt
+python-dotenv==1.2.2
+    # via
+    #   -r /private/tmp/claude-504/-Users-krishna-poddar-leaderboard/80e6afb0-fe70-4b84-904f-e768a762e0a9/scratchpad/wa-prod-reqs.txt
+    #   pydantic-settings
+    #   uvicorn
+pyyaml==6.0.3
+    # via uvicorn
+realtime==2.31.0
+    # via supabase
+six==1.17.0
+    # via python-dateutil
+starlette==1.6.0
+    # via fastapi
+storage3==2.31.0
+    # via supabase
+strenum==0.4.15
+    # via supabase-functions
+supabase==2.31.0
+    # via -r /private/tmp/claude-504/-Users-krishna-poddar-leaderboard/80e6afb0-fe70-4b84-904f-e768a762e0a9/scratchpad/wa-prod-reqs.txt
+supabase-auth==2.31.0
+    # via supabase
+supabase-functions==2.31.0
+    # via supabase
+typing-extensions==4.16.0
+    # via
+    #   fastapi
+    #   pydantic
+    #   pydantic-core
+    #   realtime
+    #   typing-inspection
+typing-inspection==0.4.3
+    # via
+    #   fastapi
+    #   pydantic
+    #   pydantic-settings
+uvicorn==0.52.1
+    # via -r /private/tmp/claude-504/-Users-krishna-poddar-leaderboard/80e6afb0-fe70-4b84-904f-e768a762e0a9/scratchpad/wa-prod-reqs.txt
+uvloop==0.22.1
+    # via uvicorn
+watchfiles==1.2.0
+    # via uvicorn
+websockets==15.0.1
+    # via
+    #   realtime
+    #   uvicorn
+yarl==1.24.5
+    # via
+    #   postgrest
+    #   storage3
+    #   supabase
+    #   supabase-functions
