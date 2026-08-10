@@ -12,7 +12,41 @@ import ErrorBoundary from './components/ErrorBoundary'
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!PUBLISHABLE_KEY) {
-  throw new Error('Missing Clerk Publishable Key')
+  throw new Error(
+    'Missing Clerk Publishable Key: VITE_CLERK_PUBLISHABLE_KEY was not set at ' +
+    'build time. Vite inlines VITE_* variables during `npm run build`, so it ' +
+    'must exist in the build environment (Cloudflare Pages > Settings > ' +
+    'Environment variables) before the build runs, and the site must be ' +
+    'redeployed afterwards.'
+  )
+}
+
+// A publishable key starts with pk_. A key starting with sk_ is the SECRET key,
+// which authenticates against the Clerk Backend API: it can list every user
+// with their email, create and delete users, and mint sessions for any account.
+//
+// This is not hypothetical — VITE_CLERK_PUBLISHABLE_KEY was once set to an
+// sk_live_ value, and because Vite inlines these variables into the JS bundle,
+// the production secret key was served publicly to every visitor until it was
+// rotated. Clerk itself rejects the key (throwInvalidPublishableKeyError), but
+// only after the bundle has already shipped and been downloaded.
+//
+// Fail the build-time-configured value loudly instead, and never interpolate
+// the key into the message.
+if (PUBLISHABLE_KEY.startsWith('sk_')) {
+  throw new Error(
+    'VITE_CLERK_PUBLISHABLE_KEY is set to a Clerk SECRET key (sk_...). ' +
+    'Secret keys must never reach the frontend — Vite inlines this value into ' +
+    'the public JS bundle. Rotate that key in the Clerk dashboard immediately, ' +
+    'then set VITE_CLERK_PUBLISHABLE_KEY to the publishable key (pk_...).'
+  )
+}
+
+if (!PUBLISHABLE_KEY.startsWith('pk_')) {
+  throw new Error(
+    'VITE_CLERK_PUBLISHABLE_KEY does not look like a Clerk publishable key ' +
+    '(expected it to start with "pk_").'
+  )
 }
 
 // Create a QueryClient instance

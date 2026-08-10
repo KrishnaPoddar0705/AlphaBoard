@@ -292,6 +292,21 @@ hostname is allowlisted:
    | Production | `pk_live_...` |
    | Preview | `pk_test_...` (development instance) |
 
+   **`pk_`, never `sk_`.** Clerk issues both a publishable key (`pk_`) and a
+   secret key (`sk_`) per instance, and they differ by two characters. Every
+   `VITE_*` variable is inlined into the public JS bundle, so putting the
+   secret key here publishes full Clerk Backend API access — listing every
+   user's email, deleting users, minting sessions for any account — to every
+   visitor. It has happened on this project: `VITE_CLERK_PUBLISHABLE_KEY` was
+   set to an `sk_live_` value, the build went green, the deploy succeeded, and
+   the only visible symptom was a generic "Something went wrong" page, because
+   Clerk rejects the malformed key *after* the bundle has already shipped.
+
+   `frontend/vite.config.ts` now refuses to build when a `VITE_*` variable
+   starts with a secret-shaped prefix, so this fails in CI rather than in
+   production. If that check ever fires on a real credential, rotate the
+   credential — do not just correct the variable.
+
 4. **Update `CLERK_SECRET_KEY` for the edge functions.** It is not only a
    frontend concern — `supabase/functions/create-organization/index.ts` and
    `join-organization/index.ts` both call the Clerk Backend API with it.
