@@ -13,8 +13,12 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Get backend API URL from environment or use default
-const BACKEND_API_URL = Deno.env.get('BACKEND_API_URL') || 'https://alphaboard-backend.onrender.com'
+// Get backend API URL from environment or use default.
+//
+// This runs on Supabase's edge runtime, outside Fly's private network, so it
+// must use the public hostname — `.internal` addresses are only reachable from
+// other machines in the Fly organization.
+const BACKEND_API_URL = Deno.env.get('BACKEND_API_URL') || 'https://alphaboard-backend.fly.dev'
 
 interface EmailResult {
     success: boolean;

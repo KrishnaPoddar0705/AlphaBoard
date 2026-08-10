@@ -10,8 +10,13 @@
 export const ALLOWED_ORIGINS = [
   // Production domains
   'https://www.alphaboard.theunicornlabs.com',
+  'https://alphaboard.theunicornlabs.com',
+  // Cloudflare Pages alias (frontend host after the Render migration)
+  'https://alphaboard.pages.dev',
+  // Render origin, retained only while the old deployment runs in parallel
+  // during the Fly/Pages cutover. Remove once Render is torn down.
   'https://alphaboard.onrender.com',
-  
+
   // Development domains
   'http://localhost:5173',
   'http://localhost:3000',

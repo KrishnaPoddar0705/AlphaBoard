@@ -122,6 +122,10 @@ async function main() {
         // Update allowed origins
         const originsToAdd = [
             CUSTOM_DOMAIN_URL,
+            // Cloudflare Pages alias for the frontend
+            'https://alphaboard.pages.dev',
+            // Render origin, retained only for the parallel-running window
+            // during the Fly/Pages cutover. Remove once Render is torn down.
             'https://alphaboard.onrender.com',
             'http://localhost:5173',
             'http://localhost:3000',

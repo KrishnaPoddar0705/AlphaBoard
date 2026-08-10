@@ -21,7 +21,7 @@ interface VerifyResponse {
 }
 
 // API base URL for WhatsApp bot
-const WHATSAPP_BOT_API = import.meta.env.VITE_WHATSAPP_BOT_API_URL || 'https://alphaboard-whatsapp-bot.onrender.com';
+const WHATSAPP_BOT_API = import.meta.env.VITE_WHATSAPP_BOT_API_URL || 'https://alphaboard-whatsapp-bot.fly.dev';
 
 export function WhatsAppConnect() {
   const { userId } = useAuth();

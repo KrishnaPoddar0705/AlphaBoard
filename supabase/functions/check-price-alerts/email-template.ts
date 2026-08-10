@@ -20,7 +20,11 @@ export function generateEmailHTML(data: AlertEmailData): string {
     const priceColor = priceChange >= 0 ? '#10b981' : '#ef4444';
     const arrow = priceChange >= 0 ? '↑' : '↓';
     
-    const appLink = appUrl || 'https://alphaboard.onrender.com';
+    // Fall back to the custom domain rather than the hosting platform's URL.
+    // These links go out in alert emails and outlive any migration; pointing
+    // them at onrender.com/pages.dev means old emails break the next time the
+    // frontend moves.
+    const appLink = appUrl || 'https://www.alphaboard.theunicornlabs.com';
     
     return `
 <!DOCTYPE html>
@@ -241,7 +245,7 @@ Change: ₹${Math.abs(priceChange).toFixed(2)} (${priceChangePercent >= 0 ? '+' 
 
 The price has ${isBuy ? 'dropped to' : 'risen to'} your ${alertType} alert level.
 
-View stock details: https://alphaboard.onrender.com
+View stock details: https://www.alphaboard.theunicornlabs.com
     `.trim();
 }
 

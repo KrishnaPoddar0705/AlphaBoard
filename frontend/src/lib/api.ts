@@ -1,9 +1,13 @@
 import axios from 'axios';
 
-// Use environment variable if set, otherwise determine based on mode
+// Use environment variable if set, otherwise determine based on mode.
+//
+// VITE_API_URL is baked in at build time by Vite, so it must be set as a
+// Cloudflare Pages *build* environment variable, not a runtime one. The
+// production fallback below is the safety net for a build where it is missing.
 const API_URL = import.meta.env.VITE_API_URL ||
     (import.meta.env.PROD
-        ? 'https://alphaboard-backend.onrender.com'
+        ? 'https://alphaboard-backend.fly.dev'
         : 'http://127.0.0.1:8000');
 
 export const api = axios.create({
