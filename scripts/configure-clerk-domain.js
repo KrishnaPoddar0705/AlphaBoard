@@ -5,7 +5,13 @@
  * https://www.alphaboard.theunicornlabs.com/
  */
 
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || 'sk_test_EHpe511kz1FsEe0VIMeIyG2t4QsbTdCDw9pyB1mhFc';
+// Never hardcode a fallback here — see the note in add-domain-clerk.js.
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
+if (!CLERK_SECRET_KEY) {
+  console.error('CLERK_SECRET_KEY is not set. Export it before running:');
+  console.error('  export CLERK_SECRET_KEY=sk_...');
+  process.exit(1);
+}
 const CLERK_API_URL = 'https://api.clerk.com/v1';
 
 // Instance ID from the Clerk Dashboard URL

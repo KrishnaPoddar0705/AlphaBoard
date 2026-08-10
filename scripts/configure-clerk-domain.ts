@@ -10,10 +10,17 @@ import * as dotenv from 'dotenv';
 // Load environment variables
 dotenv.config();
 
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || 'sk_test_EHpe511kz1FsEe0VIMeIyG2t4QsbTdCDw9pyB1mhFc';
+// Never hardcode a fallback here — see the note in add-domain-clerk.js.
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
+if (!CLERK_SECRET_KEY) {
+    console.error('CLERK_SECRET_KEY is not set. Export it before running:');
+    console.error('  export CLERK_SECRET_KEY=sk_...');
+    process.exit(1);
+}
 const CLERK_API_URL = 'https://api.clerk.com/v1';
 
-const CUSTOM_DOMAIN = 'www.alphaboard.theunicornlabs.com';
+// Override with: npx tsx scripts/configure-clerk-domain.ts alphaboard.theunicornlabs.com
+const CUSTOM_DOMAIN = process.argv[2] || 'alphaboard.theunicornlabs.com';
 const CUSTOM_DOMAIN_URL = `https://${CUSTOM_DOMAIN}`;
 
 interface ClerkInstance {
@@ -120,15 +127,24 @@ async function main() {
         console.log(`✅ Found instance: ${instanceId}\n`);
 
         // Update allowed origins
+        // On a PRODUCTION Clerk instance, only origins on the instance's own
+        // registrable domain are accepted. Clerk rejects anything else before
+        // consulting this list at all:
+        //
+        //   alphaboard.pages.dev  -> origin_invalid
+        //     "The Request HTTP Origin header must be equal to or a subdomain
+        //      of the requesting URL."
+        //
+        // So pages.dev and localhost belong on the DEVELOPMENT instance, which
+        // accepts any origin, and must not be added here — listing them looks
+        // like it works and then silently does nothing.
+        //
+        // Cloudflare Pages preview deployments are always *.pages.dev, which is
+        // why Preview must be configured with the pk_test_ key and Production
+        // with pk_live_.
         const originsToAdd = [
             CUSTOM_DOMAIN_URL,
-            // Cloudflare Pages alias for the frontend
-            'https://alphaboard.pages.dev',
-            // Render origin, retained only for the parallel-running window
-            // during the Fly/Pages cutover. Remove once Render is torn down.
-            'https://alphaboard.onrender.com',
-            'http://localhost:5173',
-            'http://localhost:3000',
+            `https://www.${CUSTOM_DOMAIN}`,
         ];
 
         await updateAllowedOrigins(instanceId, originsToAdd);

@@ -225,15 +225,108 @@ four are outside the repo and are the easiest to forget:
    works from anywhere, so a failed deploy after a successful secrets set does
    not need the secret re-applied.
 
-3. **Clerk allowed origins** — add the Pages origin
-   (`https://alphaboard.pages.dev`) plus your custom domain. Either run
-   `scripts/configure-clerk-domain.ts`, which now includes it, or add it in the
-   Clerk dashboard.
+3. **Clerk and the custom domain** — these are one task, not two. See the
+   dedicated section below.
 
-4. **Custom domain** — in Pages → Custom domains, add
-   `alphaboard.theunicornlabs.com` and `www.alphaboard.theunicornlabs.com`, then
-   update the DNS records away from Render. **Do this last**, after Step 5
-   passes.
+---
+
+## Step 4b — Clerk production and the custom domain
+
+**Read this before setting a `pk_live_` key.** Doing it in the wrong order takes
+sign-in down completely, with no error on screen.
+
+### Why the order matters
+
+A Clerk **development** instance accepts any origin — `localhost`,
+`*.pages.dev`, anything. A **production** instance accepts only its own
+registrable domain. Point a `pk_live_` key at `alphaboard.pages.dev` and Clerk
+answers:
+
+```json
+{"code": "origin_invalid",
+ "long_message": "The Request HTTP Origin header must be equal to or a
+                  subdomain of the requesting URL."}
+```
+
+The app does not show an error. `PrivateRoute` (`frontend/src/App.tsx:30-46`)
+checks `isLoaded` before it checks `user`, so a Clerk that never initialises
+leaves every private route rendering `Loading...` forever, and `<InlineLogin />`
+on line 42 is never reached. The symptom is "the sign-in button disappeared".
+
+A second, distinct rejection applies even on the right domain until the exact
+hostname is allowlisted:
+
+```json
+{"code": "subdomain_not_allowed",
+ "long_message": "The request origin subdomain is not in the allowed
+                  subdomains list."}
+```
+
+### Correct order
+
+1. **Add the custom domain in Pages first.** Pages → the project → Custom
+   domains → add `alphaboard.theunicornlabs.com` (and optionally the `www.`
+   form). `theunicornlabs.com` is already on Cloudflare, so the DNS record is
+   created for you. Confirm before continuing:
+   ```bash
+   dig +short alphaboard.theunicornlabs.com     # must return records
+   curl -sI https://alphaboard.theunicornlabs.com | head -1
+   ```
+
+2. **Allowlist that exact hostname in Clerk**, or `subdomain_not_allowed`
+   blocks it:
+   ```bash
+   export CLERK_SECRET_KEY=sk_live_...          # PRODUCTION secret key
+   npx tsx scripts/configure-clerk-domain.ts alphaboard.theunicornlabs.com
+   ```
+   The script merges into the existing `frontend_api.allowed_origins` rather
+   than replacing it. Do not add `*.pages.dev` or `localhost` — a production
+   instance rejects those before consulting the list, so they appear to be
+   configured and silently do nothing.
+
+3. **Split the keys by environment.** Preview deployments are always
+   `*.pages.dev` and can never work with a production key:
+
+   | Pages environment | `VITE_CLERK_PUBLISHABLE_KEY` |
+   |---|---|
+   | Production | `pk_live_...` |
+   | Preview | `pk_test_...` (development instance) |
+
+4. **Update `CLERK_SECRET_KEY` for the edge functions.** It is not only a
+   frontend concern — `supabase/functions/create-organization/index.ts` and
+   `join-organization/index.ts` both call the Clerk Backend API with it.
+   Organization create/join breaks if it still holds the development key:
+   ```bash
+   supabase secrets set CLERK_SECRET_KEY=sk_live_...
+   supabase functions deploy create-organization
+   supabase functions deploy join-organization
+   ```
+
+5. **Remap the users.** Development and production instances have separate user
+   pools, so every existing user receives a new Clerk ID on first production
+   sign-in — matching nothing in `public.clerk_user_mapping`, which the backend
+   resolves every request through. Their data becomes unreachable until:
+   ```bash
+   export CLERK_PROD_SECRET_KEY=sk_live_...
+   export SUPABASE_URL=... SUPABASE_SERVICE_KEY=...
+
+   npx tsx scripts/remap-clerk-mapping-to-prod.ts            # dry run
+   npx tsx scripts/remap-clerk-mapping-to-prod.ts --apply
+   ```
+   Run it after users have signed in to production at least once; anyone who
+   has not is reported as unmatched. It is idempotent, backs the table up
+   before writing, and refuses to run against a non-`sk_live_` key.
+
+### Verify
+
+```bash
+curl -s "https://clerk.theunicornlabs.com/v1/client?__clerk_api_version=2021-02-05" \
+  -X POST -H "Origin: https://alphaboard.theunicornlabs.com"
+```
+
+Anything mentioning `origin_invalid` or `subdomain_not_allowed` means step 1 or
+2 is incomplete. Then load a private route (`/recommendations`) and confirm it
+resolves to either content or a sign-in form — never a stuck `Loading...`.
 
 ---
 

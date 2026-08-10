@@ -6,7 +6,16 @@
 
 const { Clerk } = require('@clerk/backend');
 
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || 'sk_test_EHpe511kz1FsEe0VIMeIyG2t4QsbTdCDw9pyB1mhFc';
+// Never hardcode a fallback here. A Clerk sk_* key authenticates against the
+// Backend API — it can list every user with their email, create and delete
+// users, and mint sessions. This file previously carried a real development
+// secret key as a default, in a public repository.
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
+if (!CLERK_SECRET_KEY) {
+  console.error('CLERK_SECRET_KEY is not set. Export it before running:');
+  console.error('  export CLERK_SECRET_KEY=sk_...');
+  process.exit(1);
+}
 const DOMAIN_NAME = 'www.alphaboard.theunicornlabs.com';
 
 const clerk = new Clerk({ 

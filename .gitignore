@@ -48,3 +48,7 @@ ios/App/build/
 *.xcuserstate
 xcuserdata/
 
+
+# Backups written by scripts/remap-clerk-mapping-to-prod.ts — contain user
+# emails and Clerk IDs. Keep them local.
+scripts/backups/
