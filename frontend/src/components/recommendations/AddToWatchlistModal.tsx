@@ -25,7 +25,7 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
   const [currentPrice, setCurrentPrice] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedMarket, setSelectedMarket] = useState<'US' | 'IN'>('US')
+  const [selectedMarket, setSelectedMarket] = useState<'US' | 'IN'>('IN')
 
   useEffect(() => {
     if (!open) {

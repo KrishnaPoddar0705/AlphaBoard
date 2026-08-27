@@ -33,7 +33,7 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [selectedMarket, setSelectedMarket] = useState<'US' | 'IN'>('US')
+  const [selectedMarket, setSelectedMarket] = useState<'US' | 'IN'>('IN')
   
   // Paper trading fields
   const [quantity, setQuantity] = useState('')

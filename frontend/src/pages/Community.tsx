@@ -47,7 +47,7 @@ export default function Community() {
   const queryClient = useQueryClient()
 
   const [sortBy, setSortBy] = React.useState<SortOption>('all')
-  const [country, setCountry] = React.useState<'USA' | 'India'>('USA')
+  const [country, setCountry] = React.useState<'USA' | 'India'>('India')
   const [searchResults, setSearchResults] = React.useState<string[]>([])
   const [showAddStockDialog, setShowAddStockDialog] = React.useState(false)
   const [newStockTicker, setNewStockTicker] = React.useState('')
