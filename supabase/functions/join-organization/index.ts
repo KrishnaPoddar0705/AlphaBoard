@@ -8,6 +8,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 // @ts-ignore - Deno runtime URL imports (Supabase Edge Functions run in Deno, not Node.js)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 import { addClerkOrganizationMember, clerkInstanceKind } from '../_shared/clerk.ts'
+import { resolveSupabaseUserForClerkUser } from '../_shared/user-sync.ts'
 
 // Declare Deno global for TypeScript (Supabase Edge Functions run in Deno runtime)
 // @ts-ignore - Deno is available at runtime but TypeScript doesn't recognize it
@@ -73,129 +74,35 @@ serve(async (req) => {
     let finalUserId: string | null = null
     if (clerkUserId) {
       console.log(`Looking up Supabase user for Clerk user: ${clerkUserId}`)
-      const { data: mapping, error: mappingError } = await supabaseAdmin
-        .from('clerk_user_mapping')
-        .select('supabase_user_id')
-        .eq('clerk_user_id', clerkUserId)
-        .maybeSingle()
 
-      if (!mappingError && mapping?.supabase_user_id) {
-        finalUserId = mapping.supabase_user_id
-        console.log(`Found Supabase user ID: ${finalUserId} for Clerk user: ${clerkUserId}`)
-      } else {
-        // No mapping found - try to auto-sync by fetching Clerk user info
-        console.log(`No mapping found for Clerk user ${clerkUserId}, attempting auto-sync...`)
-
-        try {
-          const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY')
-          if (!clerkSecretKey) {
-            return new Response(
-              JSON.stringify({
-                error: 'Server configuration error',
-                details: 'CLERK_SECRET_KEY not configured. Please contact support.'
-              }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-
-          // Fetch Clerk user info to get email
-          const clerkApiUrl = 'https://api.clerk.com/v1'
-          const clerkUserResponse = await fetch(`${clerkApiUrl}/users/${clerkUserId}`, {
-            headers: {
-              'Authorization': `Bearer ${clerkSecretKey}`,
-            },
-          })
-
-          if (!clerkUserResponse.ok) {
-            const errorText = await clerkUserResponse.text()
-            console.error('Failed to fetch Clerk user:', errorText)
-            return new Response(
-              JSON.stringify({
-                error: 'Failed to fetch user from Clerk',
-                details: `Clerk API error: ${clerkUserResponse.status}`
-              }),
-              { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-
-          const clerkUser = await clerkUserResponse.json()
-          const email = clerkUser.email_addresses?.[0]?.email_address
-
-          if (!email) {
-            return new Response(
-              JSON.stringify({
-                error: 'Invalid Clerk user',
-                details: 'Clerk user has no email address'
-              }),
-              { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-
-          // Create Supabase user directly (same logic as sync-clerk-user)
-          const userMetadata: Record<string, any> = {}
-          if (clerkUser.username) userMetadata.username = clerkUser.username
-          if (clerkUser.first_name) userMetadata.first_name = clerkUser.first_name
-          if (clerkUser.last_name) userMetadata.last_name = clerkUser.last_name
-          userMetadata.clerk_user_id = clerkUserId
-
-          const { data: newUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
-            email: email,
-            email_confirm: true,
-            user_metadata: userMetadata,
-          })
-
-          if (createUserError || !newUser?.user) {
-            console.error('Failed to create Supabase user:', createUserError)
-            return new Response(
-              JSON.stringify({
-                error: 'Failed to create user',
-                details: createUserError?.message || 'Unknown error'
-              }),
-              { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-          }
-
-          finalUserId = newUser.user.id
-          console.log(`Created Supabase user ${finalUserId}`)
-
-          // Create mapping
-          await supabaseAdmin
-            .from('clerk_user_mapping')
-            .insert({
-              clerk_user_id: clerkUserId,
-              supabase_user_id: finalUserId,
-              email: email,
-            })
-            .catch(err => console.warn('Failed to create mapping:', err))
-
-          // Create profile
-          await supabaseAdmin
-            .from('profiles')
-            .insert({
-              id: finalUserId,
-              username: clerkUser.username || clerkUser.first_name || email.split('@')[0],
-              role: 'analyst',
-            })
-            .catch(err => console.warn('Failed to create profile:', err))
-
-          // Create performance record
-          await supabaseAdmin
-            .from('performance')
-            .insert({ user_id: finalUserId })
-            .catch(err => console.warn('Failed to create performance record:', err))
-
-          console.log(`Auto-synced Clerk user ${clerkUserId} to Supabase user ${finalUserId}`)
-        } catch (syncError) {
-          console.error('Error during auto-sync:', syncError)
-          return new Response(
-            JSON.stringify({
-              error: 'Sync failed',
-              details: syncError instanceof Error ? syncError.message : String(syncError)
-            }),
-            { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          )
-        }
+      const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY')
+      if (!clerkSecretKey) {
+        return new Response(
+          JSON.stringify({
+            error: 'Server configuration error',
+            details: 'CLERK_SECRET_KEY not configured. Please contact support.'
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
       }
+
+      // Resolves the mapping: creates the Supabase account for a genuinely new
+      // user, or re-links a returning user whose Clerk ID was reissued when the
+      // app moved to the production Clerk instance. The previous inline version
+      // called auth.admin.createUser unconditionally, which failed on the unique
+      // email for every returning user and surfaced as "Failed to create user".
+      const sync = await resolveSupabaseUserForClerkUser(supabaseAdmin, clerkSecretKey, clerkUserId)
+
+      if (!sync.userId) {
+        console.error(`Could not resolve Supabase user for ${clerkUserId}: ${sync.error} - ${sync.details}`)
+        return new Response(
+          JSON.stringify({ error: sync.error, details: sync.details }),
+          { status: sync.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+
+      finalUserId = sync.userId
+      console.log(`Resolved Clerk user ${clerkUserId} to Supabase user ${finalUserId}`)
     } else if (token) {
       // Fallback to JWT token if no Clerk user ID provided
       // Decode JWT token to get user ID

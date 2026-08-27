@@ -104,6 +104,18 @@ export function createClerkOrganization(
     })
 }
 
+/**
+ * Resolves ok:true when the user exists in the *current* Clerk instance.
+ * A 404 for an ID stored in clerk_user_mapping means that ID was issued by a
+ * different instance (development), i.e. the mapping row is stale.
+ */
+export function getClerkUser(
+    secretKey: string,
+    clerkUserId: string,
+): Promise<ClerkResult<{ id: string; email_addresses?: Array<{ email_address: string }> }>> {
+    return clerkFetch(secretKey, `/users/${clerkUserId}`, { method: 'GET' })
+}
+
 /** Resolves ok:true when the organization exists in the *current* instance. */
 export function getClerkOrganization(
     secretKey: string,

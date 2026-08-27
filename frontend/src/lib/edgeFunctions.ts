@@ -327,8 +327,12 @@ export async function joinOrganization(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || error.details || 'Failed to join organization');
+    const error = await response.json().catch(() => ({}));
+    // Include details: the server's `error` is a short label ("Failed to create
+    // user") and the actionable cause lives in `details`. Preferring one over
+    // the other threw the diagnosis away.
+    const message = [error.error, error.details].filter(Boolean).join(' — ');
+    throw new Error(message || 'Failed to join organization');
   }
 
   return response.json();
