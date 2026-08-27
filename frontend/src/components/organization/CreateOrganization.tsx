@@ -4,6 +4,7 @@ import { useUser } from '@clerk/clerk-react';
 import { createOrganization } from '../../lib/edgeFunctions';
 import { supabase } from '../../lib/supabase';
 import { Copy, Check, ArrowLeft } from 'lucide-react';
+import { safeWarn } from '../../lib/logger';
 
 export default function CreateOrganization() {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
@@ -15,6 +16,7 @@ export default function CreateOrganization() {
   const [joinCode, setJoinCode] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [checkingOrg, setCheckingOrg] = useState(true);
+  const [clerkSyncWarning, setClerkSyncWarning] = useState<string | null>(null);
 
   // Check if user is already part of an organization
   useEffect(() => {
@@ -86,6 +88,12 @@ export default function CreateOrganization() {
         undefined, // adminUserId - will be set by edge function
         clerkUser.id // clerkUserId - used to look up Supabase user
       );
+      if (result.clerkSyncError) {
+        // The AlphaBoard organization is usable, but members joining by code
+        // will not be attached to a Clerk organization until this is resolved.
+        safeWarn('Organization created without Clerk sync:', result.clerkSyncError);
+        setClerkSyncWarning(result.clerkSyncError);
+      }
       setJoinCode(result.joinCode);
       setSuccess(true);
     } catch (err: any) {
@@ -159,6 +167,18 @@ export default function CreateOrganization() {
               Share this code with analysts to invite them to your organization.
             </p>
           </div>
+
+          {clerkSyncWarning && (
+            <div className="rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
+              <p className="text-sm font-medium text-amber-500">
+                Your organization was created, but it was not mirrored to Clerk.
+              </p>
+              <p className="mt-1 text-xs text-amber-500/80">
+                Members who join with this code will not appear in the Clerk organization until
+                this is fixed. Details: {clerkSyncWarning}
+              </p>
+            </div>
+          )}
 
           <div className="space-y-3">
             <button

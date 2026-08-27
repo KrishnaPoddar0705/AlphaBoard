@@ -5,6 +5,7 @@ import { supabase } from '../../lib/supabase';
 import { getVisibleRecommendations, updateMemberRole } from '../../lib/edgeFunctions';
 import { useTeams } from '../../hooks/useTeams';
 import TeamSelector from './TeamSelector';
+import DeleteOrganizationDialog from './DeleteOrganizationDialog';
 import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon, Shield, ShieldOff, Download } from 'lucide-react';
 import { safeLog, safeWarn, safeError } from '../../lib/logger';
 import { getUserFriendlyError } from '../../lib/errorSanitizer';
@@ -1281,6 +1282,22 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Danger Zone */}
+        {organizationId && organizationName && (
+          <div className="mt-6 rounded-lg border border-red-500/30 bg-red-500/5 p-4 sm:p-6">
+            <h2 className="text-xl font-bold text-red-600">Danger Zone</h2>
+            <p className="mt-1 mb-4 text-sm text-[var(--text-secondary)]">
+              Deleting the organization removes every member and cannot be undone.
+            </p>
+            <DeleteOrganizationDialog
+              organizationId={organizationId}
+              organizationName={organizationName}
+              memberCount={users.length}
+              onDeleted={() => navigate('/')}
+            />
+          </div>
+        )}
 
         {/* Export Performance Modal */}
         <Dialog open={showExportModal} onOpenChange={setShowExportModal}>

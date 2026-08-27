@@ -4,6 +4,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { clerkInstanceKind, createClerkOrganization } from '../_shared/clerk.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -375,44 +376,45 @@ serve(async (req) => {
 
         console.log(`Successfully created organization ${organization.id} for user ${adminId}`)
 
-        // Create organization in Clerk if Clerk user ID is provided
+        // Mirror the organization into Clerk. This is best-effort: the AlphaBoard
+        // organization already exists and identity is resolved through
+        // clerk_user_mapping, so a Clerk failure must not fail the request. It
+        // must, however, be reported — clerkSyncError is returned to the caller.
         let clerkOrgId: string | null = null
-        if (clerkUserId) {
-            try {
-                const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY')
-                if (clerkSecretKey) {
-                    const clerkApiUrl = 'https://api.clerk.com/v1'
-                    const createOrgResponse = await fetch(`${clerkApiUrl}/organizations`, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${clerkSecretKey}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            name: name.trim(),
-                            created_by: clerkUserId,
-                        }),
-                    })
+        let clerkSyncError: string | null = null
 
-                    if (createOrgResponse.ok) {
-                        const clerkOrg = await createOrgResponse.json()
-                        clerkOrgId = clerkOrg.id
-                        console.log(`Created Clerk organization ${clerkOrgId} for Supabase org ${organization.id}`)
-                        
-                        // Store Clerk org ID in Supabase (add to organizations table if column exists)
-                        await supabaseAdmin
-                            .from('organizations')
-                            .update({ clerk_org_id: clerkOrgId })
-                            .eq('id', organization.id)
-                            .catch(err => console.warn('Could not update clerk_org_id:', err))
-                    } else {
-                        const error = await createOrgResponse.json().catch(() => ({}))
-                        console.warn('Failed to create Clerk organization:', error)
+        if (!clerkUserId) {
+            clerkSyncError = 'No Clerk user ID supplied, so the organization was not mirrored to Clerk'
+            console.warn(clerkSyncError)
+        } else {
+            const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY')
+            if (!clerkSecretKey) {
+                clerkSyncError = 'CLERK_SECRET_KEY is not configured for this project'
+                console.error(`Clerk sync skipped: ${clerkSyncError}`)
+            } else {
+                console.log(`Clerk sync using ${clerkInstanceKind(clerkSecretKey)} instance key`)
+                const created = await createClerkOrganization(clerkSecretKey, name.trim(), clerkUserId)
+
+                if (!created.ok || !created.data?.id) {
+                    clerkSyncError = created.error ?? 'Clerk returned no organization ID'
+                    console.error('Failed to create Clerk organization:', clerkSyncError)
+                } else {
+                    clerkOrgId = created.data.id
+                    console.log(`Created Clerk organization ${clerkOrgId} for Supabase org ${organization.id}`)
+
+                    // Persisting this is not optional. join-organization gates the
+                    // Clerk membership call on organizations.clerk_org_id, so a
+                    // missing link here silently breaks every future join.
+                    const { error: linkError } = await supabaseAdmin
+                        .from('organizations')
+                        .update({ clerk_org_id: clerkOrgId })
+                        .eq('id', organization.id)
+
+                    if (linkError) {
+                        clerkSyncError = `Clerk organization ${clerkOrgId} was created but could not be linked to the AlphaBoard organization: ${linkError.message}`
+                        console.error(clerkSyncError)
                     }
                 }
-            } catch (error) {
-                console.warn('Error creating Clerk organization:', error)
-                // Non-critical, continue with Supabase organization
             }
         }
 
@@ -422,6 +424,7 @@ serve(async (req) => {
                 joinCode: joinCode,
                 name: organization.name,
                 clerkOrgId: clerkOrgId,
+                clerkSyncError: clerkSyncError,
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )

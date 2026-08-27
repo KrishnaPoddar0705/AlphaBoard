@@ -4,6 +4,7 @@ import { useUser } from '@clerk/clerk-react';
 import { joinOrganization } from '../../lib/edgeFunctions';
 import { supabase } from '../../lib/supabase';
 import { ArrowLeft } from 'lucide-react';
+import { safeWarn } from '../../lib/logger';
 
 export default function JoinOrganization() {
   const { user: clerkUser, isLoaded: clerkLoaded } = useUser();
@@ -83,6 +84,12 @@ export default function JoinOrganization() {
         undefined, // userId - will be set by edge function
         clerkUser.id // clerkUserId - used to look up Supabase user
       );
+      if (result.clerkSyncError) {
+        // The AlphaBoard membership succeeded. Surfacing this to the analyst
+        // would be noise — they cannot act on it — but an admin reading the
+        // console or the edge function logs needs to see it.
+        safeWarn('Joined organization without Clerk sync:', result.clerkSyncError);
+      }
       // Redirect to dashboard on success
       navigate('/', {
         state: {

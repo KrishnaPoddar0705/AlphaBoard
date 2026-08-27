@@ -190,6 +190,8 @@ interface CreateOrganizationResponse {
   organizationId: string;
   joinCode: string;
   name: string;
+  /** Non-null when the org was created in AlphaBoard but not mirrored to Clerk. */
+  clerkSyncError?: string | null;
 }
 
 interface JoinOrganizationRequest {
@@ -201,6 +203,16 @@ interface JoinOrganizationResponse {
   success: boolean;
   organizationId: string;
   organizationName: string;
+  /** Non-null when the user joined in AlphaBoard but not in Clerk. */
+  clerkSyncError?: string | null;
+}
+
+export interface DeleteOrganizationResponse {
+  success: boolean;
+  organizationId: string;
+  organizationName: string;
+  membersDetached: number;
+  clerkSyncError?: string | null;
 }
 
 interface OrganizationUser {
@@ -317,6 +329,49 @@ export async function joinOrganization(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || error.details || 'Failed to join organization');
+  }
+
+  return response.json();
+}
+
+/**
+ * Permanently delete an organization (admin-only).
+ *
+ * Detaches every member and deletes the linked Clerk organization. This cannot
+ * be undone — callers must confirm with the user first.
+ */
+export async function deleteOrganization(
+  organizationId: string,
+  clerkUserId?: string
+): Promise<DeleteOrganizationResponse> {
+  // Mirrors createOrganization/joinOrganization: this app authenticates with
+  // Clerk, so a Supabase session is often absent and the Clerk user ID is the
+  // path the edge function actually uses.
+  let headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  try {
+    const authHeaders = await getAuthHeaders();
+    headers = { ...headers, ...authHeaders };
+  } catch {
+    if (!clerkUserId) {
+      throw new Error('Not authenticated. Please sign in.');
+    }
+    const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+    headers['Authorization'] = `Bearer ${anonKey}`;
+    headers['apikey'] = anonKey;
+  }
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/delete-organization`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ organizationId, clerkUserId }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || error.details || 'Failed to delete organization');
   }
 
   return response.json();

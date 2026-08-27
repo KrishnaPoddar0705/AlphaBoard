@@ -7,6 +7,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 // @ts-ignore - Deno runtime URL imports (Supabase Edge Functions run in Deno, not Node.js)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { addClerkOrganizationMember, clerkInstanceKind } from '../_shared/clerk.ts'
 
 // Declare Deno global for TypeScript (Supabase Edge Functions run in Deno runtime)
 // @ts-ignore - Deno is available at runtime but TypeScript doesn't recognize it
@@ -377,38 +378,37 @@ serve(async (req) => {
 
     console.log(`Successfully added user ${targetUserId} to organization ${organization.id} as analyst`)
 
-    // Add user to Clerk organization if Clerk user ID and Clerk org ID are available
-    if (clerkUserId && organization.clerk_org_id) {
-      try {
-        const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY')
-        if (clerkSecretKey) {
-          const clerkApiUrl = 'https://api.clerk.com/v1'
-          const addMemberResponse = await fetch(
-            `${clerkApiUrl}/organizations/${organization.clerk_org_id}/memberships`,
-            {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${clerkSecretKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                userId: clerkUserId,
-                role: 'org:member', // Clerk role for regular members
-              }),
-            }
-          )
+    // Attach the member to the Clerk organization. Best-effort: the AlphaBoard
+    // membership is already committed and identity resolves through
+    // clerk_user_mapping, so a Clerk failure must not fail the join. It is
+    // reported back as clerkSyncError rather than swallowed.
+    let clerkSyncError: string | null = null
 
-          if (addMemberResponse.ok) {
-            console.log(`Added Clerk user ${clerkUserId} to Clerk organization ${organization.clerk_org_id}`)
-          } else {
-            const error = await addMemberResponse.json().catch(() => ({}))
-            console.warn('Failed to add user to Clerk organization:', error)
-            // Non-critical, continue with Supabase membership
-          }
+    if (!clerkUserId) {
+      clerkSyncError = 'No Clerk user ID supplied, so the member was not added to the Clerk organization'
+      console.warn(clerkSyncError)
+    } else if (!organization.clerk_org_id) {
+      clerkSyncError = `AlphaBoard organization ${organization.id} has no linked Clerk organization; run scripts/backfill-clerk-orgs.ts to link it`
+      console.error(clerkSyncError)
+    } else {
+      const clerkSecretKey = Deno.env.get('CLERK_SECRET_KEY')
+      if (!clerkSecretKey) {
+        clerkSyncError = 'CLERK_SECRET_KEY is not configured for this project'
+        console.error(`Clerk sync skipped: ${clerkSyncError}`)
+      } else {
+        console.log(`Clerk sync using ${clerkInstanceKind(clerkSecretKey)} instance key`)
+        const added = await addClerkOrganizationMember(
+          clerkSecretKey,
+          organization.clerk_org_id,
+          clerkUserId,
+        )
+
+        if (added.ok) {
+          console.log(`Added Clerk user ${clerkUserId} to Clerk organization ${organization.clerk_org_id}`)
+        } else {
+          clerkSyncError = added.error ?? 'Unknown Clerk error'
+          console.error('Failed to add user to Clerk organization:', clerkSyncError)
         }
-      } catch (error) {
-        console.warn('Error adding user to Clerk organization:', error)
-        // Non-critical, continue with Supabase membership
       }
     }
 
@@ -418,6 +418,7 @@ serve(async (req) => {
         organizationId: organization.id,
         organizationName: organization.name,
         role: 'analyst',
+        clerkSyncError: clerkSyncError,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
