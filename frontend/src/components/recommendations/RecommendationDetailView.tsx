@@ -12,6 +12,7 @@ import { createPriceTarget, getTickerPortfolioInfo } from '@/lib/api'
 import { AddPriceTargetModal } from '@/components/stock/AddPriceTargetModal'
 import { SellModal } from '@/components/portfolio/SellModal'
 import { BuyToCoverModal } from '@/components/portfolio/BuyToCoverModal'
+import UploadedFileTile from '@/components/recommendations/UploadedFileTile'
 import { formatCurrency, getCurrencySymbol, cn } from '@/lib/utils'
 
 // Local interface definition to avoid Vite HMR issues with TypeScript exports
@@ -647,34 +648,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
                 <Label className="font-mono text-xs text-[#6F6A60] uppercase">Uploaded Files</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {recommendation.images.map((url, index) => (
-                    <div key={index} className="relative group">
-                      <img
-                        src={url}
-                        alt={`Upload ${index + 1}`}
-                        className="w-full h-32 object-cover rounded border border-[#D7D0C2]"
-                        onError={(e) => {
-                          // If image fails, show a placeholder
-                          const target = e.target as HTMLImageElement
-                          target.style.display = 'none'
-                          const parent = target.parentElement
-                          if (parent) {
-                            parent.innerHTML = `
-                              <div class="w-full h-32 bg-[#FBF7ED] border border-[#D7D0C2] rounded flex items-center justify-center">
-                                <span class="font-mono text-xs text-[#6F6A60]">Document</span>
-                              </div>
-                            `
-                          }
-                        }}
-                      />
-                      <a
-                        href={url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded"
-                      >
-                        <span className="font-mono text-xs text-white">View</span>
-                      </a>
-                    </div>
+                    <UploadedFileTile key={index} url={url} index={index} />
                   ))}
                 </div>
               </div>
