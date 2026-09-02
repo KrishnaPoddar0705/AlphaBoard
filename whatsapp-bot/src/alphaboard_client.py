@@ -1865,7 +1865,6 @@ class AlphaBoardClient:
                 for rec in result.data:
                     entry_price = rec.get("entry_price")
                     current_price = rec.get("current_price")
-                    target_price = rec.get("target_price")
                     
                     # Calculate return
                     return_pct = None
@@ -1878,7 +1877,9 @@ class AlphaBoardClient:
                         "status": rec.get("status"),
                         "entry_price": entry_price,
                         "current_price": current_price,
-                        "target_price": target_price,
+                        "target_irr": rec.get("target_irr"),
+                        "timeframe_start_months": rec.get("timeframe_start_months"),
+                        "timeframe_end_months": rec.get("timeframe_end_months"),
                         "stop_loss": rec.get("stop_loss"),
                         "entry_date": rec.get("entry_date"),
                         "exit_date": rec.get("exit_date"),

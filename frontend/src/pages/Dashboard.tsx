@@ -31,6 +31,7 @@ import { Settings } from 'lucide-react';
 import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
 import { setCachedReturn, calculateReturn } from '../lib/returnsCache';
 import toast, { Toaster } from 'react-hot-toast';
+import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe } from '../lib/irrTargets';
 
 // Mock data for fallback
 const MOCK_STOCKS = [
@@ -75,8 +76,8 @@ export default function Dashboard() {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [showWeightPanel, setShowWeightPanel] = useState(false);
     const [isLoadingPrices, setIsLoadingPrices] = useState(false);
-    const [priceTarget, setPriceTarget] = useState<string>('');
-    const [targetDate, setTargetDate] = useState<string>('');
+    const [irrTarget, setIrrTarget] = useState<string>('');
+    const [timeframe, setTimeframe] = useState<string>(DEFAULT_IRR_TIMEFRAME);
     const [buyPrice, setBuyPrice] = useState<string>('');
     const [sellPrice, setSellPrice] = useState<string>('');
 
@@ -576,9 +577,10 @@ export default function Dashboard() {
                 entry_date: new Date().toISOString(),
                 status: isWatchlistAdd ? 'WATCHLIST' : 'OPEN',
                 images: imageUrls,
-                // price_target and target_date are handled separately via the API
-                price_target: priceTarget ? parseFloat(priceTarget) : null,
-                target_date: targetDate ? new Date(targetDate).toISOString() : null
+                // The IRR target is mirrored onto the row and appended to the audit trail by the API
+                target_irr: irrTarget ? parseFloat(irrTarget) : null,
+                timeframe_start_months: irrTarget ? getTimeframe(timeframe)?.startMonths ?? null : null,
+                timeframe_end_months: irrTarget ? getTimeframe(timeframe)?.endMonths ?? null : null
             };
 
             // Use API endpoint to create recommendation
@@ -587,16 +589,20 @@ export default function Dashboard() {
                 await createRecommendation(newRec, supabaseUserId);
             } catch (apiError: any) {
                 // If API fails, fallback to direct Supabase insert
-                // Remove price_target and target_date for direct insert since they're not in recommendations table
-                const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
-                const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
+                const { error: sbError } = await supabase.from('recommendations').insert([newRec]);
                 if (sbError) throw sbError;
 
-                // If we had a price target, create it separately
-                if (price_target) {
+                // Mirror the IRR target into the append-only audit trail
+                const { target_irr, timeframe_start_months, timeframe_end_months } = newRec;
+                if (target_irr !== null && timeframe_start_months !== null && timeframe_end_months !== null) {
                     try {
-                        const { createPriceTarget } = await import('../lib/api');
-                        await createPriceTarget(ticker, price_target, target_date, supabaseUserId);
+                        const { createIrrTarget } = await import('../lib/api');
+                        await createIrrTarget(
+                            ticker,
+                            target_irr,
+                            { startMonths: timeframe_start_months, endMonths: timeframe_end_months },
+                            supabaseUserId
+                        );
                     } catch (ptError) {
                     }
                 }
@@ -696,8 +702,8 @@ export default function Dashboard() {
     const [promoteAction, setPromoteAction] = useState<'BUY' | 'SELL'>('BUY');
     const [promoteThesis, setPromoteThesis] = useState('');
     const [promoteImages, setPromoteImages] = useState<File[]>([]);
-    const [promotePriceTarget, setPromotePriceTarget] = useState<string>('');
-    const [promoteTargetDate, setPromoteTargetDate] = useState<string>('');
+    const [promoteIrrTarget, setPromoteIrrTarget] = useState<string>('');
+    const [promoteTimeframe, setPromoteTimeframe] = useState<string>(DEFAULT_IRR_TIMEFRAME);
     const [promoteEntryPrice, setPromoteEntryPrice] = useState<string>('');
     const promoteFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -708,8 +714,8 @@ export default function Dashboard() {
         setPromoteAction(actionType);
         setPromoteThesis(rec.thesis || '');
         setPromoteImages([]);
-        setPromotePriceTarget('');
-        setPromoteTargetDate('');
+        setPromoteIrrTarget('');
+        setPromoteTimeframe(DEFAULT_IRR_TIMEFRAME);
         setPromoteEntryPrice(rec.current_price ? rec.current_price.toFixed(2) : '');
         setPromoteModalOpen(true);
     };
@@ -776,8 +782,9 @@ export default function Dashboard() {
                 entry_date: new Date().toISOString(),
                 status: 'OPEN',
                 images: allImages,
-                price_target: promotePriceTarget ? parseFloat(promotePriceTarget) : null,
-                target_date: promoteTargetDate ? new Date(promoteTargetDate).toISOString() : null
+                target_irr: promoteIrrTarget ? parseFloat(promoteIrrTarget) : null,
+                timeframe_start_months: promoteIrrTarget ? getTimeframe(promoteTimeframe)?.startMonths ?? null : null,
+                timeframe_end_months: promoteIrrTarget ? getTimeframe(promoteTimeframe)?.endMonths ?? null : null
             };
 
             // Use API endpoint to create recommendation
@@ -786,19 +793,18 @@ export default function Dashboard() {
                 await createRecommendation(newRec, supabaseUserId);
             } catch (apiError: any) {
                 // If API fails, fallback to direct Supabase insert
-                // Remove price_target and target_date for direct insert since they're not in recommendations table
-                const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
-                const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
+                const { error: sbError } = await supabase.from('recommendations').insert([newRec]);
                 if (sbError) throw sbError;
 
-                // If we had a price target, create it separately
-                if (price_target) {
+                // Mirror the IRR target into the append-only audit trail
+                const { target_irr, timeframe_start_months, timeframe_end_months } = newRec;
+                if (target_irr !== null && timeframe_start_months !== null && timeframe_end_months !== null) {
                     try {
-                        const { createPriceTarget } = await import('../lib/api');
-                        await createPriceTarget(
+                        const { createIrrTarget } = await import('../lib/api');
+                        await createIrrTarget(
                             promoteRec.ticker,
-                            price_target,
-                            target_date,
+                            target_irr,
+                            { startMonths: timeframe_start_months, endMonths: timeframe_end_months },
                             supabaseUserId
                         );
                     } catch (ptError) {
@@ -829,8 +835,8 @@ export default function Dashboard() {
         setHasSearched(false);
         setIsWatchlistAdd(false);
         setSelectedImages([]);
-        setPriceTarget('');
-        setTargetDate('');
+        setIrrTarget('');
+        setTimeframe(DEFAULT_IRR_TIMEFRAME);
         setBuyPrice('');
         setSellPrice('');
     };
@@ -1077,30 +1083,32 @@ export default function Dashboard() {
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Price Target (Optional)</label>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">IRR Target % (Optional)</label>
                                                 <div className="relative">
-                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <span className="text-gray-400 sm:text-sm">₹</span>
-                                                    </div>
                                                     <input
                                                         type="number"
-                                                        step="0.01"
-                                                        value={priceTarget}
-                                                        onChange={(e) => setPriceTarget(e.target.value)}
-                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
-                                                        placeholder="0.00"
+                                                        step="0.1"
+                                                        value={irrTarget}
+                                                        onChange={(e) => setIrrTarget(e.target.value)}
+                                                        className="block w-full pl-3 pr-7 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                        placeholder="0.0"
                                                     />
+                                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">%</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Time Horizon (Optional)</label>
-                                                <input
-                                                    type="date"
-                                                    value={targetDate}
-                                                    onChange={(e) => setTargetDate(e.target.value)}
-                                                    className="block w-full px-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
-                                                    min={new Date().toISOString().split('T')[0]}
-                                                />
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Timeframe</label>
+                                                <select
+                                                    value={timeframe}
+                                                    onChange={(e) => setTimeframe(e.target.value)}
+                                                    className="block w-full px-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                >
+                                                    {IRR_TIMEFRAMES.map((tf) => (
+                                                        <option key={tf.value} value={tf.value}>{tf.label}</option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
                                     )}
@@ -1318,34 +1326,36 @@ export default function Dashboard() {
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                                    Price Target (Optional)
+                                    IRR Target % (Optional)
                                 </label>
                                 <div className="relative">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <span className="text-gray-400 sm:text-sm">₹</span>
-                                    </div>
                                     <input
                                         type="number"
-                                        step="0.01"
-                                        value={promotePriceTarget}
-                                        onChange={(e) => setPromotePriceTarget(e.target.value)}
-                                        className="block w-full pl-7 pr-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
-                                        placeholder="0.00"
+                                        step="0.1"
+                                        value={promoteIrrTarget}
+                                        onChange={(e) => setPromoteIrrTarget(e.target.value)}
+                                        className="block w-full pl-3 pr-7 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                        placeholder="0.0"
                                     />
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                        <span className="text-gray-400 sm:text-sm">%</span>
+                                    </div>
                                 </div>
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-300 mb-1.5">
-                                    Target Date (Optional)
+                                    Timeframe
                                 </label>
-                                <input
-                                    type="date"
-                                    value={promoteTargetDate}
-                                    onChange={(e) => setPromoteTargetDate(e.target.value)}
-                                    className="block w-full px-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
-                                    min={new Date().toISOString().split('T')[0]}
-                                />
+                                <select
+                                    value={promoteTimeframe}
+                                    onChange={(e) => setPromoteTimeframe(e.target.value)}
+                                    className="block w-full px-3 py-2.5 border border-white/10 rounded-lg bg-white/5 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                >
+                                    {IRR_TIMEFRAMES.map((tf) => (
+                                        <option key={tf.value} value={tf.value}>{tf.label}</option>
+                                    ))}
+                                </select>
                             </div>
 
                             <div>

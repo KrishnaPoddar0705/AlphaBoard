@@ -1549,7 +1549,9 @@ class MessageEngine:
                                 "status": rec.get("status"),
                                 "entry_price": entry_price,
                                 "current_price": current_price,
-                                "target_price": rec.get("target_price"),
+                                "target_irr": rec.get("target_irr"),
+                                "timeframe_start_months": rec.get("timeframe_start_months"),
+                                "timeframe_end_months": rec.get("timeframe_end_months"),
                                 "stop_loss": rec.get("stop_loss"),
                                 "entry_date": rec.get("entry_date"),
                                 "exit_date": rec.get("exit_date"),
@@ -1653,7 +1655,9 @@ class MessageEngine:
                 action = rec.get("action", "BUY")
                 entry_price = rec.get("entry_price")
                 current_price = rec.get("current_price")
-                target_price = rec.get("target_price")
+                target_irr = rec.get("target_irr")
+                timeframe_start = rec.get("timeframe_start_months")
+                timeframe_end = rec.get("timeframe_end_months")
                 return_pct = rec.get("return_pct")
                 entry_date = rec.get("entry_date", "")[:10]  # YYYY-MM-DD
                 rec_status = rec.get("status", "OPEN")
@@ -1683,9 +1687,11 @@ class MessageEngine:
                     ret_emoji = "🟢" if final_ret >= 0 else "🔴"
                     line += f" | {ret_emoji} {final_ret:+.1f}% (final)"
                 
-                # Target
-                if target_price:
-                    line += f"\n   🎯 Target: ₹{target_price:,.0f}"
+                # IRR target -- analysts publish an expected IRR over a horizon bucket
+                if target_irr is not None:
+                    line += f"\n   🎯 IRR Target: {target_irr:,.1f}%"
+                    if timeframe_start is not None and timeframe_end is not None:
+                        line += f" ({timeframe_start}-{timeframe_end} months)"
                 
                 # Status indicator for closed
                 if rec_status == "CLOSED":

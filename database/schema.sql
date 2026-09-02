@@ -32,7 +32,10 @@ create table public.recommendations (
   action text check (action in ('BUY', 'SELL', 'WATCH')) not null,
   entry_price numeric, -- Nullable for WATCH
   current_price numeric, -- Updated by backend
-  target_price numeric,
+  target_price numeric, -- DEPRECATED: superseded by target_irr (see migration_add_irr_targets.sql)
+  target_irr numeric,   -- Expected annualised IRR in percent
+  timeframe_start_months integer, -- Inclusive start of the IRR horizon bucket
+  timeframe_end_months integer,   -- Exclusive end of the IRR horizon bucket
   stop_loss numeric,
   benchmark_ticker text default '^NSEI', -- Nifty 50
   entry_date timestamp with time zone default timezone('utc'::text, now()) not null,

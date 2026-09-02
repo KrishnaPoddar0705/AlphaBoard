@@ -15,6 +15,7 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { getPrice, getStockSummary, getPriceForDate } from '../../lib/api';
 import { getCurrencySymbol } from '../../lib/utils';
+import { formatIrr, timeframeFromMonths } from '../../lib/irrTargets';
 
 interface OrganizationUser {
   userId: string;
@@ -41,12 +42,16 @@ interface Recommendation {
   final_alpha_pct?: number;
 }
 
-interface PriceTarget {
+interface IrrTarget {
   id: string;
   ticker: string;
-  target_price: number;
-  target_date: string | null;
+  target_irr: number | null;
+  timeframe_start_months: number | null;
+  timeframe_end_months: number | null;
   created_at: string;
+  /** Legacy fields, present only on rows created before IRR targets. */
+  target_price: number | null;
+  target_date: string | null;
 }
 
 interface AnalystPerformance {
@@ -81,7 +86,7 @@ export default function AdminDashboard() {
   const [showJoinCode, setShowJoinCode] = useState(false);
   const [expandedAnalyst, setExpandedAnalyst] = useState<string | null>(null);
   const [analystRecommendations, setAnalystRecommendations] = useState<Record<string, Recommendation[]>>({});
-  const [analystPriceTargets, setAnalystPriceTargets] = useState<Record<string, PriceTarget[]>>({});
+  const [analystIrrTargets, setAnalystIrrTargets] = useState<Record<string, IrrTarget[]>>({});
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamMemberIds, setTeamMemberIds] = useState<Set<string>>(new Set());
   const [actionFilter, setActionFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
@@ -697,25 +702,25 @@ export default function AdminDashboard() {
           setAnalystRecommendations(prev => ({ ...prev, [userId]: [] }));
         }
 
-        // Fetch all price targets for this user
+        // Fetch all IRR targets for this user (table is still named price_targets)
         const { data: targets, error: targetsError } = await supabase
           .from('price_targets')
-          .select('id, ticker, target_price, target_date, created_at')
+          .select('id, ticker, target_irr, timeframe_start_months, timeframe_end_months, target_price, target_date, created_at')
           .eq('user_id', userId)
           .order('created_at', { ascending: false });
 
-        safeLog('Price targets fetched, count:', targets?.length || 0);
+        safeLog('IRR targets fetched, count:', targets?.length || 0);
 
         if (!targetsError && targets) {
-          setAnalystPriceTargets(prev => ({ ...prev, [userId]: targets }));
+          setAnalystIrrTargets(prev => ({ ...prev, [userId]: targets }));
         } else {
-          setAnalystPriceTargets(prev => ({ ...prev, [userId]: [] }));
+          setAnalystIrrTargets(prev => ({ ...prev, [userId]: [] }));
         }
       } catch (err) {
         safeError('Error fetching analyst details:', err);
         // Set empty arrays to prevent retrying
         setAnalystRecommendations(prev => ({ ...prev, [userId]: [] }));
-        setAnalystPriceTargets(prev => ({ ...prev, [userId]: [] }));
+        setAnalystIrrTargets(prev => ({ ...prev, [userId]: [] }));
       }
     }
   };
@@ -1072,8 +1077,8 @@ export default function AdminDashboard() {
                                       return isNotWatchlist && matchesAction && matchesStatus;
                                     })
                                     .map((rec) => {
-                                    // Get price targets for this ticker
-                                    const tickerTargets = analystPriceTargets[analyst.userId]?.filter(
+                                    // Get IRR targets for this ticker
+                                    const tickerTargets = analystIrrTargets[analyst.userId]?.filter(
                                       t => t.ticker === rec.ticker
                                     ) || [];
 
@@ -1116,11 +1121,13 @@ export default function AdminDashboard() {
                                           )}
                                           {tickerTargets.length > 0 && (
                                             <div>
-                                              <div className="text-xs text-[var(--text-secondary)] mb-1">Price Targets</div>
+                                              <div className="text-xs text-[var(--text-secondary)] mb-1">IRR Targets</div>
                                               <div className="flex gap-2 flex-wrap">
                                                 {tickerTargets.map(t => (
                                                   <span key={t.id} className="text-sm font-semibold text-purple-400">
-                                                    {getCurrencySymbol(rec.ticker)}{t.target_price}
+                                                    {t.target_irr !== null && t.target_irr !== undefined
+                                                      ? `${formatIrr(t.target_irr)} IRR`
+                                                      : `${getCurrencySymbol(rec.ticker)}${t.target_price}`}
                                                   </span>
                                                 ))}
                                               </div>
@@ -1138,27 +1145,43 @@ export default function AdminDashboard() {
                                           </div>
                                         )}
 
-                                        {/* Price Target Timeline */}
+                                        {/* IRR Target Timeline */}
                                         {tickerTargets.length > 0 && (
                                           <div className="mb-4">
                                             <div className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
                                               <Target className="w-4 h-4" />
-                                              Price Target Timeline:
+                                              IRR Target Timeline:
                                             </div>
                                             <div className="flex gap-3 overflow-x-auto pb-2">
-                                              {tickerTargets.map(target => (
-                                                <div key={target.id} className="bg-purple-500/20 p-3 rounded border border-purple-500/30 min-w-[150px]">
-                                                  <div className="text-lg font-bold text-purple-400">{getCurrencySymbol(rec.ticker)}{target.target_price}</div>
-                                                  {target.target_date && (
-                                                    <div className="text-xs text-[var(--text-secondary)] mt-1">
-                                                      Target: {formatDate(target.target_date)}
+                                              {tickerTargets.map(target => {
+                                                const timeframe = timeframeFromMonths(
+                                                  target.timeframe_start_months,
+                                                  target.timeframe_end_months
+                                                );
+                                                const isLegacy = target.target_irr === null || target.target_irr === undefined;
+                                                return (
+                                                  <div key={target.id} className="bg-purple-500/20 p-3 rounded border border-purple-500/30 min-w-[150px]">
+                                                    <div className="text-lg font-bold text-purple-400">
+                                                      {isLegacy
+                                                        ? `${getCurrencySymbol(rec.ticker)}${target.target_price}`
+                                                        : `${formatIrr(target.target_irr)} IRR`}
                                                     </div>
-                                                  )}
-                                                  <div className="text-xs text-[var(--text-tertiary)] mt-1">
-                                                    Set: {formatDate(target.created_at)}
+                                                    {timeframe && (
+                                                      <div className="text-xs text-[var(--text-secondary)] mt-1">
+                                                        {timeframe.label}
+                                                      </div>
+                                                    )}
+                                                    {isLegacy && target.target_date && (
+                                                      <div className="text-xs text-[var(--text-secondary)] mt-1">
+                                                        Target: {formatDate(target.target_date)}
+                                                      </div>
+                                                    )}
+                                                    <div className="text-xs text-[var(--text-tertiary)] mt-1">
+                                                      Set: {formatDate(target.created_at)}
+                                                    </div>
                                                   </div>
-                                                </div>
-                                              ))}
+                                                );
+                                              })}
                                             </div>
                                           </div>
                                         )}

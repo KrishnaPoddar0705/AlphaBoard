@@ -183,7 +183,7 @@ if open_recs:
         action = rec.get("action", "BUY")
         entry_price = rec.get("entry_price")
         current_price = rec.get("current_price")
-        target_price = rec.get("target_price")
+        target_irr = rec.get("target_irr")
         entry_date = rec.get("entry_date", "")[:10] if rec.get("entry_date") else ""
         
         # Calculate return
@@ -213,8 +213,8 @@ if open_recs:
             line += f" | {ret_emoji} {return_pct:+.1f}%"
         
         # Target
-        if target_price:
-            line += f" | Target: ₹{target_price:,.0f}"
+        if target_irr is not None:
+            line += f" | IRR Target: {target_irr:,.1f}%"
         
         print(line)
         print()

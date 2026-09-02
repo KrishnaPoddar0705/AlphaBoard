@@ -249,10 +249,11 @@ async def create_rec_endpoint(request: Request, background_tasks: BackgroundTask
         
         data = rec.dict()
         
-        # Extract price_target and target_date before inserting into recommendations table
-        # These are stored separately in the price_targets table
-        price_target = data.pop('price_target', None)
-        target_date = data.pop('target_date', None)
+        # The IRR target is mirrored onto the recommendation row AND appended to the
+        # immutable price_targets audit trail, so read it without popping.
+        target_irr = data.get('target_irr')
+        timeframe_start = data.get('timeframe_start_months')
+        timeframe_end = data.get('timeframe_end_months')
         
         data['user_id'] = user_id
         
@@ -363,6 +364,9 @@ async def create_rec_endpoint(request: Request, background_tasks: BackgroundTask
                 "p_weight_pct": data.get('weight_pct'),
                 "p_invested_amount": data.get('invested_amount'),
                 "p_position_size": data.get('position_size'),
+                "p_target_irr": target_irr,
+                "p_timeframe_start_months": timeframe_start,
+                "p_timeframe_end_months": timeframe_end,
             }
             
             # Call RPC function
@@ -449,28 +453,21 @@ async def create_rec_endpoint(request: Request, background_tasks: BackgroundTask
                     headers={"Access-Control-Allow-Origin": request.headers.get("origin", "*")}
                 )
         
-        # If price_target is provided, create a price target entry in the price_targets table
-        if price_target is not None:
+        # If an IRR target is provided, append it to the price_targets audit trail
+        if target_irr is not None:
             try:
-                # target_date might already be a string (ISO format) from frontend
-                target_date_str = None
-                if target_date:
-                    if isinstance(target_date, str):
-                        target_date_str = target_date
-                    else:
-                        target_date_str = target_date.isoformat()
-                
-                price_target_data = {
+                irr_target_data = {
                     "user_id": user_id,
                     "ticker": data['ticker'],
-                    "target_price": float(price_target),
-                    "target_date": target_date_str
+                    "target_irr": float(target_irr),
+                    "timeframe_start_months": timeframe_start,
+                    "timeframe_end_months": timeframe_end,
                 }
-                # DON'T set organization_id - price targets follow user's current profile
-                supabase.table("price_targets").insert(price_target_data).execute()
+                # DON'T set organization_id - IRR targets follow user's current profile
+                supabase.table("price_targets").insert(irr_target_data).execute()
             except Exception as e:
                 # Log error but don't fail the recommendation creation
-                print(f"Warning: Failed to create price target: {str(e)}")
+                print(f"Warning: Failed to create IRR target: {str(e)}")
         
         # Rebalance weights and calculate position_size for all positions
         from .performance import rebalance_portfolio_weights
@@ -718,19 +715,34 @@ def trigger_update(user_id: str):
 @app.post("/price-targets", response_model=PriceTargetResponse)
 def create_price_target(price_target: PriceTargetCreate, user_id: str = Query(...)):
     """
-    Create a new price target for a user+ticker combination.
-    Price targets are immutable once created.
+    Create a new IRR target for a user+ticker combination.
+    Targets are immutable once created.
+
+    Analysts publish an annualised IRR over a horizon bucket. An absolute
+    target_price is still accepted from legacy clients but is deprecated.
     """
     try:
-        print(f"Creating price target for user_id={user_id}, ticker={price_target.ticker}, target_price={price_target.target_price}")
-        
-        # DON'T fetch organization_id - price targets follow user's current profile
+        print(
+            f"Creating IRR target for user_id={user_id}, ticker={price_target.ticker}, "
+            f"target_irr={price_target.target_irr}, "
+            f"timeframe={price_target.timeframe_start_months}-{price_target.timeframe_end_months}"
+        )
+
+        # DON'T fetch organization_id - targets follow user's current profile
         data = {
             "user_id": user_id,
             "ticker": price_target.ticker,
-            "target_price": float(price_target.target_price),
-            "target_date": price_target.target_date.isoformat() if price_target.target_date else None
         }
+        if price_target.target_irr is not None:
+            data["target_irr"] = float(price_target.target_irr)
+            data["timeframe_start_months"] = price_target.timeframe_start_months
+            data["timeframe_end_months"] = price_target.timeframe_end_months
+        # Legacy path: absolute price target with an optional single date.
+        if price_target.target_price is not None:
+            data["target_price"] = float(price_target.target_price)
+            data["target_date"] = (
+                price_target.target_date.isoformat() if price_target.target_date else None
+            )
         # organization_id is NOT set - follows user's profile.organization_id
         
         print(f"Inserting price target data: {data}")

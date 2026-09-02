@@ -112,8 +112,6 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
         benchmark_ticker: benchmarkTicker,
         status: 'WATCHLIST',
         images: null,
-        price_target: null,
-        target_date: null,
       }
 
       await createWatchlistItem(newRec, mapping.supabase_user_id)

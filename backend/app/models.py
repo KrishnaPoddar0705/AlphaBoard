@@ -1,9 +1,42 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from uuid import UUID
 
-class RecommendationCreate(BaseModel):
+# Analysts publish an expected IRR (annualised %) over a horizon *range*, not an
+# absolute price. Horizons are fixed six-month buckets spanning 0-60 months; these
+# bounds mirror the CHECK constraints in database/migration_add_irr_targets.sql.
+IRR_TIMEFRAME_BOUNDARIES = [0, 6, 12, 18, 24, 30, 36, 42, 48, 54, 60]
+IRR_TIMEFRAME_BUCKETS = list(zip(IRR_TIMEFRAME_BOUNDARIES[:-1], IRR_TIMEFRAME_BOUNDARIES[1:]))
+IRR_MIN = -100.0
+IRR_MAX = 1000.0
+
+
+class IrrTargetFields(BaseModel):
+    """Mixin for the IRR target + horizon pair. The two are only meaningful together."""
+
+    target_irr: Optional[float] = None  # Expected annualised IRR, in percent
+    timeframe_start_months: Optional[int] = None
+    timeframe_end_months: Optional[int] = None
+
+    @model_validator(mode="after")
+    def _check_irr_and_timeframe(self):
+        if self.target_irr is not None and not (IRR_MIN <= self.target_irr <= IRR_MAX):
+            raise ValueError(f"target_irr must be between {IRR_MIN} and {IRR_MAX}")
+
+        start, end = self.timeframe_start_months, self.timeframe_end_months
+        if (start is None) != (end is None):
+            raise ValueError("timeframe_start_months and timeframe_end_months must be set together")
+        if start is not None and (start, end) not in IRR_TIMEFRAME_BUCKETS:
+            valid = ", ".join(f"{a}-{b}" for a, b in IRR_TIMEFRAME_BUCKETS)
+            raise ValueError(f"timeframe must be one of: {valid} (months)")
+
+        # An IRR without its horizon is not interpretable.
+        if self.target_irr is not None and start is None:
+            raise ValueError("target_irr requires a timeframe")
+        return self
+
+class RecommendationCreate(IrrTargetFields):
     ticker: str
     action: str # BUY or SELL
     entry_price: float
@@ -13,8 +46,7 @@ class RecommendationCreate(BaseModel):
     thesis: Optional[str] = None
     images: Optional[List[str]] = []
     weight_pct: Optional[float] = None  # Optional weight percentage (0-100)
-    price_target: Optional[float] = None  # Price target for timeline
-    target_date: Optional[datetime] = None  # Optional time horizon for price target
+    # target_price is DEPRECATED -- retained so pre-IRR clients keep working.
 
 class RecommendationResponse(RecommendationCreate):
     id: UUID
@@ -133,17 +165,29 @@ class PodcastResponse(BaseModel):
     highlights: Optional[List[PodcastHighlight]] = None
     audioBase64: Optional[str] = None
 
-# Price Target Models
-class PriceTargetCreate(BaseModel):
+# IRR Target Models (table is still named price_targets for historical reasons)
+class PriceTargetCreate(IrrTargetFields):
     ticker: str
-    target_price: float
+    # DEPRECATED: legacy clients may still post an absolute price instead of an IRR.
+    target_price: Optional[float] = None
     target_date: Optional[datetime] = None
+
+    @model_validator(mode="after")
+    def _require_a_target(self):
+        if self.target_irr is None and self.target_price is None:
+            raise ValueError("Either target_irr or target_price is required")
+        return self
+
 
 class PriceTargetResponse(BaseModel):
     id: UUID
     user_id: UUID
     ticker: str
-    target_price: float
     created_at: datetime
+    target_irr: Optional[float] = None
+    timeframe_start_months: Optional[int] = None
+    timeframe_end_months: Optional[int] = None
+    # Legacy fields, present only on rows created before IRR targets.
+    target_price: Optional[float] = None
     target_date: Optional[datetime] = None
 

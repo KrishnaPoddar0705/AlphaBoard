@@ -17,6 +17,7 @@ import { TrendingUp, TrendingDown, Plus } from 'lucide-react';
 import { getStockSummary, getStockHistory } from '../../lib/api';
 import { ChartsSection } from '../stock/ChartsSection';
 import { cn } from '@/lib/utils';
+import { formatIrr, timeframeFromMonths } from '@/lib/irrTargets';
 
 interface StockAnalyticsViewProps {
   stock: any;
@@ -196,7 +197,16 @@ export function StockAnalyticsView({ stock, onAddToWatchlist }: StockAnalyticsVi
                 </Badge>
               </div>
               <div className="text-xs text-muted-foreground">
-                Target Price: {currencySymbol}{stock.price_target || summary?.targetPrice || 'N/A'}
+                {stock.target_irr !== null && stock.target_irr !== undefined ? (
+                  <>
+                    IRR Target: {formatIrr(stock.target_irr)}
+                    {timeframeFromMonths(stock.timeframe_start_months, stock.timeframe_end_months)
+                      ? ` over ${timeframeFromMonths(stock.timeframe_start_months, stock.timeframe_end_months)!.label}`
+                      : ''}
+                  </>
+                ) : (
+                  <>Consensus Target: {currencySymbol}{summary?.targetPrice || 'N/A'}</>
+                )}
               </div>
             </CardContent>
           </Card>

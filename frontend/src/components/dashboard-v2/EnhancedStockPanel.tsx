@@ -15,7 +15,8 @@ import { Plus, ChevronDown, ChevronUp, X, Search, Upload, AlertCircle, Target, C
 import { PaperCard } from './paper/PaperCard';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
-import { getPriceTargets, createRecommendation, searchStocks } from '../../lib/api';
+import { getIrrTargets, createRecommendation, searchStocks } from '../../lib/api';
+import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe, formatIrr, timeframeFromMonths } from '../../lib/irrTargets';
 import { safeWarn, safeError } from '../../lib/logger';
 
 interface EnhancedStockPanelProps {
@@ -41,14 +42,14 @@ export function EnhancedStockPanel({
   const [expandedTicker, setExpandedTicker] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isWatchlistAdd, setIsWatchlistAdd] = useState(false);
-  const [priceTargets, setPriceTargets] = useState<Record<string, any[]>>({});
+  const [irrTargets, setIrrTargets] = useState<Record<string, any[]>>({});
   
   // Form state
   const [ticker, setTicker] = useState('');
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY');
   const [entryPrice, setEntryPrice] = useState('');
-  const [priceTarget, setPriceTarget] = useState('');
-  const [targetDate, setTargetDate] = useState('');
+  const [irrTarget, setIrrTarget] = useState('');
+  const [timeframe, setTimeframe] = useState<string>(DEFAULT_IRR_TIMEFRAME);
   const [thesis, setThesis] = useState('');
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -69,18 +70,18 @@ export function EnhancedStockPanel({
     new Map(filteredRecs.map((rec) => [rec.ticker, rec])).values()
   );
 
-  // Fetch price targets for expanded ticker
+  // Fetch IRR targets for expanded ticker
   useEffect(() => {
     if (expandedTicker && session?.user?.id) {
-      const fetchPriceTargets = async () => {
+      const fetchIrrTargets = async () => {
         try {
-          const targets = await getPriceTargets(expandedTicker, session.user.id);
-          setPriceTargets(prev => ({ ...prev, [expandedTicker]: targets || [] }));
+          const targets = await getIrrTargets(expandedTicker, session.user.id);
+          setIrrTargets(prev => ({ ...prev, [expandedTicker]: targets || [] }));
         } catch (err) {
-          safeWarn('Failed to fetch price targets', err);
+          safeWarn('Failed to fetch IRR targets', err);
         }
       };
-      fetchPriceTargets();
+      fetchIrrTargets();
     }
   }, [expandedTicker, session?.user?.id]);
 
@@ -174,8 +175,9 @@ export function EnhancedStockPanel({
         status: isWatchlistAdd ? 'WATCHLIST' : 'OPEN',
         thesis: thesis || null,
         images: imageUrls.length > 0 ? imageUrls : null,
-        price_target: priceTarget ? parseFloat(priceTarget) : null,
-        target_date: targetDate || null,
+        target_irr: irrTarget ? parseFloat(irrTarget) : null,
+        timeframe_start_months: irrTarget ? getTimeframe(timeframe)?.startMonths ?? null : null,
+        timeframe_end_months: irrTarget ? getTimeframe(timeframe)?.endMonths ?? null : null,
       };
 
       await createRecommendation(recData, session.user.id);
@@ -183,8 +185,8 @@ export function EnhancedStockPanel({
       // Reset form
       setTicker('');
       setEntryPrice('');
-      setPriceTarget('');
-      setTargetDate('');
+      setIrrTarget('');
+      setTimeframe(DEFAULT_IRR_TIMEFRAME);
       setThesis('');
       setSelectedImages([]);
       setShowAddModal(false);
@@ -276,7 +278,7 @@ export function EnhancedStockPanel({
                 const returnPct = getReturnDisplay(rec);
                 const isPositive = returnPct !== null && returnPct >= 0;
                 const currencySymbol = getCurrencySymbol(rec.ticker);
-                const targets = priceTargets[rec.ticker] || [];
+                const targets = irrTargets[rec.ticker] || [];
 
                 return (
                   <div key={rec.ticker} className="bg-[var(--paper-bg)]">
@@ -359,27 +361,38 @@ export function EnhancedStockPanel({
                           </div>
                         )}
 
-                        {/* Price Targets */}
+                        {/* IRR Targets */}
                         {targets.length > 0 && (
                           <div>
                             <h4 className="text-xs font-semibold text-[var(--paper-muted)] uppercase tracking-wide mb-2 flex items-center gap-1">
                               <Target className="w-3 h-3" />
-                              Price Targets
+                              IRR Targets
                             </h4>
                             <div className="space-y-1">
-                              {targets.map((target: any, idx: number) => (
-                                <div key={idx} className="flex items-center justify-between text-sm">
-                                  <span className="text-[var(--paper-ink)]">
-                                    {currencySymbol}{target.target_price?.toFixed(2)}
-                                  </span>
-                                  {target.target_date && (
-                                    <span className="text-xs text-[var(--paper-muted)] flex items-center gap-1">
-                                      <Calendar className="w-3 h-3" />
-                                      {new Date(target.target_date).toLocaleDateString()}
+                              {targets.map((target: any, idx: number) => {
+                                const tf = timeframeFromMonths(target.timeframe_start_months, target.timeframe_end_months);
+                                const isLegacy = target.target_irr === null || target.target_irr === undefined;
+                                return (
+                                  <div key={idx} className="flex items-center justify-between text-sm">
+                                    <span className="text-[var(--paper-ink)]">
+                                      {isLegacy
+                                        ? `${currencySymbol}${target.target_price?.toFixed(2)}`
+                                        : `${formatIrr(target.target_irr)} IRR`}
                                     </span>
-                                  )}
-                                </div>
-                              ))}
+                                    {tf ? (
+                                      <span className="text-xs text-[var(--paper-muted)] flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        {tf.label}
+                                      </span>
+                                    ) : target.target_date ? (
+                                      <span className="text-xs text-[var(--paper-muted)] flex items-center gap-1">
+                                        <Calendar className="w-3 h-3" />
+                                        {new Date(target.target_date).toLocaleDateString()}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
@@ -428,11 +441,14 @@ export function EnhancedStockPanel({
                               </span>
                             </div>
                           )}
-                          {rec.target_price && (
+                          {rec.target_irr !== null && rec.target_irr !== undefined && (
                             <div>
-                              <span className="text-[var(--paper-muted)]">Target:</span>
+                              <span className="text-[var(--paper-muted)]">IRR Target:</span>
                               <span className="ml-1 text-[var(--paper-ink)]">
-                                {currencySymbol}{rec.target_price.toFixed(2)}
+                                {formatIrr(rec.target_irr)}
+                                {timeframeFromMonths(rec.timeframe_start_months, rec.timeframe_end_months)
+                                  ? ` (${timeframeFromMonths(rec.timeframe_start_months, rec.timeframe_end_months)!.label})`
+                                  : ''}
                               </span>
                             </div>
                           )}
@@ -591,29 +607,31 @@ export function EnhancedStockPanel({
 
                 <div>
                   <label className="block text-sm font-medium text-[var(--paper-ink)] mb-1">
-                    Price Target (Optional)
+                    IRR Target % (Optional)
                   </label>
                   <input
                     type="number"
-                    step="0.01"
-                    value={priceTarget}
-                    onChange={(e) => setPriceTarget(e.target.value)}
+                    step="0.1"
+                    value={irrTarget}
+                    onChange={(e) => setIrrTarget(e.target.value)}
                     className="w-full px-3 py-2 border border-[var(--paper-rule)] rounded-md bg-[var(--paper-bg)] text-[var(--paper-ink)]"
-                    placeholder="0.00"
+                    placeholder="0.0"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-[var(--paper-ink)] mb-1">
-                    Target Date (Optional)
+                    Timeframe
                   </label>
-                  <input
-                    type="date"
-                    value={targetDate}
-                    onChange={(e) => setTargetDate(e.target.value)}
+                  <select
+                    value={timeframe}
+                    onChange={(e) => setTimeframe(e.target.value)}
                     className="w-full px-3 py-2 border border-[var(--paper-rule)] rounded-md bg-[var(--paper-bg)] text-[var(--paper-ink)]"
-                    min={new Date().toISOString().split('T')[0]}
-                  />
+                  >
+                    {IRR_TIMEFRAMES.map((tf) => (
+                      <option key={tf.value} value={tf.value}>{tf.label}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>

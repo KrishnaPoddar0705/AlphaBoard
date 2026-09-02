@@ -33,6 +33,7 @@ import { MonthlyPnLChart } from '../components/charts/MonthlyPnLChart';
 import { KPIMiniChart } from '../components/charts/KPIMiniChart';
 import { IdeasAddedChart } from '../components/charts/IdeasAddedChart';
 import { safeLog, safeWarn, safeError } from '../lib/logger';
+import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe } from '../lib/irrTargets';
 
 // Mock data fallback
 const MOCK_STOCKS = [
@@ -92,8 +93,8 @@ export default function DashboardNew() {
     const [selectedMarket, setSelectedMarket] = useState<'IN' | 'US'>('IN'); // Track market for currency display
     const [buyPrice, setBuyPrice] = useState<string>('');
     const [sellPrice, setSellPrice] = useState<string>('');
-    const [priceTarget, setPriceTarget] = useState<string>('');
-    const [targetDate, setTargetDate] = useState<string>('');
+    const [irrTarget, setIrrTarget] = useState<string>('');
+    const [timeframe, setTimeframe] = useState<string>(DEFAULT_IRR_TIMEFRAME);
     const [selectedImages, setSelectedImages] = useState<File[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -447,8 +448,9 @@ export default function DashboardNew() {
                 entry_date: new Date().toISOString(),
                 status: isWatchlistAdd ? 'WATCHLIST' : 'OPEN',
                 images: imageUrls,
-                price_target: priceTarget ? parseFloat(priceTarget) : null,
-                target_date: targetDate ? new Date(targetDate).toISOString() : null
+                target_irr: irrTarget ? parseFloat(irrTarget) : null,
+                timeframe_start_months: irrTarget ? getTimeframe(timeframe)?.startMonths ?? null : null,
+                timeframe_end_months: irrTarget ? getTimeframe(timeframe)?.endMonths ?? null : null
             };
 
             // Use API endpoint to create recommendation
@@ -457,24 +459,23 @@ export default function DashboardNew() {
                 await createRecommendation(newRec, session.user.id);
             } catch (apiError: any) {
                 // If API fails, fallback to direct Supabase insert
-                // Remove price_target and target_date for direct insert since they're not in recommendations table
-                const { price_target, target_date, ...recWithoutPriceTarget } = newRec;
                 safeWarn('API create failed, using direct insert');
-                const { error: sbError } = await supabase.from('recommendations').insert([recWithoutPriceTarget]);
+                const { error: sbError } = await supabase.from('recommendations').insert([newRec]);
                 if (sbError) throw sbError;
 
-                // If we had a price target, create it separately
-                if (price_target) {
+                // Mirror the IRR target into the append-only audit trail
+                const { target_irr, timeframe_start_months, timeframe_end_months } = newRec;
+                if (target_irr !== null && timeframe_start_months !== null && timeframe_end_months !== null) {
                     try {
-                        const { createPriceTarget } = await import('../lib/api');
-                        await createPriceTarget(
+                        const { createIrrTarget } = await import('../lib/api');
+                        await createIrrTarget(
                             ticker,
-                            price_target,
-                            target_date,
+                            target_irr,
+                            { startMonths: timeframe_start_months, endMonths: timeframe_end_months },
                             session.user.id
                         );
                     } catch (ptError) {
-                        safeWarn('Failed to create price target in fallback:', ptError);
+                        safeWarn('Failed to create IRR target in fallback:', ptError);
                     }
                 }
             }
@@ -712,8 +713,8 @@ export default function DashboardNew() {
         setSelectedImages([]);
         setBuyPrice('');
         setSellPrice('');
-        setPriceTarget('');
-        setTargetDate('');
+        setIrrTarget('');
+        setTimeframe(DEFAULT_IRR_TIMEFRAME);
         setSelectedMarket('IN'); // Reset to default Indian market
         setTicker('');
         setThesis('');
@@ -1649,30 +1650,32 @@ export default function DashboardNew() {
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Price Target (Optional)</label>
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">IRR Target % (Optional)</label>
                                                 <div className="relative">
-                                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                        <span className="text-gray-400 sm:text-sm">{getCurrencySymbol()}</span>
-                                                    </div>
                                                     <input
                                                         type="number"
-                                                        step="0.01"
-                                                        value={priceTarget}
-                                                        onChange={(e) => setPriceTarget(e.target.value)}
-                                                        className="block w-full pl-7 pr-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
-                                                        placeholder="0.00"
+                                                        step="0.1"
+                                                        value={irrTarget}
+                                                        onChange={(e) => setIrrTarget(e.target.value)}
+                                                        className="block w-full pl-3 pr-7 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                        placeholder="0.0"
                                                     />
+                                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                                        <span className="text-gray-400 sm:text-sm">%</span>
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div>
-                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Time Horizon (Optional)</label>
-                                                <input
-                                                    type="date"
-                                                    value={targetDate}
-                                                    onChange={(e) => setTargetDate(e.target.value)}
-                                                    className="block w-full px-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
-                                                    min={new Date().toISOString().split('T')[0]}
-                                                />
+                                                <label className="block text-sm font-medium text-gray-300 mb-1.5">Timeframe</label>
+                                                <select
+                                                    value={timeframe}
+                                                    onChange={(e) => setTimeframe(e.target.value)}
+                                                    className="block w-full px-3 py-2.5 border border-[var(--border-color)] rounded-lg bg-white/5 text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 sm:text-sm transition-all"
+                                                >
+                                                    {IRR_TIMEFRAMES.map((tf) => (
+                                                        <option key={tf.value} value={tf.value}>{tf.label}</option>
+                                                    ))}
+                                                </select>
                                             </div>
                                         </div>
                                     )}

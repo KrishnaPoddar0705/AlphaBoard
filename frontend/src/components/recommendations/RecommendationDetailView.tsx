@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { ArrowLeft, Plus, Upload, X, Edit2, Save, Target, TrendingUp, TrendingDown, Clock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
-import { PriceTargetTimeline } from '@/components/stock/PriceTargetTimeline'
-import { createPriceTarget, getTickerPortfolioInfo } from '@/lib/api'
-import { AddPriceTargetModal } from '@/components/stock/AddPriceTargetModal'
+import { IrrTargetTimeline } from '@/components/stock/IrrTargetTimeline'
+import { createIrrTarget, getTickerPortfolioInfo } from '@/lib/api'
+import { AddIrrTargetModal } from '@/components/stock/AddIrrTargetModal'
 import { SellModal } from '@/components/portfolio/SellModal'
 import { BuyToCoverModal } from '@/components/portfolio/BuyToCoverModal'
 import UploadedFileTile from '@/components/recommendations/UploadedFileTile'
@@ -564,12 +564,12 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
           </CardContent>
         </Card>
 
-        {/* Price Target Timeline */}
+        {/* IRR Target Timeline */}
         <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="font-mono font-bold text-[#1C1B17] flex items-center gap-2">
               <Target className="h-4 w-4" />
-              Price Target Timeline
+              IRR Target Timeline
             </CardTitle>
             <Button
               variant="outline"
@@ -582,7 +582,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
             </Button>
           </CardHeader>
           <CardContent>
-            <PriceTargetTimeline ticker={recommendation.ticker} />
+            <IrrTargetTimeline ticker={recommendation.ticker} />
           </CardContent>
         </Card>
 
@@ -658,10 +658,10 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
       </div>
 
       {showAddTargetModal && (
-        <AddPriceTargetModal
+        <AddIrrTargetModal
           ticker={recommendation.ticker}
           onClose={() => setShowAddTargetModal(false)}
-          onSubmit={async (targetPrice, targetDate) => {
+          onSubmit={async (targetIrr, timeframe) => {
             if (!user) return
             const { data: mapping } = await supabase
               .from('clerk_user_mapping')
@@ -669,7 +669,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
               .eq('clerk_user_id', user.id)
               .maybeSingle()
             if (mapping) {
-              await createPriceTarget(recommendation.ticker, targetPrice, targetDate, mapping.supabase_user_id)
+              await createIrrTarget(recommendation.ticker, targetIrr, timeframe, mapping.supabase_user_id)
               onUpdate()
             }
             setShowAddTargetModal(false)

@@ -306,19 +306,40 @@ export const getPortfolioContribution = async (userId: string) => {
     return res.data;
 };
 
-// --- Price Target Endpoints ---
+// --- IRR Target Endpoints ---
+// The backend route and table are still named "price-targets" for historical
+// reasons; the payload they carry is an IRR target plus its horizon bucket.
 
-export const createPriceTarget = async (ticker: string, targetPrice: number, targetDate: string | null, userId: string) => {
+export interface IrrTargetRecord {
+    id: string;
+    user_id: string;
+    ticker: string;
+    created_at: string;
+    target_irr: number | null;
+    timeframe_start_months: number | null;
+    timeframe_end_months: number | null;
+    /** Legacy: present only on rows created before IRR targets. */
+    target_price?: number | null;
+    target_date?: string | null;
+}
+
+export const createIrrTarget = async (
+    ticker: string,
+    targetIrr: number,
+    timeframe: { startMonths: number; endMonths: number },
+    userId: string
+): Promise<IrrTargetRecord> => {
     // Backend expects user_id as query parameter
     const res = await api.post(`/price-targets?user_id=${encodeURIComponent(userId)}`, {
         ticker,
-        target_price: targetPrice,
-        target_date: targetDate || null,
+        target_irr: targetIrr,
+        timeframe_start_months: timeframe.startMonths,
+        timeframe_end_months: timeframe.endMonths,
     });
     return res.data;
 };
 
-export const getPriceTargets = async (ticker: string, userId: string) => {
+export const getIrrTargets = async (ticker: string, userId: string): Promise<IrrTargetRecord[]> => {
     const res = await api.get(`/price-targets/${ticker}`, {
         params: { user_id: userId }
     });
@@ -358,7 +379,10 @@ export const getRollingPortfolioReturns = async (userId: string, range: 'DAY' | 
     }
 };
 
-export const getAnalystPriceTargets = async (analystUserId: string, ticker: string) => {
+export const getAnalystIrrTargets = async (
+    analystUserId: string,
+    ticker: string
+): Promise<IrrTargetRecord[]> => {
     const res = await api.get(`/price-targets/analyst/${analystUserId}/${ticker}`);
     return res.data;
 };

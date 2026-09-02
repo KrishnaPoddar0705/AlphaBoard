@@ -3,7 +3,7 @@ import { X, User, Clock, Award } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getPrice } from '../../lib/api';
 import { PerformanceMetricsV2 } from '../PerformanceMetricsV2';
-import { PriceTargetTimeline } from '../stock/PriceTargetTimeline';
+import { IrrTargetTimeline } from '../stock/IrrTargetTimeline';
 
 interface AnalystProfileProps {
     analyst: any;
@@ -174,9 +174,9 @@ export default function AnalystProfile({ analyst, onClose }: AnalystProfileProps
                                                         )}
                                                     </div>
                                                 )}
-                                                {/* Price Target Timeline for this stock */}
+                                                {/* IRR Target Timeline for this stock */}
                                                 <div className="mt-3">
-                                                    <PriceTargetTimeline ticker={rec.ticker} userId={analyst.user_id} />
+                                                    <IrrTargetTimeline ticker={rec.ticker} userId={analyst.user_id} />
                                                 </div>
                                             </div>
                                         ))

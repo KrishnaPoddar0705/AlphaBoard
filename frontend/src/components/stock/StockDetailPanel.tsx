@@ -37,7 +37,7 @@ import { supabase } from '../../lib/supabase';
 import NewsCard from '../NewsCard';
 import PodcastPlayer from '../PodcastPlayer';
 import PodcastList from '../PodcastList';
-import { PriceTargetTimeline } from './PriceTargetTimeline';
+import { IrrTargetTimeline } from './IrrTargetTimeline';
 import { usePanelWidth } from '../../hooks/useLayout';
 
 interface StockDetailPanelProps {
@@ -665,9 +665,9 @@ export function StockDetailPanel({
                     </div>
                 )}
 
-                {/* Price Target Timeline Section */}
+                {/* IRR Target Timeline Section */}
                 <div className="px-6 py-4 border-b border-[var(--border-color)]">
-                    <PriceTargetTimeline ticker={stock.ticker} />
+                    <IrrTargetTimeline ticker={stock.ticker} />
                 </div>
 
                 {/* Sticky Tabs */}

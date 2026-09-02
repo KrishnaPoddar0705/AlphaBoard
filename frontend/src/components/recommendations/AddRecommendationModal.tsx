@@ -10,6 +10,7 @@ import { searchStocks, getPrice, createRecommendation, getUserPortfolios, execut
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { cn } from '@/lib/utils'
+import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe, validateIrr } from '@/lib/irrTargets'
 
 interface AddRecommendationModalProps {
   open: boolean
@@ -28,8 +29,8 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   const [currentPrice, setCurrentPrice] = useState<number | null>(null)
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
   const [thesis, setThesis] = useState('')
-  const [priceTarget, setPriceTarget] = useState('')
-  const [targetDate, setTargetDate] = useState('')
+  const [irrTarget, setIrrTarget] = useState('')
+  const [timeframe, setTimeframe] = useState<string>(DEFAULT_IRR_TIMEFRAME)
   const [selectedImages, setSelectedImages] = useState<File[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -63,8 +64,8 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       setCurrentPrice(null)
       setAction('BUY')
       setThesis('')
-      setPriceTarget('')
-      setTargetDate('')
+      setIrrTarget('')
+      setTimeframe(DEFAULT_IRR_TIMEFRAME)
       setSelectedImages([])
       setError(null)
       setQuantity('')
@@ -199,6 +200,23 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
         }
       }
 
+      // An IRR target is only interpretable alongside its horizon, so the two are
+      // validated and sent as a pair.
+      const selectedTimeframe = getTimeframe(timeframe)
+      let irrValue: number | null = null
+      if (irrTarget.trim()) {
+        const parsed = validateIrr(irrTarget)
+        if ('error' in parsed) {
+          setError(parsed.error)
+          return
+        }
+        if (!selectedTimeframe) {
+          setError('Please select a timeframe for the IRR target')
+          return
+        }
+        irrValue = parsed.value
+      }
+
       const benchmarkTicker = selectedMarket === 'US' ? '^GSPC' : '^NSEI'
 
       const newRec: any = {
@@ -209,8 +227,9 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
         benchmark_ticker: benchmarkTicker,
         status: watchlistMode ? 'WATCHLIST' : 'OPEN',
         images: imageUrls.length > 0 ? imageUrls : null,
-        price_target: priceTarget ? parseFloat(priceTarget) : null,
-        target_date: targetDate ? new Date(targetDate).toISOString() : null,
+        target_irr: irrValue,
+        timeframe_start_months: irrValue !== null ? selectedTimeframe!.startMonths : null,
+        timeframe_end_months: irrValue !== null ? selectedTimeframe!.endMonths : null,
       }
 
       // Create the recommendation
@@ -289,9 +308,9 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
               <SelectTrigger className="bg-[#FBF7ED] border-[#D7D0C2] font-mono">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="US">USA</SelectItem>
-                <SelectItem value="IN">India</SelectItem>
+              <SelectContent className="bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17]">
+                <SelectItem value="US" className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]">USA</SelectItem>
+                <SelectItem value="IN" className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]">India</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -338,9 +357,9 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
                 <SelectTrigger className="bg-[#FBF7ED] border-[#D7D0C2] font-mono">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="BUY">BUY</SelectItem>
-                  <SelectItem value="SELL">SELL</SelectItem>
+                <SelectContent className="bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17]">
+                  <SelectItem value="BUY" className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]">BUY</SelectItem>
+                  <SelectItem value="SELL" className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]">SELL</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -481,27 +500,44 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
             />
           </div>
 
-          {/* Price Target */}
-          <div className="grid grid-cols-2 gap-4">
+          {/* IRR Target */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label className="font-mono text-sm text-[#1C1B17]">Price Target</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={priceTarget}
-                onChange={(e) => setPriceTarget(e.target.value)}
-                placeholder="0.00"
-                className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums"
-              />
+              <Label className="font-mono text-sm text-[#1C1B17]">IRR Target (%)</Label>
+              <div className="relative">
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={irrTarget}
+                  onChange={(e) => setIrrTarget(e.target.value)}
+                  placeholder="0.0"
+                  className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums pr-7"
+                />
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-sm text-[#6F6A60]">
+                  %
+                </span>
+              </div>
+              <p className="font-mono text-xs text-[#6F6A60]">Expected annualised return</p>
             </div>
             <div className="space-y-2">
-              <Label className="font-mono text-sm text-[#1C1B17]">Target Date</Label>
-              <Input
-                type="date"
-                value={targetDate}
-                onChange={(e) => setTargetDate(e.target.value)}
-                className="bg-[#FBF7ED] border-[#D7D0C2] font-mono"
-              />
+              <Label className="font-mono text-sm text-[#1C1B17]">Timeframe</Label>
+              <Select value={timeframe} onValueChange={setTimeframe}>
+                <SelectTrigger className="bg-[#FBF7ED] border-[#D7D0C2] font-mono">
+                  <SelectValue placeholder="Select timeframe" />
+                </SelectTrigger>
+                <SelectContent className="max-h-60 bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17]">
+                  {IRR_TIMEFRAMES.map((tf) => (
+                    <SelectItem
+                      key={tf.value}
+                      value={tf.value}
+                      className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]"
+                    >
+                      {tf.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="font-mono text-xs text-[#6F6A60]">Horizon to achieve the IRR</p>
             </div>
           </div>
 
