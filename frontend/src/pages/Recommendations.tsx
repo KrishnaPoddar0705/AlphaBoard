@@ -15,20 +15,27 @@ export default function Recommendations() {
   const { user } = useUser()
   const isMobile = useIsMobile()
   const [recommendations, setRecommendations] = React.useState<any[]>([])
+  // Only the very first fetch blanks the page. Later refreshes repaint in place
+  // so the user never loses their scroll position or selection mid-task.
   const [loading, setLoading] = React.useState(true)
+  const hasLoadedRef = React.useRef(false)
   const [selectedId, setSelectedId] = React.useState<string | null>(null)
   const [showAddModal, setShowAddModal] = React.useState(false)
   const topRef = React.useRef<HTMLDivElement>(null)
 
+  // Keyed on the user *id*, not the Clerk user object: Clerk hands back a new
+  // object identity on every session refresh, and depending on the object made
+  // this effect re-run at random and blank the page mid-interaction.
   React.useEffect(() => {
-    if (user) {
+    if (user?.id) {
       loadRecommendations()
     }
-  }, [user])
+  }, [user?.id])
 
-  const loadRecommendations = async () => {
+  const loadRecommendations = async (options: { silent?: boolean } = {}) => {
     if (!user) return
-    setLoading(true)
+    const silent = options.silent ?? hasLoadedRef.current
+    if (!silent) setLoading(true)
     try {
       // Get Supabase user ID from mapping
       const { data: mapping } = await supabase
@@ -39,6 +46,7 @@ export default function Recommendations() {
 
       if (!mapping) {
         setLoading(false)
+        hasLoadedRef.current = true
         return
       }
 
@@ -67,11 +75,14 @@ export default function Recommendations() {
         if (recommendationsWithPrices.length > 0 && !selectedId) {
           setSelectedId(recommendationsWithPrices[0].id)
         }
+        return recommendationsWithPrices
       }
     } catch (error) {
     } finally {
       setLoading(false)
+      hasLoadedRef.current = true
     }
+    return null
   }
 
   const selectedRecommendation = recommendations.find((rec) => rec.id === selectedId) || null
@@ -121,18 +132,12 @@ export default function Recommendations() {
                       topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
                     }}
                     onUpdate={() => {
-                      loadRecommendations()
-                      // Clear selection if the recommendation was closed
-                      if (selectedRecommendation && selectedRecommendation.status === 'OPEN') {
-                        setTimeout(() => {
-                          const stillExists = recommendations.find(
-                            (r) => r.id === selectedId && r.status === 'OPEN'
-                          )
-                          if (!stillExists) {
-                            setSelectedId(null)
-                          }
-                        }, 100)
-                      }
+                      loadRecommendations({ silent: true }).then((fresh) => {
+                        // Drop the selection only if the row genuinely went away.
+                        if (fresh && selectedId && !fresh.some((r) => r.id === selectedId)) {
+                          setSelectedId(null)
+                        }
+                      })
                     }}
                   />
                 </div>
@@ -166,18 +171,12 @@ export default function Recommendations() {
                 <RecommendationDetailView
                   recommendation={selectedRecommendation}
                   onUpdate={() => {
-                    loadRecommendations()
-                    // Clear selection if the recommendation was closed
-                    if (selectedRecommendation && selectedRecommendation.status === 'OPEN') {
-                      setTimeout(() => {
-                        const stillExists = recommendations.find(
-                          (r) => r.id === selectedId && r.status === 'OPEN'
-                        )
-                        if (!stillExists) {
-                          setSelectedId(null)
-                        }
-                      }, 100)
-                    }
+                    loadRecommendations({ silent: true }).then((fresh) => {
+                      // Drop the selection only if the row genuinely went away.
+                      if (fresh && selectedId && !fresh.some((r) => r.id === selectedId)) {
+                        setSelectedId(null)
+                      }
+                    })
                   }}
                 />
               </div>
@@ -191,13 +190,13 @@ export default function Recommendations() {
         open={showAddModal}
         onClose={() => setShowAddModal(false)}
         onSuccess={() => {
-          loadRecommendations()
-          // Select the newly created recommendation if possible
-          setTimeout(() => {
-            if (recommendations.length > 0) {
-              setSelectedId(recommendations[0].id)
+          // Refresh in place -- no full-page loader -- and select the row that
+          // was just created, taken from the fresh list rather than a stale one.
+          loadRecommendations({ silent: true }).then((fresh) => {
+            if (fresh && fresh.length > 0) {
+              setSelectedId(fresh[0].id)
             }
-          }, 500)
+          })
         }}
       />
     </div>
