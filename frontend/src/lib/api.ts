@@ -14,8 +14,10 @@ export const api = axios.create({
     baseURL: API_URL,
 });
 
-export const searchStocks = async (query: string) => {
-    const res = await api.get(`/market/search?q=${query}`);
+export const searchStocks = async (query: string, signal?: AbortSignal) => {
+    // encodeURIComponent: names contain spaces and "&" (e.g. "J & K Bank"),
+    // which would otherwise truncate or corrupt the query string.
+    const res = await api.get(`/market/search?q=${encodeURIComponent(query)}`, { signal });
     return res.data;
 };
 

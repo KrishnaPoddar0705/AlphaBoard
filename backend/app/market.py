@@ -87,19 +87,56 @@ def get_current_price(ticker: str) -> Optional[float]:
         print(f"[INFO] Unable to fetch price data for ticker {ticker}: {str(e)}")
         return None
 
+# Ticker search is typed character by character, so the same prefixes are
+# requested over and over. The upstream result for a given prefix is effectively
+# static, so a short-lived in-process cache turns most keystrokes into a local
+# dict lookup instead of a round trip to Yahoo from ap-southeast.
+_SEARCH_CACHE: Dict[str, tuple] = {}
+_SEARCH_CACHE_TTL = 300.0   # seconds
+_SEARCH_CACHE_MAX = 512
+# Autocomplete is only useful while it is fast: a slow upstream should fall
+# through to the local suggestions rather than hold the request open.
+_SEARCH_TIMEOUT = 2.5
+
+
+def _search_cache_get(key: str):
+    hit = _SEARCH_CACHE.get(key)
+    if not hit:
+        return None
+    expires_at, value = hit
+    if time.monotonic() > expires_at:
+        _SEARCH_CACHE.pop(key, None)
+        return None
+    return value
+
+
+def _search_cache_put(key: str, value):
+    # Cheap bound: drop the oldest-expiring entries once the cache grows too big.
+    if len(_SEARCH_CACHE) >= _SEARCH_CACHE_MAX:
+        for stale in sorted(_SEARCH_CACHE, key=lambda k: _SEARCH_CACHE[k][0])[:_SEARCH_CACHE_MAX // 4]:
+            _SEARCH_CACHE.pop(stale, None)
+    _SEARCH_CACHE[key] = (time.monotonic() + _SEARCH_CACHE_TTL, value)
+
+
 def search_stocks(query: str) -> List[Dict[str, str]]:
     """
     Search for stocks using Yahoo Finance and Finnhub (if available).
     Supports both US and Indian markets.
+
+    Results are cached in process for _SEARCH_CACHE_TTL seconds.
     """
     results = []
     clean_query = query.upper().strip()
-    
+
+    cached = _search_cache_get(clean_query)
+    if cached is not None:
+        return cached
+
     # Try Yahoo Finance search first (works for both US and Indian stocks)
     try:
         # Yahoo Finance search endpoint
         search_url = f"https://query1.finance.yahoo.com/v1/finance/search?q={clean_query}&quotesCount=15&newsCount=0"
-        response = httpx.get(search_url, timeout=5)
+        response = httpx.get(search_url, timeout=_SEARCH_TIMEOUT)
         if response.status_code == 200:
             data = response.json()
             quotes = data.get("quotes", [])
@@ -130,6 +167,7 @@ def search_stocks(query: str) -> List[Dict[str, str]]:
                 })
             
             if results:
+                _search_cache_put(clean_query, results)
                 return results
     except Exception as e:
         print(f"Yahoo Finance search error: {e}")
@@ -138,7 +176,7 @@ def search_stocks(query: str) -> List[Dict[str, str]]:
     if FINNHUB_API_KEY:
         try:
             url = f"https://finnhub.io/api/v1/search?q={clean_query}&token={FINNHUB_API_KEY}"
-            response = httpx.get(url, timeout=5)
+            response = httpx.get(url, timeout=_SEARCH_TIMEOUT)
             if response.status_code == 200:
                 data = response.json()
                 for item in data.get("result", [])[:15]:
@@ -159,6 +197,7 @@ def search_stocks(query: str) -> List[Dict[str, str]]:
                             "market": market
                         })
                 if results:
+                    _search_cache_put(clean_query, results)
                     return results
         except Exception as e:
             print(f"Finnhub search error: {e}")
@@ -169,7 +208,8 @@ def search_stocks(query: str) -> List[Dict[str, str]]:
         results.append({"symbol": f"{clean_query}.BO", "name": f"{clean_query} (BSE)", "market": "BSE"})
         # Also suggest US ticker
         results.append({"symbol": clean_query, "name": f"{clean_query} (US)", "market": "US"})
-    
+
+    _search_cache_put(clean_query, results)
     return results
 
 def format_statement(df: pd.DataFrame, key_map: Dict[str, str], count: int = 5) -> List[Dict[str, Any]]:

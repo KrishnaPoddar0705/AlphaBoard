@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,6 +12,10 @@ import { useUser } from '@clerk/clerk-react'
 import { cn } from '@/lib/utils'
 import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe, validateIrr } from '@/lib/irrTargets'
 
+// Long enough to coalesce a burst of typing, short enough that the list still
+// feels like it is tracking the keyboard.
+const SEARCH_DEBOUNCE_MS = 180
+
 interface AddRecommendationModalProps {
   open: boolean
   onClose: () => void
@@ -24,7 +28,7 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   const [ticker, setTicker] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
-  const [_isSearching, setIsSearching] = useState(false)
+  const [isSearching, setIsSearching] = useState(false)
   const [entryPrice, setEntryPrice] = useState('')
   const [currentPrice, setCurrentPrice] = useState<number | null>(null)
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
@@ -54,12 +58,23 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       : null
   const navQuickPercents = [5, 10, 15, 20, 25] as const
 
+  // Ticker search is typed character by character. Debounce so we issue one
+  // request per pause rather than one per keystroke, cache what comes back, and
+  // abort superseded requests so a slow early response cannot overwrite a fast
+  // later one.
+  const searchCacheRef = useRef<Map<string, any[]>>(new Map())
+  const searchAbortRef = useRef<AbortController | null>(null)
+
   useEffect(() => {
     if (!open) {
       // Reset form when modal closes
       setTicker('')
       setSearchQuery('')
       setSearchResults([])
+      searchAbortRef.current?.abort()
+      searchAbortRef.current = null
+      searchCacheRef.current.clear()
+      setIsSearching(false)
       setEntryPrice('')
       setCurrentPrice(null)
       setAction('BUY')
@@ -105,22 +120,54 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
     setQuantity(String(Math.max(0, shares)))
   }
 
-  const handleSearch = async (query: string) => {
-    setSearchQuery(query)
+  // Deliberately independent of the portfolio/NAV fetch above -- ticker results
+  // must never wait on it.
+  useEffect(() => {
+    const query = searchQuery.trim()
+
     if (query.length < 2) {
+      searchAbortRef.current?.abort()
+      searchAbortRef.current = null
       setSearchResults([])
+      setIsSearching(false)
+      return
+    }
+
+    const cached = searchCacheRef.current.get(query.toUpperCase())
+    if (cached) {
+      setSearchResults(cached)
+      setIsSearching(false)
       return
     }
 
     setIsSearching(true)
-    try {
-      const results = await searchStocks(query)
-      setSearchResults(results || [])
-    } catch (err) {
-      setSearchResults([])
-    } finally {
-      setIsSearching(false)
-    }
+    const timer = setTimeout(() => {
+      // Cancel whatever is still in flight; its results are already stale.
+      searchAbortRef.current?.abort()
+      const controller = new AbortController()
+      searchAbortRef.current = controller
+
+      searchStocks(query, controller.signal)
+        .then((results) => {
+          if (controller.signal.aborted) return
+          const list = results || []
+          searchCacheRef.current.set(query.toUpperCase(), list)
+          setSearchResults(list)
+          setIsSearching(false)
+        })
+        .catch((err: any) => {
+          // An abort is a supersede, not a failure -- leave the UI as it is.
+          if (controller.signal.aborted || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return
+          setSearchResults([])
+          setIsSearching(false)
+        })
+    }, SEARCH_DEBOUNCE_MS)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
   }
 
   const handleSelectTicker = async (selectedTicker: string) => {
@@ -325,9 +372,19 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
                 placeholder="Search for a stock..."
                 className="bg-[#FBF7ED] border-[#D7D0C2] font-mono"
               />
+              {isSearching && (
+                <span className="pointer-events-none absolute right-3 top-2.5 font-mono text-xs text-[#6F6A60]">
+                  Searching...
+                </span>
+              )}
               {ticker && (
                 <div className="mt-2 p-2 bg-[#FBF7ED] border border-[#D7D0C2] rounded">
                   <span className="font-mono text-sm text-[#1C1B17]">Selected: {ticker}</span>
+                </div>
+              )}
+              {!isSearching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+                <div className="absolute z-10 w-full mt-1 bg-[#FBF7ED] border border-[#D7D0C2] rounded shadow-lg p-3">
+                  <span className="font-mono text-xs text-[#6F6A60]">No matches for "{searchQuery.trim()}"</span>
                 </div>
               )}
               {searchResults.length > 0 && (

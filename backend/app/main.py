@@ -647,7 +647,7 @@ async def create_watchlist_endpoint(request: Request):
         )
 
 @app.delete("/watchlist/{recommendation_id}")
-async def delete_watchlist_item(request: Request, recommendation_id: str, user_id: str = Query(...)):
+def delete_watchlist_item(request: Request, recommendation_id: str, user_id: str = Query(...)):
     """
     Delete a watchlist item (recommendation with status='WATCHLIST').
     Uses service role to bypass RLS.
@@ -2355,7 +2355,7 @@ def get_execution_price(symbol: str):
 
 
 @app.get("/api/portfolio")
-async def get_portfolio(request: Request, user_id: str = Query(...)):
+def get_portfolio(request: Request, user_id: str = Query(...)):
     """
     Get user's portfolio(s) with computed values.
     Returns all portfolios (US and IN) for the user.
@@ -2438,7 +2438,7 @@ async def get_portfolio(request: Request, user_id: str = Query(...)):
 
 
 @app.get("/api/portfolio/{portfolio_id}/positions")
-async def get_portfolio_positions(request: Request, portfolio_id: str, user_id: str = Query(...)):
+def get_portfolio_positions(request: Request, portfolio_id: str, user_id: str = Query(...)):
     """Get positions for a specific portfolio with current prices."""
     try:
         # Verify ownership
@@ -2500,7 +2500,7 @@ async def get_portfolio_positions(request: Request, portfolio_id: str, user_id: 
 
 
 @app.get("/api/portfolio/{portfolio_id}/trades")
-async def get_portfolio_trades(request: Request, portfolio_id: str, user_id: str = Query(...), limit: int = 50):
+def get_portfolio_trades(request: Request, portfolio_id: str, user_id: str = Query(...), limit: int = 50):
     """Get trade history for a portfolio."""
     try:
         # Verify ownership
@@ -2528,7 +2528,7 @@ async def get_portfolio_trades(request: Request, portfolio_id: str, user_id: str
 
 
 @app.get("/api/portfolio/{portfolio_id}/snapshots")
-async def get_portfolio_snapshots(request: Request, portfolio_id: str, user_id: str = Query(...), days: int = 365):
+def get_portfolio_snapshots(request: Request, portfolio_id: str, user_id: str = Query(...), days: int = 365):
     """Get daily NAV snapshots for a portfolio."""
     try:
         # Verify ownership
@@ -3003,7 +3003,7 @@ async def execute_portfolio_buy_to_cover(request: Request):
 
 
 @app.get("/api/portfolio/cash")
-async def get_portfolio_cash(request: Request, user_id: str = Query(...), market: str = Query(default='US')):
+def get_portfolio_cash(request: Request, user_id: str = Query(...), market: str = Query(default='US')):
     """Get available cash for a specific market portfolio."""
     try:
         # Get Supabase user ID
@@ -3039,7 +3039,7 @@ async def get_portfolio_cash(request: Request, user_id: str = Query(...), market
 
 
 @app.get("/api/portfolio/ticker/{ticker}")
-async def get_ticker_portfolio_info(ticker: str, user_id: str = Query(...)):
+def get_ticker_portfolio_info(ticker: str, user_id: str = Query(...)):
     """
     Get portfolio information for a specific ticker including:
     - Current position (shares held, avg cost)
@@ -3145,7 +3145,7 @@ async def get_ticker_portfolio_info(ticker: str, user_id: str = Query(...)):
 
 
 @app.post("/admin/portfolio/backfill")
-async def admin_backfill_portfolios():
+def admin_backfill_portfolios():
     """
     Admin endpoint to run the portfolio backfill for existing recommendations.
     Creates 1-unit trades for all existing OPEN recommendations.
@@ -3160,7 +3160,7 @@ async def admin_backfill_portfolios():
 
 
 @app.post("/admin/portfolio/create-snapshots")
-async def admin_create_portfolio_snapshots():
+def admin_create_portfolio_snapshots():
     """
     Admin endpoint to manually create daily snapshots for all portfolios.
     """
