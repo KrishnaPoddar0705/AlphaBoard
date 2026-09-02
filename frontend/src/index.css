@@ -42,13 +42,35 @@
   --color-sidebar-accent-foreground: #1C1B17;
   --color-sidebar-border: #D7D0C2;
 
-  /* shadcn/ui semantic tokens used by Tailwind classes like `bg-background`, `text-foreground`, etc. */
+  /* shadcn/ui semantic tokens used by Tailwind classes like `bg-background`, `text-foreground`, etc.
+     In Tailwind v4 utilities are generated from these @theme variables, so a class naming a token that
+     is not defined here (e.g. `bg-popover`) is silently dropped from the stylesheet entirely -- the
+     element renders with no background at all rather than the build failing. That is how the shadcn
+     Select dropdowns ended up transparent. Every token referenced by anything in src/components/ui/
+     must therefore be defined here. */
   --color-background: var(--color-paper);
   --color-foreground: var(--color-ink);
   --color-border: var(--color-border-editorial);
+  --color-muted: var(--color-gridline);
   --color-muted-foreground: var(--color-ink-muted);
   --color-accent: var(--color-sidebar-accent);
   --color-accent-foreground: var(--color-ink);
+
+  /* Floating surfaces: dropdowns, popovers, menus, tooltips */
+  --color-popover: var(--color-paper-alt);
+  --color-popover-foreground: var(--color-ink);
+  --color-card: var(--color-paper-light);
+  --color-card-foreground: var(--color-ink);
+
+  --color-primary: var(--color-ink);
+  --color-primary-foreground: var(--color-paper-light);
+  --color-secondary: var(--color-gridline);
+  --color-secondary-foreground: var(--color-ink);
+  --color-destructive: var(--color-negative);
+  --color-destructive-foreground: var(--color-paper-light);
+
+  --color-input: var(--color-border-editorial);
+  --color-ring: var(--color-ink-muted);
 }
 
 /* ===========================
