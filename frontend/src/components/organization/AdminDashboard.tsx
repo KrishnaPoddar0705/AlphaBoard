@@ -7,7 +7,7 @@ import { updateMemberRole } from '../../lib/edgeFunctions';
 import { useTeams } from '../../hooks/useTeams';
 import { useOrgDashboardData } from '../../hooks/useOrgDashboardData';
 import { useAnalystDetails } from '../../hooks/useAnalystDetails';
-import type { OrgRole } from '../../hooks/useOrganization';
+import { useOrganization, type OrgRole } from '../../hooks/useOrganization';
 import { safeError } from '../../lib/logger';
 import { getUserFriendlyError } from '../../lib/errorSanitizer';
 import { Button } from '../ui/button';
@@ -40,10 +40,15 @@ const ROLE_CHANGE_COPY: Record<OrgRole, (name: string) => string> = {
 export default function AdminDashboard() {
   const { session } = useAuth();
   const navigate = useNavigate();
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
-  const [organizationName, setOrganizationName] = useState<string | null>(null);
-  const [gateError, setGateError] = useState<string | null>(null);
-  const [gateLoading, setGateLoading] = useState(true);
+  // Organization identity comes from useOrganization, not from a second lookup here.
+  // This component used to run its own useAuth + membership query, and that hook
+  // instance starts with a null session while the Clerk -> Supabase sync resolves --
+  // so the first pass concluded "not logged in" and latched an error that nothing
+  // cleared once the session did arrive. useOrganization already holds `loading`
+  // true across that window, which is the whole reason to read it here instead.
+  const { organization, loading: orgLoading } = useOrganization();
+  const organizationId = organization?.id ?? null;
+  const organizationName = organization?.name ?? null;
   const [showExportModal, setShowExportModal] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamMemberIds, setTeamMemberIds] = useState<Set<string>>(new Set());
@@ -55,37 +60,6 @@ export default function AdminDashboard() {
   });
   const { expandedUserId, recommendations, irrTargets, toggle, reset } =
     useAnalystDetails(selectedTeamId);
-
-  useEffect(() => {
-    const resolveOrganization = async () => {
-      if (!session?.user?.id) {
-        setGateLoading(false);
-        setGateError('You must be logged in to access this page');
-        return;
-      }
-
-      const { data: membership, error: membershipError } = await supabase
-        .from('user_organization_membership')
-        .select('organization_id, role, organizations(id, name)')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
-      if (membershipError) {
-        safeError('Membership error:', membershipError);
-        setGateError('Failed to load organization membership');
-      } else if (!membership) {
-        setGateError('You are not a member of any organization');
-      } else if (membership.role !== 'admin') {
-        setGateError('Only organization admins can access this page');
-      } else {
-        setOrganizationId(membership.organization_id);
-        setOrganizationName((membership.organizations as any)?.name || 'Unknown Organization');
-      }
-      setGateLoading(false);
-    };
-
-    resolveOrganization();
-  }, [session]);
 
   // Which analysts belong to the selected team. Used only to narrow the visible
   // roster; the recommendations themselves are scoped by tag in the Edge Function.
@@ -150,7 +124,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (gateLoading || loading) {
+  if (orgLoading || loading) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
         <div className="text-[var(--text-secondary)]">Loading organization data...</div>
@@ -158,6 +132,12 @@ export default function AdminDashboard() {
     );
   }
 
+  // Unreachable behind OrgRoleRoute, kept for a direct mount of the component.
+  const gateError = !organization
+    ? 'You are not a member of any organization'
+    : organization.role !== 'admin'
+      ? 'Only organization admins can access this page'
+      : null;
   const shownError = gateError || error;
   if (shownError) {
     return (

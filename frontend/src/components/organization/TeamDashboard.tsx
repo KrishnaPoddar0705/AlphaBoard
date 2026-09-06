@@ -1,12 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, TrendingUp, BarChart3, Download } from 'lucide-react';
-import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabase';
 import { useTeams, useTeamMembers } from '../../hooks/useTeams';
+import { useOrganization } from '../../hooks/useOrganization';
 import { useOrgDashboardData } from '../../hooks/useOrgDashboardData';
 import { useAnalystDetails } from '../../hooks/useAnalystDetails';
-import { safeError } from '../../lib/logger';
 import { Button } from '../ui/button';
 import TeamSelector from './TeamSelector';
 import TeamJoinRequests from './TeamJoinRequests';
@@ -28,9 +26,12 @@ import { formatPercent } from './dashboard/types';
  * returns, so useTeams with no orgId is already the right question.
  */
 export default function TeamDashboard() {
-  const { session } = useAuth();
   const navigate = useNavigate();
-  const [organizationId, setOrganizationId] = useState<string | null>(null);
+  // Same reasoning as AdminDashboard: read the organization from useOrganization
+  // rather than running a second membership query off a session that is null for
+  // the first render.
+  const { organization } = useOrganization();
+  const organizationId = organization?.id ?? null;
   // Holds only an explicit choice. The effective team falls back to the first one,
   // derived rather than written back in an effect -- that would set state during
   // render-commit and give every single-team manager an extra render with no team.
@@ -52,25 +53,6 @@ export default function TeamDashboard() {
 
   const { expandedUserId, recommendations, irrTargets, toggle, reset } =
     useAnalystDetails(selectedTeamId);
-
-  useEffect(() => {
-    const resolveOrganization = async () => {
-      if (!session?.user?.id) return;
-      const { data, error: membershipError } = await supabase
-        .from('user_organization_membership')
-        .select('organization_id')
-        .eq('user_id', session.user.id)
-        .maybeSingle();
-
-      if (membershipError) {
-        safeError('Membership error:', membershipError);
-        return;
-      }
-      setOrganizationId(data?.organization_id ?? null);
-    };
-
-    resolveOrganization();
-  }, [session]);
 
   const selectedTeam = teams.find((t) => t.id === selectedTeamId) || null;
 
