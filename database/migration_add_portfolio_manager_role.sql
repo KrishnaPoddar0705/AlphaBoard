@@ -22,6 +22,11 @@
 -- implemented in the UI and in get-visible-recommendations. recommendation_teams is
 -- not a confidentiality boundary and must not be read as one.
 --
+-- INCOMPLETE ON ITS OWN: see migration_fix_profiles_role_check.sql. A trigger
+-- created by hand in the console mirrors membership.role into profiles.role, whose
+-- own CHECK also has to allow the new value. Widening only the constraint below
+-- makes promotion fail with a profiles_role_check violation.
+--
 -- ROLLBACK is asymmetric. Re-adding the two-value CHECK fails while any row still
 -- holds 'portfolio_manager', so the down path is:
 --   UPDATE public.user_organization_membership
