@@ -18,6 +18,7 @@ import AnalystPerformance from './pages/AnalystPerformance';
 import CreateOrganization from './components/organization/CreateOrganization';
 import JoinOrganization from './components/organization/JoinOrganization';
 import AdminDashboard from './components/organization/AdminDashboard';
+import TeamDashboard from './components/organization/TeamDashboard';
 import OrganizationSettings from './components/organization/OrganizationSettings';
 import PrivacySettings from './components/settings/PrivacySettings';
 import ResearchLibrary from './pages/ResearchLibrary';
@@ -28,6 +29,7 @@ import InlineLogin from './components/InlineLogin';
 import { ensureVoterSession } from './lib/auth/ensureVoterSession';
 import { Toaster } from 'react-hot-toast';
 import { PaperPortfolioProvider, usePaperPortfolio } from './contexts/PaperPortfolioContext';
+import { useOrganization, type OrgRole } from './hooks/useOrganization';
 
 /**
  * Keeps the paper-trading pages (/portfolio and /history) unreachable for
@@ -47,6 +49,35 @@ function PaperPortfolioRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!paperPortfolioEnabled) {
+    return <Navigate to="/recommendations" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+/**
+ * Restricts a route to a set of organization roles.
+ *
+ * Guarding here rather than inside the page is the point. /organization/admin used
+ * to be reachable by anyone signed in -- AdminDashboard mounted, ran its whole fetch
+ * chain, then rendered an error string. A bookmarked URL should not get that far.
+ *
+ * The `ready` check matters as much as the role check: answering "not permitted"
+ * while the membership row is still in flight would bounce an admin off their own
+ * dashboard on every hard refresh. Same discipline as PaperPortfolioRoute above.
+ */
+function OrgRoleRoute({ allow, children }: { allow: OrgRole[]; children: React.ReactNode }) {
+  const { organization, loading } = useOrganization();
+
+  if (loading) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[#F1EEE0]">
+        <div className="text-[#6F6A60] font-mono">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!organization || !allow.includes(organization.role)) {
     return <Navigate to="/recommendations" replace />;
   }
 
@@ -168,7 +199,16 @@ function App() {
           } />
           <Route path="/organization/admin" element={
             <PrivateRoute>
-              <AdminDashboard />
+              <OrgRoleRoute allow={['admin']}>
+                <AdminDashboard />
+              </OrgRoleRoute>
+            </PrivateRoute>
+          } />
+          <Route path="/organization/team" element={
+            <PrivateRoute>
+              <OrgRoleRoute allow={['portfolio_manager', 'admin']}>
+                <TeamDashboard />
+              </OrgRoleRoute>
             </PrivateRoute>
           } />
           <Route path="/organization/settings" element={

@@ -1,8 +1,10 @@
 // Edge Function: get-team-join-requests
-// Purpose: Get pending team join requests for an organization (admin only)
+// Purpose: Get pending team join requests (all of them for an org admin; only the
+//          requesting portfolio manager's own teams otherwise)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { getMembership, isOrgAdmin, teamIdsForUser } from '../_shared/roles.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -95,17 +97,15 @@ serve(async (req) => {
             )
         }
 
-        // Verify user is admin of the organization
-        const { data: membership, error: membershipError } = await supabaseAdmin
-            .from('user_organization_membership')
-            .select('role')
-            .eq('user_id', userId)
-            .eq('organization_id', orgId)
-            .maybeSingle()
+        // Admins see the whole organization's queue; portfolio managers see only the
+        // desks they are on. Unlike the approve/reject endpoints, this one is scoped
+        // by an orgId rather than a single team, so the scope is applied by narrowing
+        // the team list below rather than by refusing the request outright.
+        const membership = await getMembership(supabaseAdmin, userId, orgId)
 
-        if (membershipError || !membership || membership.role !== 'admin') {
+        if (!isOrgAdmin(membership) && membership?.role !== 'portfolio_manager') {
             return new Response(
-                JSON.stringify({ error: 'Only organization admins can view join requests' }),
+                JSON.stringify({ error: 'Only organization admins or portfolio managers can view join requests' }),
                 { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
@@ -126,7 +126,25 @@ serve(async (req) => {
             )
         }
 
-        const teamIds = orgTeams.map((t: any) => t.id)
+        let teamIds = orgTeams.map((t: any) => t.id)
+
+        // Intersect with the manager's own teams. Doing this here rather than in the
+        // query keeps one code path: an admin keeps the full list, a manager gets a
+        // subset, and everything downstream is identical.
+        if (!isOrgAdmin(membership)) {
+            const myTeamIds = await teamIdsForUser(supabaseAdmin, userId)
+            teamIds = teamIds.filter((id: string) => myTeamIds.includes(id))
+
+            if (teamIds.length === 0) {
+                return new Response(
+                    JSON.stringify({
+                        success: true,
+                        requests: []
+                    }),
+                    { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+        }
 
         // Get all pending join requests for teams in this organization
         const { data: requests, error: requestsError } = await supabaseAdmin

@@ -2,10 +2,20 @@ import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
 import { supabase } from '../lib/supabase';
 
+/**
+ * A member's role within their organization.
+ *
+ * `portfolio_manager` sits between the other two: every analyst right, plus a
+ * read-only Team Dashboard over the desks they belong to. Which desks those are
+ * comes from `team_members`, never from this string -- the role says what kind of
+ * user someone is, team membership says what they may act on.
+ */
+export type OrgRole = 'admin' | 'analyst' | 'portfolio_manager';
+
 interface Organization {
   id: string;
   name: string;
-  role: 'admin' | 'analyst';
+  role: OrgRole;
   // False only for organizations that have explicitly opted out of share
   // quantities and the paper portfolio. Absent column reads as enabled.
   paperPortfolioEnabled: boolean;

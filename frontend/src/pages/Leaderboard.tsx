@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Award, TrendingUp, TrendingDown, Globe, Building2 } from 'lucide-react';
-import { useOrganization } from '../hooks/useOrganization';
+import { useOrganization, type OrgRole } from '../hooks/useOrganization';
 import AnalystProfile from '../components/AnalystProfile/AnalystProfile';
 import { safeLog, safeError } from '../lib/logger';
 import { useOrgLeaderboard } from '../hooks/useFeatureFlag';
@@ -85,9 +85,9 @@ export default function Leaderboard() {
             }
 
             // Create a map of user_id to role for quick lookup
-            const roleMap = new Map<string, 'admin' | 'analyst'>();
+            const roleMap = new Map<string, OrgRole>();
             memberships?.forEach(m => {
-                roleMap.set(m.user_id, m.role as 'admin' | 'analyst');
+                roleMap.set(m.user_id, m.role as OrgRole);
             });
 
             // Fetch profiles for organization members

@@ -4,6 +4,7 @@
  */
 
 import { supabase } from './supabase';
+import type { OrgRole } from '../hooks/useOrganization';
 
 /**
  * TODO: Backend integration needed to sync Clerk users with Supabase
@@ -709,14 +710,14 @@ export async function rejectTeamJoinRequest(requestId: string): Promise<{ succes
 export interface UpdateMemberRoleResponse {
   success: boolean;
   message: string;
-  role: 'admin' | 'analyst';
+  role: OrgRole;
   membership: any;
 }
 
 export async function updateMemberRole(
   orgId: string,
   targetUserId: string,
-  newRole: 'admin' | 'analyst'
+  newRole: OrgRole
 ): Promise<UpdateMemberRoleResponse> {
   const headers = await getAuthHeaders();
 
@@ -777,6 +778,58 @@ export async function getOrgTeams(orgId: string): Promise<TeamsResponse> {
  * Get all recommendations visible to the current user (RLS-enforced)
  * Optionally filter by teamId and status
  */
+/**
+ * The teams a recommendation is tagged to.
+ *
+ * Read straight from the table rather than through an Edge Function: the SELECT
+ * policy on recommendation_teams mirrors the parent recommendation's, so a row is
+ * readable exactly when the recommendation is. Writes are a different matter and go
+ * through setRecommendationTeams.
+ */
+export async function getRecommendationTeamIds(recommendationId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('recommendation_teams')
+    .select('team_id')
+    .eq('recommendation_id', recommendationId);
+
+  if (error) {
+    throw new Error(error.message || 'Failed to load recommendation teams');
+  }
+
+  return ((data || []) as Array<{ team_id: string }>).map((row) => row.team_id);
+}
+
+/**
+ * Replace the set of teams a recommendation belongs to.
+ *
+ * This is an Edge Function rather than a direct write because the rule it enforces
+ * -- you own this recommendation, AND every team you name is one you belong to --
+ * cannot be expressed in RLS without a second policy reading team_members, and one
+ * rule split across two places is one rule that drifts.
+ *
+ * Passing an empty array is meaningful: it clears every tag, at which point the
+ * recommendation falls back to all of its author's current teams at read time.
+ */
+export async function setRecommendationTeams(
+  recommendationId: string,
+  teamIds: string[]
+): Promise<{ success: boolean; teamIds: string[] }> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/set-recommendation-teams`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ recommendationId, teamIds }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || error.details || 'Failed to update recommendation teams');
+  }
+
+  return response.json();
+}
+
 export async function getVisibleRecommendations(
   teamId?: string,
   status?: 'OPEN' | 'CLOSED' | 'WATCHLIST'

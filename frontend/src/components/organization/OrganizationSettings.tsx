@@ -6,12 +6,13 @@ import { getOrganizationUsers, updateOrganizationSettings, removeAnalyst } from 
 import { Trash2, Save, ArrowLeft, Users, Settings, Clock } from 'lucide-react';
 import TeamManagement from './TeamManagement';
 import TeamJoinRequests from './TeamJoinRequests';
+import type { OrgRole } from '../../hooks/useOrganization';
 
 interface OrganizationUser {
   userId: string;
   username: string | null;
   email: string | null;
-  role: 'admin' | 'analyst';
+  role: OrgRole;
   joinedAt: string;
 }
 
@@ -26,6 +27,10 @@ export default function OrganizationSettings() {
   const [organizationName, setOrganizationName] = useState('');
   const [users, setUsers] = useState<OrganizationUser[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  // Portfolio managers review join requests too, but only for their own teams --
+  // get-team-join-requests narrows the list server-side, so this flag only has to
+  // decide whether the tab exists.
+  const [canReviewJoinRequests, setCanReviewJoinRequests] = useState(false);
   const [activeTab, setActiveTab] = useState<'general' | 'teams' | 'requests'>('general');
 
   useEffect(() => {
@@ -63,6 +68,9 @@ export default function OrganizationSettings() {
 
       // Allow all organization members to access (admins see General tab, all see Teams tab)
       setIsAdmin(membership.role === 'admin');
+      setCanReviewJoinRequests(
+        membership.role === 'admin' || membership.role === 'portfolio_manager'
+      );
       const org = membership.organizations as any;
       setOrganizationId(membership.organization_id);
       setOrganizationName(org?.name || '');
@@ -192,7 +200,7 @@ export default function OrganizationSettings() {
                 Teams
               </div>
             </button>
-            {isAdmin && (
+            {canReviewJoinRequests && (
               <button
                 onClick={() => setActiveTab('requests')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm ${activeTab === 'requests'
@@ -269,6 +277,11 @@ export default function OrganizationSettings() {
                             Admin
                           </span>
                         )}
+                        {user.role === 'portfolio_manager' && (
+                          <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-800 rounded">
+                            Portfolio Manager
+                          </span>
+                        )}
                         {user.role === 'analyst' && (
                           <button
                             onClick={() => handleRemoveAnalyst(user.userId, user.username)}
@@ -291,7 +304,7 @@ export default function OrganizationSettings() {
           <TeamManagement orgId={organizationId} isAdmin={isAdmin} />
         )}
 
-        {activeTab === 'requests' && organizationId && isAdmin && (
+        {activeTab === 'requests' && organizationId && canReviewJoinRequests && (
           <TeamJoinRequests
             orgId={organizationId}
             onRequestProcessed={() => {

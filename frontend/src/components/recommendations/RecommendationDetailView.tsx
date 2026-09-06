@@ -17,6 +17,9 @@ import UploadedFileTile from '@/components/recommendations/UploadedFileTile'
 import FileDropzone from './FileDropzone'
 import { extractFiles, nameClipboardFiles } from '@/lib/recommendations/clipboardFiles'
 import ThesisEditor from '@/components/thesis/ThesisEditor'
+import TeamPicker from '@/components/recommendations/TeamPicker'
+import { useTeams } from '@/hooks/useTeams'
+import { getRecommendationTeamIds, setRecommendationTeams } from '@/lib/edgeFunctions'
 import ThesisMarkdown from '@/components/thesis/ThesisMarkdown'
 import { useAttachmentUploads } from '@/hooks/useAttachmentUploads'
 import { formatCurrency, getCurrencySymbol, cn } from '@/lib/utils'
@@ -48,6 +51,8 @@ interface TickerPortfolioInfo {
 
 interface Recommendation {
   id: string
+  /** Present because the list query selects "*". Used to decide who may retag. */
+  user_id?: string
   ticker: string
   entry_price: number
   current_price?: number
@@ -69,6 +74,13 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
   const { user } = useUser()
   const { paperPortfolioEnabled } = usePaperPortfolio()
   const [isEditingThesis, setIsEditingThesis] = useState(false)
+  const { teams: myTeams } = useTeams()
+  // savedTeamIds is what the server holds; teamIds is what the picker shows. Keeping
+  // both is what makes Cancel able to put the checkboxes back.
+  const [savedTeamIds, setSavedTeamIds] = useState<string[]>([])
+  const [teamIds, setTeamIds] = useState<string[]>([])
+  const [isEditingTeams, setIsEditingTeams] = useState(false)
+  const [savingTeams, setSavingTeams] = useState(false)
   const [editedThesis, setEditedThesis] = useState('')
   // Resolved on mount: uploads now start when a file arrives rather than when
   // an "Upload Files" button is pressed, so the id must be ready beforehand.
@@ -118,6 +130,55 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
       setEditedThesis(recommendation.thesis || '')
     }
   }, [recommendation])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadTeams = async () => {
+      if (!recommendation) return
+      setIsEditingTeams(false)
+      try {
+        const ids = await getRecommendationTeamIds(recommendation.id)
+        if (cancelled) return
+        setSavedTeamIds(ids)
+        // An untagged recommendation is shown with every team ticked, because that
+        // is what the read-time fallback actually does with it. Showing an empty
+        // picker would suggest it is hidden everywhere, which is the opposite.
+        setTeamIds(ids.length > 0 ? ids : myTeams.map((t) => t.id))
+      } catch {
+        // A failed read is not worth an alert: the picker just starts empty, and the
+        // recommendation still behaves as untagged, which is what it already was.
+        if (!cancelled) {
+          setSavedTeamIds([])
+          setTeamIds([])
+        }
+      }
+    }
+    loadTeams()
+    return () => { cancelled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [recommendation?.id, myTeams.map((t) => t.id).join(',')])
+
+  // The recommendations list only queries the signed-in user's own rows, so an
+  // absent user_id means "mine". Comparing when it is present keeps this correct if
+  // the detail view is ever reused for someone else's recommendation.
+  const isOwnRecommendation =
+    !recommendation?.user_id || recommendation.user_id === supabaseUserId
+
+  const handleSaveTeams = async () => {
+    if (!recommendation) return
+    setSavingTeams(true)
+    try {
+      await setRecommendationTeams(recommendation.id, teamIds)
+      setSavedTeamIds(teamIds)
+      setIsEditingTeams(false)
+      toast.success('Teams updated')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error'
+      toast.error(`Couldn't update teams: ${message}`)
+    } finally {
+      setSavingTeams(false)
+    }
+  }
 
   // Load trading activity for this ticker.
   //
@@ -598,6 +659,83 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
             )}
           </CardContent>
         </Card>
+
+        {/* Teams -- only the author retags their own work. A portfolio manager
+            viewing a team member's recommendation gets no edit affordance here,
+            and set-recommendation-teams would refuse them anyway. */}
+        {isOwnRecommendation && myTeams.length > 0 && (
+          <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="font-mono font-bold text-[#1C1B17]">Teams</CardTitle>
+              {!isEditingTeams ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditingTeams(true)}
+                  className="font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                >
+                  <Edit2 className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+              ) : (
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={savingTeams}
+                    onClick={() => {
+                      setIsEditingTeams(false)
+                      setTeamIds(savedTeamIds.length > 0 ? savedTeamIds : myTeams.map((t) => t.id))
+                    }}
+                    className="font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveTeams}
+                    disabled={savingTeams}
+                    className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    {savingTeams ? 'Saving...' : 'Save'}
+                  </Button>
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              {isEditingTeams ? (
+                <TeamPicker
+                  teams={myTeams}
+                  selected={teamIds}
+                  onChange={setTeamIds}
+                  disabled={savingTeams}
+                  label=""
+                />
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {savedTeamIds.length > 0 ? (
+                    myTeams
+                      .filter((t) => savedTeamIds.includes(t.id))
+                      .map((t) => (
+                        <span
+                          key={t.id}
+                          className="px-2 py-1 text-xs font-mono rounded-full border border-[#D7D0C2] bg-[#FBF7ED] text-[#1C1B17]"
+                        >
+                          {t.name}
+                        </span>
+                      ))
+                  ) : (
+                    <p className="font-mono text-sm text-[#6F6A60] leading-relaxed">
+                      Not assigned to a team, so this is visible on every team dashboard you
+                      belong to. Click Edit to narrow it.
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         {/* IRR Target Timeline */}
         <Card className="bg-[#F7F2E6] border-[#D7D0C2]">

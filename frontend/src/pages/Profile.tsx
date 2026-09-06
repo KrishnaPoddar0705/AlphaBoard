@@ -46,7 +46,10 @@ export default function Profile() {
   const [allOrgTeams, setAllOrgTeams] = useState<any[]>([]);
   const [loadingAllTeams, setLoadingAllTeams] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
-  const [isAdmin, setIsAdmin] = useState(false);
+  // Gates the join-request review panel only. Portfolio managers review requests
+  // for the teams they belong to; get-team-join-requests narrows the list
+  // server-side, so this flag decides whether the panel exists, not what it shows.
+  const [canReviewJoinRequests, setCanReviewJoinRequests] = useState(false);
   const [adminJoinRequests, setAdminJoinRequests] = useState<any[]>([]);
   const [loadingAdminRequests, setLoadingAdminRequests] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -78,10 +81,10 @@ export default function Profile() {
   }, [organization?.id, session?.user?.id]);
 
   useEffect(() => {
-    if (isAdmin && organization?.id) {
+    if (canReviewJoinRequests && organization?.id) {
       fetchAdminJoinRequests();
     }
-  }, [isAdmin, organization?.id]);
+  }, [canReviewJoinRequests, organization?.id]);
 
   const fetchAllOrgTeams = async () => {
     if (!organization?.id) return;
@@ -123,14 +126,16 @@ export default function Profile() {
         .eq('organization_id', organization.id)
         .single();
       
-      setIsAdmin(membership?.role === 'admin' || false);
+      setCanReviewJoinRequests(
+        membership?.role === 'admin' || membership?.role === 'portfolio_manager' || false
+      );
     } catch (err) {
-      setIsAdmin(false);
+      setCanReviewJoinRequests(false);
     }
   };
 
   const fetchAdminJoinRequests = async () => {
-    if (!isAdmin || !organization?.id) return;
+    if (!canReviewJoinRequests || !organization?.id) return;
     
     try {
       setLoadingAdminRequests(true);
@@ -270,7 +275,7 @@ export default function Profile() {
         setSuccess('Join request sent! Waiting for admin approval.');
         setTimeout(() => setSuccess(null), 5000);
         await fetchPendingRequests();
-        if (isAdmin) {
+        if (canReviewJoinRequests) {
           await fetchAdminJoinRequests();
         }
       } else {
@@ -280,7 +285,7 @@ export default function Profile() {
         refreshTeams();
         fetchAllOrgTeams();
         await fetchPendingRequests();
-        if (isAdmin) {
+        if (canReviewJoinRequests) {
           await fetchAdminJoinRequests();
         }
       }
@@ -582,7 +587,7 @@ export default function Profile() {
         )}
 
         {/* Admin Join Requests Section */}
-        {isAdmin && organization && (
+        {canReviewJoinRequests && organization && (
           <div className="bg-[var(--card-bg)] border border-[var(--border-color)] rounded-lg shadow-lg p-6 mt-6">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">

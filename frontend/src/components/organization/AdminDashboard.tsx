@@ -1,373 +1,124 @@
-import React, { useState, useEffect } from 'react';
-import ThesisMarkdown from '@/components/thesis/ThesisMarkdown';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Users, TrendingUp, BarChart3, Download } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import { getVisibleRecommendations, updateMemberRole } from '../../lib/edgeFunctions';
+import { updateMemberRole } from '../../lib/edgeFunctions';
 import { useTeams } from '../../hooks/useTeams';
+import { useOrgDashboardData } from '../../hooks/useOrgDashboardData';
+import { useAnalystDetails } from '../../hooks/useAnalystDetails';
+import type { OrgRole } from '../../hooks/useOrganization';
+import { safeError } from '../../lib/logger';
+import { getUserFriendlyError } from '../../lib/errorSanitizer';
+import { Button } from '../ui/button';
 import TeamSelector from './TeamSelector';
 import DeleteOrganizationDialog from './DeleteOrganizationDialog';
-import { Users, TrendingUp, BarChart3, Trash2, ChevronDown, ChevronUp, FileText, Target, ImageIcon, Shield, ShieldOff, Download } from 'lucide-react';
-import { safeLog, safeWarn, safeError } from '../../lib/logger';
-import { getUserFriendlyError } from '../../lib/errorSanitizer';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../ui/dialog';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { getPrice, getStockSummary, getPriceForDate } from '../../lib/api';
-import { getCurrencySymbol } from '../../lib/utils';
-import { formatIrr, timeframeFromMonths } from '../../lib/irrTargets';
+import DashboardStatCards from './dashboard/DashboardStatCards';
+import JoinCodePanel from './dashboard/JoinCodePanel';
+import AnalystPerformanceTable from './dashboard/AnalystPerformanceTable';
+import AnalystRecommendationList from './dashboard/AnalystRecommendationList';
+import ExportPerformanceModal from './dashboard/ExportPerformanceModal';
+import OrganizationMembersList from './dashboard/OrganizationMembersList';
+import { formatPercent } from './dashboard/types';
 
-interface OrganizationUser {
-  userId: string;
-  username: string | null;
-  email: string | null;
-  role: 'admin' | 'analyst';
-  joinedAt: string;
-}
+const ROLE_CHANGE_COPY: Record<OrgRole, (name: string) => string> = {
+  admin: (name) =>
+    `Make ${name} an admin? They will be able to manage the organization, change roles and delete it.`,
+  portfolio_manager: (name) =>
+    `Make ${name} a portfolio manager? They will be able to view performance for the teams they belong to, review those teams' join requests and manage their membership. They will not be able to edit other analysts' recommendations, and they will see an empty Team Dashboard until they are added to a team.`,
+  analyst: (name) =>
+    `Make ${name} an analyst? They will lose any admin or portfolio manager privileges.`,
+};
 
-interface Recommendation {
-  id: string;
-  ticker: string;
-  position?: string;
-  entry_price: number;
-  exit_price?: number;
-  action?: string;
-  status?: string;
-  thesis: string;
-  entry_date: string;
-  created_at?: string;
-  screenshots?: string[];
-  images?: string[];
-  final_return_pct?: number;
-  final_alpha_pct?: number;
-}
-
-interface IrrTarget {
-  id: string;
-  ticker: string;
-  target_irr: number | null;
-  timeframe_start_months: number | null;
-  timeframe_end_months: number | null;
-  created_at: string;
-  /** Legacy fields, present only on rows created before IRR targets. */
-  target_price: number | null;
-  target_date: string | null;
-}
-
-interface AnalystPerformance {
-  userId: string;
-  username: string | null;
-  returns: {
-    '1M': number;
-    '3M': number;
-    '6M': number;
-    '12M': number;
-  };
-  sharpe: number;
-  volatility: number;
-  drawdown: number;
-  totalRecommendations: number;
-  openPositions: number;
-  closedPositions: number;
-  winRate: number;
-  teams: Array<{ id: string; name: string }>;
-}
-
+/**
+ * Organization-wide dashboard. Admin only -- the route guard in App.tsx enforces
+ * that, and the membership check below is defence in depth for a direct mount.
+ *
+ * The tables, stat cards, export and row detail all live in ./dashboard and are
+ * shared with TeamDashboard.
+ */
 export default function AdminDashboard() {
   const { session } = useAuth();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [organizationName, setOrganizationName] = useState<string | null>(null);
-  const [joinCode, setJoinCode] = useState<string | null>(null);
-  const [users, setUsers] = useState<OrganizationUser[]>([]);
-  const [performance, setPerformance] = useState<AnalystPerformance[]>([]);
-  const [showJoinCode, setShowJoinCode] = useState(false);
-  const [expandedAnalyst, setExpandedAnalyst] = useState<string | null>(null);
-  const [analystRecommendations, setAnalystRecommendations] = useState<Record<string, Recommendation[]>>({});
-  const [analystIrrTargets, setAnalystIrrTargets] = useState<Record<string, IrrTarget[]>>({});
+  const [gateError, setGateError] = useState<string | null>(null);
+  const [gateLoading, setGateLoading] = useState(true);
+  const [showExportModal, setShowExportModal] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamMemberIds, setTeamMemberIds] = useState<Set<string>>(new Set());
-  const [actionFilter, setActionFilter] = useState<'ALL' | 'BUY' | 'SELL'>('ALL');
-  const [statusFilter, setStatusFilter] = useState<'ALL' | 'OPEN' | 'CLOSED'>('ALL');
-  const [showExportModal, setShowExportModal] = useState(false);
-  const [baseDate, setBaseDate] = useState('');
-  const [isExporting, setIsExporting] = useState(false);
+
   const { teams } = useTeams({ orgId: organizationId || undefined, autoFetch: !!organizationId });
+  const { users, performance, joinCode, loading, error, refetch } = useOrgDashboardData({
+    orgId: organizationId,
+    enabled: !!organizationId,
+  });
+  const { expandedUserId, recommendations, irrTargets, toggle, reset } =
+    useAnalystDetails(selectedTeamId);
 
   useEffect(() => {
-    if (session?.user?.id) {
-      fetchOrganizationData();
-    } else {
-      setLoading(false);
-      setError('You must be logged in to access this page');
-    }
-  }, [session]);
-
-  // Fetch team members when team is selected
-  useEffect(() => {
-    const fetchTeamMembers = async () => {
-      if (!selectedTeamId || !organizationId) {
-        setTeamMemberIds(new Set());
+    const resolveOrganization = async () => {
+      if (!session?.user?.id) {
+        setGateLoading(false);
+        setGateError('You must be logged in to access this page');
         return;
       }
 
-      try {
-        const { data: teamMembers, error } = await supabase
-          .from('team_members')
-          .select('user_id')
-          .eq('team_id', selectedTeamId);
-
-        if (error) {
-          safeError('Error fetching team members:', error);
-          setTeamMemberIds(new Set());
-          return;
-        }
-
-        const memberIds = new Set(teamMembers?.map((tm: any) => tm.user_id) || []);
-        setTeamMemberIds(memberIds);
-      } catch (err) {
-        safeError('Error fetching team members:', err);
-        setTeamMemberIds(new Set());
-      }
-    };
-
-    fetchTeamMembers();
-  }, [selectedTeamId, organizationId]);
-
-  const fetchOrganizationData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      // Get user's organization membership
       const { data: membership, error: membershipError } = await supabase
         .from('user_organization_membership')
         .select('organization_id, role, organizations(id, name)')
-        .eq('user_id', session!.user!.id)
+        .eq('user_id', session.user.id)
         .maybeSingle();
 
       if (membershipError) {
         safeError('Membership error:', membershipError);
-        setError('Failed to load organization membership');
-        setLoading(false);
-        return;
-      }
-
-      if (!membership) {
-        setError('You are not a member of any organization');
-        setLoading(false);
-        return;
-      }
-
-      if (membership.role !== 'admin') {
-        setError('Only organization admins can access this page');
-        setLoading(false);
-        return;
-      }
-
-      const org = membership.organizations as any;
-      const orgId = membership.organization_id;
-      setOrganizationId(orgId);
-      setOrganizationName(org?.name || 'Unknown Organization');
-
-      safeLog('Fetching data for organization');
-
-      // Fetch organization details to get join code
-      const { data: orgData, error: orgError } = await supabase
-        .from('organizations')
-        .select('join_code')
-        .eq('id', orgId)
-        .single();
-
-      if (!orgError && orgData) {
-        setJoinCode(orgData.join_code);
-        safeLog('Join code fetched');
+        setGateError('Failed to load organization membership');
+      } else if (!membership) {
+        setGateError('You are not a member of any organization');
+      } else if (membership.role !== 'admin') {
+        setGateError('Only organization admins can access this page');
       } else {
-        safeError('Error fetching join code:', orgError);
+        setOrganizationId(membership.organization_id);
+        setOrganizationName((membership.organizations as any)?.name || 'Unknown Organization');
       }
+      setGateLoading(false);
+    };
 
-      // Fetch all members with their profiles
-      const { data: membersData, error: membersError } = await supabase
-        .from('user_organization_membership')
-        .select('user_id, role, joined_at')
-        .eq('organization_id', orgId);
+    resolveOrganization();
+  }, [session]);
 
-      safeLog('Members data fetched');
+  // Which analysts belong to the selected team. Used only to narrow the visible
+  // roster; the recommendations themselves are scoped by tag in the Edge Function.
+  useEffect(() => {
+    const fetchTeamMembers = async () => {
+      if (!selectedTeamId) {
+        setTeamMemberIds(new Set());
+        return;
+      }
+      const { data, error: membersError } = await supabase
+        .from('team_members')
+        .select('user_id')
+        .eq('team_id', selectedTeamId);
 
       if (membersError) {
-        safeError('Error fetching members:', membersError);
-      }
-
-      if (membersData && membersData.length > 0) {
-        // Fetch profiles for all members separately with email
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, username, email')
-          .in('id', membersData.map((m: any) => m.user_id));
-
-        if (profilesError) {
-          safeError('Error fetching profiles:', profilesError);
-        }
-
-        safeLog('Profiles data fetched');
-
-        const profilesMap = new Map();
-        const emailsMap = new Map();
-
-        profilesData?.forEach((p: any) => {
-          profilesMap.set(p.id, p.username);
-          emailsMap.set(p.id, p.email);
-        });
-
-        const usersList = membersData.map((m: any) => ({
-          userId: m.user_id,
-          username: profilesMap.get(m.user_id) || 'Unknown User',
-          email: emailsMap.get(m.user_id) || 'No email on record',
-          role: m.role,
-          joinedAt: m.joined_at,
-        }));
-
-        safeLog('Final users list, count:', usersList.length);
-        setUsers(usersList);
-
-        // Fetch performance data for all members
-        if (membersData.length > 0) {
-          const userIds = membersData.map((m: any) => m.user_id);
-          
-          // Fetch recommendations for all analysts to calculate metrics
-          // Exclude watchlist items (by status or action)
-          const { data: allRecommendations, error: recsError } = await supabase
-            .from('recommendations')
-            .select('id, user_id, status, action, final_return_pct, entry_date')
-            .in('user_id', userIds)
-            .neq('status', 'WATCHLIST') // Exclude watchlist items by status
-            .neq('action', 'WATCH'); // Exclude watchlist items by action
-
-          if (recsError) {
-            safeError('Error fetching recommendations:', recsError);
-          }
-
-          safeLog('All recommendations fetched, count:', allRecommendations?.length || 0);
-
-          // Fetch team memberships for all users
-          const { data: teamMemberships, error: teamMembersError } = await supabase
-            .from('team_members')
-            .select('user_id, team_id, teams(id, name)')
-            .in('user_id', userIds);
-
-          if (teamMembersError) {
-            safeError('Error fetching team memberships:', teamMembersError);
-          }
-
-          safeLog('Team memberships fetched, count:', teamMemberships?.length || 0);
-
-          // Create a map of user_id -> teams[]
-          const userTeamsMap = new Map<string, Array<{ id: string; name: string }>>();
-          teamMemberships?.forEach((tm: any) => {
-            const team = tm.teams as any;
-            if (!userTeamsMap.has(tm.user_id)) {
-              userTeamsMap.set(tm.user_id, []);
-            }
-            userTeamsMap.get(tm.user_id)!.push({ id: team.id, name: team.name });
-          });
-
-          // Fetch performance table data as fallback
-          const { data: perfData, error: perfError } = await supabase
-            .from('performance')
-            .select('user_id, total_ideas, win_rate, total_return_pct, alpha_pct')
-            .in('user_id', userIds);
-
-          if (perfError) {
-            safeError('Error fetching performance data:', perfError);
-          }
-
-          safeLog('Performance data fetched, count:', perfData?.length || 0);
-
-          // Calculate metrics from recommendations for each user
-          const performanceList = membersData.map((m: any) => {
-            const userId = m.user_id;
-            const userRecs = allRecommendations?.filter((r: any) => r.user_id === userId) || [];
-            
-            // Calculate metrics from recommendations
-            const totalRecommendations = userRecs.length;
-            const closedRecs = userRecs.filter((r: any) => r.status === 'CLOSED');
-            const profitableTrades = closedRecs.filter((r: any) => (r.final_return_pct || 0) > 0).length;
-            const winRate = closedRecs.length > 0 ? (profitableTrades / closedRecs.length) * 100 : 0;
-            
-            // Calculate average return from closed positions
-            const avgReturn = closedRecs.length > 0
-              ? closedRecs.reduce((sum: number, r: any) => sum + (r.final_return_pct || 0), 0) / closedRecs.length
-              : 0;
-
-            // Fallback to performance table if no recommendations
-            const perf = perfData?.find((p: any) => p.user_id === userId);
-            const finalTotalRecs = totalRecommendations > 0 ? totalRecommendations : (perf?.total_ideas || 0);
-            const finalWinRate = totalRecommendations > 0 ? winRate : (perf?.win_rate || 0);
-            const finalReturn = closedRecs.length > 0 ? avgReturn : (perf?.total_return_pct || 0);
-
-            return {
-              userId: userId,
-              username: profilesMap.get(userId) || 'Unknown',
-              returns: {
-                '1M': finalReturn,
-                '3M': finalReturn,
-                '6M': finalReturn,
-                '12M': finalReturn,
-              },
-              sharpe: 0,
-              volatility: 0,
-              drawdown: 0,
-              totalRecommendations: finalTotalRecs,
-              openPositions: userRecs.filter((r: any) => r.status === 'OPEN').length,
-              closedPositions: closedRecs.length,
-              winRate: finalWinRate,
-              teams: userTeamsMap.get(userId) || [],
-            };
-          });
-          setPerformance(performanceList);
-        }
-      } else {
-        safeLog('No members found or empty result');
-        setUsers([]);
-      }
-    } catch (err: any) {
-      safeError('Error in fetchOrganizationData:', err);
-      setError(getUserFriendlyError(err));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
-  };
-
-  const formatPercent = (value: number) => {
-    return `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
-  };
-
-  const handleUpdateRole = async (userId: string, username: string, _currentRole: string, newRole: 'admin' | 'analyst') => {
-    const action = newRole === 'admin' ? 'promote' : 'demote';
-    const confirmMessage = newRole === 'admin' 
-      ? `Are you sure you want to promote ${username} to admin? They will have full access to manage the organization.`
-      : `Are you sure you want to demote ${username} from admin to analyst? They will lose admin privileges.`;
-    
-    if (!window.confirm(confirmMessage)) {
-      return;
-    }
-
-    try {
-      if (!organizationId) {
-        alert('Organization ID is missing');
+        safeError('Error fetching team members:', membersError);
+        setTeamMemberIds(new Set());
         return;
       }
+      setTeamMemberIds(new Set((data || []).map((tm: any) => tm.user_id)));
+    };
 
+    fetchTeamMembers();
+  }, [selectedTeamId]);
+
+  const handleChangeRole = async (userId: string, username: string, newRole: OrgRole) => {
+    if (!organizationId) return;
+    if (!window.confirm(ROLE_CHANGE_COPY[newRole](username))) return;
+
+    try {
       const result = await updateMemberRole(organizationId, userId, newRole);
-      alert(result.message || `Successfully ${action}d ${username} to ${newRole}`);
-      fetchOrganizationData(); // Refresh to show updated role
+      alert(result.message || `${username} is now a ${newRole}`);
+      refetch();
     } catch (err: any) {
       safeError('Error updating role:', err);
       alert('Failed to update role: ' + getUserFriendlyError(err));
@@ -375,358 +126,31 @@ export default function AdminDashboard() {
   };
 
   const handleRemoveUser = async (userId: string, username: string) => {
-    if (!window.confirm(`Are you sure you want to remove ${username} from the organization?`)) {
-      return;
-    }
+    if (!window.confirm(`Are you sure you want to remove ${username} from the organization?`)) return;
 
     try {
-      // Delete the user's membership
-      const { error } = await supabase
+      const { error: deleteError } = await supabase
         .from('user_organization_membership')
         .delete()
         .eq('user_id', userId)
         .eq('organization_id', organizationId);
 
-      if (error) {
-        safeError('Error removing user:', error);
-        alert('Failed to remove user: ' + getUserFriendlyError(error));
+      if (deleteError) {
+        safeError('Error removing user:', deleteError);
+        alert('Failed to remove user: ' + getUserFriendlyError(deleteError));
         return;
       }
 
-      // Update profiles to remove organization_id
-      await supabase
-        .from('profiles')
-        .update({ organization_id: null })
-        .eq('id', userId);
-
-      // Refresh the data
+      await supabase.from('profiles').update({ organization_id: null }).eq('id', userId);
       alert(`${username} has been removed from the organization`);
-      fetchOrganizationData();
+      refetch();
     } catch (err: any) {
       safeError('Error removing user:', err);
       alert('Failed to remove user: ' + getUserFriendlyError(err));
     }
   };
 
-  const handleExportPerformance = async () => {
-    if (!baseDate || !organizationId) {
-      alert('Please select a base date');
-      return;
-    }
-
-    setIsExporting(true);
-    try {
-      // Fetch all recommendations for the organization
-      const { data: membersData } = await supabase
-        .from('user_organization_membership')
-        .select('user_id')
-        .eq('organization_id', organizationId);
-
-      if (!membersData || membersData.length === 0) {
-        alert('No members found in the organization');
-        setIsExporting(false);
-        return;
-      }
-
-      const userIds = membersData.map((m: any) => m.user_id);
-
-      // Fetch all recommendations (excluding watchlist) - include exit_price and exit_date for closed positions
-      const { data: recommendations, error: recsError } = await supabase
-        .from('recommendations')
-        .select('id, ticker, user_id, action, entry_price, entry_date, status, exit_price, exit_date')
-        .in('user_id', userIds)
-        .neq('status', 'WATCHLIST')
-        .neq('action', 'WATCH')
-        .order('entry_date', { ascending: false });
-
-      if (recsError) {
-        throw new Error('Failed to fetch recommendations: ' + getUserFriendlyError(recsError));
-      }
-
-      if (!recommendations || recommendations.length === 0) {
-        alert('No recommendations found to export');
-        setIsExporting(false);
-        return;
-      }
-
-      // Fetch user profiles for analyst names
-      const { data: profiles } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .in('id', userIds);
-
-      const profilesMap = new Map(profiles?.map((p: any) => [p.id, p.username || 'Unknown']) || []);
-
-      // Fetch team memberships
-      const { data: teamMemberships } = await supabase
-        .from('team_members')
-        .select('user_id, team_id, teams(id, name)')
-        .in('user_id', userIds);
-
-      const userTeamsMap = new Map<string, string[]>();
-      teamMemberships?.forEach((tm: any) => {
-        const team = tm.teams as any;
-        if (!userTeamsMap.has(tm.user_id)) {
-          userTeamsMap.set(tm.user_id, []);
-        }
-        userTeamsMap.get(tm.user_id)!.push(team.name);
-      });
-
-      // Teams data is already fetched via userTeamsMap from team_members table above
-      // No need to fetch teams separately as we're using team names from team_memberships
-
-      // Process each recommendation
-      const exportData = await Promise.all(
-        recommendations.map(async (rec: any) => {
-          try {
-            // Get company name
-            let companyName = rec.ticker;
-            try {
-              const summary = await getStockSummary(rec.ticker);
-              companyName = summary?.companyName || rec.ticker;
-            } catch {
-              // Use ticker as fallback
-            }
-
-            // Get current price
-            let currentPrice = 0;
-            try {
-              const priceData = await getPrice(rec.ticker);
-              currentPrice = priceData.price || 0;
-            } catch {
-              // Keep 0 as fallback
-            }
-
-            // Get price on base date using the new endpoint
-            let basePrice = 0;
-            try {
-              const baseDateObj = new Date(baseDate);
-              baseDateObj.setHours(0, 0, 0, 0);
-              
-              // Use the new endpoint to get price for the specific date
-              const priceData = await getPriceForDate(rec.ticker, baseDate);
-              
-              if (priceData && priceData.found && priceData.close && priceData.close > 0) {
-                basePrice = priceData.close;
-              } else {
-                // If no price found for base date, try using entry price if entry date is before base date
-                const entryDate = new Date(rec.entry_date);
-                entryDate.setHours(0, 0, 0, 0);
-                if (entryDate <= baseDateObj) {
-                  basePrice = rec.entry_price;
-                }
-              }
-            } catch (error) {
-              safeWarn('Error fetching price for base date:', error);
-              // Fallback: use entry price if entry date is before base date
-              try {
-                const entryDate = new Date(rec.entry_date);
-                entryDate.setHours(0, 0, 0, 0);
-                const baseDateObj = new Date(baseDate);
-                baseDateObj.setHours(0, 0, 0, 0);
-                if (entryDate <= baseDateObj) {
-                  basePrice = rec.entry_price;
-                }
-              } catch {
-                // Keep basePrice as 0
-              }
-            }
-
-            // Calculate percentage gain/loss from recommendation price to current price
-            const recommendedPrice = rec.entry_price;
-            let percentageGainLoss = 0;
-            if (recommendedPrice > 0 && currentPrice > 0) {
-              percentageGainLoss = ((currentPrice - recommendedPrice) / recommendedPrice) * 100;
-            }
-
-            // Get analyst name
-            const analystName = profilesMap.get(rec.user_id) || 'Unknown';
-
-            // Get team names
-            const teamNames = userTeamsMap.get(rec.user_id) || [];
-            const teamName = teamNames.join(', ') || 'No Team';
-
-            // Handle closed position data
-            const isClosed = rec.status === 'CLOSED';
-            const closedStatus = isClosed ? 'Yes' : '';
-            const exitPrice = isClosed && rec.exit_price ? rec.exit_price.toFixed(2) : '';
-            const exitDate = isClosed && rec.exit_date ? new Date(rec.exit_date).toLocaleDateString('en-US') : '';
-
-            return {
-              companyName,
-              basePrice: basePrice.toFixed(2),
-              currentPrice: currentPrice.toFixed(2),
-              recommendationAction: rec.action || 'BUY',
-              recommendedPrice: recommendedPrice.toFixed(2),
-              recommendedDate: new Date(rec.entry_date).toLocaleDateString('en-US'),
-              percentageGainLoss: percentageGainLoss.toFixed(2),
-              analyst: analystName,
-              team: teamName,
-              closed: closedStatus,
-              exitPrice: exitPrice,
-              exitDate: exitDate,
-            };
-          } catch (error) {
-            safeError('Error processing recommendation:', error);
-            return null;
-          }
-        })
-      );
-
-      // Filter out null values
-      const validData = exportData.filter((item) => item !== null);
-
-      // Helper function to escape CSV values
-      const escapeCsvValue = (value: string): string => {
-        // Always escape headers and values that might contain commas, quotes, or newlines
-        const stringValue = String(value);
-        if (stringValue.includes(',') || stringValue.includes('"') || stringValue.includes('\n') || stringValue.includes('(') || stringValue.includes(')')) {
-          return `"${stringValue.replace(/"/g, '""')}"`;
-        }
-        return stringValue;
-      };
-
-      // Format dates for headers (use format without commas to avoid CSV issues)
-      const formatDateForHeader = (dateString: string): string => {
-        const date = new Date(dateString);
-        // Use format without commas: "Jan 14 2026" instead of "Jan 14, 2026"
-        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(',', '');
-      };
-
-      const currentDate = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).replace(',', '');
-      const baseDateFormatted = formatDateForHeader(baseDate);
-
-      // Generate CSV - escape all headers to ensure proper alignment
-      const headers = [
-        'Company Name',
-        `Price on ${baseDateFormatted}`,
-        `Current Market Price (${currentDate})`,
-        'Recommendation Action',
-        'Recommended Price',
-        'Recommended Date',
-        'Percentage Gain/Loss',
-        'Analyst',
-        'Team',
-        'Closed',
-        'Exit Price',
-        'Exit Date',
-      ].map(header => escapeCsvValue(header));
-
-      const csvRows = [
-        headers.join(','),
-        ...validData.map((row: any) =>
-          [
-            escapeCsvValue(row.companyName),
-            row.basePrice,
-            row.currentPrice,
-            row.recommendationAction,
-            row.recommendedPrice,
-            escapeCsvValue(row.recommendedDate),
-            row.percentageGainLoss,
-            escapeCsvValue(row.analyst),
-            escapeCsvValue(row.team),
-            row.closed,
-            row.exitPrice,
-            escapeCsvValue(row.exitDate),
-          ].join(',')
-        ),
-      ];
-
-      const csvContent = csvRows.join('\n');
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `performance_export_${baseDate}_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setShowExportModal(false);
-      setBaseDate('');
-      alert(`Successfully exported ${validData.length} recommendations`);
-    } catch (error: any) {
-      safeError('Error exporting performance:', error);
-      alert('Failed to export performance: ' + getUserFriendlyError(error));
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const toggleAnalystDetails = async (userId: string) => {
-    if (expandedAnalyst === userId) {
-      setExpandedAnalyst(null);
-      return;
-    }
-
-    setExpandedAnalyst(userId);
-
-    // Fetch recommendations and price targets if not already loaded
-    if (!analystRecommendations[userId]) {
-      try {
-        safeLog('Fetching recommendations for analyst in organization');
-
-        // Fetch recommendations with all details
-        // Use getVisibleRecommendations to respect team-based RLS
-        // Exclude WATCHLIST items from admin dashboard (by status or action)
-        let recs: Recommendation[] = [];
-        try {
-          const response = await getVisibleRecommendations(selectedTeamId || undefined, undefined);
-          recs = (response.recommendations || [])
-            .filter((r: any) => r.user_id === userId)
-            .filter((r: any) => r.status !== 'WATCHLIST' && r.action !== 'WATCH'); // Exclude watchlist items
-        } catch (err) {
-          safeWarn('Failed to fetch via Edge Function, using direct query', err);
-        }
-        
-        // Fallback to direct query if Edge Function fails or returns no results
-        if (recs.length === 0) {
-          const { data: recData } = await supabase
-            .from('recommendations')
-            .select('id, ticker, action, entry_price, exit_price, status, thesis, entry_date, images, final_return_pct, final_alpha_pct')
-            .eq('user_id', userId)
-            .neq('status', 'WATCHLIST') // Exclude watchlist items by status
-            .neq('action', 'WATCH') // Exclude watchlist items by action
-            .order('entry_date', { ascending: false });
-          if (recData) recs = recData;
-        }
-        
-        const recsError = null; // No error if we got data
-
-        safeLog('Recommendations fetched, count:', recs?.length);
-
-        if (!recsError && recs) {
-          setAnalystRecommendations(prev => ({ ...prev, [userId]: recs }));
-        } else {
-          // Set empty array even if error to prevent retrying
-          setAnalystRecommendations(prev => ({ ...prev, [userId]: [] }));
-        }
-
-        // Fetch all IRR targets for this user (table is still named price_targets)
-        const { data: targets, error: targetsError } = await supabase
-          .from('price_targets')
-          .select('id, ticker, target_irr, timeframe_start_months, timeframe_end_months, target_price, target_date, created_at')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false });
-
-        safeLog('IRR targets fetched, count:', targets?.length || 0);
-
-        if (!targetsError && targets) {
-          setAnalystIrrTargets(prev => ({ ...prev, [userId]: targets }));
-        } else {
-          setAnalystIrrTargets(prev => ({ ...prev, [userId]: [] }));
-        }
-      } catch (err) {
-        safeError('Error fetching analyst details:', err);
-        // Set empty arrays to prevent retrying
-        setAnalystRecommendations(prev => ({ ...prev, [userId]: [] }));
-        setAnalystIrrTargets(prev => ({ ...prev, [userId]: [] }));
-      }
-    }
-  };
-
-  if (loading) {
+  if (gateLoading || loading) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
         <div className="text-[var(--text-secondary)]">Loading organization data...</div>
@@ -734,11 +158,12 @@ export default function AdminDashboard() {
     );
   }
 
-  if (error) {
+  const shownError = gateError || error;
+  if (shownError) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center p-4">
         <div className="max-w-md w-full glass rounded-xl shadow-xl p-8 text-center">
-          <div className="text-red-300 mb-4">{error}</div>
+          <div className="text-red-300 mb-4">{shownError}</div>
           <button
             onClick={() => navigate('/dashboard')}
             className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-md hover:from-indigo-400 hover:to-purple-400 transition-all duration-200"
@@ -750,16 +175,24 @@ export default function AdminDashboard() {
     );
   }
 
+  const visiblePerformance = selectedTeamId
+    ? performance.filter((a) => teamMemberIds.has(a.userId))
+    : performance;
+
+  const avgReturn =
+    performance.length > 0
+      ? formatPercent(
+          performance.reduce((sum, p) => sum + p.returns['12M'], 0) / performance.length
+        )
+      : 'N/A';
+
   return (
     <div className="min-h-screen bg-[var(--bg-primary)] p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
             <div>
-              <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">
-                Admin Dashboard
-              </h1>
+              <h1 className="text-3xl font-bold text-[var(--text-primary)] mb-2">Admin Dashboard</h1>
               <p className="text-[var(--text-secondary)]">{organizationName}</p>
             </div>
             <Button
@@ -771,543 +204,70 @@ export default function AdminDashboard() {
             </Button>
           </div>
 
-          {/* Join Code Section */}
-          {joinCode && (
-            <div className="glass rounded-xl p-6 border border-indigo-500/30">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-[var(--text-primary)] mb-1">Organization Join Code</p>
-                  <p className="text-xs text-[var(--text-secondary)] mb-2">
-                    Share this code with analysts to join your organization
-                  </p>
-                  {showJoinCode ? (
-                    <code className="text-lg font-mono font-bold text-indigo-400 bg-[var(--card-bg)] px-3 py-2 rounded border border-indigo-500/30">
-                      {joinCode}
-                    </code>
-                  ) : (
-                    <button
-                      onClick={() => setShowJoinCode(true)}
-                      className="text-indigo-400 hover:text-indigo-300 font-medium text-sm underline transition-colors"
-                    >
-                      Click to reveal join code
-                    </button>
-                  )}
-                </div>
-                {showJoinCode && (
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(joinCode);
-                      alert('Join code copied to clipboard!');
-                    }}
-                    className="px-4 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white rounded-md hover:from-indigo-400 hover:to-purple-400 text-sm transition-all duration-200 shadow-lg shadow-indigo-500/25"
-                  >
-                    Copy Code
-                  </button>
-                )}
-              </div>
-            </div>
-          )}
+          {joinCode && <JoinCodePanel joinCode={joinCode} />}
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="glass rounded-xl p-6 border border-[var(--border-color)]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-secondary)]">Total Members</p>
-                <p className="text-2xl font-bold text-[var(--text-primary)]">{users.length}</p>
-              </div>
-              <Users className="w-8 h-8 text-indigo-400" />
-            </div>
-          </div>
-          <div className="glass rounded-xl p-6 border border-[var(--border-color)]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-secondary)]">Analysts</p>
-                <p className="text-2xl font-bold text-[var(--text-primary)]">
-                  {users.filter(u => u.role === 'analyst').length}
-                </p>
-              </div>
-              <BarChart3 className="w-8 h-8 text-green-400" />
-            </div>
-          </div>
-          <div className="glass rounded-xl p-6 border border-[var(--border-color)]">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-[var(--text-secondary)]">Avg 12M Return</p>
-                <p className="text-2xl font-bold text-[var(--text-primary)]">
-                  {performance.length > 0
-                    ? formatPercent(
-                      performance.reduce((sum, p) => sum + p.returns['12M'], 0) /
-                      performance.length
-                    )
-                    : 'N/A'}
-                </p>
-              </div>
-              <TrendingUp className="w-8 h-8 text-purple-400" />
-            </div>
-          </div>
-        </div>
+        <DashboardStatCards
+          cards={[
+            { label: 'Total Members', value: String(users.length), icon: Users, iconClass: 'text-indigo-400' },
+            {
+              label: 'Analysts',
+              // Counts everyone who writes recommendations, which includes portfolio
+              // managers -- they keep every analyst right. Counting role === 'analyst'
+              // would drop a member from this tile the moment they were promoted.
+              value: String(users.filter((u) => u.role !== 'admin').length),
+              icon: BarChart3,
+              iconClass: 'text-green-400',
+            },
+            { label: 'Avg 12M Return', value: avgReturn, icon: TrendingUp, iconClass: 'text-purple-400' },
+          ]}
+        />
 
-        {/* Team Filter */}
         {teams.length > 0 && (
           <div className="glass rounded-xl shadow-xl mb-8 border border-[var(--border-color)] p-4">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <label className="text-sm font-medium text-[var(--text-primary)]">Filter by Team:</label>
               <TeamSelector
                 teams={teams}
                 selectedTeamId={selectedTeamId}
                 onSelectTeam={(teamId) => {
                   setSelectedTeamId(teamId);
-                  // Clear expanded analyst when filter changes
-                  setExpandedAnalyst(null);
+                  // The cached per-analyst recommendations were scoped to the previous
+                  // team, so they are stale the moment the filter moves.
+                  reset();
                 }}
                 showAllOption={true}
               />
               {selectedTeamId && (
-                <span className="text-xs text-[var(--text-secondary)] ml-2">
-                  Showing {performance.filter(a => teamMemberIds.has(a.userId)).length} analyst{performance.filter(a => teamMemberIds.has(a.userId)).length !== 1 ? 's' : ''}
+                <span className="text-xs text-[var(--text-secondary)]">
+                  Showing {visiblePerformance.length} analyst
+                  {visiblePerformance.length !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
           </div>
         )}
 
-        {/* Analyst Performance Table */}
-        <div className="glass rounded-xl shadow-xl mb-8 border border-[var(--border-color)]">
-          <div className="p-6 border-b border-[var(--border-color)]">
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">Analyst Performance</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-[var(--border-color)]">
-              <thead className="bg-[var(--card-bg)]">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider w-8">
+        <AnalystPerformanceTable
+          title="Analyst Performance"
+          rows={visiblePerformance}
+          expandedUserId={expandedUserId}
+          onToggle={toggle}
+          renderExpanded={(userId) => (
+            <AnalystRecommendationList
+              recommendations={recommendations[userId] || []}
+              irrTargets={irrTargets[userId] || []}
+            />
+          )}
+        />
 
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                    Analyst
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                    Teams
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                    Total Ideas
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                    Win Rate
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                    12M Return
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-[var(--text-secondary)] uppercase tracking-wider">
-                    Sharpe
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-slate-900/30 divide-y divide-white/10">
-                {performance
-                  .filter((analyst) => {
-                    // If no team selected, show all analysts
-                    if (!selectedTeamId) return true;
-                    // If team selected, only show analysts who are members of that team
-                    return teamMemberIds.has(analyst.userId);
-                  })
-                  .map((analyst) => (
-                  <React.Fragment key={analyst.userId}>
-                    <tr className="hover:bg-slate-800/50 cursor-pointer transition-colors" onClick={() => toggleAnalystDetails(analyst.userId)}>
-                      <td className="px-6 py-4">
-                        {expandedAnalyst === analyst.userId ? (
-                          <ChevronUp className="w-5 h-5 text-slate-400" />
-                        ) : (
-                          <ChevronDown className="w-5 h-5 text-slate-400" />
-                        )}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-[var(--text-primary)]">
-                          {analyst.username || 'Unknown'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1">
-                          {analyst.teams && analyst.teams.length > 0 ? (
-                            analyst.teams.map((team: any) => (
-                              <span
-                                key={team.id}
-                                className="px-2 py-1 text-xs bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30"
-                              >
-                                {team.name}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-[var(--text-tertiary)]">No teams</span>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-[var(--text-primary)]">
-                          {analyst.totalRecommendations}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-[var(--text-primary)]">
-                          {analyst.winRate.toFixed(1)}%
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div
-                          className={`text-sm font-medium ${analyst.returns['12M'] >= 0 ? 'text-green-400' : 'text-red-400'
-                            }`}
-                        >
-                          {formatPercent(analyst.returns['12M'])}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-[var(--text-primary)]">
-                          {analyst.sharpe ? analyst.sharpe.toFixed(2) : 'N/A'}
-                        </div>
-                      </td>
-                    </tr>
-                    {expandedAnalyst === analyst.userId && (
-                      <tr>
-                        <td colSpan={6} className="px-6 py-4 bg-[var(--card-bg)]">
-                          <div className="space-y-6">
-                            {/* All Recommendations with Details */}
-                            <div>
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-                                <h4 className="font-semibold text-[var(--text-primary)] flex items-center gap-2 text-lg">
-                                  <FileText className="w-5 h-5" />
-                                  All Recommendations ({analystRecommendations[analyst.userId]?.filter((r) => {
-                                    const isNotWatchlist = r.status !== 'WATCHLIST' && r.action !== 'WATCH';
-                                    const matchesAction = actionFilter === 'ALL' || r.action === actionFilter;
-                                    const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter;
-                                    return isNotWatchlist && matchesAction && matchesStatus;
-                                  }).length || 0})
-                                </h4>
-                                
-                                {/* Filters */}
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                                  {/* Action Filter */}
-                                  <div className="flex items-center gap-2">
-                                    <label className="text-xs text-[var(--text-secondary)] font-medium">Action:</label>
-                                    <div className="flex gap-1 bg-[var(--card-bg)] rounded-lg p-1 border border-[var(--border-color)]">
-                                      <button
-                                        onClick={() => setActionFilter('ALL')}
-                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                          actionFilter === 'ALL'
-                                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                        }`}
-                                      >
-                                        All
-                                      </button>
-                                      <button
-                                        onClick={() => setActionFilter('BUY')}
-                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                          actionFilter === 'BUY'
-                                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                        }`}
-                                      >
-                                        BUY
-                                      </button>
-                                      <button
-                                        onClick={() => setActionFilter('SELL')}
-                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                          actionFilter === 'SELL'
-                                            ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                        }`}
-                                      >
-                                        SELL
-                                      </button>
-                                    </div>
-                                  </div>
+        <OrganizationMembersList
+          users={users}
+          currentUserId={session?.user?.id}
+          onChangeRole={handleChangeRole}
+          onRemove={handleRemoveUser}
+        />
 
-                                  {/* Status Filter */}
-                                  <div className="flex items-center gap-2">
-                                    <label className="text-xs text-[var(--text-secondary)] font-medium">Status:</label>
-                                    <div className="flex gap-1 bg-[var(--card-bg)] rounded-lg p-1 border border-[var(--border-color)]">
-                                      <button
-                                        onClick={() => setStatusFilter('ALL')}
-                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                          statusFilter === 'ALL'
-                                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                        }`}
-                                      >
-                                        All
-                                      </button>
-                                      <button
-                                        onClick={() => setStatusFilter('OPEN')}
-                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                          statusFilter === 'OPEN'
-                                            ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                        }`}
-                                      >
-                                        OPEN
-                                      </button>
-                                      <button
-                                        onClick={() => setStatusFilter('CLOSED')}
-                                        className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
-                                          statusFilter === 'CLOSED'
-                                            ? 'bg-slate-500/20 text-slate-400 border border-slate-500/30'
-                                            : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-                                        }`}
-                                      >
-                                        CLOSED
-                                      </button>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {analystRecommendations[analyst.userId]?.filter((r) => {
-                                const isNotWatchlist = r.status !== 'WATCHLIST' && r.action !== 'WATCH';
-                                const matchesAction = actionFilter === 'ALL' || r.action === actionFilter;
-                                const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter;
-                                return isNotWatchlist && matchesAction && matchesStatus;
-                              }).length > 0 ? (
-                                <div className="space-y-4">
-                                  {analystRecommendations[analyst.userId]
-                                    .filter((r) => {
-                                      const isNotWatchlist = r.status !== 'WATCHLIST' && r.action !== 'WATCH';
-                                      const matchesAction = actionFilter === 'ALL' || r.action === actionFilter;
-                                      const matchesStatus = statusFilter === 'ALL' || r.status === statusFilter;
-                                      return isNotWatchlist && matchesAction && matchesStatus;
-                                    })
-                                    .map((rec) => {
-                                    // Get IRR targets for this ticker
-                                    const tickerTargets = analystIrrTargets[analyst.userId]?.filter(
-                                      t => t.ticker === rec.ticker
-                                    ) || [];
-
-                                    return (
-                                      <div key={rec.id} className="bg-[var(--card-bg)] p-5 rounded-lg border border-[var(--border-color)] shadow-lg">
-                                        {/* Recommendation Header */}
-                                        <div className="flex justify-between items-start mb-4">
-                                          <div className="flex items-center gap-3">
-                                            <span className="text-xl font-bold text-indigo-400">{rec.ticker}</span>
-                                            <span className={`px-3 py-1 text-sm font-semibold rounded ${rec.action === 'BUY'
-                                                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                                                : 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                              }`}>
-                                              {rec.action || 'BUY'}
-                                            </span>
-                                            <span className={`px-2 py-1 text-xs font-medium rounded ${rec.status === 'OPEN'
-                                                ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                                                : 'bg-[var(--bg-secondary)] text-[var(--text-primary)] border border-[var(--border-color)]'
-                                              }`}>
-                                              {rec.status || 'OPEN'}
-                                            </span>
-                                          </div>
-                                          <div className="text-right">
-                                            <div className="text-xs text-[var(--text-secondary)]">Entry Date</div>
-                                            <div className="text-sm font-medium text-[var(--text-primary)]">{formatDate(rec.entry_date)}</div>
-                                          </div>
-                                        </div>
-
-                                        {/* Price Information */}
-                                        <div className="grid grid-cols-3 gap-4 mb-4 p-3 bg-[var(--bg-secondary)] rounded border border-[var(--border-color)]">
-                                          <div>
-                                            <div className="text-xs text-[var(--text-secondary)] mb-1">Entry Price</div>
-                                            <div className="text-lg font-semibold text-[var(--text-primary)]">{getCurrencySymbol(rec.ticker)}{rec.entry_price}</div>
-                                          </div>
-                                          {rec.exit_price && (
-                                            <div>
-                                              <div className="text-xs text-[var(--text-secondary)] mb-1">Exit Price</div>
-                                              <div className="text-lg font-semibold text-[var(--text-primary)]">{getCurrencySymbol(rec.ticker)}{rec.exit_price}</div>
-                                            </div>
-                                          )}
-                                          {tickerTargets.length > 0 && (
-                                            <div>
-                                              <div className="text-xs text-[var(--text-secondary)] mb-1">IRR Targets</div>
-                                              <div className="flex gap-2 flex-wrap">
-                                                {tickerTargets.map(t => (
-                                                  <span key={t.id} className="text-sm font-semibold text-purple-400">
-                                                    {t.target_irr !== null && t.target_irr !== undefined
-                                                      ? `${formatIrr(t.target_irr)} IRR`
-                                                      : `${getCurrencySymbol(rec.ticker)}${t.target_price}`}
-                                                  </span>
-                                                ))}
-                                              </div>
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        {/* Thesis */}
-                                        {rec.thesis && (
-                                          <div className="mb-4">
-                                            <div className="text-sm font-semibold text-[var(--text-primary)] mb-2">Investment Thesis:</div>
-                                            <div className="text-sm text-[var(--text-primary)] bg-indigo-500/10 p-3 rounded border-l-4 border-indigo-500">
-                                              <ThesisMarkdown content={rec.thesis} />
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        {/* IRR Target Timeline */}
-                                        {tickerTargets.length > 0 && (
-                                          <div className="mb-4">
-                                            <div className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
-                                              <Target className="w-4 h-4" />
-                                              IRR Target Timeline:
-                                            </div>
-                                            <div className="flex gap-3 overflow-x-auto pb-2">
-                                              {tickerTargets.map(target => {
-                                                const timeframe = timeframeFromMonths(
-                                                  target.timeframe_start_months,
-                                                  target.timeframe_end_months
-                                                );
-                                                const isLegacy = target.target_irr === null || target.target_irr === undefined;
-                                                return (
-                                                  <div key={target.id} className="bg-purple-500/20 p-3 rounded border border-purple-500/30 min-w-[150px]">
-                                                    <div className="text-lg font-bold text-purple-400">
-                                                      {isLegacy
-                                                        ? `${getCurrencySymbol(rec.ticker)}${target.target_price}`
-                                                        : `${formatIrr(target.target_irr)} IRR`}
-                                                    </div>
-                                                    {timeframe && (
-                                                      <div className="text-xs text-[var(--text-secondary)] mt-1">
-                                                        {timeframe.label}
-                                                      </div>
-                                                    )}
-                                                    {isLegacy && target.target_date && (
-                                                      <div className="text-xs text-[var(--text-secondary)] mt-1">
-                                                        Target: {formatDate(target.target_date)}
-                                                      </div>
-                                                    )}
-                                                    <div className="text-xs text-[var(--text-tertiary)] mt-1">
-                                                      Set: {formatDate(target.created_at)}
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          </div>
-                                        )}
-
-                                        {/* Screenshots/Images */}
-                                        {rec.images && rec.images.length > 0 && (
-                                          <div>
-                                            <div className="text-sm font-semibold text-[var(--text-primary)] mb-2 flex items-center gap-2">
-                                              <ImageIcon className="w-4 h-4" />
-                                              Attachments ({rec.images.length}):
-                                            </div>
-                                            <div className="flex gap-2 flex-wrap">
-                                              {rec.images.map((image, idx) => (
-                                                <div key={idx} className="relative w-32 h-32 bg-[var(--card-bg)] rounded border border-[var(--border-color)] overflow-hidden hover:opacity-90 cursor-pointer">
-                                                  <img
-                                                    src={image}
-                                                    alt={`Attachment ${idx + 1}`}
-                                                    className="w-full h-full object-cover"
-                                                    onClick={() => window.open(image, '_blank')}
-                                                  />
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              ) : (
-                                <div className="text-center py-8 text-[var(--text-secondary)] bg-[var(--card-bg)] rounded border border-[var(--border-color)]">
-                                  {analystRecommendations[analyst.userId]?.filter((r) => r.status !== 'WATCHLIST' && r.action !== 'WATCH').length === 0
-                                    ? 'No recommendations yet'
-                                    : `No recommendations match the selected filters (${actionFilter !== 'ALL' ? actionFilter : ''} ${statusFilter !== 'ALL' ? statusFilter : ''})`.trim()
-                                  }
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-                {performance.length === 0 && (
-                  <tr>
-                    <td colSpan={6} className="px-6 py-4 text-center text-[var(--text-secondary)]">
-                      No analyst performance data available
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Members List */}
-        <div className="glass rounded-xl shadow-xl border border-[var(--border-color)]">
-          <div className="p-6 border-b border-[var(--border-color)]">
-            <h2 className="text-xl font-bold text-[var(--text-primary)]">Organization Members</h2>
-          </div>
-          <div className="p-6">
-            <div className="space-y-4">
-              {users.map((user) => (
-                <div
-                  key={user.userId}
-                  className="flex items-center justify-between p-4 border border-[var(--border-color)] rounded-lg hover:bg-[var(--list-item-hover)] transition-colors"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <div className="font-medium text-[var(--text-primary)]">
-                        {user.username || 'Unknown User'}
-                      </div>
-                      {user.role === 'admin' && (
-                        <span className="px-2 py-1 text-xs font-medium bg-purple-500/20 text-purple-400 rounded border border-purple-500/30">
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-sm text-[var(--text-secondary)] mt-1">
-                      {user.email || 'No email'}
-                    </div>
-                    <div className="text-xs text-[var(--text-secondary)] mt-1">
-                      Joined {formatDate(user.joinedAt)}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {user.userId !== session?.user?.id && (
-                      <>
-                        {user.role === 'analyst' ? (
-                          <button
-                            onClick={() => handleUpdateRole(user.userId, user.username || 'this user', user.role, 'admin')}
-                            className="px-3 py-2 text-purple-400 hover:bg-purple-500/20 rounded-md text-sm flex items-center gap-1 border border-purple-500/30 transition-colors"
-                            title="Promote to Admin"
-                          >
-                            <Shield className="w-4 h-4" />
-                            Promote to Admin
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => handleUpdateRole(user.userId, user.username || 'this user', user.role, 'analyst')}
-                            className="px-3 py-2 text-orange-400 hover:bg-orange-500/20 rounded-md text-sm flex items-center gap-1 border border-orange-500/30 transition-colors"
-                            title="Demote to Analyst"
-                          >
-                            <ShieldOff className="w-4 h-4" />
-                            Demote to Analyst
-                          </button>
-                        )}
-                        <button
-                          onClick={() => handleRemoveUser(user.userId, user.username || 'this user')}
-                          className="px-3 py-2 text-red-400 hover:bg-red-500/20 rounded-md text-sm flex items-center gap-1 border border-red-500/30 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Remove
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Danger Zone */}
         {organizationId && organizationName && (
           <div className="mt-6 rounded-lg border border-red-500/30 bg-red-500/5 p-4 sm:p-6">
             <h2 className="text-xl font-bold text-red-600">Danger Zone</h2>
@@ -1323,52 +283,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Export Performance Modal */}
-        <Dialog open={showExportModal} onOpenChange={setShowExportModal}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Export Performance</DialogTitle>
-              <DialogDescription>
-                Select a base date to calculate performance metrics. The export will include all recommendations with prices on the selected date and current prices.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label>Base Date for Price Calculation</Label>
-                <Input
-                  type="date"
-                  value={baseDate}
-                  onChange={(e) => setBaseDate(e.target.value)}
-                  max={new Date().toISOString().split('T')[0]}
-                />
-                <p className="text-xs text-[#6F6A60]">
-                  Select the date to use as the base price reference point
-                </p>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowExportModal(false);
-                    setBaseDate('');
-                  }}
-                  disabled={isExporting}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleExportPerformance}
-                  disabled={!baseDate || isExporting}
-                  className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:from-indigo-400 hover:to-purple-400"
-                >
-                  {isExporting ? 'Exporting...' : 'Export CSV'}
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <ExportPerformanceModal
+          open={showExportModal}
+          onOpenChange={setShowExportModal}
+          userIds={users.map((u) => u.userId)}
+        />
       </div>
     </div>
   );
 }
-

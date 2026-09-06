@@ -11,6 +11,10 @@ import { useUser } from '@clerk/clerk-react'
 import { cn } from '@/lib/utils'
 import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe, validateIrr } from '@/lib/irrTargets'
 import { usePaperPortfolio } from '@/contexts/PaperPortfolioContext'
+import { useTeams } from '@/hooks/useTeams'
+import { setRecommendationTeams } from '@/lib/edgeFunctions'
+import TeamPicker from '@/components/recommendations/TeamPicker'
+import toast from 'react-hot-toast'
 import FileDropzone from './FileDropzone'
 import { extractFiles, nameClipboardFiles } from '@/lib/recommendations/clipboardFiles'
 import ThesisEditor from '@/components/thesis/ThesisEditor'
@@ -40,6 +44,12 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   const [thesis, setThesis] = useState('')
   const [irrTarget, setIrrTarget] = useState('')
   const [timeframe, setTimeframe] = useState<string>(DEFAULT_IRR_TIMEFRAME)
+  // Teams the author belongs to, and which of them this idea is for. Defaults to
+  // all of them when the modal opens: that makes ignoring the picker behave
+  // exactly like the read-time fallback for an untagged recommendation, so the
+  // control changes nothing for anyone who does not touch it.
+  const { teams: myTeams } = useTeams()
+  const [selectedTeamIds, setSelectedTeamIds] = useState<string[]>([])
   // Resolved when the modal opens rather than at submit time: uploads now
   // start the moment a file is dropped, so the id has to be ready before then.
   const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null)
@@ -101,8 +111,18 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       setError(null)
       setQuantity('')
       setCashBalance(null)
+      setSelectedTeamIds([])
     }
   }, [open, resetAttachments])
+
+  useEffect(() => {
+    if (open) {
+      setSelectedTeamIds(myTeams.map((t) => t.id))
+    }
+    // Keyed on the team ids rather than the array so a refetch returning the same
+    // teams does not stomp a selection the user has already changed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, myTeams.map((t) => t.id).join(',')])
 
   // The submit path used to look this up inline. Uploads start on drop now, so
   // it has to be resolved before the user can attach anything -- the dropzone
@@ -318,6 +338,24 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
 
       // Create the recommendation
       const recResult = await createRecommendation(newRec, userId)
+
+      // The id was previously dug out inside the paper-trading branch. Team tagging
+      // needs it too, and it is not conditional on paper trading being on.
+      const recommendationId = recResult?.id || recResult?.recommendation?.id
+
+      // Tagging is best-effort on purpose. An untagged recommendation still shows on
+      // every one of its author's team dashboards, so a failure here costs precision,
+      // not visibility -- and losing the whole recommendation over it would be far
+      // worse than the thing it is protecting against.
+      if (recommendationId && selectedTeamIds.length > 0) {
+        try {
+          await setRecommendationTeams(recommendationId, selectedTeamIds)
+        } catch (teamError) {
+          console.error('Failed to assign teams:', teamError)
+          const message = teamError instanceof Error ? teamError.message : 'unknown error'
+          toast.error(`Saved, but could not set the teams: ${message}`)
+        }
+      }
       
       // If quantity is provided, execute paper trade based on action type.
       // The recommendation itself carries no quantity -- RecommendationCreate
@@ -326,9 +364,6 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       const numericQtySubmit = parseFloat(quantity) || 0
       if (paperPortfolioEnabled && !watchlistMode && numericQtySubmit > 0 && user) {
         try {
-          // Get the recommendation ID from the result
-          const recommendationId = recResult?.id || recResult?.recommendation?.id
-          
           if (action === 'BUY') {
             // Execute buy trade with the entry price
             await executeBuyTrade(
@@ -646,6 +681,14 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
               <p className="font-mono text-xs text-[#6F6A60]">Horizon to achieve the IRR</p>
             </div>
           </div>
+
+          {/* Teams -- hidden entirely for an author who belongs to none. */}
+          <TeamPicker
+            teams={myTeams}
+            selected={selectedTeamIds}
+            onChange={setSelectedTeamIds}
+            disabled={loading}
+          />
 
           {/* File Upload */}
           <div className="space-y-2">

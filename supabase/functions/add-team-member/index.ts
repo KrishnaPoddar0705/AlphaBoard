@@ -1,8 +1,9 @@
 // Edge Function: add-team-member
-// Purpose: Add a user to a team (admin or team creator only)
+// Purpose: Add a user to a team (org admin, team creator, or a portfolio manager of that team)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { managesTeam } from '../_shared/roles.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -126,10 +127,14 @@ serve(async (req) => {
 
         const isOrgAdmin = membership.role === 'admin'
         const isTeamCreator = team.created_by === userId
+        // A portfolio manager runs the desks they are on. managesTeam checks the
+        // team_members row, not just the role, so a manager of one desk gets nothing
+        // on another.
+        const isTeamManager = await managesTeam(supabaseAdmin, userId, team.id, membership as any)
 
-        if (!isOrgAdmin && !isTeamCreator) {
+        if (!isOrgAdmin && !isTeamCreator && !isTeamManager) {
             return new Response(
-                JSON.stringify({ error: 'Only organization admins or team creators can add members' }),
+                JSON.stringify({ error: 'Only organization admins, team creators or a portfolio manager of this team can add members' }),
                 { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }

@@ -96,17 +96,20 @@ serve(async (req) => {
             )
         }
 
-        if (newRole !== 'admin' && newRole !== 'analyst') {
+        const ALLOWED_ROLES = ['admin', 'analyst', 'portfolio_manager']
+        if (!ALLOWED_ROLES.includes(newRole)) {
             return new Response(
-                JSON.stringify({ error: 'newRole must be either "admin" or "analyst"' }),
+                JSON.stringify({ error: 'newRole must be one of "admin", "portfolio_manager" or "analyst"' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
-        // Prevent self-demotion (user cannot demote themselves)
-        if (userId === targetUserId && newRole === 'analyst') {
+        // Prevent self-demotion. This used to test only for 'analyst', which meant an
+        // admin could step down to portfolio_manager and, if they were the last admin,
+        // leave the organization with nobody able to promote anyone back.
+        if (userId === targetUserId && newRole !== 'admin') {
             return new Response(
-                JSON.stringify({ error: 'You cannot demote yourself from admin role' }),
+                JSON.stringify({ error: 'You cannot demote yourself from the admin role' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
@@ -160,6 +163,42 @@ serve(async (req) => {
             )
         }
 
+        // Never let an organization reach zero admins. The self-demotion guard above
+        // only stops someone stepping down themselves -- two admins can still demote
+        // each other down to none. At that point is_org_admin() is false for
+        // everyone, so organizations UPDATE, delete-organization and this very
+        // function all become unreachable, and the org can only be repaired from a
+        // service-role SQL console. The three-way role control makes this far easier
+        // to hit by accident than the old promote/demote pair did.
+        if (targetMembership.role === 'admin' && newRole !== 'admin') {
+            const { count, error: countError } = await supabaseAdmin
+                .from('user_organization_membership')
+                .select('user_id', { count: 'exact', head: true })
+                .eq('organization_id', orgId)
+                .eq('role', 'admin')
+
+            if (countError) {
+                console.error('Error counting admins:', countError)
+                return new Response(
+                    JSON.stringify({ error: 'Failed to verify remaining admins', details: countError.message }),
+                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+
+            if ((count ?? 0) <= 1) {
+                return new Response(
+                    JSON.stringify({ error: 'An organization must keep at least one admin' }),
+                    { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+        }
+
+        // Changing someone's role deliberately has NO side effect on team_members.
+        // Demoting a portfolio manager leaves them on their teams; they only lose the
+        // dashboard. Promoting an analyst adds them to no team, so a fresh portfolio
+        // manager sees an empty Team Dashboard until an admin adds them to one --
+        // which is the expected first support question, hence this note.
+
         // Update the role
         const { data: updatedMembership, error: updateError } = await supabaseAdmin
             .from('user_organization_membership')
@@ -180,7 +219,7 @@ serve(async (req) => {
         return new Response(
             JSON.stringify({
                 success: true,
-                message: `Successfully ${newRole === 'admin' ? 'promoted' : 'demoted'} member to ${newRole}`,
+                message: `Successfully updated member role to ${newRole}`,
                 role: newRole,
                 membership: updatedMembership
             }),

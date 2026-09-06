@@ -1,8 +1,9 @@
 // Edge Function: approve-team-join-request
-// Purpose: Approve a team join request (admin only)
+// Purpose: Approve a team join request (org admin, or a portfolio manager of that team)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
+import { getMembership, isOrgAdmin, managesTeam } from '../_shared/roles.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -118,17 +119,14 @@ serve(async (req) => {
 
         const team = joinRequest.teams as any
 
-        // Verify user is admin of the organization
-        const { data: membership, error: membershipError } = await supabaseAdmin
-            .from('user_organization_membership')
-            .select('role')
-            .eq('user_id', userId)
-            .eq('organization_id', team.org_id)
-            .maybeSingle()
+        // Org admins may act anywhere; a portfolio manager only on desks they are
+        // actually on. The team_members lookup inside managesTeam is the scope --
+        // the role string alone would let any manager act on any team in the org.
+        const membership = await getMembership(supabaseAdmin, userId, team.org_id)
 
-        if (membershipError || !membership || membership.role !== 'admin') {
+        if (!isOrgAdmin(membership) && !(await managesTeam(supabaseAdmin, userId, team.id, membership))) {
             return new Response(
-                JSON.stringify({ error: 'Only organization admins can approve join requests' }),
+                JSON.stringify({ error: 'Only organization admins or a portfolio manager of this team can approve join requests' }),
                 { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }

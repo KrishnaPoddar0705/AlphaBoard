@@ -1,9 +1,21 @@
-// Edge Function: reject-team-join-request
-// Purpose: Reject a team join request (org admin, or a portfolio manager of that team)
+// Edge Function: set-recommendation-teams
+// Purpose: Replace the set of teams a recommendation is tagged to (owner only).
+//
+// WHY THIS IS AN EDGE FUNCTION
+// ----------------------------
+// The two obvious alternatives both fail on authorisation:
+//   - The FastAPI create path (backend/app/main.py) has no authentication at all --
+//     it reads user_id straight from the request body -- so writing tags there would
+//     let anyone tag anything into any team.
+//   - A direct client upsert would satisfy the owner-only RLS on recommendation_teams,
+//     but RLS cannot also enforce "and only into teams you belong to" without a
+//     second policy, and splitting one rule across two places is how they drift.
+// So the rule lives here, once: you own the recommendation, and every team you name
+// is a team you are a member of.
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
-import { getMembership, isOrgAdmin, managesTeam } from '../_shared/roles.ts'
+import { teamIdsForUser } from '../_shared/roles.ts'
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -13,16 +25,11 @@ const corsHeaders = {
 }
 
 serve(async (req) => {
-    // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
-        return new Response(null, {
-            status: 204,
-            headers: corsHeaders
-        })
+        return new Response(null, { status: 204, headers: corsHeaders })
     }
 
     try {
-        // Get authorization header
         const authHeader = req.headers.get('Authorization')
         if (!authHeader) {
             return new Response(
@@ -31,7 +38,6 @@ serve(async (req) => {
             )
         }
 
-        // Extract token from Authorization header
         const token = authHeader.replace('Bearer ', '').trim()
         if (!token) {
             return new Response(
@@ -40,7 +46,6 @@ serve(async (req) => {
             )
         }
 
-        // Get service role key for database operations
         const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
         if (!serviceRoleKey) {
             console.error('SUPABASE_SERVICE_ROLE_KEY not set')
@@ -76,7 +81,6 @@ serve(async (req) => {
             )
         }
 
-        // Verify user exists
         const { data: authUser, error: userError } = await supabaseAdmin.auth.admin.getUserById(userId)
         if (userError || !authUser?.user) {
             return new Response(
@@ -85,75 +89,87 @@ serve(async (req) => {
             )
         }
 
-        // Parse request body
-        const { requestId } = await req.json()
+        const { recommendationId, teamIds } = await req.json()
 
-        // Validate input
-        if (!requestId) {
+        if (!recommendationId || !Array.isArray(teamIds)) {
             return new Response(
-                JSON.stringify({ error: 'requestId is required' }),
+                JSON.stringify({ error: 'recommendationId and teamIds[] are required' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
-        // Get join request
-        const { data: joinRequest, error: requestError } = await supabaseAdmin
-            .from('team_join_requests')
-            .select('id, team_id, user_id, status, teams(id, org_id, name)')
-            .eq('id', requestId)
+        // Duplicates in the request would only collide on the composite primary key,
+        // so collapse them before we count or insert anything.
+        const requested: string[] = [...new Set(teamIds.filter((id: unknown) => typeof id === 'string'))]
+
+        // Only the author may tag their own work. Portfolio managers are view-only
+        // over other people's recommendations.
+        const { data: recommendation, error: recError } = await supabaseAdmin
+            .from('recommendations')
+            .select('id, user_id')
+            .eq('id', recommendationId)
             .maybeSingle()
 
-        if (requestError || !joinRequest) {
+        if (recError || !recommendation) {
             return new Response(
-                JSON.stringify({ error: 'Join request not found' }),
+                JSON.stringify({ error: 'Recommendation not found' }),
                 { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
-        if (joinRequest.status !== 'pending') {
+        if ((recommendation as any).user_id !== userId) {
             return new Response(
-                JSON.stringify({ error: 'Join request has already been processed' }),
-                { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-            )
-        }
-
-        const team = joinRequest.teams as any
-
-        // Org admins may act anywhere; a portfolio manager only on desks they are
-        // actually on. The team_members lookup inside managesTeam is the scope --
-        // the role string alone would let any manager act on any team in the org.
-        const membership = await getMembership(supabaseAdmin, userId, team.org_id)
-
-        if (!isOrgAdmin(membership) && !(await managesTeam(supabaseAdmin, userId, team.id, membership))) {
-            return new Response(
-                JSON.stringify({ error: 'Only organization admins or a portfolio manager of this team can reject join requests' }),
+                JSON.stringify({ error: 'You can only change teams on your own recommendations' }),
                 { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
-        // Update request status to rejected
-        const { error: updateError } = await supabaseAdmin
-            .from('team_join_requests')
-            .update({
-                status: 'rejected',
-                reviewed_at: new Date().toISOString(),
-                reviewed_by: userId,
-            })
-            .eq('id', requestId)
-
-        if (updateError) {
-            console.error('Error updating request status:', updateError)
+        // Every named team must be one the author actually belongs to. Without this
+        // an analyst could push an idea onto a desk they have no relationship with,
+        // and it would show up on that desk's Team Dashboard.
+        const ownTeamIds = await teamIdsForUser(supabaseAdmin, userId)
+        const notMine = requested.filter((id) => !ownTeamIds.includes(id))
+        if (notMine.length > 0) {
             return new Response(
-                JSON.stringify({ error: 'Failed to reject join request', details: updateError?.message }),
+                JSON.stringify({ error: 'You can only tag teams you belong to', teamIds: notMine }),
+                { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            )
+        }
+
+        // Replace the set. Clearing first keeps this a true "set to exactly these",
+        // which is what an unticked checkbox has to mean.
+        const { error: deleteError } = await supabaseAdmin
+            .from('recommendation_teams')
+            .delete()
+            .eq('recommendation_id', recommendationId)
+
+        if (deleteError) {
+            console.error('Error clearing recommendation teams:', deleteError)
+            return new Response(
+                JSON.stringify({ error: 'Failed to update teams', details: deleteError.message }),
                 { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
 
+        if (requested.length > 0) {
+            const { error: insertError } = await supabaseAdmin
+                .from('recommendation_teams')
+                .insert(requested.map((teamId) => ({
+                    recommendation_id: recommendationId,
+                    team_id: teamId,
+                })))
+
+            if (insertError) {
+                console.error('Error inserting recommendation teams:', insertError)
+                return new Response(
+                    JSON.stringify({ error: 'Failed to update teams', details: insertError.message }),
+                    { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+                )
+            }
+        }
+
         return new Response(
-            JSON.stringify({
-                success: true,
-                message: `Join request rejected for team "${team.name}"`
-            }),
+            JSON.stringify({ success: true, recommendationId, teamIds: requested }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 
@@ -165,5 +181,3 @@ serve(async (req) => {
         )
     }
 })
-
-

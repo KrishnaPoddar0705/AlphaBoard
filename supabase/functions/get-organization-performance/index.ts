@@ -67,9 +67,10 @@ serve(async (req) => {
       .eq('organization_id', organizationId)
       .single()
 
-    if (membershipError || !membership || membership.role !== 'admin') {
+    if (membershipError || !membership ||
+        (membership.role !== 'admin' && membership.role !== 'portfolio_manager')) {
       return new Response(
-        JSON.stringify({ error: 'Only organization admins can view performance' }),
+        JSON.stringify({ error: 'Only organization admins or portfolio managers can view performance' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -86,7 +87,11 @@ serve(async (req) => {
         )
       `)
       .eq('organization_id', organizationId)
-      .eq('role', 'analyst')
+      // Portfolio managers write recommendations too -- they keep every analyst
+      // right. Filtering to 'analyst' alone would make a member silently vanish
+      // from organization performance the moment they were promoted, taking their
+      // recommendations out of the org totals with them.
+      .in('role', ['analyst', 'portfolio_manager'])
 
     if (membersError) {
       console.error('Error fetching analysts:', membersError)

@@ -4,6 +4,7 @@ import * as React from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useUser, useClerk } from "@clerk/clerk-react"
 import { usePaperPortfolio } from "@/contexts/PaperPortfolioContext"
+import { useOrganization, type OrgRole } from "@/hooks/useOrganization"
 import {
   Users,
   TrendingUp,
@@ -40,6 +41,15 @@ import { useIsMobile } from "@/hooks/use-mobile"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 // import { Button } from "@/components/ui/button" // Unused
 import { SignedOut, SignInButton, SignUpButton } from "@clerk/clerk-react"
+
+type NavItem = {
+  title: string
+  url: string
+  icon: React.ComponentType<{ className?: string }>
+  isActive: boolean
+  /** Organization roles this item is for. Absent means everyone sees it. */
+  allow?: OrgRole[]
+}
 
 const navItems = {
   discover: [
@@ -98,8 +108,16 @@ const navItems = {
       url: "/organization/admin",
       icon: Building2,
       isActive: false,
+      allow: ['admin'],
     },
-  ],
+    {
+      title: "Team Dashboard",
+      url: "/organization/team",
+      icon: Users,
+      isActive: false,
+      allow: ['portfolio_manager'],
+    },
+  ] as NavItem[],
   settings: [
     {
       title: "Profile Settings",
@@ -127,7 +145,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const userMenuRef = React.useRef<HTMLDivElement>(null)
 
   // Update active state based on current location
-  const updateActiveState = (items: typeof navItems.discover) => {
+  const updateActiveState = (items: NavItem[]) => {
     return items.map((item) => ({
       ...item,
       isActive: location.pathname === item.url || location.pathname.startsWith(item.url + "/"),
@@ -143,7 +161,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       ? navItems.discover
       : navItems.discover.filter((item) => !paperPortfolioUrls.includes(item.url))
   )
-  const orgItems = updateActiveState(navItems.organization)
+  // The Organization group used to render for everyone, so a signed-out visitor was
+  // shown an "Admin Dashboard" link they could not use. Render nothing until the
+  // membership row resolves -- a nav item that appears then vanishes reads worse
+  // than one that arrives a moment late.
+  const { organization, loading: orgLoading } = useOrganization()
+  const role = organization?.role ?? null
+  const orgItems = orgLoading || !role
+    ? []
+    : updateActiveState(
+        navItems.organization.filter((item) => !item.allow || item.allow.includes(role))
+      )
   const settingsItems = updateActiveState(navItems.settings)
 
   // Close user menu when clicking outside
@@ -201,6 +229,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {orgItems.length > 0 && (
         <SidebarGroup>
           <SidebarGroupLabel>Organization</SidebarGroupLabel>
           <SidebarGroupContent>
@@ -218,6 +247,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
 
         <SidebarGroup>
           <SidebarGroupLabel>Settings</SidebarGroupLabel>
