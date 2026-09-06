@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import ThesisMarkdown from '@/components/thesis/ThesisMarkdown';
 import { X, BarChart2, FileText, DollarSign, PieChart, Loader, Maximize2, Minimize2, Newspaper } from 'lucide-react';
 import { 
     getStockSummary, 
@@ -215,9 +216,15 @@ export default function StockDetail({ stock, onClose }: StockDetailProps) {
         <div className="p-4 bg-[#1e293b] border-b border-white/10 space-y-4">
             <div>
                 <h3 className="text-xs font-medium text-blue-200 uppercase tracking-wider mb-1">Investment Thesis</h3>
-                <p className="text-gray-300 text-sm italic leading-relaxed whitespace-pre-wrap">
-                "{stock.thesis || "No thesis provided for this recommendation."}"
-                </p>
+                {stock.thesis ? (
+                    <div className="text-gray-300 text-sm">
+                        <ThesisMarkdown content={stock.thesis} />
+                    </div>
+                ) : (
+                    <p className="text-gray-300 text-sm italic leading-relaxed">
+                        No thesis provided for this recommendation.
+                    </p>
+                )}
                 
                 {stock.images && stock.images.length > 0 && (
                     <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-2">

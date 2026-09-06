@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ThesisMarkdown from '@/components/thesis/ThesisMarkdown';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
@@ -1140,7 +1141,7 @@ export default function AdminDashboard() {
                                           <div className="mb-4">
                                             <div className="text-sm font-semibold text-[var(--text-primary)] mb-2">Investment Thesis:</div>
                                             <div className="text-sm text-[var(--text-primary)] bg-indigo-500/10 p-3 rounded border-l-4 border-indigo-500">
-                                              {rec.thesis}
+                                              <ThesisMarkdown content={rec.thesis} />
                                             </div>
                                           </div>
                                         )}

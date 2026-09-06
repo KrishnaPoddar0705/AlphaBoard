@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { FileText } from 'lucide-react';
+import { attachmentHref, fileNameFromUrl } from '@/lib/recommendations/attachments';
 
 interface UploadedFileTileProps {
   url: string;
@@ -11,9 +12,10 @@ function isPdfUrl(url: string): boolean {
   return /\.pdf(?:[?#]|$)/i.test(url);
 }
 
-// Uploads are stored as `${Date.now()}_${random}.${ext}` — the original
-// filename is discarded, so there is nothing meaningful to show from the URL.
-// A generic label beats echoing "1767475922027_n8o3no.pdf" at the user.
+// Uploads made since attachments were reworked keep the original filename in
+// the storage key, so the tile can name the file. Older uploads discarded it,
+// and for those fileNameFromUrl returns null and we fall back to the generic
+// label — echoing "1767475922027_n8o3no.pdf" at the user would be worse.
 
 /**
  * One entry in the recommendation's "Uploaded Files" grid.
@@ -33,11 +35,12 @@ export default function UploadedFileTile({ url, index }: UploadedFileTileProps) 
 
   const isPdf = isPdfUrl(url);
   const showDocumentTile = isPdf || imageFailed;
-  const label = isPdf ? 'PDF document' : 'Document';
+  const originalName = fileNameFromUrl(url);
+  const label = originalName ?? (isPdf ? 'PDF document' : 'Document');
 
   return (
     <a
-      href={url}
+      href={attachmentHref(url)}
       target="_blank"
       rel="noopener noreferrer"
       title={label}
@@ -58,7 +61,7 @@ export default function UploadedFileTile({ url, index }: UploadedFileTileProps) 
       )}
 
       <span className="absolute inset-0 flex items-center justify-center rounded bg-black/50 font-mono text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-        {isPdf ? 'Open PDF' : 'View'}
+        {isPdf ? 'Open PDF' : originalName ?? 'View'}
       </span>
     </a>
   );

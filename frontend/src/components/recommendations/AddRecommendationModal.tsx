@@ -3,15 +3,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { X, Upload, Wallet, AlertTriangle } from 'lucide-react'
+import { Wallet, AlertTriangle } from 'lucide-react'
 import { searchStocks, getPrice, createRecommendation, getUserPortfolios, executeBuyTrade, executeShortSellTrade } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { cn } from '@/lib/utils'
 import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe, validateIrr } from '@/lib/irrTargets'
 import { usePaperPortfolio } from '@/contexts/PaperPortfolioContext'
+import FileDropzone from './FileDropzone'
+import { extractFiles, nameClipboardFiles } from '@/lib/recommendations/clipboardFiles'
+import ThesisEditor from '@/components/thesis/ThesisEditor'
+import { useAttachmentUploads } from '@/hooks/useAttachmentUploads'
 
 // Long enough to coalesce a burst of typing, short enough that the list still
 // feels like it is tracking the keyboard.
@@ -37,7 +40,9 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
   const [thesis, setThesis] = useState('')
   const [irrTarget, setIrrTarget] = useState('')
   const [timeframe, setTimeframe] = useState<string>(DEFAULT_IRR_TIMEFRAME)
-  const [selectedImages, setSelectedImages] = useState<File[]>([])
+  // Resolved when the modal opens rather than at submit time: uploads now
+  // start the moment a file is dropped, so the id has to be ready before then.
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedMarket, setSelectedMarket] = useState<'US' | 'IN'>('IN')
@@ -59,6 +64,14 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       ? (requiredCash / portfolioNav) * 100
       : null
   const navQuickPercents = [5, 10, 15, 20, 25] as const
+
+  // Uploads run as files arrive rather than in a serial loop at submit time,
+  // so the Create button no longer blocks on one round-trip per file and a
+  // failure is visible instead of being dropped.
+  const attachments = useAttachmentUploads({ ticker, userId: supabaseUserId })
+  // Stable across renders, so the reset effect below can depend on it honestly
+  // rather than depending on the whole (newly-identified each render) object.
+  const resetAttachments = attachments.reset
 
   // Ticker search is typed character by character. Debounce so we issue one
   // request per pause rather than one per keystroke, cache what comes back, and
@@ -83,12 +96,32 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       setThesis('')
       setIrrTarget('')
       setTimeframe(DEFAULT_IRR_TIMEFRAME)
-      setSelectedImages([])
+      resetAttachments()
+      setSupabaseUserId(null)
       setError(null)
       setQuantity('')
       setCashBalance(null)
     }
-  }, [open])
+  }, [open, resetAttachments])
+
+  // The submit path used to look this up inline. Uploads start on drop now, so
+  // it has to be resolved before the user can attach anything -- the dropzone
+  // stays disabled until it lands.
+  useEffect(() => {
+    if (!open || !user) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('clerk_user_mapping')
+        .select('supabase_user_id')
+        .eq('clerk_user_id', user.id)
+        .maybeSingle()
+      if (!cancelled) setSupabaseUserId(data?.supabase_user_id ?? null)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [open, user])
 
   // Fetch cash balance when modal opens or market changes.
   // Skipped for organizations without a paper portfolio: getUserPortfolios
@@ -188,14 +221,20 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
     }
   }
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      setSelectedImages((prev) => [...prev, ...Array.from(e.target.files!)])
-    }
-  }
-
-  const removeImage = (index: number) => {
-    setSelectedImages((prev) => prev.filter((_, i) => i !== index))
+  /**
+   * Attaches files pasted anywhere in the dialog.
+   *
+   * Bails when the thesis editor already consumed the event. preventDefault
+   * does not stop propagation, and Excel puts a bitmap of the copied range in
+   * `files` alongside the HTML -- without this guard, pasting a spreadsheet
+   * into the thesis would insert the table *and* attach a screenshot of it.
+   */
+  const handleDialogPaste = (e: React.ClipboardEvent) => {
+    if (e.defaultPrevented) return
+    const files = extractFiles(e.clipboardData)
+    if (files.length === 0) return
+    e.preventDefault()
+    attachments.addFiles(nameClipboardFiles(files))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -204,19 +243,27 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       setError('Please select a stock ticker')
       return
     }
+    if (attachments.pendingCount > 0) {
+      setError('Wait for the attachments to finish uploading')
+      return
+    }
 
     setLoading(true)
     setError(null)
 
     try {
-      // Get Supabase user ID
-      const { data: mapping } = await supabase
-        .from('clerk_user_mapping')
-        .select('supabase_user_id')
-        .eq('clerk_user_id', user.id)
-        .maybeSingle()
+      // Normally resolved when the modal opened; re-read only if that raced.
+      let userId = supabaseUserId
+      if (!userId) {
+        const { data: mapping } = await supabase
+          .from('clerk_user_mapping')
+          .select('supabase_user_id')
+          .eq('clerk_user_id', user.id)
+          .maybeSingle()
+        userId = mapping?.supabase_user_id ?? null
+      }
 
-      if (!mapping) {
+      if (!userId) {
         setError('User mapping not found. Please ensure you are logged in.')
         return
       }
@@ -233,24 +280,9 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       }
 
       const entryPriceNum = entryPrice && parseFloat(entryPrice) > 0 ? parseFloat(entryPrice) : null
-      const imageUrls: string[] = []
-
-      // Upload images
-      for (const file of selectedImages) {
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${mapping.supabase_user_id}/${ticker}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-        
-        const { error: uploadError } = await supabase.storage
-          .from('recommendation-images')
-          .upload(fileName, file)
-
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('recommendation-images')
-            .getPublicUrl(fileName)
-          imageUrls.push(publicUrl)
-        }
-      }
+      // Already uploaded as the files arrived; failures are surfaced on their
+      // own row with a retry, and are simply absent here.
+      const imageUrls = attachments.uploadedUrls
 
       // An IRR target is only interpretable alongside its horizon, so the two are
       // validated and sent as a pair.
@@ -285,7 +317,7 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       }
 
       // Create the recommendation
-      const recResult = await createRecommendation(newRec, mapping.supabase_user_id)
+      const recResult = await createRecommendation(newRec, userId)
       
       // If quantity is provided, execute paper trade based on action type.
       // The recommendation itself carries no quantity -- RecommendationCreate
@@ -341,7 +373,16 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#F7F2E6] border-[#D7D0C2] max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className="bg-[#F7F2E6] border-[#D7D0C2] max-w-2xl max-h-[90vh] overflow-y-auto"
+        // Radix focuses this container on open and it is a React ancestor of
+        // the form, so a paste before the user clicks a field only lands here.
+        onPaste={handleDialogPaste}
+        // A drop that misses the dropzone would otherwise navigate the browser
+        // to file:/// and tear down the SPA.
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="font-mono text-xl font-bold text-[#1C1B17]">Add Recommendation</DialogTitle>
           <DialogDescription className="font-mono text-sm text-[#6F6A60]">
@@ -557,12 +598,11 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
           {/* Thesis */}
           <div className="space-y-2">
             <Label className="font-mono text-sm text-[#1C1B17]">Investment Thesis</Label>
-            <Textarea
+            <ThesisEditor
               value={thesis}
-              onChange={(e) => setThesis(e.target.value)}
-              placeholder="Enter your investment thesis..."
+              onChange={setThesis}
+              onFiles={attachments.addFiles}
               rows={4}
-              className="bg-[#FBF7ED] border-[#D7D0C2] font-mono text-sm"
             />
           </div>
 
@@ -609,43 +649,21 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
 
           {/* File Upload */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">Documents & Images</Label>
-            <div className="border border-[#D7D0C2] border-dashed rounded-lg p-4">
-              <Label htmlFor="file-upload-modal" className="cursor-pointer">
-                <div className="flex flex-col items-center justify-center py-2">
-                  <Upload className="h-6 w-6 text-[#6F6A60] mb-2" />
-                  <p className="font-mono text-xs text-[#1C1B17]">Click to upload</p>
-                </div>
-              </Label>
-              <input
-                id="file-upload-modal"
-                type="file"
-                multiple
-                accept="image/*,.pdf"
-                onChange={handleImageSelect}
-                className="hidden"
-              />
-            </div>
-            {selectedImages.length > 0 && (
-              <div className="space-y-2">
-                {selectedImages.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-[#FBF7ED] border border-[#D7D0C2] rounded"
-                  >
-                    <span className="font-mono text-xs text-[#1C1B17]">{file.name}</span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeImage(index)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
+            <Label className="font-mono text-sm text-[#1C1B17]">Documents &amp; Images</Label>
+            <FileDropzone
+              items={attachments.items}
+              onFiles={attachments.addFiles}
+              onRemove={attachments.remove}
+              onRetry={attachments.retry}
+              disabled={!supabaseUserId}
+              inputId="file-upload-modal"
+            />
+            {attachments.failedCount > 0 && attachments.pendingCount === 0 && (
+              <p className="font-mono text-xs text-[#B23B2A]">
+                {attachments.failedCount} file{attachments.failedCount > 1 ? 's' : ''} failed to
+                upload. Retry or remove {attachments.failedCount > 1 ? 'them' : 'it'} -- creating
+                now saves the recommendation without {attachments.failedCount > 1 ? 'them' : 'it'}.
+              </p>
             )}
           </div>
 
@@ -661,10 +679,17 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
             </Button>
             <Button
               type="submit"
-              disabled={loading || !ticker || (paperPortfolioEnabled && numericQty > 0 && hasInsufficientCash)}
+              disabled={
+                loading ||
+                !ticker ||
+                attachments.pendingCount > 0 ||
+                (paperPortfolioEnabled && numericQty > 0 && hasInsufficientCash)
+              }
               className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
             >
-              {loading
+              {attachments.pendingCount > 0
+                ? `Uploading ${attachments.pendingCount}...`
+                : loading
                 ? 'Creating...'
                 : paperPortfolioEnabled && numericQty > 0
                   ? `Create & Buy ${numericQty} shares`

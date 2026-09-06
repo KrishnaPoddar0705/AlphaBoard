@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import ThesisMarkdown from '@/components/thesis/ThesisMarkdown';
 import clsx from 'clsx';
 import { Plus, ChevronDown, ChevronUp, X, Search, Upload, AlertCircle, Target, Calendar } from 'lucide-react';
 import { PaperCard } from './paper/PaperCard';
@@ -355,9 +356,9 @@ export function EnhancedStockPanel({
                             <h4 className="text-xs font-semibold text-[var(--paper-muted)] uppercase tracking-wide mb-1">
                               Investment Thesis
                             </h4>
-                            <p className="text-sm text-[var(--paper-ink)] italic leading-relaxed whitespace-pre-wrap">
-                              "{rec.thesis}"
-                            </p>
+                            <div className="text-sm text-[var(--paper-ink)]">
+                              <ThesisMarkdown content={rec.thesis} />
+                            </div>
                           </div>
                         )}
 

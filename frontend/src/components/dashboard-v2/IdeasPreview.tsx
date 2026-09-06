@@ -14,6 +14,7 @@ import { Card, CardHeader, CardContent } from '../ui-v2/Card';
 import { SectionHeader } from '../ui-v2/SectionHeader';
 import { ArrowRight, TrendingUp, TrendingDown } from 'lucide-react';
 import clsx from 'clsx';
+import { stripMarkdown } from '@/lib/markdown/thesis';
 
 interface IdeasPreviewProps {
   recommendations: any[];
@@ -95,7 +96,7 @@ export function IdeasPreview({
                     </div>
                     {idea.thesis && (
                       <p className="text-xs text-[var(--text-secondary)] truncate">
-                        {idea.thesis}
+                        {stripMarkdown(idea.thesis)}
                       </p>
                     )}
                   </div>

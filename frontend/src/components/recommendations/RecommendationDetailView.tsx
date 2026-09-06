@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react'
+import toast from 'react-hot-toast'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card-new'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Plus, Upload, X, Edit2, Save, Target, TrendingUp, TrendingDown, Clock } from 'lucide-react'
+import { ArrowLeft, Plus, Edit2, Save, Target, TrendingUp, TrendingDown, Clock } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { IrrTargetTimeline } from '@/components/stock/IrrTargetTimeline'
@@ -14,6 +14,11 @@ import { AddIrrTargetModal } from '@/components/stock/AddIrrTargetModal'
 import { SellModal } from '@/components/portfolio/SellModal'
 import { BuyToCoverModal } from '@/components/portfolio/BuyToCoverModal'
 import UploadedFileTile from '@/components/recommendations/UploadedFileTile'
+import FileDropzone from './FileDropzone'
+import { extractFiles, nameClipboardFiles } from '@/lib/recommendations/clipboardFiles'
+import ThesisEditor from '@/components/thesis/ThesisEditor'
+import ThesisMarkdown from '@/components/thesis/ThesisMarkdown'
+import { useAttachmentUploads } from '@/hooks/useAttachmentUploads'
 import { formatCurrency, getCurrencySymbol, cn } from '@/lib/utils'
 
 // Local interface definition to avoid Vite HMR issues with TypeScript exports
@@ -65,13 +70,48 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
   const { paperPortfolioEnabled } = usePaperPortfolio()
   const [isEditingThesis, setIsEditingThesis] = useState(false)
   const [editedThesis, setEditedThesis] = useState('')
-  const [uploading, setUploading] = useState(false)
-  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
+  // Resolved on mount: uploads now start when a file arrives rather than when
+  // an "Upload Files" button is pressed, so the id must be ready beforehand.
+  const [supabaseUserId, setSupabaseUserId] = useState<string | null>(null)
   const [showAddTargetModal, setShowAddTargetModal] = useState(false)
   const [tradingActivity, setTradingActivity] = useState<TickerPortfolioInfo | null>(null)
   const [loadingTradingActivity, setLoadingTradingActivity] = useState(false)
   const [showSellModal, setShowSellModal] = useState(false)
   const [showBuyToCoverModal, setShowBuyToCoverModal] = useState(false)
+
+  const attachments = useAttachmentUploads({
+    ticker: recommendation?.ticker ?? '',
+    userId: supabaseUserId,
+    existingCount: recommendation?.images?.length ?? 0,
+    onAllSettled: (urls) => void persistAttachments(urls),
+  })
+
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    ;(async () => {
+      const { data } = await supabase
+        .from('clerk_user_mapping')
+        .select('supabase_user_id')
+        .eq('clerk_user_id', user.id)
+        .maybeSingle()
+      if (!cancelled) setSupabaseUserId(data?.supabase_user_id ?? null)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [user])
+
+  /** Attaches files pasted anywhere on the detail view. */
+  const handleRootPaste = (e: React.ClipboardEvent) => {
+    // The thesis editor consumes its own paste; preventDefault does not stop
+    // propagation, and Excel ships a bitmap alongside the HTML table.
+    if (e.defaultPrevented) return
+    const files = extractFiles(e.clipboardData)
+    if (files.length === 0) return
+    e.preventDefault()
+    attachments.addFiles(nameClipboardFiles(files))
+  }
 
   useEffect(() => {
     if (recommendation) {
@@ -158,17 +198,6 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
     }
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files)
-      setSelectedFiles((prev) => [...prev, ...files])
-    }
-  }
-
-  const handleRemoveFile = (index: number) => {
-    setSelectedFiles((prev) => prev.filter((_, i) => i !== index))
-  }
-
   const handleClosePosition = () => {
     if (!user || !recommendation) return
 
@@ -249,58 +278,45 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
     onUpdate()
   }
 
-  const handleUploadFiles = async () => {
-    if (!user || !recommendation || selectedFiles.length === 0) return
-    setUploading(true)
-
-    try {
-      // Get Supabase user ID
-      const { data: mapping } = await supabase
-        .from('clerk_user_mapping')
-        .select('supabase_user_id')
-        .eq('clerk_user_id', user.id)
-        .maybeSingle()
-
-      if (!mapping) {
-        return
-      }
-
-      const imageUrls: string[] = [...(recommendation.images || [])]
-
-      // Upload new files
-      for (const file of selectedFiles) {
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${mapping.supabase_user_id}/${recommendation.ticker}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-
-        const { error: uploadError } = await supabase.storage
-          .from('recommendation-images')
-          .upload(fileName, file)
-
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('recommendation-images')
-            .getPublicUrl(fileName)
-          imageUrls.push(publicUrl)
-        }
-      }
-
-      // Update recommendation with new image URLs
-      await supabase
-        .from('recommendations')
-        .update({ images: imageUrls })
-        .eq('id', recommendation.id)
-        .eq('user_id', mapping.supabase_user_id)
-
-      setSelectedFiles([])
-      onUpdate()
-    } catch (error) {
-    } finally {
-      setUploading(false)
+  /**
+   * Persists a finished batch of uploads.
+   *
+   * Runs once when the queue drains rather than per file. Writing on each
+   * completion would read `recommendation.images` from a prop captured before
+   * the batch started, so with parallel uploads the last write would silently
+   * drop every URL but its own.
+   */
+  const persistAttachments = async (urls: string[]) => {
+    if (!recommendation || urls.length === 0) return
+    if (!supabaseUserId) {
+      toast.error('Could not save the attachments -- please reload and try again')
+      return
     }
+
+    const merged = [...(recommendation.images || []), ...urls]
+    const { error } = await supabase
+      .from('recommendations')
+      .update({ images: merged })
+      .eq('id', recommendation.id)
+      .eq('user_id', supabaseUserId)
+
+    if (error) {
+      toast.error(`Uploaded, but couldn't attach to the recommendation: ${error.message}`)
+      return
+    }
+    attachments.reset()
+    onUpdate()
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 bg-[#F1EEE0] overflow-x-hidden md:flex-1 md:overflow-y-auto">
+    <div
+      className="w-full max-w-full min-w-0 bg-[#F1EEE0] overflow-x-hidden md:flex-1 md:overflow-y-auto"
+      onPaste={handleRootPaste}
+      // A drop landing outside the dropzone would otherwise navigate the
+      // browser to file:/// and tear down the SPA.
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={(e) => e.preventDefault()}
+    >
       <div className="max-w-4xl mx-auto w-full max-w-full px-3 sm:px-4 md:px-6 py-4 md:py-6 space-y-4 md:space-y-6 min-w-0">
         {onBack ? (
           <div className="flex items-center">
@@ -562,16 +578,22 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
           </CardHeader>
           <CardContent>
             {isEditingThesis ? (
-              <Textarea
+              <ThesisEditor
                 value={editedThesis}
-                onChange={(e) => setEditedThesis(e.target.value)}
-                placeholder="Enter your investment thesis..."
+                onChange={setEditedThesis}
+                onFiles={attachments.addFiles}
                 rows={6}
-                className="font-mono text-sm bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17] placeholder:text-[#6F6A60]"
               />
+            ) : recommendation.thesis ? (
+              // A <div>, not a <p>: markdown emits block elements, and a
+              // <table> or <ul> inside a paragraph gets reparented by the
+              // browser and trips React's validateDOMNesting warning.
+              <div className="font-mono text-sm text-[#1C1B17]">
+                <ThesisMarkdown content={recommendation.thesis} />
+              </div>
             ) : (
-              <p className="font-mono text-sm text-[#1C1B17] leading-relaxed whitespace-pre-wrap">
-                {recommendation.thesis || 'No thesis added yet. Click Edit to add one.'}
+              <p className="font-mono text-sm text-[#6F6A60] leading-relaxed">
+                No thesis added yet. Click Edit to add one.
               </p>
             )}
           </CardContent>
@@ -605,55 +627,16 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
             <CardTitle className="font-mono font-bold text-[#1C1B17]">Documents & Images</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Upload Section */}
-            <div className="border border-[#D7D0C2] border-dashed rounded-lg p-4">
-              <Label htmlFor="file-upload" className="cursor-pointer">
-                <div className="flex flex-col items-center justify-center py-4">
-                  <Upload className="h-8 w-8 text-[#6F6A60] mb-2" />
-                  <p className="font-mono text-sm text-[#1C1B17] mb-1">Click to upload documents or images</p>
-                  <p className="font-mono text-xs text-[#6F6A60]">PNG, JPG, PDF up to 10MB</p>
-                </div>
-              </Label>
-              <input
-                id="file-upload"
-                type="file"
-                multiple
-                accept="image/*,.pdf"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
-            </div>
-
-            {/* Selected Files Preview */}
-            {selectedFiles.length > 0 && (
-              <div className="space-y-2">
-                <Label className="font-mono text-xs text-[#6F6A60] uppercase">Selected Files</Label>
-                {selectedFiles.map((file, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-2 bg-[#FBF7ED] border border-[#D7D0C2] rounded"
-                  >
-                    <span className="font-mono text-sm text-[#1C1B17]">{file.name}</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveFile(index)}
-                      className="h-6 w-6 p-0"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button
-                  onClick={handleUploadFiles}
-                  disabled={uploading}
-                  className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
-                  size="sm"
-                >
-                  {uploading ? 'Uploading...' : 'Upload Files'}
-                </Button>
-              </div>
-            )}
+            {/* Upload Section -- files upload as they arrive, so there is no
+                separate "Upload Files" step any more. */}
+            <FileDropzone
+              items={attachments.items}
+              onFiles={attachments.addFiles}
+              onRemove={attachments.remove}
+              onRetry={attachments.retry}
+              disabled={!supabaseUserId}
+              inputId="file-upload"
+            />
 
             {/* Existing Images */}
             {recommendation.images && recommendation.images.length > 0 && (

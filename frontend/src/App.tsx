@@ -26,6 +26,7 @@ import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import InlineLogin from './components/InlineLogin';
 import { ensureVoterSession } from './lib/auth/ensureVoterSession';
+import { Toaster } from 'react-hot-toast';
 import { PaperPortfolioProvider, usePaperPortfolio } from './contexts/PaperPortfolioContext';
 
 /**
@@ -84,6 +85,16 @@ function App() {
   return (
     <BrowserRouter>
       <PaperPortfolioProvider>
+      {/* Mounted once at the root. Previously the only <Toaster /> lived in
+          Dashboard.tsx, so every toast raised from another page -- notably the
+          upload errors on /recommendations -- silently went nowhere. */}
+      <Toaster
+        position="bottom-right"
+        toastOptions={{
+          className: 'font-mono text-sm',
+          style: { background: '#FBF7ED', color: '#1C1B17', border: '1px solid #D7D0C2' },
+        }}
+      />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/sign-up" element={<SignUpPage />} />

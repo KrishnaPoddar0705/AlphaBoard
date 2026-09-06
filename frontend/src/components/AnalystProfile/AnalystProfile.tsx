@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import ThesisMarkdown from '@/components/thesis/ThesisMarkdown';
+import { stripMarkdown } from '@/lib/markdown/thesis';
 import { X, User, Clock, Award } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { getPrice } from '../../lib/api';
@@ -154,8 +156,8 @@ export default function AnalystProfile({ analyst, onClose }: AnalystProfileProps
                                                     <span>Current: ₹{rec.current_price?.toFixed(2)}</span>
                                                 </div>
                                                 {rec.thesis && (
-                                                    <div className="bg-[var(--bg-secondary)] rounded p-3 text-sm text-[var(--text-primary)] italic mb-3 border border-[var(--border-color)]">
-                                                        "{rec.thesis}"
+                                                    <div className="bg-[var(--bg-secondary)] rounded p-3 text-sm text-[var(--text-primary)] mb-3 border border-[var(--border-color)]">
+                                                        <ThesisMarkdown content={rec.thesis} />
                                                         {rec.images && rec.images.length > 0 && (
                                                             <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-none">
                                                                 {rec.images.map((img: string, idx: number) => (
@@ -202,7 +204,7 @@ export default function AnalystProfile({ analyst, onClose }: AnalystProfileProps
                                                     </div>
                                                 </div>
                                                 {rec.thesis && (
-                                                    <p className="text-xs text-[var(--text-secondary)] line-clamp-1">"{rec.thesis}"</p>
+                                                    <p className="text-xs text-[var(--text-secondary)] line-clamp-1">{stripMarkdown(rec.thesis)}</p>
                                                 )}
                                             </div>
                                         ))

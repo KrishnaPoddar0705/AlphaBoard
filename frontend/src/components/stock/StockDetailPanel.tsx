@@ -12,6 +12,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import ThesisMarkdown from '@/components/thesis/ThesisMarkdown';
 import { Loader, Newspaper, Mic, Bell, Check, X, Plus, Trash2, Edit2 } from 'lucide-react';
 import { StockHeader } from './StockHeader';
 import { StockTabs } from './StockTabs';
@@ -441,9 +442,15 @@ export function StockDetailPanel({
                                 <h3 className="text-xs font-semibold text-indigo-400 uppercase tracking-wider mb-2">
                                     Investment Thesis
                                 </h3>
-                                <p className="text-[var(--text-primary)] text-sm leading-relaxed italic">
-                                    "{stock.thesis || 'No thesis provided for this recommendation.'}"
-                                </p>
+                                {stock.thesis ? (
+                                    <div className="text-[var(--text-primary)] text-sm">
+                                        <ThesisMarkdown content={stock.thesis} />
+                                    </div>
+                                ) : (
+                                    <p className="text-[var(--text-primary)] text-sm leading-relaxed italic">
+                                        No thesis provided for this recommendation.
+                                    </p>
+                                )}
 
                                 {/* Thesis Images */}
                                 {stock.images && stock.images.length > 0 && (

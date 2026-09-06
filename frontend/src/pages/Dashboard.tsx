@@ -30,7 +30,7 @@ import { usePanelTransition } from '../hooks/useLayout';
 import { Settings } from 'lucide-react';
 import { getCachedPrice, setCachedPrice, isPriceCacheValid, clearExpiredPrices } from '../lib/priceCache';
 import { setCachedReturn, calculateReturn } from '../lib/returnsCache';
-import toast, { Toaster } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe } from '../lib/irrTargets';
 
 // Mock data for fallback
@@ -849,23 +849,8 @@ export default function Dashboard() {
 
     return (
         <div className="h-[calc(100vh-4rem)] bg-[var(--bg-primary)] overflow-hidden">
-            <Toaster
-                position="top-right"
-                toastOptions={{
-                    duration: 5000,
-                    style: {
-                        background: '#1e293b',
-                        color: '#fff',
-                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                    },
-                    success: {
-                        iconTheme: {
-                            primary: '#10b981',
-                            secondary: '#fff',
-                        },
-                    },
-                }}
-            />
+            {/* <Toaster /> is mounted once in App.tsx; a second one here
+                would render every toast twice. */}
             {/* 12-Column Responsive Grid Layout */}
             <div className="h-full grid grid-cols-12">
                 {/* Left Panel: Idea List or Performance Metrics - 5 columns on desktop */}
