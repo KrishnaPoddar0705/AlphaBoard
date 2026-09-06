@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Button } from "@/components/ui/button"
 import { ArrowUp, ArrowDown } from "lucide-react"
 import { getPrice, getStockSummary, getStockHistory, getIncomeStatement, getBalanceSheet, getCashFlow, getTickerPortfolioInfo } from "@/lib/api"
+import { usePaperPortfolio } from "@/contexts/PaperPortfolioContext"
 
 // Local interface definition to avoid Vite HMR issues with TypeScript exports
 interface TickerPortfolioInfo {
@@ -61,6 +62,7 @@ export default function StockDetail() {
   const location = useLocation()
   const navigate = useNavigate()
   const { user } = useUser()
+  const { paperPortfolioEnabled } = usePaperPortfolio()
   const [stockData, setStockData] = React.useState<any>(null)
   const [comments, setComments] = React.useState<Comment[]>([])
   const [newComment, setNewComment] = React.useState("")
@@ -113,10 +115,13 @@ export default function StockDetail() {
     }
   }, [ticker, timeframe])
 
-  // Load trading activity for this ticker
+  // Load trading activity for this ticker.
+  // Skipped for organizations without a paper portfolio -- the whole Trading
+  // Activity card below is already gated on tradingActivity, so leaving it null
+  // hides the shares-held tile and the per-trade share counts as well.
   React.useEffect(() => {
     const loadTradingActivity = async () => {
-      if (!ticker || !user) return
+      if (!ticker || !user || !paperPortfolioEnabled) return
       setLoadingTradingActivity(true)
       try {
         const data = await getTickerPortfolioInfo(ticker, user.id)
@@ -129,7 +134,7 @@ export default function StockDetail() {
       }
     }
     loadTradingActivity()
-  }, [ticker, user])
+  }, [ticker, user, paperPortfolioEnabled])
 
   React.useEffect(() => {
     if (ticker) {

@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { cn } from '@/lib/utils'
 import { IRR_TIMEFRAMES, DEFAULT_IRR_TIMEFRAME, getTimeframe, validateIrr } from '@/lib/irrTargets'
+import { usePaperPortfolio } from '@/contexts/PaperPortfolioContext'
 
 // Long enough to coalesce a burst of typing, short enough that the list still
 // feels like it is tracking the keyboard.
@@ -25,6 +26,7 @@ interface AddRecommendationModalProps {
 
 export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode = false }: AddRecommendationModalProps) {
   const { user } = useUser()
+  const { paperPortfolioEnabled } = usePaperPortfolio()
   const [ticker, setTicker] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
@@ -88,12 +90,15 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
     }
   }, [open])
 
-  // Fetch cash balance when modal opens or market changes
+  // Fetch cash balance when modal opens or market changes.
+  // Skipped for organizations without a paper portfolio: getUserPortfolios
+  // prices every open position through an uncached yfinance lookup, so not
+  // making this request is most of the reason the modal opens faster for them.
   useEffect(() => {
-    if (open && user && !watchlistMode) {
+    if (open && user && !watchlistMode && paperPortfolioEnabled) {
       fetchCashBalance()
     }
-  }, [open, user, selectedMarket, watchlistMode])
+  }, [open, user, selectedMarket, watchlistMode, paperPortfolioEnabled])
 
   const fetchCashBalance = async () => {
     if (!user) return
@@ -282,9 +287,12 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       // Create the recommendation
       const recResult = await createRecommendation(newRec, mapping.supabase_user_id)
       
-      // If quantity is provided, execute paper trade based on action type
+      // If quantity is provided, execute paper trade based on action type.
+      // The recommendation itself carries no quantity -- RecommendationCreate
+      // has no such field -- so for an opted-out organization there is nothing
+      // to omit from the payload above; we simply never place the trade.
       const numericQtySubmit = parseFloat(quantity) || 0
-      if (!watchlistMode && numericQtySubmit > 0 && user) {
+      if (paperPortfolioEnabled && !watchlistMode && numericQtySubmit > 0 && user) {
         try {
           // Get the recommendation ID from the result
           const recommendationId = recResult?.id || recResult?.recommendation?.id
@@ -443,8 +451,9 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
             )}
           </div>
 
-          {/* Quantity for Paper Trading - Show for both BUY and SELL recommendations, not watchlist */}
-          {!watchlistMode && (
+          {/* Quantity for Paper Trading - Show for both BUY and SELL recommendations, not watchlist.
+              Hidden entirely for organizations that have opted out of the paper portfolio. */}
+          {!watchlistMode && paperPortfolioEnabled && (
             <div className="space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -652,10 +661,14 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
             </Button>
             <Button
               type="submit"
-              disabled={loading || !ticker || (numericQty > 0 && hasInsufficientCash)}
+              disabled={loading || !ticker || (paperPortfolioEnabled && numericQty > 0 && hasInsufficientCash)}
               className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
             >
-              {loading ? 'Creating...' : numericQty > 0 ? `Create & Buy ${numericQty} shares` : 'Create Recommendation'}
+              {loading
+                ? 'Creating...'
+                : paperPortfolioEnabled && numericQty > 0
+                  ? `Create & Buy ${numericQty} shares`
+                  : 'Create Recommendation'}
             </Button>
           </div>
         </form>

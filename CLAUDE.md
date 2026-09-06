@@ -49,6 +49,14 @@ pytest tests/ -v
 - **UI components**: Radix UI primitives in `src/components/ui/` (shadcn-style).
 - **Charts**: Nivo (primary), Recharts, Highcharts.
 - **Feature flags**: `src/config/featureFlags.ts` — env vars (`VITE_UI_V2`, etc.) or `localStorage`. Hook: `useFeatureFlag`.
+- **Paper portfolio toggle**: per-organization, not a `VITE_` flag. Driven by
+  `organizations.paper_portfolio_enabled` (default `TRUE`) via
+  `src/contexts/PaperPortfolioContext.tsx`; `usePaperPortfolio()` returns
+  `{ paperPortfolioEnabled, ready }`. When off, share quantities, paper trades
+  and NAV are hidden and `/portfolio` and `/history` redirect to
+  `/recommendations`. Gate the **fetch** as well as the render — the point is to
+  not call `/api/portfolio*`, which prices every position through an uncached
+  yfinance lookup. Users with no organization keep the paper portfolio.
 
 ## Backend Architecture
 

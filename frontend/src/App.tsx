@@ -26,6 +26,31 @@ import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import InlineLogin from './components/InlineLogin';
 import { ensureVoterSession } from './lib/auth/ensureVoterSession';
+import { PaperPortfolioProvider, usePaperPortfolio } from './contexts/PaperPortfolioContext';
+
+/**
+ * Keeps the paper-trading pages (/portfolio and /history) unreachable for
+ * organizations that have opted out. Hiding the sidebar entries is not enough
+ * on its own -- a bookmarked URL would still mount the page and fire its
+ * portfolio, positions, trades and snapshot reads.
+ */
+function PaperPortfolioRoute({ children }: { children: React.ReactNode }) {
+  const { paperPortfolioEnabled, ready } = usePaperPortfolio();
+
+  if (!ready) {
+    return (
+      <div className="flex-1 flex items-center justify-center bg-[#F1EEE0]">
+        <div className="text-[#6F6A60] font-mono">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!paperPortfolioEnabled) {
+    return <Navigate to="/recommendations" replace />;
+  }
+
+  return <>{children}</>;
+}
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoaded } = useUser();
@@ -58,6 +83,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <PaperPortfolioProvider>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/sign-up" element={<SignUpPage />} />
@@ -83,7 +109,9 @@ function App() {
           } />
           <Route path="/history" element={
             <PrivateRoute>
-              <History />
+              <PaperPortfolioRoute>
+                <History />
+              </PaperPortfolioRoute>
             </PrivateRoute>
           } />
           <Route path="/performance" element={
@@ -93,7 +121,9 @@ function App() {
           } />
           <Route path="/portfolio" element={
             <PrivateRoute>
-              <Portfolio />
+              <PaperPortfolioRoute>
+                <Portfolio />
+              </PaperPortfolioRoute>
             </PrivateRoute>
           } />
 
@@ -155,6 +185,7 @@ function App() {
         {/* Catch-all route for 404 errors */}
         <Route path="*" element={<NotFound />} />
       </Routes>
+      </PaperPortfolioProvider>
     </BrowserRouter>
   );
 }

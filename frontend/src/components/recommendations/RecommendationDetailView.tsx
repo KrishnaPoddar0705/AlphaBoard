@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { IrrTargetTimeline } from '@/components/stock/IrrTargetTimeline'
 import { createIrrTarget, getTickerPortfolioInfo } from '@/lib/api'
+import { usePaperPortfolio } from '@/contexts/PaperPortfolioContext'
 import { AddIrrTargetModal } from '@/components/stock/AddIrrTargetModal'
 import { SellModal } from '@/components/portfolio/SellModal'
 import { BuyToCoverModal } from '@/components/portfolio/BuyToCoverModal'
@@ -61,6 +62,7 @@ interface RecommendationDetailViewProps {
 
 export function RecommendationDetailView({ recommendation, onUpdate, onBack }: RecommendationDetailViewProps) {
   const { user } = useUser()
+  const { paperPortfolioEnabled } = usePaperPortfolio()
   const [isEditingThesis, setIsEditingThesis] = useState(false)
   const [editedThesis, setEditedThesis] = useState('')
   const [uploading, setUploading] = useState(false)
@@ -77,10 +79,21 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
     }
   }, [recommendation])
 
-  // Load trading activity for this ticker
+  // Load trading activity for this ticker.
+  //
+  // Skipped for organizations without a paper portfolio. This fires on every
+  // recommendation the user clicks and getTickerPortfolioInfo prices the ticker
+  // through an uncached yfinance lookup plus an unbounded trade-history read,
+  // so it is the most frequent avoidable request in the app.
+  //
+  // Leaving tradingActivity null is enough to switch off everything downstream:
+  // the Recent Activity card, the shares-held tile, the sell/buy-to-cover
+  // modals and the share counts in the close button all already treat null as
+  // "no position", and handleClosePosition falls back to closing the
+  // recommendation on its own.
   useEffect(() => {
     const loadTradingActivity = async () => {
-      if (!recommendation || !user) return
+      if (!recommendation || !user || !paperPortfolioEnabled) return
       setLoadingTradingActivity(true)
       try {
         const data = await getTickerPortfolioInfo(recommendation.ticker, user.id)
@@ -93,7 +106,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
       }
     }
     loadTradingActivity()
-  }, [recommendation?.ticker, user])
+  }, [recommendation?.ticker, user, paperPortfolioEnabled])
 
   if (!recommendation) {
     return (

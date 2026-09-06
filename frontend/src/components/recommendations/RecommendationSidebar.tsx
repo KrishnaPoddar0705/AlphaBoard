@@ -2,6 +2,7 @@
 import { Card, CardContent } from '@/components/ui/card-new'
 import { Badge } from '@/components/ui/badge'
 import { formatCurrency, getCurrencySymbol } from '@/lib/utils'
+import { usePaperPortfolio } from '@/contexts/PaperPortfolioContext'
 
 interface Recommendation {
   id: string
@@ -21,6 +22,8 @@ interface RecommendationSidebarProps {
 }
 
 export function RecommendationSidebar({ recommendations, selectedId, onSelect }: RecommendationSidebarProps) {
+  const { paperPortfolioEnabled } = usePaperPortfolio()
+
   const calculateReturn = (rec: Recommendation) => {
     if (!rec.entry_price || !rec.current_price) return null
     const returnPct = ((rec.current_price - rec.entry_price) / rec.entry_price) * 100
@@ -28,6 +31,7 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
   }
 
   const calculateUnrealizedPnL = (rec: Recommendation) => {
+    if (!paperPortfolioEnabled) return null
     if (!rec.entry_price || !rec.current_price || !rec.position_size) return null
     const pnl = (rec.current_price - rec.entry_price) * rec.position_size
     return rec.action === 'SELL' ? -pnl : pnl
@@ -101,7 +105,7 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
                       </span>
                     </div>
                     {/* Show Quantity if available */}
-                    {rec.position_size && rec.position_size > 0 && (
+                    {paperPortfolioEnabled && rec.position_size && rec.position_size > 0 && (
                       <div className="flex justify-between items-center">
                         <span className="font-mono text-xs text-[#6F6A60]">Qty</span>
                         <span className="font-mono text-sm text-[#1C1B17] tabular-nums">

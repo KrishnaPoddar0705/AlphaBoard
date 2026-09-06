@@ -3,6 +3,7 @@
 import * as React from "react"
 import { Link, useLocation, useNavigate } from "react-router-dom"
 import { useUser, useClerk } from "@clerk/clerk-react"
+import { usePaperPortfolio } from "@/contexts/PaperPortfolioContext"
 import {
   Users,
   TrendingUp,
@@ -121,6 +122,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useUser()
   const { signOut } = useClerk()
   const isMobile = useIsMobile()
+  const { paperPortfolioEnabled } = usePaperPortfolio()
   const [showUserMenu, setShowUserMenu] = React.useState(false)
   const userMenuRef = React.useRef<HTMLDivElement>(null)
 
@@ -132,7 +134,15 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     }))
   }
 
-  const discoverItems = updateActiveState(navItems.discover)
+  // History is built entirely from portfolio_trades, so it is as much a paper
+  // trading page as /portfolio is -- an organization without one would only ever
+  // see its empty state.
+  const paperPortfolioUrls = ["/portfolio", "/history"]
+  const discoverItems = updateActiveState(
+    paperPortfolioEnabled
+      ? navItems.discover
+      : navItems.discover.filter((item) => !paperPortfolioUrls.includes(item.url))
+  )
   const orgItems = updateActiveState(navItems.organization)
   const settingsItems = updateActiveState(navItems.settings)
 
