@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import toast from 'react-hot-toast'
-import type { AttachmentItem } from '@/lib/recommendations/attachments'
+import type { AttachmentItem, UploadResult } from '@/lib/recommendations/attachments'
 import {
   MAX_FILES,
   deleteAttachment,
@@ -17,6 +17,21 @@ interface Options {
   existingCount?: number
   /** Fired once each time the queue drains, with every successfully uploaded URL. */
   onAllSettled?: (urls: string[]) => void
+
+  // --- Storage backend, injectable. -----------------------------------------
+  // Everything below defaults to the public `recommendation-images` bucket, so
+  // existing callers are unaffected. Command Center passes its own set because it
+  // writes to a PRIVATE bucket with a different path shape and a MIME allowlist --
+  // only the storage calls differ, and the queue machinery here is worth reusing
+  // rather than copying.
+  /** Uploads one file and resolves `{ url, key }`. `key` is what gets persisted. */
+  upload?: (file: File, ctx: { userId: string; ticker: string }) => Promise<UploadResult>
+  /** Best-effort cleanup for a file removed mid-flight. */
+  deleteFile?: (key: string) => void | Promise<void>
+  /** Returns an error message, or null when the file is acceptable. */
+  validate?: (file: File, currentCount: number) => string | null
+  /** Cap on total attachments. */
+  maxFiles?: number
 }
 
 let idCounter = 0
@@ -36,7 +51,16 @@ const nextId = () => `att_${Date.now()}_${idCounter++}`
  * settled callback -- happens outside the setState updaters, which React
  * invokes twice under StrictMode.
  */
-export function useAttachmentUploads({ ticker, userId, existingCount = 0, onAllSettled }: Options) {
+export function useAttachmentUploads({
+  ticker,
+  userId,
+  existingCount = 0,
+  onAllSettled,
+  upload = uploadAttachment,
+  deleteFile = deleteAttachment,
+  validate = validateAttachment,
+  maxFiles = MAX_FILES,
+}: Options) {
   const [items, setItems] = useState<AttachmentItem[]>([])
 
   // supabase-js `upload()` accepts no AbortSignal, so removing a file mid-flight
@@ -56,10 +80,18 @@ export function useAttachmentUploads({ ticker, userId, existingCount = 0, onAllS
   const tickerRef = useRef(ticker)
   const userIdRef = useRef(userId)
   const onAllSettledRef = useRef(onAllSettled)
+  // Callers pass these as inline arrows closing over current props, so they must be
+  // re-read on every render rather than captured once in a useCallback dependency.
+  const uploadRef = useRef(upload)
+  const deleteFileRef = useRef(deleteFile)
+  const validateRef = useRef(validate)
   useEffect(() => {
     tickerRef.current = ticker
     userIdRef.current = userId
     onAllSettledRef.current = onAllSettled
+    uploadRef.current = upload
+    deleteFileRef.current = deleteFile
+    validateRef.current = validate
   })
 
   const commit = useCallback((update: (prev: AttachmentItem[]) => AttachmentItem[]) => {
@@ -100,11 +132,11 @@ export function useAttachmentUploads({ ticker, userId, existingCount = 0, onAllS
     }
 
     try {
-      const { url, key } = await uploadAttachment(file, { userId: uid, ticker: tickerRef.current })
+      const { url, key } = await uploadRef.current(file, { userId: uid, ticker: tickerRef.current })
 
       if (removedIds.current.has(id)) {
         removedIds.current.delete(id)
-        void deleteAttachment(key)
+        void deleteFileRef.current(key)
         return
       }
       commit((prev) => prev.map((i) => (i.id === id ? { ...i, status: 'done', url, key } : i)))
@@ -131,7 +163,7 @@ export function useAttachmentUploads({ ticker, userId, existingCount = 0, onAllS
       let count = existingCount + itemsRef.current.length
 
       for (const file of incoming) {
-        const error = validateAttachment(file, count)
+        const error = validateRef.current(file, count)
         if (error) {
           toast.error(error)
           continue
@@ -141,7 +173,7 @@ export function useAttachmentUploads({ ticker, userId, existingCount = 0, onAllS
         accepted.push({
           id,
           file,
-          item: { id, name: file.name, size: file.size, status: 'uploading' },
+          item: { id, name: file.name, size: file.size, mime: file.type || null, status: 'uploading' },
         })
         count += 1
       }
@@ -159,7 +191,7 @@ export function useAttachmentUploads({ ticker, userId, existingCount = 0, onAllS
   const remove = useCallback((id: string) => {
     const target = itemsRef.current.find((i) => i.id === id)
     if (target?.status === 'uploading') removedIds.current.add(id)
-    if (target?.status === 'done' && target.key) void deleteAttachment(target.key)
+    if (target?.status === 'done' && target.key) void deleteFileRef.current(target.key)
     filesById.current.delete(id)
     commit((prev) => prev.filter((i) => i.id !== id))
   }, [commit])
@@ -193,6 +225,6 @@ export function useAttachmentUploads({ ticker, userId, existingCount = 0, onAllS
     uploadedUrls,
     pendingCount,
     failedCount,
-    canAddMore: existingCount + items.length < MAX_FILES,
+    canAddMore: existingCount + items.length < maxFiles,
   }
 }

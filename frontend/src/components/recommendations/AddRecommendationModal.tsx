@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Wallet, AlertTriangle } from 'lucide-react'
-import { searchStocks, getPrice, createRecommendation, getUserPortfolios, executeBuyTrade, executeShortSellTrade } from '@/lib/api'
+import { searchStocks, getPrice, createRecommendation, getUserPortfolios, executeBuyTrade, executeShortSellTrade, marketErrorMessage } from '@/lib/api'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@clerk/clerk-react'
 import { cn } from '@/lib/utils'
@@ -29,15 +29,30 @@ interface AddRecommendationModalProps {
   onClose: () => void
   onSuccess: () => void
   watchlistMode?: boolean // If true, creates a WATCHLIST recommendation instead of OPEN
+  /**
+   * Pre-selects a stock when the modal is opened from somewhere that already knows it
+   * -- Command Center's "Raise a recommendation" on a covered name. Omitted everywhere
+   * else, which leaves the picker empty exactly as before.
+   */
+  initialTicker?: string
 }
 
-export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode = false }: AddRecommendationModalProps) {
+export function AddRecommendationModal({
+  open,
+  onClose,
+  onSuccess,
+  watchlistMode = false,
+  initialTicker,
+}: AddRecommendationModalProps) {
   const { user } = useUser()
   const { paperPortfolioEnabled } = usePaperPortfolio()
   const [ticker, setTicker] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  // Separate from the form-level `error`: a failed lookup must not read as "no such
+  // stock", which is what an empty result list says.
+  const [searchError, setSearchError] = useState<string | null>(null)
   const [entryPrice, setEntryPrice] = useState('')
   const [currentPrice, setCurrentPrice] = useState<number | null>(null)
   const [action, setAction] = useState<'BUY' | 'SELL'>('BUY')
@@ -187,6 +202,7 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
       searchAbortRef.current?.abort()
       searchAbortRef.current = null
       setSearchResults([])
+      setSearchError(null)
       setIsSearching(false)
       return
     }
@@ -211,12 +227,16 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
           const list = results || []
           searchCacheRef.current.set(query.toUpperCase(), list)
           setSearchResults(list)
+          setSearchError(null)
           setIsSearching(false)
         })
-        .catch((err: any) => {
+        .catch((err: unknown) => {
           // An abort is a supersede, not a failure -- leave the UI as it is.
-          if (controller.signal.aborted || err?.code === 'ERR_CANCELED' || err?.name === 'CanceledError') return
+          if (controller.signal.aborted) return
+          const message = marketErrorMessage(err)
+          if (!message) return
           setSearchResults([])
+          setSearchError(message)
           setIsSearching(false)
         })
     }, SEARCH_DEBOUNCE_MS)
@@ -240,6 +260,21 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
     } catch (err) {
     }
   }
+
+  // Seeds `initialTicker` on the open transition -- and only then. Re-applying it on
+  // every render would snap the selection back each time the user picked a different
+  // stock, and the close-handler above already clears it.
+  const seededTickerRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!open) {
+      seededTickerRef.current = null
+      return
+    }
+    const seed = initialTicker?.trim().toUpperCase()
+    if (!seed || seededTickerRef.current === seed) return
+    seededTickerRef.current = seed
+    void handleSelectTicker(seed)
+  }, [open, initialTicker])
 
   /**
    * Attaches files pasted anywhere in the dialog.
@@ -466,7 +501,12 @@ export function AddRecommendationModal({ open, onClose, onSuccess, watchlistMode
                   <span className="font-mono text-sm text-[#1C1B17]">Selected: {ticker}</span>
                 </div>
               )}
-              {!isSearching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
+              {searchError && (
+                <div className="absolute z-10 mt-1 w-full rounded border border-[#B23B2A] bg-[#FBF7ED] p-3 shadow-lg">
+                  <span className="font-mono text-xs text-[#B23B2A]">{searchError}</span>
+                </div>
+              )}
+              {!searchError && !isSearching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-[#FBF7ED] border border-[#D7D0C2] rounded shadow-lg p-3">
                   <span className="font-mono text-xs text-[#6F6A60]">No matches for "{searchQuery.trim()}"</span>
                 </div>

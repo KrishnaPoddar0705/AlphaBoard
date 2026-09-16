@@ -65,6 +65,58 @@ function forbidSecretsInClientEnv(mode: string) {
   }
 }
 
+/**
+ * Top-level path segments owned by the FastAPI backend, proxied in dev.
+ *
+ * Taken from the `@app.<method>("/...")` decorators in backend/app/main.py. Add a
+ * segment here when a new top-level route appears there, or the dev server will try to
+ * answer it with index.html and the caller will get HTML where it expected JSON.
+ */
+const BACKEND_ROUTE_PREFIXES = [
+  '/market',
+  '/recommendations',
+  '/watchlist',
+  '/leaderboard',
+  '/price-targets',
+  '/news',
+  '/api',
+  '/admin',
+  '/health',
+  '/update-stats',
+]
+
+/**
+ * Dev-only proxy to the backend.
+ *
+ * Without it the browser calls the backend cross-origin, which only works while the
+ * dev server happens to be on a port the backend's CORS allowlist names
+ * (backend/app/main.py lists 5173-5175). Vite increments the port whenever one is
+ * busy, so a second dev server lands on 5176 and every market request starts failing
+ * CORS with no obvious cause. Proxying makes the requests same-origin, so the port
+ * stops mattering.
+ *
+ * The target defaults to the deployed backend so `npm run dev` works with nothing else
+ * running. Point DEV_API_PROXY_TARGET at http://127.0.0.1:8000 when you are running
+ * the backend locally. Note this is NOT a VITE_ variable: it is read here, in Node, and
+ * never inlined into the client bundle.
+ */
+function backendProxy(mode: string) {
+  const env = loadEnv(mode, path.resolve(__dirname), '')
+  const target = env.DEV_API_PROXY_TARGET || 'https://alphaboard-backend.fly.dev'
+
+  return Object.fromEntries(
+    BACKEND_ROUTE_PREFIXES.map((prefix) => [
+      prefix,
+      {
+        target,
+        changeOrigin: true,
+        // The deployed backend is HTTPS; a local one is plain HTTP.
+        secure: target.startsWith('https://'),
+      },
+    ])
+  )
+}
+
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => ({
   plugins: [
@@ -72,6 +124,9 @@ export default defineConfig(({ mode }) => ({
     react(),
     tailwindcss(),
   ],
+  server: {
+    proxy: backendProxy(mode),
+  },
   resolve: {
     alias: {
       // Force all imports to use the top-level installed react

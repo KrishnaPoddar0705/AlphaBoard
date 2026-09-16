@@ -12,7 +12,7 @@ import { Separator } from "@/components/ui/separator"
 import { Input } from "@/components/ui/input"
 import { Search } from "lucide-react"
 import { useSearch } from "@/contexts/SearchContext"
-import { searchStocks } from "@/lib/api"
+import { searchStocks, marketErrorMessage } from "@/lib/api"
 import { useDebounce } from "@/hooks/useDebounce"
 
 interface SearchResult {
@@ -46,7 +46,12 @@ export default function LayoutV2() {
                     setSearchResults(results.slice(0, 5)) // Limit to 5 results
                     setShowSuggestions(true)
                 })
-                .catch(() => {
+                .catch((err: unknown) => {
+                    // Silent on abort; otherwise leave a trace, because an empty
+                    // dropdown is indistinguishable from "no such stock" and that is
+                    // exactly what made a dead backend hard to diagnose.
+                    const message = marketErrorMessage(err)
+                    if (message) console.warn('[stock search]', message)
                     setSearchResults([])
                     setShowSuggestions(false)
                 })

@@ -17,6 +17,11 @@ import type { OrgRole } from '../hooks/useOrganization';
 
 // Get Supabase URL and construct Edge Functions endpoint
 const getEdgeFunctionUrl = () => {
+  // Deliberately ignores VITE_EDGE_FUNCTIONS_URL. That override points at ONE locally
+  // served function (sync-clerk-user, see frontend/.env.example), and a single-function
+  // server answers every path with that function -- so routing create-team or
+  // get-my-teams there returned sync-clerk-user's "clerkUser with clerkUserId and email
+  // is required". Everything in this file goes to the deployed functions.
   const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 
   if (supabaseUrl) {

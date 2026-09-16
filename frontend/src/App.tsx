@@ -9,6 +9,8 @@ import Community from './pages/Community';
 import StockDetail from './pages/StockDetail';
 import Recommendations from './pages/Recommendations';
 import Watchlist from './pages/Watchlist';
+import CommandCenter from './pages/CommandCenter';
+import CommandCenterStock from './pages/CommandCenterStock';
 import History from './pages/History';
 import Performance from './pages/Performance';
 import Portfolio from './pages/Portfolio';
@@ -169,6 +171,19 @@ function App() {
             </PrivateRoute>
           } />
 
+          {/* Command Center -- the desk's research log. No role guard: analysts are
+              the primary users, and everything is org-scoped by RLS. */}
+          <Route path="/command-center" element={
+            <PrivateRoute>
+              <CommandCenter />
+            </PrivateRoute>
+          } />
+          <Route path="/command-center/stock/:ticker" element={
+            <PrivateRoute>
+              <CommandCenterStock />
+            </PrivateRoute>
+          } />
+
           {/* Organization routes */}
           <Route path="/research" element={
             <PrivateRoute>
@@ -229,9 +244,9 @@ function App() {
             </PrivateRoute>
           } />
 
-          {/* Redirect root and index.html to community */}
-          <Route path="/" element={<Navigate to="/community" replace />} />
-          <Route path="/index.html" element={<Navigate to="/community" replace />} />
+          {/* The Command Center is the home screen */}
+          <Route path="/" element={<Navigate to="/command-center" replace />} />
+          <Route path="/index.html" element={<Navigate to="/command-center" replace />} />
         </Route>
         {/* Catch-all route for 404 errors */}
         <Route path="*" element={<NotFound />} />

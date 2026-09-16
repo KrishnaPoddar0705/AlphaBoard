@@ -14,6 +14,9 @@ interface FileDropzoneProps {
   disabled?: boolean
   /** Distinct per mount -- two dropzones can be on the page at once. */
   inputId?: string
+  /** Overrides the hint line. Command Center's bucket has different limits and an
+   *  allowlist, so the default "any file type, 25 MB" would be wrong there. */
+  hint?: string
 }
 
 /**
@@ -29,6 +32,7 @@ export default function FileDropzone({
   onRetry,
   disabled = false,
   inputId = 'file-upload',
+  hint,
 }: FileDropzoneProps) {
   const [isDragActive, setIsDragActive] = useState(false)
   // dragenter/dragleave fire for every child element crossed, so a boolean
@@ -116,7 +120,7 @@ export default function FileDropzone({
             {isDragActive ? 'Drop to attach' : 'Click, drag, or paste files here'}
           </p>
           <p className="mt-1 font-mono text-[10px] text-[#6F6A60]">
-            Any file type, up to {formatBytes(MAX_FILE_BYTES)} each, {MAX_FILES} files max
+            {hint ?? `Any file type, up to ${formatBytes(MAX_FILE_BYTES)} each, ${MAX_FILES} files max`}
           </p>
         </div>
 

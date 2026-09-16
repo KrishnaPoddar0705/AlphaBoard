@@ -1,0 +1,116 @@
+import { useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
+import TerminalPanel, { PanelEmpty } from './TerminalPanel'
+import EntryLine from './EntryLine'
+import ReviewBar from '../review/ReviewBar'
+import type { NeedsYou } from '@/lib/commandCenter/home'
+import type { ActivityFeedRow, EventReview } from '@/lib/commandCenter/types'
+
+interface Props {
+  needs: NeedsYou
+  /** The viewer's own review requests nobody has answered (shown to analysts). */
+  waitingOnPm: ActivityFeedRow[]
+  reviewsFor: (eventId: string) => EventReview[]
+  canReview: boolean
+  staleDays: number
+  now: Date
+  onOpen: (row: ActivityFeedRow) => void
+  className?: string
+}
+
+const SHOW = 4
+
+function Group({ title, count, children }: { title: string; count: number; children: (limit: number) => ReactNode }) {
+  const [all, setAll] = useState(false)
+  if (count === 0) return null
+  return (
+    <div>
+      <h3 className="flex items-center justify-between bg-[#F1EEE0] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6F6A60]">
+        {title}<span className="tabular-nums">{count}</span>
+      </h3>
+      <ul>{children(all ? count : SHOW)}</ul>
+      {count > SHOW && (
+        <button
+          type="button"
+          onClick={() => setAll((v) => !v)}
+          className="w-full px-3 py-1 text-left font-mono text-[10px] text-[#6F6A60] hover:text-[#1C1B17]"
+        >
+          {all ? 'Show fewer' : `+${count - SHOW} more`}
+        </button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Exceptions only: entries an analyst asked the PM about, team entries nobody has
+ * reviewed, and covered names nobody has spoken to the company about in a month.
+ */
+export default function NeedsYouPanel({
+  needs, waitingOnPm, reviewsFor, canReview, staleDays, now, onOpen, className,
+}: Props) {
+  const total = needs.total + waitingOnPm.length
+  const review = (row: ActivityFeedRow) => <ReviewBar event={row} reviews={reviewsFor(row.event_id)} compact />
+
+  return (
+    <TerminalPanel code="ATTN" title="Needs your attention" count={total} alert className={className} id="cc-needs">
+      {total === 0 ? (
+        <PanelEmpty>
+          {canReview
+            ? 'Nothing waiting: no review requests, nothing unreviewed in 14 days, no stale names.'
+            : 'Nothing waiting on you.'}
+        </PanelEmpty>
+      ) : (
+        <>
+          <Group title="Review requested" count={needs.requests.length}>
+            {(limit) => needs.requests.slice(0, limit).map((row) => (
+              <EntryLine
+                key={row.event_id} row={row} now={now} onOpen={onOpen}
+                glyph={<span className="text-[#D06030]">?</span>}
+                detail={row.review_note ? `“${row.review_note}”` : 'Asked for your view'}
+                actions={review(row)}
+              />
+            ))}
+          </Group>
+
+          <Group title="Waiting on your PM" count={waitingOnPm.length}>
+            {(limit) => waitingOnPm.slice(0, limit).map((row) => (
+              <EntryLine
+                key={row.event_id} row={row} now={now} onOpen={onOpen}
+                glyph={<span className="text-[#D06030]">…</span>}
+                detail={row.review_note ? `You asked: “${row.review_note}”` : 'Review requested, no verdict yet'}
+              />
+            ))}
+          </Group>
+
+          <Group title="Awaiting your review · 14d" count={needs.pending.length}>
+            {(limit) => needs.pending.slice(0, limit).map((row) => (
+              <EntryLine key={row.event_id} row={row} now={now} onOpen={onOpen} actions={review(row)} />
+            ))}
+          </Group>
+
+          <Group title={`No primary research > ${staleDays}d`} count={needs.stale.length}>
+            {(limit) => needs.stale.slice(0, limit).map(({ coverage, days }) => (
+              <li key={coverage.id} className="border-b border-[#E3DDCF] last:border-b-0">
+                <Link
+                  to={`/command-center/stock/${encodeURIComponent(coverage.ticker)}`}
+                  className="flex items-baseline gap-2 px-3 py-2 hover:bg-[rgba(28,27,23,0.04)]"
+                >
+                  <span className="w-3 shrink-0 text-center font-mono text-xs text-[#B23B2A]">!</span>
+                  <span className="shrink-0 font-mono text-xs font-semibold text-[#1C1B17]">{coverage.ticker}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#6F6A60]">
+                    {days === null
+                      ? 'No meeting, concall or AGM ever logged'
+                      : `No meeting, concall or AGM in ${days}d`}
+                    {coverage.lead_analyst_username ? ` · ${coverage.lead_analyst_username}` : ' · no lead analyst'}
+                  </span>
+                  <span className="shrink-0 font-mono text-[10px] text-[#1C1B17]">→ Open</span>
+                </Link>
+              </li>
+            ))}
+          </Group>
+        </>
+      )}
+    </TerminalPanel>
+  )
+}

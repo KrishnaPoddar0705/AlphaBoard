@@ -25,6 +25,46 @@ interface SyncRequest {
     clerkToken?: string // Optional Clerk JWT token for verification
 }
 
+
+/**
+ * Mints a magic link for a Supabase user identified by id.
+ *
+ * `generateLink` resolves the account BY EMAIL, so it must be handed the address
+ * auth.users actually holds -- not the address Clerk reports. Those two diverge the
+ * moment anyone changes their email in Clerk, or if the auth user was created with a
+ * different address, and the only symptom is a flat "User not found" that names neither
+ * the user nor the email it looked for. Resolving by id first removes that whole class
+ * of failure; the Clerk address is kept only as a fallback for the freshly-created case
+ * where the ids cannot disagree.
+ */
+async function generateMagicLinkForUser(
+    supabaseAdmin: any,
+    supabaseUserId: string,
+    fallbackEmail: string
+) {
+    let linkEmail = fallbackEmail
+    try {
+        const { data: resolved } = await supabaseAdmin.auth.admin.getUserById(supabaseUserId)
+        if (resolved?.user?.email) {
+            if (resolved.user.email.toLowerCase() !== fallbackEmail.toLowerCase()) {
+                console.warn(
+                    `Email divergence for ${supabaseUserId}: auth.users has ` +
+                    `${resolved.user.email}, Clerk reported ${fallbackEmail}. ` +
+                    `Using the auth.users address.`
+                )
+            }
+            linkEmail = resolved.user.email
+        }
+    } catch (err) {
+        console.error('Could not resolve auth user before generateLink:', err)
+    }
+
+    return await supabaseAdmin.auth.admin.generateLink({
+        type: 'magiclink',
+        email: linkEmail,
+    })
+}
+
 serve(async (req) => {
     // Handle CORS preflight requests
     if (req.method === 'OPTIONS') {
@@ -102,10 +142,7 @@ serve(async (req) => {
 
                 // Generate a session token directly using admin API
                 // This creates an access token that can be used immediately
-                const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-                    type: 'magiclink',
-                    email: email,
-                })
+                const { data: sessionData, error: sessionError } = await generateMagicLinkForUser(supabaseAdmin, supabaseUserId, email)
 
                 if (sessionError || !sessionData) {
                     console.error('Error generating session link:', sessionError)
@@ -234,10 +271,7 @@ serve(async (req) => {
                         supabaseUserId = mappingByEmail.supabase_user_id
                         
                         // Generate session and return
-                        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-                            type: 'magiclink',
-                            email: email,
-                        })
+                        const { data: sessionData, error: sessionError } = await generateMagicLinkForUser(supabaseAdmin, supabaseUserId, email)
 
                         if (sessionError || !sessionData) {
                             console.error('Error generating session link:', sessionError)
@@ -362,10 +396,7 @@ serve(async (req) => {
                         // Same Clerk user - mapping already exists
                         console.log(`Mapping already exists for Clerk user ${clerkUserId}`)
                         // Generate session and return (same as above)
-                        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-                            type: 'magiclink',
-                            email: email,
-                        })
+                        const { data: sessionData, error: sessionError } = await generateMagicLinkForUser(supabaseAdmin, supabaseUserId, email)
 
                         if (sessionError || !sessionData) {
                             return new Response(
@@ -439,28 +470,29 @@ serve(async (req) => {
             supabaseUserId = newUser.user.id
         }
 
-        // Create mapping (if it doesn't already exist)
+        // Write the mapping, REPLACING any row already claiming this Clerk user.
+        //
+        // Upsert, not insert. We reach this point in two ways: a genuinely new user, or
+        // an existing mapping whose Supabase auth user has since been deleted (the
+        // "recreating..." branch above). In the second case an insert violates the
+        // unique constraint on clerk_user_id, and treating that as a harmless race --
+        // which is what this code used to do -- leaves the mapping pointing at the
+        // deleted user while the function returns the new one. The next page load then
+        // fails the same lookup and creates yet another auth user, forever.
         const { error: mappingInsertError } = await supabaseAdmin
             .from('clerk_user_mapping')
-            .insert({
-                clerk_user_id: clerkUserId,
-                supabase_user_id: supabaseUserId,
-                email: email,
-            })
+            .upsert(
+                {
+                    clerk_user_id: clerkUserId,
+                    supabase_user_id: supabaseUserId,
+                    email: email,
+                },
+                { onConflict: 'clerk_user_id' }
+            )
 
         if (mappingInsertError) {
-            // Check if error is due to duplicate (mapping already exists)
-            const isDuplicateError = mappingInsertError.code === '23505' || // PostgreSQL unique violation
-                                   mappingInsertError.message?.toLowerCase().includes('duplicate') ||
-                                   mappingInsertError.message?.toLowerCase().includes('unique')
-            
-            if (isDuplicateError) {
-                // Mapping already exists (race condition) - this is fine, continue
-                console.log('Mapping already exists (race condition), continuing...')
-            } else {
-            console.error('Error creating mapping:', mappingInsertError)
-            // Non-fatal, continue
-            }
+            console.error('Error writing mapping:', mappingInsertError)
+            // Non-fatal: the caller still gets a usable session for supabaseUserId.
         }
 
         // Create profile (trigger should handle this, but ensure it exists)
@@ -497,10 +529,7 @@ serve(async (req) => {
 
         // Generate a session token directly using admin API
         // This creates an access token that can be used immediately
-        const { data: sessionData, error: sessionError } = await supabaseAdmin.auth.admin.generateLink({
-            type: 'magiclink',
-            email: email,
-        })
+        const { data: sessionData, error: sessionError } = await generateMagicLinkForUser(supabaseAdmin, supabaseUserId, email)
 
         if (sessionError || !sessionData) {
             console.error('Error generating session link:', sessionError)

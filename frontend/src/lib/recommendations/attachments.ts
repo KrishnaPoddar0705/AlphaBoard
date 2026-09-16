@@ -42,6 +42,8 @@ export interface AttachmentItem {
   id: string
   name: string
   size: number
+  /** Browser-reported MIME type. Persisted by Command Center; unused by recommendations. */
+  mime?: string | null
   status: AttachmentStatus
   url?: string
   /** Storage key, kept so a removed-mid-flight upload can be cleaned up. */

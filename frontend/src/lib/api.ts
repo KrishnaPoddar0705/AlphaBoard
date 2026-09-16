@@ -5,10 +5,21 @@ import axios from 'axios';
 // VITE_API_URL is baked in at build time by Vite, so it must be set as a
 // Cloudflare Pages *build* environment variable, not a runtime one. The
 // production fallback below is the safety net for a build where it is missing.
+//
+// In dev the base URL is empty on purpose, which makes every call a same-origin
+// relative request that Vite's dev proxy forwards to the backend (see
+// `backendProxy` in vite.config.ts). Two reasons not to name a host here instead:
+// a cross-origin call only works while the dev server holds a port the backend's
+// CORS allowlist names, and Vite moves to the next free port whenever one is
+// taken; and pointing at 127.0.0.1:8000 silently breaks every market lookup for
+// anyone not running the backend locally, which is the common case.
+//
+// Setting VITE_API_URL still wins everywhere, so a deliberate override is unaffected.
+// `||` rather than `??` on purpose: an empty VITE_API_URL is a misconfiguration, and in
+// a production build it must fall through to the backend host rather than produce
+// relative URLs that Cloudflare Pages would answer with index.html.
 const API_URL = import.meta.env.VITE_API_URL ||
-    (import.meta.env.PROD
-        ? 'https://alphaboard-backend.fly.dev'
-        : 'http://127.0.0.1:8000');
+    (import.meta.env.PROD ? 'https://alphaboard-backend.fly.dev' : '');
 
 export const api = axios.create({
     baseURL: API_URL,
@@ -20,6 +31,42 @@ export const searchStocks = async (query: string, signal?: AbortSignal) => {
     const res = await api.get(`/market/search?q=${encodeURIComponent(query)}`, { signal });
     return res.data;
 };
+
+/**
+ * True when a request was superseded rather than failed.
+ *
+ * Every search box here aborts the in-flight request on each keystroke, so aborts are
+ * the normal case and must not be reported. Axios signals this three different ways
+ * depending on version and how the abort was triggered, hence all three checks.
+ */
+export function isAbortError(err: unknown): boolean {
+    const e = err as { code?: string; name?: string } | null;
+    return e?.code === 'ERR_CANCELED' || e?.name === 'CanceledError' || e?.name === 'AbortError';
+}
+
+/**
+ * A message worth showing the user for a failed market lookup.
+ *
+ * Returning null for an abort lets callers use this as the whole error branch. The
+ * connection case is called out separately because it is almost always a local setup
+ * problem -- no backend running and no VITE_API_URL set -- and "no results" is a
+ * actively misleading thing to show for it: it reads as "that stock does not exist".
+ */
+export function marketErrorMessage(err: unknown): string | null {
+    if (isAbortError(err)) return null;
+
+    const e = err as { code?: string; response?: { status?: number } } | null;
+    if (e?.code === 'ERR_NETWORK' || !e?.response) {
+        return import.meta.env.PROD
+            ? "Can't reach market data right now -- try again in a moment"
+            : "Can't reach the backend. Run it locally and set DEV_API_PROXY_TARGET, or check your connection -- dev proxies to the deployed API by default.";
+    }
+
+    const status = e.response.status ?? 0;
+    if (status >= 500) return 'Market data service is having trouble -- try again shortly';
+    if (status === 404) return 'Market data endpoint not found -- is the backend up to date?';
+    return `Market data request failed (${status})`;
+}
 
 export const getPrice = async (ticker: string) => {
     try {

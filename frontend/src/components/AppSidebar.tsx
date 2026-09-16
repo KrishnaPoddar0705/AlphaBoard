@@ -18,6 +18,7 @@ import {
   History,
   BarChart3,
   FileText,
+  Radar,
   ChevronDown,
   LogOut,
   LogIn,
@@ -53,6 +54,12 @@ type NavItem = {
 
 const navItems = {
   discover: [
+    {
+      title: "Command Center",
+      url: "/command-center",
+      icon: Radar,
+      isActive: false,
+    },
     {
       title: "Community",
       url: "/community",
