@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowLeft, BarChart3, Plus } from 'lucide-react'
+import { ArrowLeft, BarChart3 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import HealthDot from '../shared/HealthDot'
 import { formatDay } from '@/lib/commandCenter/format'
@@ -7,18 +7,22 @@ import type { CoverageBoardRow } from '@/lib/commandCenter/types'
 
 interface Props {
   coverage: CoverageBoardRow
-  onLog: () => void
 }
 
-export default function StockHeader({ coverage, onLog }: Props) {
+export default function StockHeader({ coverage }: Props) {
   return (
     <header className="flex flex-col gap-3 border-b border-[#D7D0C2] pb-4">
-      <Link
-        to="/command-center"
-        className="inline-flex w-fit items-center gap-1 font-mono text-[11px] text-[#6F6A60] hover:text-[#1C1B17]"
-      >
-        <ArrowLeft className="h-3 w-3" /> Coverage
-      </Link>
+      {/*
+        Only on small screens. From lg up the coverage rail sits immediately to the left
+        with this stock highlighted in it, so a "back to coverage" link points at
+        something already on screen -- it read as a stray scrap above the title. On a
+        phone the rail is collapsed, so the way back has to be a real, tappable control.
+      */}
+      <Button variant="outline" size="sm" asChild className="w-fit lg:hidden">
+        <Link to="/command-center?view=board">
+          <ArrowLeft className="h-3.5 w-3.5" /> All coverage
+        </Link>
+      </Button>
 
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
@@ -41,14 +45,16 @@ export default function StockHeader({ coverage, onLog }: Props) {
           )}
         </div>
 
+        {/*
+          No Log button here: the Command Center chrome directly above renders one, and
+          it already opens the sheet against this stock. Two identical buttons a few
+          rows apart is just noise.
+        */}
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" asChild>
             <Link to={`/stock/${encodeURIComponent(coverage.ticker)}`}>
               <BarChart3 className="h-3.5 w-3.5" /> Market data
             </Link>
-          </Button>
-          <Button size="sm" onClick={onLog}>
-            <Plus className="h-3.5 w-3.5" /> Log
           </Button>
         </div>
       </div>

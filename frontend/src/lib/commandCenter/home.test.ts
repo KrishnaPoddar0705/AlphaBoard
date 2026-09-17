@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  summarize, whatChanged, needsYou, teamNow, comingUp, whenLabel, stockLens, analystLens,
+  summarize, whatChanged, needsYou, teamNow, whenLabel, stockLens, analystLens,
   weeklyCounts, relativeTime,
 } from './home'
 import type { ActivityFeedRow, CoverageBoardRow, EventReview, RosterMember } from './types'
@@ -89,27 +89,64 @@ describe('whatChanged', () => {
 })
 
 describe('needsYou', () => {
-  it('surfaces review requests and unreviewed team entries, never the viewer\'s own', () => {
-    const request = row({ analyst_id: 'aditi', created_by: 'aditi', review_requested: true })
-    const pending = row({ analyst_id: 'rahul', created_by: 'rahul' })
-    const mine = row({ analyst_id: 'pm', created_by: 'pm', review_requested: true })
-    const reviewed = row({ analyst_id: 'rahul', created_by: 'rahul' })
+  it('surfaces only what was pushed to the viewer, never the viewer\'s own', () => {
+    const pushed = row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: true })
+    const unpushed = row({ analyst_id: 'rahul', created_by: 'rahul' })
+    const mine = row({ analyst_id: 'pm', created_by: 'pm', push_to_pm: true })
+    const reviewed = row({ analyst_id: 'rahul', created_by: 'rahul', push_to_pm: true })
     const out = needsYou({
-      rows: [request, pending, mine, reviewed],
+      rows: [pushed, unpushed, mine, reviewed],
       reviews: [review({ event_id: reviewed.event_id, reviewer_id: 'pm' })],
-      board: [], viewerId: 'pm', canReview: true, now: NOW,
+      board: [], viewerId: 'pm', canReview: true, viewerRole: 'portfolio_manager', now: NOW,
     })
-    expect(out.requests.map((r) => r.event_id)).toEqual([request.event_id])
-    expect(out.pending.map((r) => r.event_id)).toEqual([pending.event_id])
+    expect(out.requests.map((r) => r.event_id)).toEqual([pushed.event_id])
+  })
+
+  it('never queues an entry nobody pushed, however recent', () => {
+    const out = needsYou({
+      rows: [row({ analyst_id: 'aditi', created_by: 'aditi', created_at: hoursAgo(1) })],
+      reviews: [], board: [], viewerId: 'pm', canReview: true,
+      viewerRole: 'portfolio_manager', now: NOW,
+    })
+    expect(out.requests).toEqual([])
+    expect(out.total).toBe(0)
+  })
+
+  it('keeps the two push targets independent', () => {
+    const toPm = row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: true })
+    const toAdmin = row({ analyst_id: 'aditi', created_by: 'aditi', push_to_admin: true })
+    const toBoth = row({
+      analyst_id: 'aditi', created_by: 'aditi', push_to_pm: true, push_to_admin: true,
+    })
+    const args = {
+      rows: [toPm, toAdmin, toBoth],
+      reviews: [], board: [], viewerId: 'viewer', canReview: true, now: NOW,
+    }
+    const pm = needsYou({ ...args, viewerRole: 'portfolio_manager' })
+    const admin = needsYou({ ...args, viewerRole: 'admin' })
+
+    expect(pm.requests.map((r) => r.event_id).sort())
+      .toEqual([toPm.event_id, toBoth.event_id].sort())
+    expect(admin.requests.map((r) => r.event_id).sort())
+      .toEqual([toAdmin.event_id, toBoth.event_id].sort())
+  })
+
+  it('reads a missing push column as not pushed, so a pre-migration database is quiet', () => {
+    const out = needsYou({
+      rows: [row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: undefined })],
+      reviews: [], board: [], viewerId: 'pm', canReview: true,
+      viewerRole: 'portfolio_manager', now: NOW,
+    })
+    expect(out.requests).toEqual([])
   })
 
   it('shows analysts no review queue', () => {
     const out = needsYou({
-      rows: [row({ analyst_id: 'aditi', created_by: 'aditi', review_requested: true })],
-      reviews: [], board: [], viewerId: 'krishna', canReview: false, now: NOW,
+      rows: [row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: true })],
+      reviews: [], board: [], viewerId: 'krishna', canReview: false,
+      viewerRole: 'analyst', now: NOW,
     })
     expect(out.requests).toEqual([])
-    expect(out.pending).toEqual([])
   })
 
   it('flags coverage with no primary research past the threshold, most stale first', () => {
@@ -118,13 +155,13 @@ describe('needsYou', () => {
       coverage({ id: 'old', last_primary_research_on: '2026-08-07' }),     // 41 days
       coverage({ id: 'never', last_primary_research_on: null }),
     ]
-    const out = needsYou({ rows: [], reviews: [], board, viewerId: 'pm', canReview: true, now: NOW })
+    const out = needsYou({ rows: [], reviews: [], board, viewerId: 'pm', canReview: true, viewerRole: 'portfolio_manager', now: NOW })
     expect(out.stale.map((s) => [s.coverage.id, s.days])).toEqual([['never', null], ['old', 41]])
   })
 
   it('makes no staleness claim before the migration adds the column', () => {
     const board = [coverage({ last_primary_research_on: undefined })]
-    const out = needsYou({ rows: [], reviews: [], board, viewerId: 'pm', canReview: true, now: NOW })
+    const out = needsYou({ rows: [], reviews: [], board, viewerId: 'pm', canReview: true, viewerRole: 'portfolio_manager', now: NOW })
     expect(out.stale).toEqual([])
   })
 
@@ -135,7 +172,8 @@ describe('needsYou', () => {
       coverage({ id: 'unowned', lead_analyst_id: null }),
     ]
     const out = needsYou({
-      rows: [], reviews: [], board, viewerId: 'pm', canReview: true, scopeUserIds: ['aditi'], now: NOW,
+      rows: [], reviews: [], board, viewerId: 'pm', canReview: true,
+      viewerRole: 'portfolio_manager', scopeUserIds: ['aditi'], now: NOW,
     })
     expect(out.stale.map((s) => s.coverage.id)).toEqual(['ours'])
   })
@@ -171,18 +209,7 @@ describe('teamNow', () => {
   })
 })
 
-describe('comingUp', () => {
-  it('lists scheduled events in the next two weeks, soonest first', () => {
-    const rows = [
-      row({ is_scheduled: true, event_date: '2026-09-26', title: 'Concall' }),
-      row({ is_scheduled: true, event_date: '2026-09-17', title: 'Mgmt call' }),
-      row({ is_scheduled: true, event_date: '2026-10-30', title: 'Too far' }),
-      row({ is_scheduled: false, event_date: '2026-09-18', title: 'Logged, not upcoming' }),
-    ]
-    expect(comingUp(rows, NOW).map((u) => [u.row.title, u.when]))
-      .toEqual([['Mgmt call', 'Today'], ['Concall', '+9d']])
-  })
-
+describe('whenLabel', () => {
   it('labels the next few days by weekday', () => {
     expect(whenLabel('2026-09-18', NOW)).toBe('Tomorrow')
     expect(whenLabel('2026-09-19', NOW)).toMatch(/Sat/)

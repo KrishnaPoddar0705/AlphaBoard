@@ -2,6 +2,8 @@ import { addDays, daysBetween, toDayString } from './format'
 import type {
   ActivityFeedRow, CoverageBoardRow, EventKind, EventReview, RosterMember, ThesisImpact,
 } from './types'
+// Type-only, so this file stays free of any runtime dependency on the hooks layer.
+import type { OrgRole } from '@/hooks/useOrganization'
 
 /**
  * The home screen's arithmetic, kept pure so every number on it is testable.
@@ -101,10 +103,8 @@ export interface StaleItem {
 }
 
 export interface NeedsYou {
-  /** Entries whose analyst asked for a review, not yet reviewed by the viewer. */
+  /** Entries the analyst explicitly pushed to the viewer's role, not yet reviewed by them. */
   requests: ActivityFeedRow[]
-  /** Other recent entries by people the viewer reviews, not yet reviewed by them. */
-  pending: ActivityFeedRow[]
   /** Covered names nobody has spoken to the company about in `staleDays`. */
   stale: StaleItem[]
   total: number
@@ -117,16 +117,28 @@ export interface NeedsYouInput {
   viewerId: string | null
   /** Admin or PM. RLS is the real gate; this only decides what to put in front of them. */
   canReview: boolean
+  /**
+   * Which push target the viewer answers to: a PM sees "Push to PM" entries, an admin
+   * sees "Push to Admin" entries. The two are independent, so an entry pushed only to
+   * the PM never reaches an admin's queue.
+   */
+  viewerRole: OrgRole | null
   /** When set, stale coverage is limited to names led by these people. */
   scopeUserIds?: string[] | null
   staleDays?: number
-  pendingDays?: number
   now?: Date
 }
 
+/**
+ * Escalation is opt-in.
+ *
+ * Entries reach a reviewer only because the analyst pushed them there -- there is no
+ * automatic queue. Logging work and asking for a verdict on it are separate acts, so the
+ * desk's routine output stays out of the PM's and the admin's way.
+ */
 export function needsYou({
-  rows, reviews, board, viewerId, canReview, scopeUserIds,
-  staleDays = 30, pendingDays = 14, now = new Date(),
+  rows, reviews, board, viewerId, canReview, viewerRole, scopeUserIds,
+  staleDays = 30, now = new Date(),
 }: NeedsYouInput): NeedsYou {
   const reviewedByMe = new Set(
     reviews.filter((r) => r.reviewer_id === viewerId).map((r) => r.event_id)
@@ -136,10 +148,13 @@ export function needsYou({
     && r.created_by !== viewerId && ownerOf(r) !== viewerId
     && !reviewedByMe.has(r.event_id)
 
-  const requests = rows.filter((r) => reviewable(r) && r.review_requested).sort(byEnteredDesc)
-  const pending = rows
-    .filter((r) => reviewable(r) && !r.review_requested && enteredWithin(r, now, pendingDays * DAY))
-    .sort(byEnteredDesc)
+  // Undefined (not false) means the push migration is not applied yet. Treating it as
+  // "not pushed" is the safe reading: an empty queue, never the old firehose.
+  const pushedToMe = (r: ActivityFeedRow) =>
+    (viewerRole === 'portfolio_manager' && r.push_to_pm === true)
+    || (viewerRole === 'admin' && r.push_to_admin === true)
+
+  const requests = rows.filter((r) => reviewable(r) && pushedToMe(r)).sort(byEnteredDesc)
 
   const stale: StaleItem[] = board
     // Undefined means the home migration is not applied -- no signal, so no claim.
@@ -152,7 +167,7 @@ export function needsYou({
     .filter((s) => s.days === null || s.days > staleDays)
     .sort((a, b) => (b.days ?? Infinity) - (a.days ?? Infinity))
 
-  return { requests, pending, stale, total: requests.length + pending.length + stale.length }
+  return { requests, stale, total: requests.length + stale.length }
 }
 
 // ---------------------------------------------------------------------------
@@ -208,24 +223,16 @@ export function teamNow(
 }
 
 // ---------------------------------------------------------------------------
-// Coming up
+// Scheduling labels
 // ---------------------------------------------------------------------------
 
-export interface UpcomingItem {
-  row: ActivityFeedRow
-  /** 'Today' / 'Tomorrow' / 'Fri' (within a week) / '+9d' */
-  when: string
-}
-
-export function comingUp(rows: ActivityFeedRow[], now: Date = new Date(), days = 14): UpcomingItem[] {
-  const from = toDayString(now)
-  const to = addDays(from, days)
-  return rows
-    .filter((r) => r.is_scheduled && r.event_date >= from && r.event_date <= to)
-    .sort((a, b) => a.event_date.localeCompare(b.event_date) || a.title.localeCompare(b.title))
-    .map((row) => ({ row, when: whenLabel(row.event_date, now) }))
-}
-
+/**
+ * 'Today' / 'Tomorrow' / 'Fri' (within a week) / '+9d'.
+ *
+ * The Coming Up panel that once owned this file section is gone; the Calendar tab
+ * covers scheduling now. The label survives because the stock, analyst and team
+ * panels each show a "next event" cell.
+ */
 export function whenLabel(iso: string, now: Date = new Date()): string {
   const ahead = -daysBetween(iso, now)
   if (ahead === 0) return 'Today'

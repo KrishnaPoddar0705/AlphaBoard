@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Plus, Search } from 'lucide-react'
+import { useAddCoverage } from '@/hooks/commandCenter/useCoverage'
+import { useCommandCenterSession } from '@/hooks/commandCenter/useCommandCenterSession'
 import type { CoverageBoardRow } from '@/lib/commandCenter/types'
 
 interface Props {
@@ -8,14 +10,21 @@ interface Props {
   onChange: (coverageId: string) => void
 }
 
+/** A ticker, roughly: letters and digits, optionally dot-suffixed (BSE.NS, 500325.BO). */
+const TICKER = /^[A-Za-z0-9]{1,12}(\.[A-Za-z]{1,4})?$/
+
 /**
  * Recently-touched names as one-tap chips, search underneath.
  *
  * The stock you are logging against is almost always one you touched recently, so the
- * common case should cost one tap and no typing.
+ * common case should cost one tap and no typing. When it is a name the desk does not
+ * cover yet, it is added from here: making someone abandon a half-written log, go to the
+ * board, add the stock and start again is how meetings go unlogged.
  */
 export default function CoveragePicker({ coverage, value, onChange }: Props) {
   const [query, setQuery] = useState('')
+  const addCoverage = useAddCoverage()
+  const { userId } = useCommandCenterSession()
 
   const recent = useMemo(
     () =>
@@ -33,14 +42,52 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
       .slice(0, 6)
   }, [coverage, query])
 
-  const selected = coverage.find((c) => c.id === value) ?? null
+  /**
+   * A name added from here is selected before the board query has refetched, so it is
+   * not in `coverage` yet. Remembering it locally keeps the picker showing the chosen
+   * stock through that gap instead of snapping back to an empty search.
+   */
+  const [justAdded, setJustAdded] = useState<{ id: string; ticker: string } | null>(null)
+
+  const row = coverage.find((c) => c.id === value) ?? null
+  const selected = row
+    ? { ticker: row.ticker, name: row.company_name || row.ticker }
+    : justAdded?.id === value
+      ? { ticker: justAdded.ticker, name: justAdded.ticker }
+      : null
+
+  /** The typed text as a ticker, when it looks like one and is not already covered. */
+  const candidate = useMemo(() => {
+    const raw = query.trim().toUpperCase()
+    if (!TICKER.test(raw)) return null
+    return coverage.some((c) => c.ticker.toUpperCase() === raw) ? null : raw
+  }, [query, coverage])
+
+  /**
+   * Adds the name, then selects it. `addCoverage` revives a previously-removed ticker
+   * rather than failing, so this is also the path back for an archived name. The row it
+   * returns is a cc_coverage row, not a board row, but only its id is needed here -- the
+   * board query is invalidated by the mutation and repaints the chips behind it.
+   */
+  const addAndSelect = async () => {
+    if (!candidate) return
+    try {
+      const added = await addCoverage.mutateAsync({ ticker: candidate, lead_analyst_id: userId })
+      setJustAdded({ id: added.id, ticker: added.ticker })
+      onChange(added.id)
+      setQuery('')
+    } catch {
+      // useAddCoverage already surfaces the reason as a toast (already covered by another
+      // team, no session, and so on); leave the query so it can be corrected.
+    }
+  }
 
   if (selected) {
     return (
       <div className="flex items-center justify-between gap-2 rounded-lg border border-[#1C1B17] bg-[#F1EEE0] px-3 py-2">
         <span className="min-w-0">
           <span className="block truncate font-mono text-sm text-[#1C1B17]">
-            {selected.company_name || selected.ticker}
+            {selected.name}
           </span>
           <span className="block font-mono text-[11px] text-[#6F6A60]">{selected.ticker}</span>
         </span>
@@ -77,7 +124,7 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search your coverage"
+          placeholder="Search coverage, or type a new ticker"
           className="w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] py-2 pl-8 pr-3 font-mono text-sm text-[#1C1B17] placeholder:text-[#8B857A] focus:border-[#8B857A] focus:outline-none"
         />
       </div>
@@ -102,9 +149,25 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
       )}
 
       {query.trim() && matches.length === 0 && (
-        <p className="font-mono text-[11px] text-[#6F6A60]">
-          Not in your coverage yet -- add it from the board first.
-        </p>
+        candidate ? (
+          <button
+            type="button"
+            onClick={addAndSelect}
+            disabled={addCoverage.isPending}
+            className="flex items-center gap-2 rounded-lg border border-dashed border-[#1C1B17] bg-[#FBF7ED] px-3 py-2 text-left font-mono text-[11px] text-[#1C1B17] transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-50"
+          >
+            <Plus className="h-3.5 w-3.5 shrink-0" />
+            <span>
+              {addCoverage.isPending
+                ? `Adding ${candidate}…`
+                : <>Add <span className="font-semibold">{candidate}</span> to coverage and log against it</>}
+            </span>
+          </button>
+        ) : (
+          <p className="font-mono text-[11px] text-[#6F6A60]">
+            No match. Type a ticker to add a new name.
+          </p>
+        )
       )}
     </div>
   )

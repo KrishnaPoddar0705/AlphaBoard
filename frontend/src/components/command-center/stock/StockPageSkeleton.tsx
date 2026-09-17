@@ -6,14 +6,18 @@ import { Bone, EntryListSkeleton, Loading, RowsSkeleton } from '../shared/Skelet
  * The stock page's frame while its coverage row loads: header, filter chips, timeline
  * and the reference rail, all in place. Shown instead of "not in your coverage", which
  * must only ever appear once the lookup has actually come back empty.
+ *
+ * No page container of its own: it renders inside CommandCenterStock's shell, which
+ * already supplies the width and padding and keeps the coverage rail on screen.
  */
 export default function StockPageSkeleton() {
   return (
-    <Loading label="Loading stock" className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-5 sm:py-6">
+    <Loading label="Loading stock" className="w-full">
       {/* If the database session never arrives, say so rather than shimmer forever. */}
       <SessionNotice />
       <header className="flex flex-col gap-3 border-b border-[#D7D0C2] pb-4">
-        <Bone className="h-3 w-20" />
+        {/* Matches the real header's back button: mobile only. */}
+        <Bone className="h-8 w-28 rounded-md lg:hidden" />
         <div className="flex items-start justify-between gap-3">
           <div className="flex flex-col gap-2">
             <Bone className="h-5 w-44" />

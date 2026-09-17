@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useCoverage } from '@/hooks/commandCenter/useCoverage'
@@ -12,6 +12,9 @@ import LogEventSheet from '@/components/command-center/entry/LogEventSheet'
 import EmptyState from '@/components/command-center/shared/EmptyState'
 import StockPageSkeleton from '@/components/command-center/stock/StockPageSkeleton'
 import SessionNotice from '@/components/command-center/shared/SessionNotice'
+import CoverageLayout from '@/components/command-center/board/CoverageLayout'
+import CommandCenterChrome from '@/components/command-center/shared/CommandCenterChrome'
+import AddCoverageDialog from '@/components/command-center/board/AddCoverageDialog'
 
 type MobileTab = 'timeline' | 'details' | 'contacts' | 'brokers'
 
@@ -36,6 +39,7 @@ export default function CommandCenterStock() {
   // "not in your coverage" for a stock that was.
   const { data: coverage, isPending, isError, error } = useCoverage(ticker)
   const [tab, setTab] = useState<MobileTab>('timeline')
+  const [addOpen, setAddOpen] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
   const [logSession, setLogSession] = useState(0)
   const [logPreset, setLogPreset] = useState<{ typeId: string; period: string; upcoming: boolean } | null>(null)
@@ -58,10 +62,28 @@ export default function CommandCenterStock() {
     setLogOpen(true)
   }
 
-  if (isPending) return <StockPageSkeleton />
+  /**
+   * Every state renders inside the rail, loading and failure included.
+   *
+   * Returning a bare skeleton first unmounted the coverage rail on the way into a stock
+   * and mounted it again a moment later, which read as the whole page reloading on every
+   * click. The rail only ever depends on the ticker in the URL, so it can paint
+   * immediately -- with this name already highlighted -- while the stock itself loads.
+   */
+  const shell = (node: ReactNode) => (
+    <div className="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-5 sm:py-6">
+      {/* A stock lives under Coverage, so that tab stays current while reading one. */}
+      <CommandCenterChrome view="board" onLog={openLog} onAdd={() => setAddOpen(true)} />
+      <CoverageLayout selectedTicker={ticker}>{node}</CoverageLayout>
+      {/* In the shell, not the loaded branch: "Add stock" is offered in every state. */}
+      <AddCoverageDialog open={addOpen} onClose={() => setAddOpen(false)} />
+    </div>
+  )
+
+  if (isPending) return shell(<StockPageSkeleton />)
 
   if (isError) {
-    return (
+    return shell(
       <div className="mx-auto max-w-lg py-20">
         <EmptyState
           title={`Couldn't load ${ticker}`}
@@ -73,12 +95,12 @@ export default function CommandCenterStock() {
   }
 
   if (!coverage) {
-    return (
+    return shell(
       <div className="mx-auto max-w-lg py-20">
         <EmptyState
           title={`${ticker} is not in your coverage`}
-          hint="Add it from the coverage board, then everything you log against it lives here."
-          action={<Button size="sm" asChild><Link to="/command-center">Go to coverage</Link></Button>}
+          hint="Pick another name from the rail, or log an interaction against it — you can add a new ticker from there."
+          action={<Button size="sm" asChild><Link to="/command-center?view=board">Go to coverage</Link></Button>}
         />
       </div>
     )
@@ -94,9 +116,9 @@ export default function CommandCenterStock() {
     </>
   )
 
-  return (
-    <div className="mx-auto w-full max-w-7xl px-3 py-4 sm:px-5 sm:py-6">
-      <StockHeader coverage={coverage} onLog={openLog} />
+  return shell(
+    <>
+      <StockHeader coverage={coverage} />
 
       <SessionNotice />
 
@@ -157,6 +179,6 @@ export default function CommandCenterStock() {
         initialPeriod={logPreset?.period}
         initialScheduled={logPreset?.upcoming}
       />
-    </div>
+    </>
   )
 }

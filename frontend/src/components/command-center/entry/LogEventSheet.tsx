@@ -28,7 +28,7 @@ import EventContactsField from './EventContactsField'
 
 const EMPTY_DETAILS: DetailValues = {
   brokerId: null, thesisImpact: null, openQuestions: '', periodLabel: '', contactIds: [], newContacts: [],
-  reviewRequested: false, reviewNote: '',
+  pushToPm: false, pushToAdmin: false, reviewNote: '',
 }
 
 const labelClass = 'font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]'
@@ -215,8 +215,9 @@ export default function LogEventSheet({
         open_questions: details.openQuestions || null,
         analyst_id: userId,
         contact_ids: contactIds,
-        // A plan is not reviewable yet; only logged work goes to the PM.
-        review_requested: !isScheduled && details.reviewRequested,
+        // A plan is not reviewable yet; only logged work gets pushed.
+        push_to_pm: !isScheduled && details.pushToPm,
+        push_to_admin: !isScheduled && details.pushToAdmin,
         review_note: details.reviewNote || null,
         attachments: attachments.items
           .filter((i) => i.status === 'done' && i.key)

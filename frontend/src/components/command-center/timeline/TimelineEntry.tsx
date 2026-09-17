@@ -6,6 +6,7 @@ import AttachmentList from '../shared/AttachmentList'
 import ReviewBar from '../review/ReviewBar'
 import EventComments from '../review/EventComments'
 import ReviewRequestPanel from '../review/ReviewRequestPanel'
+import PushControl from '../review/PushControl'
 import MetWith from '../shared/MetWith'
 import type { EventContactTag } from '@/lib/commandCenter/api'
 import { formatDay } from '@/lib/commandCenter/format'
@@ -132,6 +133,7 @@ export default function TimelineEntry({
           <div className="flex flex-wrap items-center gap-2">
             {/* A requested review is answered in the panel above; don't offer it twice. */}
             {!event.review_requested && <ReviewBar event={event} reviews={reviews} compact />}
+            <PushControl event={event} compact />
             <button
               type="button"
               onClick={() => setDiscussOpen((v) => !v)}

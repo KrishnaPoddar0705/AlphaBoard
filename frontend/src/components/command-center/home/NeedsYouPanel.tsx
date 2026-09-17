@@ -43,8 +43,9 @@ function Group({ title, count, children }: { title: string; count: number; child
 }
 
 /**
- * Exceptions only: entries an analyst asked the PM about, team entries nobody has
- * reviewed, and covered names nobody has spoken to the company about in a month.
+ * Exceptions only: entries an analyst deliberately pushed to the viewer, the viewer's
+ * own pushes nobody has answered, and covered names nobody has spoken to the company
+ * about in a month. Routine logged work never lands here -- escalation is opt-in.
  */
 export default function NeedsYouPanel({
   needs, waitingOnPm, reviewsFor, canReview, staleDays, now, onOpen, className,
@@ -57,12 +58,12 @@ export default function NeedsYouPanel({
       {total === 0 ? (
         <PanelEmpty>
           {canReview
-            ? 'Nothing waiting: no review requests, nothing unreviewed in 14 days, no stale names.'
+            ? 'Nothing waiting: nothing pushed to you, no stale names.'
             : 'Nothing waiting on you.'}
         </PanelEmpty>
       ) : (
         <>
-          <Group title="Review requested" count={needs.requests.length}>
+          <Group title="Pushed to you" count={needs.requests.length}>
             {(limit) => needs.requests.slice(0, limit).map((row) => (
               <EntryLine
                 key={row.event_id} row={row} now={now} onOpen={onOpen}
@@ -80,12 +81,6 @@ export default function NeedsYouPanel({
                 glyph={<span className="text-[#D06030]">…</span>}
                 detail={row.review_note ? `You asked: “${row.review_note}”` : 'Review requested, no verdict yet'}
               />
-            ))}
-          </Group>
-
-          <Group title="Awaiting your review · 14d" count={needs.pending.length}>
-            {(limit) => needs.pending.slice(0, limit).map((row) => (
-              <EntryLine key={row.event_id} row={row} now={now} onOpen={onOpen} actions={review(row)} />
             ))}
           </Group>
 

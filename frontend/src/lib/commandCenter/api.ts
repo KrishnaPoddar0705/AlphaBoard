@@ -251,9 +251,17 @@ export async function createEvent(input: CreateEventInput): Promise<CommandCente
       open_questions: event.open_questions?.trim() || null,
       analyst_id: event.analyst_id ?? null,
       // Sent only when used, so logging keeps working on a database that has not had
-      // migration_command_center_home.sql applied yet.
-      ...(event.review_requested
-        ? { review_requested: true, review_note: event.review_note?.trim() || null }
+      // migration_command_center_push_targets.sql applied yet.
+      ...(event.push_to_pm || event.push_to_admin
+        ? {
+            push_to_pm: !!event.push_to_pm,
+            push_to_admin: !!event.push_to_admin,
+            // Written alongside the targets rather than left to the trigger, so the
+            // analyst's own "Waiting on your PM" group is right even if only the
+            // columns were added by hand.
+            review_requested: true,
+            review_note: event.review_note?.trim() || null,
+          }
         : {}),
     })
     .select()

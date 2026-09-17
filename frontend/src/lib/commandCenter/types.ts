@@ -115,6 +115,11 @@ export interface CommandCenterEvent {
   created_by: string
   created_at: string
   updated_at: string
+  /** See ActivityFeedRow: escalation targets, and the flag derived from them. */
+  review_requested?: boolean
+  review_note?: string | null
+  push_to_pm?: boolean
+  push_to_admin?: boolean
 }
 
 /** A row of `cc_activity_feed` -- the event plus everything the UI shows beside it. */
@@ -146,9 +151,20 @@ export interface ActivityFeedRow {
   updated_at: string
   attachment_count: number
   contact_count: number
-  /** The analyst asked their PM to look at this entry. Added by the home migration. */
+  /**
+   * The analyst pushed this entry to someone. Derived in the database from the two
+   * push flags below, and kept because the analyst-facing "Waiting on your PM" group
+   * reads it as "I escalated this and nobody has answered yet".
+   */
   review_requested?: boolean
   review_note?: string | null
+  /**
+   * Explicit escalation targets, set by the analyst. Independent: an entry pushed only
+   * to the PM never appears in an admin's queue. Added by the push-targets migration --
+   * undefined on a database without it, which reads as "not pushed".
+   */
+  push_to_pm?: boolean
+  push_to_admin?: boolean
   comment_count?: number
 }
 
@@ -225,8 +241,11 @@ export interface EventDraft {
   open_questions?: string | null
   analyst_id?: string | null
   contact_ids?: string[]
-  /** Ask a portfolio manager to review this entry, with the question for them. */
+  /** Derived from the push targets; written alongside them. */
   review_requested?: boolean
+  /** Push this entry to a portfolio manager / an org admin, with the question for them. */
+  push_to_pm?: boolean
+  push_to_admin?: boolean
   review_note?: string | null
 }
 

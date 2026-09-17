@@ -7,6 +7,7 @@ import AttachmentList from '../shared/AttachmentList'
 import ReviewBar from '../review/ReviewBar'
 import EventComments from '../review/EventComments'
 import ReviewRequestPanel from '../review/ReviewRequestPanel'
+import PushControl from '../review/PushControl'
 import { useEventAttachments, useEventContacts } from '@/hooks/commandCenter/useCommandCenterEvents'
 import MetWith from '../shared/MetWith'
 import { Bone, RowsSkeleton } from '../shared/Skeleton'
@@ -103,6 +104,13 @@ export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow
                   {!reviewsPending && reviews.length === 0 && (
                     <p className="mt-1 font-mono text-[10px] text-[#8B857A]">Not reviewed yet.</p>
                   )}
+                </div>
+              )}
+
+              {!entry.is_scheduled && (
+                <div className="border-t border-[#D7D0C2] pt-3">
+                  <p className={`${label} mb-1.5`}>Push for review</p>
+                  <PushControl event={entry} />
                 </div>
               )}
 

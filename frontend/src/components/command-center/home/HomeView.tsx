@@ -4,7 +4,7 @@ import { useCoverageBoard } from '@/hooks/commandCenter/useCoverage'
 import { useHomeWindow, useReviews } from '@/hooks/commandCenter/useHome'
 import { useHomeScope } from '@/hooks/commandCenter/useHomeScope'
 import {
-  analystLens, comingUp, needsYou, ownerOf, stockLens, summarize, teamNow, whatChanged,
+  analystLens, needsYou, ownerOf, stockLens, summarize, teamNow, whatChanged,
 } from '@/lib/commandCenter/home'
 import type { ActivityFeedRow, EventReview } from '@/lib/commandCenter/types'
 import HomeHeader from './HomeHeader'
@@ -12,7 +12,6 @@ import ScopeBar from './ScopeBar'
 import TickerTape from './TickerTape'
 import NeedsYouPanel from './NeedsYouPanel'
 import WhatChangedPanel from './WhatChangedPanel'
-import ComingUpPanel from './ComingUpPanel'
 import TeamNowPanel from './TeamNowPanel'
 import StockLens from './StockLens'
 import AnalystLens from './AnalystLens'
@@ -68,7 +67,7 @@ export default function HomeView() {
   const derived = useMemo(() => {
     const needs = needsYou({
       rows, reviews, board, viewerId: userId, canReview: canReviewAnything,
-      scopeUserIds, staleDays: STALE_DAYS, now,
+      viewerRole: role, scopeUserIds, staleDays: STALE_DAYS, now,
     })
     const waitingOnPm = rows.filter((r) => r.review_requested && !r.is_scheduled
       && ownerOf(r) === userId && !reviewsByEvent.has(r.event_id))
@@ -77,13 +76,12 @@ export default function HomeView() {
       changes: whatChanged(rows, now),
       needs,
       waitingOnPm,
-      upcoming: comingUp(rows, now),
       people: teamNow(rows, scope.roster, now),
       stocks: stockLens(rows, board, now, scopeUserIds),
       analysts: analystLens(rows, scope.roster, reviews, now),
       tape: rows.filter((r) => !r.is_scheduled).slice(0, 24),
     }
-  }, [rows, reviews, board, userId, canReviewAnything, scopeUserIds, now, scope.roster, reviewsByEvent])
+  }, [rows, reviews, board, userId, canReviewAnything, role, scopeUserIds, now, scope.roster, reviewsByEvent])
 
   const isManager = role === 'admin' || role === 'portfolio_manager'
 
@@ -138,8 +136,7 @@ export default function HomeView() {
           now={now}
           onOpen={setDrawer}
         />
-        <WhatChangedPanel className="lg:col-span-4 lg:max-h-[440px]" items={derived.changes} now={now} onOpen={setDrawer} />
-        <ComingUpPanel className="lg:col-span-3 lg:max-h-[440px]" items={derived.upcoming} onOpen={setDrawer} />
+        <WhatChangedPanel className="lg:col-span-7 lg:max-h-[440px]" items={derived.changes} now={now} onOpen={setDrawer} />
 
         {lens === 'analyst' ? (
           <AnalystLens

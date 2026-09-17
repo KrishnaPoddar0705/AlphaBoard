@@ -53,10 +53,7 @@ export default function HomeSkeleton({ isManager }: { isManager: boolean }) {
         <TerminalPanel code="ATTN" title="Needs your attention" className="lg:col-span-5 lg:h-[440px]">
           <RowsSkeleton rows={5} padded />
         </TerminalPanel>
-        <TerminalPanel code="CHG" title="What changed · 7d" className="lg:col-span-4 lg:h-[440px]">
-          <RowsSkeleton rows={5} padded />
-        </TerminalPanel>
-        <TerminalPanel code="CAL" title="Coming up · 14d" className="lg:col-span-3 lg:h-[440px]">
+        <TerminalPanel code="CHG" title="What changed · 7d" className="lg:col-span-7 lg:h-[440px]">
           <RowsSkeleton rows={5} padded />
         </TerminalPanel>
         <TerminalPanel code="STK" title="By stock" className="lg:col-span-8 lg:h-[420px]">

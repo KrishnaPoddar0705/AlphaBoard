@@ -53,30 +53,6 @@ export function EntryListSkeleton({ count = 3 }: { count?: number }) {
   )
 }
 
-/** Matches board/CoverageCard. */
-export function CoverageCardSkeleton() {
-  return (
-    <div className="flex flex-col gap-2.5 rounded-xl border border-[#D7D0C2] bg-[#F7F2E6] p-3.5">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-1 flex-col gap-1.5">
-          <Bone className="h-4 w-2/5" />
-          <Bone className="h-3 w-1/4" />
-        </div>
-        <Bone className="h-3 w-14" />
-      </div>
-      <div className="flex gap-3">
-        <Bone className="h-3 w-14" /><Bone className="h-3 w-12" /><Bone className="h-3 w-16" />
-      </div>
-      <div className="flex flex-col gap-1">
-        <Bone className="h-3 w-1/2" /><Bone className="h-3 w-2/5" />
-      </div>
-      <div className="flex justify-between border-t border-[#E3DDCF] pt-2">
-        <Bone className="h-3 w-24" /><Bone className="h-3 w-12" />
-      </div>
-    </div>
-  )
-}
-
 /** Two-line list rows, for lists inside a SectionCard or TerminalPanel. */
 export function RowsSkeleton({ rows = 3, padded = false }: { rows?: number; padded?: boolean }) {
   return (
