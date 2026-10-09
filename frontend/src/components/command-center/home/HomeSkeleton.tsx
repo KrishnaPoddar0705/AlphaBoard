@@ -26,7 +26,6 @@ export default function HomeSkeleton({ isManager }: { isManager: boolean }) {
           </div>
           <div className="flex gap-2">
             <Bone className="h-7 w-32 rounded-md" />
-            {isManager && <Bone className="h-7 w-44 rounded-md" />}
           </div>
         </div>
         <div className="grid grid-cols-2 overflow-hidden rounded-md border border-[#1C1B17] sm:grid-cols-4">
@@ -56,18 +55,20 @@ export default function HomeSkeleton({ isManager }: { isManager: boolean }) {
         <TerminalPanel code="CHG" title="What changed · 7d" className="lg:col-span-7 lg:h-[440px]">
           <RowsSkeleton rows={5} padded />
         </TerminalPanel>
-        <TerminalPanel code="STK" title="By stock" className="lg:col-span-8 lg:h-[420px]">
-          <RowsSkeleton rows={6} padded />
-        </TerminalPanel>
-        <TerminalPanel code="TEAM" title="Team right now" className="lg:col-span-4 lg:h-[420px]">
-          <RowsSkeleton rows={5} padded />
-        </TerminalPanel>
+        <div className="flex flex-col gap-2 lg:col-span-12">
+          <div className="flex flex-wrap gap-2">
+            {isManager && <Bone className="h-7 w-44 rounded-md" />}
+            {[1, 2, 3, 4].map((i) => <Bone key={i} className="h-7 w-28 rounded-md" />)}
+          </div>
+          <TerminalPanel code="STK" title="By stock" className="lg:h-[420px]">
+            <RowsSkeleton rows={6} padded />
+          </TerminalPanel>
+        </div>
         {isManager && (
           <TerminalPanel code="STAT" title="Desk analytics" className="lg:col-span-12">
-            <div className="grid gap-4 p-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)_minmax(0,2fr)]">
+            <div className="grid gap-4 p-3 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
               <Bone className="h-[200px] w-full" />
               <div className="flex flex-col gap-2">{[1, 2, 3, 4].map((i) => <Bone key={i} className="h-3 w-full" />)}</div>
-              <Bone className="h-16 w-full" />
             </div>
           </TerminalPanel>
         )}

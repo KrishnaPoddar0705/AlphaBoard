@@ -10,20 +10,18 @@ interface Props {
   row: ActivityFeedRow
   now: Date
   onOpen: (row: ActivityFeedRow) => void
-  /** Replaces the thesis glyph, e.g. "?" for a review request. */
+  /** Replaces the thesis glyph, e.g. "?" for a pushed entry. */
   glyph?: ReactNode
   /** A line under the title: the question asked, why it is stale, and so on. */
   detail?: ReactNode
-  /** Controls on the right, e.g. endorse / reject. Clicks there do not open the entry. */
-  actions?: ReactNode
   cta?: string
 }
 
 /**
  * One entry as a dense terminal line: signal, ticker, what happened, who, when.
- * Clicking anywhere but the actions opens the full entry.
+ * Clicking anywhere on it opens the full entry.
  */
-export default function EntryLine({ row, now, onOpen, glyph, detail, actions, cta }: Props) {
+export default function EntryLine({ row, now, onOpen, glyph, detail, cta }: Props) {
   const signal = row.thesis_impact ? SIGNAL[row.thesis_impact] : null
   const met = useMetWith(row.event_id)
   const type = eventTypeOf(row.kind, row.subtype)
@@ -60,11 +58,6 @@ export default function EntryLine({ row, now, onOpen, glyph, detail, actions, ct
             {cta && <span className="text-[#1C1B17] underline-offset-2 hover:underline">→ {cta}</span>}
           </div>
         </div>
-        {actions && (
-          <div className="shrink-0 self-center" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-            {actions}
-          </div>
-        )}
       </div>
     </li>
   )

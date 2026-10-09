@@ -4,7 +4,7 @@ import {
 } from 'lucide-react'
 import type {
   EventKind, EventSubtype, ContactDesignation, UnderstandingLevel, ModelStatus,
-  ThesisImpact,
+  ThesisImpact, SvanRating,
 } from './types'
 
 /**
@@ -104,6 +104,19 @@ export const THESIS_IMPACTS: { value: ThesisImpact; label: string; color: string
   { value: 'neutral',  label: 'Neutral',  color: '#6F6A60' },
   { value: 'negative', label: 'Negative', color: '#B23B2A' },
 ]
+
+/** The Svan View meter, in order, coloured from red (strong sell) to green (strong buy). */
+export const SVAN_RATINGS: { value: SvanRating; label: string; color: string }[] = [
+  { value: 'strong_sell', label: 'Strong Sell', color: '#B23B2A' },
+  { value: 'sell',        label: 'Sell',        color: '#D06030' },
+  { value: 'neutral',     label: 'Neutral',     color: '#A8892B' },
+  { value: 'buy',         label: 'Buy',         color: '#5FA777' },
+  { value: 'strong_buy',  label: 'Strong Buy',  color: '#2F8F5B' },
+]
+
+export function svanRatingOf(value: SvanRating | null | undefined) {
+  return SVAN_RATINGS.find((r) => r.value === value) ?? null
+}
 
 /**
  * Coverage-health bands, in days since the last logged interaction.

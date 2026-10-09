@@ -2,14 +2,14 @@ import { supabase } from '@/lib/supabase'
 import { describeCcError } from './api'
 import { addDays, today } from './format'
 import type {
-  ActivityFeedRow, EventComment, EventReview, ReviewVerdict, RosterMember, TeamOption,
+  ActivityFeedRow, CommentAuthor, EventComment, RosterMember, TeamOption,
 } from './types'
 
 /**
- * Reads and writes for the Command Center home: the team lens, PM reviews and comments.
+ * Reads and writes for the Command Center home: the team lens and comments.
  * Everything here is backed by database/migration_command_center_home.sql, and like
  * api.ts it talks to Supabase with the caller's JWT -- RLS decides who sees and who may
- * endorse. The UI only hides controls that would be refused.
+ * write. The UI only hides controls that would be refused.
  */
 
 interface ErrorLike { message: string; code?: string }
@@ -17,7 +17,7 @@ interface ErrorLike { message: string; code?: string }
 /**
  * True when the home migration has not been applied yet: the table or function is
  * missing from PostgREST's schema cache. The home screen still works from the existing
- * views in that case; only reviews, comments and the team lens go quiet.
+ * views in that case; only comments and the team lens go quiet.
  */
 export function isNotInstalled(error: ErrorLike | null): boolean {
   if (!error) return false
@@ -90,62 +90,6 @@ export async function listRoster(teamId?: string | null): Promise<RosterMember[]
 }
 
 // ---------------------------------------------------------------------------
-// Reviews
-// ---------------------------------------------------------------------------
-
-type ReviewRow = Omit<EventReview, 'reviewer_username'> & {
-  profiles: { username: string | null } | null
-}
-
-export async function listReviews(eventIds: string[]): Promise<EventReview[]> {
-  if (eventIds.length === 0) return []
-  const out: EventReview[] = []
-  // Chunked: a long `in.(...)` list overflows the URL PostgREST receives.
-  for (let i = 0; i < eventIds.length; i += 150) {
-    const { data, error } = await supabase
-      .from('cc_event_reviews')
-      .select('id, event_id, reviewer_id, verdict, note, created_at, updated_at, profiles:reviewer_id(username)')
-      .in('event_id', eventIds.slice(i, i + 150))
-    if (isNotInstalled(error)) return []
-    if (error) throw describeCcError(error, 'Could not load reviews')
-    for (const r of (data ?? []) as unknown as ReviewRow[]) {
-      const { profiles, ...rest } = r
-      out.push({ ...rest, reviewer_username: profiles?.username ?? null })
-    }
-  }
-  return out
-}
-
-export async function setReview(input: {
-  eventId: string
-  reviewerId: string
-  verdict: ReviewVerdict
-  note?: string | null
-}): Promise<void> {
-  const { error } = await supabase
-    .from('cc_event_reviews')
-    .upsert(
-      {
-        event_id: input.eventId,
-        reviewer_id: input.reviewerId,
-        verdict: input.verdict,
-        note: input.note?.trim() || null,
-      },
-      { onConflict: 'event_id,reviewer_id' }
-    )
-  if (error) throw describeCcError(error, 'Could not save your review')
-}
-
-export async function clearReview(eventId: string, reviewerId: string): Promise<void> {
-  const { error } = await supabase
-    .from('cc_event_reviews')
-    .delete()
-    .eq('event_id', eventId)
-    .eq('reviewer_id', reviewerId)
-  if (error) throw describeCcError(error, 'Could not withdraw your review')
-}
-
-// ---------------------------------------------------------------------------
 // Comments
 // ---------------------------------------------------------------------------
 
@@ -165,6 +109,23 @@ export async function listComments(eventId: string): Promise<EventComment[]> {
     ...rest,
     author_username: profiles?.username ?? null,
   }))
+}
+
+/** Who commented on each of these entries, for telling answered pushes from open ones. */
+export async function listCommentAuthors(eventIds: string[]): Promise<CommentAuthor[]> {
+  if (eventIds.length === 0) return []
+  const out: CommentAuthor[] = []
+  // Chunked: a long `in.(...)` list overflows the URL PostgREST receives.
+  for (let i = 0; i < eventIds.length; i += 150) {
+    const { data, error } = await supabase
+      .from('cc_event_comments')
+      .select('event_id, author_id')
+      .in('event_id', eventIds.slice(i, i + 150))
+    if (isNotInstalled(error)) return []
+    if (error) throw describeCcError(error, 'Could not load comments')
+    out.push(...((data ?? []) as CommentAuthor[]))
+  }
+  return out
 }
 
 export async function addComment(eventId: string, authorId: string, body: string): Promise<void> {

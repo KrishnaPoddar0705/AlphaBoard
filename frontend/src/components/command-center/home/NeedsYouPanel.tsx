@@ -2,16 +2,15 @@ import { useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import TerminalPanel, { PanelEmpty } from './TerminalPanel'
 import EntryLine from './EntryLine'
-import ReviewBar from '../review/ReviewBar'
 import type { NeedsYou } from '@/lib/commandCenter/home'
-import type { ActivityFeedRow, EventReview } from '@/lib/commandCenter/types'
+import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 
 interface Props {
   needs: NeedsYou
-  /** The viewer's own review requests nobody has answered (shown to analysts). */
+  /** The viewer's own pushes nobody has replied to yet (shown to analysts). */
   waitingOnPm: ActivityFeedRow[]
-  reviewsFor: (eventId: string) => EventReview[]
-  canReview: boolean
+  /** Admin or PM: the people entries get pushed to. */
+  isManager: boolean
   staleDays: number
   now: Date
   onOpen: (row: ActivityFeedRow) => void
@@ -46,18 +45,18 @@ function Group({ title, count, children }: { title: string; count: number; child
  * Exceptions only: entries an analyst deliberately pushed to the viewer, the viewer's
  * own pushes nobody has answered, and covered names nobody has spoken to the company
  * about in a month. Routine logged work never lands here -- escalation is opt-in.
+ * A pushed entry is answered by replying in its comments, which also clears it.
  */
 export default function NeedsYouPanel({
-  needs, waitingOnPm, reviewsFor, canReview, staleDays, now, onOpen, className,
+  needs, waitingOnPm, isManager, staleDays, now, onOpen, className,
 }: Props) {
   const total = needs.total + waitingOnPm.length
-  const review = (row: ActivityFeedRow) => <ReviewBar event={row} reviews={reviewsFor(row.event_id)} compact />
 
   return (
     <TerminalPanel code="ATTN" title="Needs your attention" count={total} alert className={className} id="cc-needs">
       {total === 0 ? (
         <PanelEmpty>
-          {canReview
+          {isManager
             ? 'Nothing waiting: nothing pushed to you, no stale names.'
             : 'Nothing waiting on you.'}
         </PanelEmpty>
@@ -69,7 +68,7 @@ export default function NeedsYouPanel({
                 key={row.event_id} row={row} now={now} onOpen={onOpen}
                 glyph={<span className="text-[#D06030]">?</span>}
                 detail={row.review_note ? `“${row.review_note}”` : 'Asked for your view'}
-                actions={review(row)}
+                cta="Reply"
               />
             ))}
           </Group>
@@ -79,7 +78,7 @@ export default function NeedsYouPanel({
               <EntryLine
                 key={row.event_id} row={row} now={now} onOpen={onOpen}
                 glyph={<span className="text-[#D06030]">…</span>}
-                detail={row.review_note ? `You asked: “${row.review_note}”` : 'Review requested, no verdict yet'}
+                detail={row.review_note ? `You asked: “${row.review_note}”` : 'Pushed, no reply yet'}
               />
             ))}
           </Group>

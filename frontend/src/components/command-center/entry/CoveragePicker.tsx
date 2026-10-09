@@ -3,6 +3,7 @@ import { Plus, Search } from 'lucide-react'
 import { useAddCoverage } from '@/hooks/commandCenter/useCoverage'
 import { useCommandCenterSession } from '@/hooks/commandCenter/useCommandCenterSession'
 import type { CoverageBoardRow } from '@/lib/commandCenter/types'
+import SectorPicker from '../shared/SectorPicker'
 
 interface Props {
   coverage: CoverageBoardRow[]
@@ -48,6 +49,9 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
    * stock through that gap instead of snapping back to an empty search.
    */
   const [justAdded, setJustAdded] = useState<{ id: string; ticker: string } | null>(null)
+  /** A new name needs a sector before it can be added; asked for once Add is tapped. */
+  const [askingSector, setAskingSector] = useState(false)
+  const [sector, setSector] = useState('')
 
   const row = coverage.find((c) => c.id === value) ?? null
   const selected = row
@@ -70,12 +74,12 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
    * board query is invalidated by the mutation and repaints the chips behind it.
    */
   const addAndSelect = async () => {
-    if (!candidate) return
+    if (!candidate || !sector) return
     try {
-      const added = await addCoverage.mutateAsync({ ticker: candidate, lead_analyst_id: userId })
+      const added = await addCoverage.mutateAsync({ ticker: candidate, sector, lead_analyst_id: userId })
       setJustAdded({ id: added.id, ticker: added.ticker })
       onChange(added.id)
-      setQuery('')
+      setQuery(''); setAskingSector(false); setSector('')
     } catch {
       // useAddCoverage already surfaces the reason as a toast (already covered by another
       // team, no session, and so on); leave the query so it can be corrected.
@@ -149,18 +153,31 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
       )}
 
       {query.trim() && matches.length === 0 && (
-        candidate ? (
+        candidate && askingSector ? (
+          <div className="flex flex-col gap-2 rounded-lg border border-dashed border-[#1C1B17] bg-[#FBF7ED] p-3">
+            <p className="font-mono text-[11px] text-[#1C1B17]">
+              Which sector is <span className="font-semibold">{candidate}</span> in?
+            </p>
+            <SectorPicker value={sector} onChange={setSector} />
+            <button
+              type="button"
+              onClick={addAndSelect}
+              disabled={!sector || addCoverage.isPending}
+              className="self-start rounded-lg border border-[#1C1B17] bg-[#1C1B17] px-2.5 py-1 font-mono text-[11px] text-[#F7F2E6] disabled:opacity-40"
+            >
+              {addCoverage.isPending ? `Adding ${candidate}…` : `Add ${candidate} and log against it`}
+            </button>
+          </div>
+        ) : candidate ? (
           <button
             type="button"
-            onClick={addAndSelect}
+            onClick={() => setAskingSector(true)}
             disabled={addCoverage.isPending}
             className="flex items-center gap-2 rounded-lg border border-dashed border-[#1C1B17] bg-[#FBF7ED] px-3 py-2 text-left font-mono text-[11px] text-[#1C1B17] transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-50"
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
             <span>
-              {addCoverage.isPending
-                ? `Adding ${candidate}…`
-                : <>Add <span className="font-semibold">{candidate}</span> to coverage and log against it</>}
+              Add <span className="font-semibold">{candidate}</span> to coverage and log against it
             </span>
           </button>
         ) : (

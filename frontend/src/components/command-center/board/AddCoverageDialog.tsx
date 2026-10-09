@@ -11,6 +11,7 @@ import { listWatchlistCandidates, type WatchlistCandidate } from '@/lib/commandC
 import { useAddCoverage } from '@/hooks/commandCenter/useCoverage'
 import { useCommandCenterSession } from '@/hooks/commandCenter/useCommandCenterSession'
 import EmptyState from '../shared/EmptyState'
+import SectorPicker from '../shared/SectorPicker'
 
 const DEBOUNCE_MS = 250
 
@@ -28,6 +29,9 @@ interface Props {
  * supposed to remove: search, or bulk-import from the personal Watchlist the analyst
  * already curates. Coverage stays a separate list -- a price-watch list is not a
  * research universe -- but importing makes the first day cheap.
+ *
+ * Either way a sector is asked for before anything is added: the desk filters by it, so
+ * a stock without one is a stock that goes missing.
  */
 export default function AddCoverageDialog({ open, onClose }: Props) {
   const [query, setQuery] = useState('')
@@ -39,6 +43,9 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
   const [candidates, setCandidates] = useState<WatchlistCandidate[] | null>(null)
   const [picked, setPicked] = useState<Set<string>>(new Set())
   const [importing, setImporting] = useState(false)
+  /** The search result chosen, waiting on its sector. */
+  const [pending, setPending] = useState<StockResult | null>(null)
+  const [sector, setSector] = useState('')
   const abortRef = useRef<AbortController | null>(null)
 
   const addCoverage = useAddCoverage()
@@ -47,7 +54,7 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
   useEffect(() => {
     if (!open) {
       setQuery(''); setResults([]); setPicked(new Set()); setCandidates(null)
-      setSearchError(null)
+      setSearchError(null); setPending(null); setSector('')
       abortRef.current?.abort()
       abortRef.current = null
     }
@@ -93,22 +100,23 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
   }
 
   const addOne = async (s: StockResult) => {
+    if (!sector) return
     // Persist the exact symbol /market/search returned. A user-typed 'RELIANCE' and a
     // returned 'RELIANCE.NS' are two different covered names forever -- there is no
     // stocks master table to reconcile them.
     await addCoverage.mutateAsync({
-      ticker: s.symbol, company_name: s.name, market: s.market,
+      ticker: s.symbol, company_name: s.name, market: s.market, sector,
     }).catch(() => { /* the mutation already toasts */ })
-    setQuery(''); setResults([])
+    setQuery(''); setResults([]); setPending(null); setSector('')
   }
 
   const importPicked = async () => {
-    if (picked.size === 0) return
+    if (picked.size === 0 || !sector) return
     setImporting(true)
     let added = 0
     for (const ticker of picked) {
       try {
-        await addCoverage.mutateAsync({ ticker })
+        await addCoverage.mutateAsync({ ticker, sector })
         added += 1
       } catch {
         // Already-covered and permission failures are reported by the mutation; keep
@@ -142,13 +150,42 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="search" onValueChange={(v) => v === 'watchlist' && loadWatchlist()}>
+        <Tabs
+          defaultValue="search"
+          onValueChange={(v) => { setPending(null); setSector(''); if (v === 'watchlist') loadWatchlist() }}
+        >
           <TabsList className="h-8">
             <TabsTrigger value="search" className="text-xs">Search</TabsTrigger>
             <TabsTrigger value="watchlist" className="text-xs">From my watchlist</TabsTrigger>
           </TabsList>
 
           <TabsContent value="search" className="mt-3">
+            {pending ? (
+              <div className="flex flex-col gap-2">
+                <div>
+                  <p className="truncate font-mono text-sm text-[#1C1B17]">{pending.name}</p>
+                  <p className="font-mono text-[11px] text-[#6F6A60]">{pending.symbol} · {pending.market}</p>
+                </div>
+                <p className="font-mono text-[11px] text-[#6F6A60]">
+                  Sector <span className="text-[#B23B2A]">· required</span>
+                </p>
+                <SectorPicker value={sector} onChange={setSector} />
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setPending(null); setSector('') }}
+                    className="font-mono text-[11px] text-[#6F6A60] underline-offset-2 hover:underline"
+                  >
+                    Back to search
+                  </button>
+                  <Button size="sm" onClick={() => addOne(pending)} disabled={!sector || addCoverage.isPending}>
+                    {addCoverage.isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                    Add to coverage
+                  </Button>
+                </div>
+              </div>
+            ) : (
+            <>
             <div className="relative">
               <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B857A]" />
               {searching && (
@@ -168,8 +205,7 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
                 <li key={`${s.symbol}-${s.market}`}>
                   <button
                     type="button"
-                    onClick={() => addOne(s)}
-                    disabled={addCoverage.isPending}
+                    onClick={() => setPending(s)}
                     className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-60"
                   >
                     <span className="min-w-0">
@@ -191,6 +227,8 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
                 <EmptyState title="No matches" hint="Try the exchange suffix, e.g. RELIANCE.NS" />
               )}
             </ul>
+            </>
+            )}
           </TabsContent>
 
           <TabsContent value="watchlist" className="mt-3">
@@ -221,6 +259,15 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
                     </li>
                   ))}
                 </ul>
+                {picked.size > 0 && (
+                  <div className="mt-3 flex flex-col gap-1.5">
+                    <p className="font-mono text-[11px] text-[#6F6A60]">
+                      Sector for {picked.size === 1 ? 'this stock' : `these ${picked.size} stocks`}{' '}
+                      <span className="text-[#B23B2A]">· required</span>
+                    </p>
+                    <SectorPicker value={sector} onChange={setSector} />
+                  </div>
+                )}
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <button
                     type="button"
@@ -229,7 +276,7 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
                   >
                     Select all {importable.length}
                   </button>
-                  <Button size="sm" onClick={importPicked} disabled={picked.size === 0 || importing}>
+                  <Button size="sm" onClick={importPicked} disabled={picked.size === 0 || !sector || importing}>
                     {importing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     Add {picked.size || ''}
                   </Button>

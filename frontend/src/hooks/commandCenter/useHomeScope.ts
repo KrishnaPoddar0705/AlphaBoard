@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useCommandCenterSession } from './useCommandCenterSession'
 import { useMyTeams, useRoster } from './useHome'
-import type { Lens } from '@/components/command-center/home/ScopeBar'
+import type { Lens } from '@/components/command-center/home/LensBar'
 import type { RosterMember, TeamOption } from '@/lib/commandCenter/types'
 
 export interface HomeScope {

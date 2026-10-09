@@ -2,11 +2,11 @@ import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  listHomeWindow, listMyTeams, listRoster, listReviews, setReview, clearReview,
-  listComments, addComment, deleteComment,
+  listHomeWindow, listMyTeams, listRoster,
+  listComments, listCommentAuthors, addComment, deleteComment,
 } from '@/lib/commandCenter/collabApi'
 import type {
-  ActivityFeedRow, EventComment, EventReview, ReviewVerdict, RosterMember, TeamOption,
+  ActivityFeedRow, CommentAuthor, EventComment, RosterMember, TeamOption,
 } from '@/lib/commandCenter/types'
 import { useCommandCenterSession } from './useCommandCenterSession'
 import { ccKeys } from './useCoverage'
@@ -15,7 +15,7 @@ const homeKeys = {
   teams: () => [...ccKeys.all, 'home', 'teams'] as const,
   roster: (teamId: string | null) => [...ccKeys.all, 'home', 'roster', teamId ?? 'visible'] as const,
   window: (key: string) => [...ccKeys.all, 'home', 'window', key] as const,
-  reviews: (key: string) => [...ccKeys.all, 'reviews', key] as const,
+  commentAuthors: (key: string) => [...ccKeys.all, 'comments', 'authors', key] as const,
   comments: (eventId: string) => [...ccKeys.all, 'comments', eventId] as const,
 }
 
@@ -58,33 +58,16 @@ export function useHomeWindow(userIds: string[] | null, enabled = true) {
   })
 }
 
-export function useReviews(eventIds: string[]) {
+/** Comment authors for a set of entries. Lives under the comments key so a post refreshes it. */
+export function useCommentAuthors(eventIds: string[]) {
   const { ready } = useCommandCenterSession()
   const key = useMemo(() => [...eventIds].sort().join(','), [eventIds])
-  return useQuery<EventReview[]>({
-    queryKey: homeKeys.reviews(key),
-    queryFn: () => listReviews(eventIds),
+  return useQuery<CommentAuthor[]>({
+    queryKey: homeKeys.commentAuthors(key),
+    queryFn: () => listCommentAuthors(eventIds),
     enabled: ready && eventIds.length > 0,
     staleTime: 30_000,
     placeholderData: (prev) => prev,
-  })
-}
-
-export function useSetReview() {
-  const qc = useQueryClient()
-  const { userId } = useCommandCenterSession()
-  return useMutation<void, Error, { eventId: string; verdict: ReviewVerdict | null; note?: string | null }>({
-    mutationFn: ({ eventId, verdict, note }) => {
-      if (!userId) throw new Error('Not signed in')
-      return verdict
-        ? setReview({ eventId, reviewerId: userId, verdict, note })
-        : clearReview(eventId, userId)
-    },
-    onSuccess: (_d, { verdict }) => {
-      qc.invalidateQueries({ queryKey: [...ccKeys.all, 'reviews'] })
-      toast.success(verdict === 'endorse' ? 'Endorsed' : verdict === 'reject' ? 'Rejected' : 'Review withdrawn')
-    },
-    onError: (err) => toast.error(err.message),
   })
 }
 
@@ -107,7 +90,8 @@ export function useAddComment(eventId: string) {
       return addComment(eventId, userId, body)
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: homeKeys.comments(eventId) })
+      // The whole comments subtree: this thread, and who has answered which push.
+      qc.invalidateQueries({ queryKey: [...ccKeys.all, 'comments'] })
       // comment_count lives on the feed rows.
       qc.invalidateQueries({ queryKey: [...ccKeys.all, 'home'] })
       qc.invalidateQueries({ queryKey: [...ccKeys.all, 'events'] })
@@ -121,7 +105,10 @@ export function useDeleteComment(eventId: string) {
   const qc = useQueryClient()
   return useMutation<void, Error, string>({
     mutationFn: deleteComment,
-    onSuccess: () => qc.invalidateQueries({ queryKey: homeKeys.comments(eventId) }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: homeKeys.comments(eventId) })
+      qc.invalidateQueries({ queryKey: [...ccKeys.all, 'comments', 'authors'] })
+    },
     onError: (err) => toast.error(err.message),
   })
 }

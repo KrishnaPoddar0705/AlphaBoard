@@ -4,14 +4,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import ThesisMarkdown from '@/components/thesis/ThesisMarkdown'
 import EventKindBadge from '../shared/EventKindBadge'
 import AttachmentList from '../shared/AttachmentList'
-import ReviewBar from '../review/ReviewBar'
 import EventComments from '../review/EventComments'
-import ReviewRequestPanel from '../review/ReviewRequestPanel'
+import PushNote from '../review/PushNote'
 import PushControl from '../review/PushControl'
 import { useEventAttachments, useEventContacts } from '@/hooks/commandCenter/useCommandCenterEvents'
 import MetWith from '../shared/MetWith'
-import { Bone, RowsSkeleton } from '../shared/Skeleton'
-import { useReviews } from '@/hooks/commandCenter/useHome'
+import SvanView from '../shared/SvanView'
+import { Bone } from '../shared/Skeleton'
 import { formatDay } from '@/lib/commandCenter/format'
 import { THESIS_IMPACTS } from '@/lib/commandCenter/constants'
 import { ownerName, relativeTime } from '@/lib/commandCenter/home'
@@ -21,13 +20,12 @@ const label = 'font-mono text-[10px] uppercase tracking-[0.12em] text-[#6F6A60]'
 
 /**
  * The whole of one entry, opened from anywhere on the home screen: what was learned,
- * the files, the PM's verdict and the discussion. Endorse / reject / comment live here
- * so the PM never has to leave the home screen to act.
+ * the files, any question pushed to a PM or admin, and the discussion. Replies live here
+ * so nobody has to leave the home screen to answer.
  */
 export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow | null; onClose: () => void }) {
   const ids = entry ? [entry.event_id] : []
   const { data: attachments = [], isPending: filesPending } = useEventAttachments(ids)
-  const { data: reviews = [], isPending: reviewsPending } = useReviews(ids)
   const met = useEventContacts(entry ? [entry] : [])
   const impact = THESIS_IMPACTS.find((t) => t.value === entry?.thesis_impact)
 
@@ -58,9 +56,9 @@ export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow
             </SheetHeader>
 
             <div className="flex flex-col gap-4 px-4 pb-8">
-              {entry.review_requested && !entry.is_scheduled && (
-                <ReviewRequestPanel event={entry} reviews={reviews} loading={reviewsPending} />
-              )}
+              {entry.review_requested && !entry.is_scheduled && <PushNote event={entry} />}
+
+              <SvanView event={entry} />
 
               <div>
                 <p className={label}>Key takeaways</p>
@@ -97,19 +95,9 @@ export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow
                 </div>
               )}
 
-              {!entry.is_scheduled && !entry.review_requested && (
-                <div className="border-t border-[#D7D0C2] pt-3">
-                  <p className={`${label} mb-1.5`}>Review</p>
-                  {reviewsPending ? <RowsSkeleton rows={1} /> : <ReviewBar event={entry} reviews={reviews} />}
-                  {!reviewsPending && reviews.length === 0 && (
-                    <p className="mt-1 font-mono text-[10px] text-[#8B857A]">Not reviewed yet.</p>
-                  )}
-                </div>
-              )}
-
               {!entry.is_scheduled && (
                 <div className="border-t border-[#D7D0C2] pt-3">
-                  <p className={`${label} mb-1.5`}>Push for review</p>
+                  <p className={`${label} mb-1.5`}>Push</p>
                   <PushControl event={entry} />
                 </div>
               )}

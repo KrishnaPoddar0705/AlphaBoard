@@ -1,18 +1,21 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useCommandCenterSession } from '@/hooks/commandCenter/useCommandCenterSession'
 import { useCoverageBoard } from '@/hooks/commandCenter/useCoverage'
-import { useHomeWindow, useReviews } from '@/hooks/commandCenter/useHome'
+import { useCommentAuthors, useHomeWindow } from '@/hooks/commandCenter/useHome'
 import { useHomeScope } from '@/hooks/commandCenter/useHomeScope'
+import { useLensFilters } from '@/hooks/commandCenter/useLensFilters'
 import {
-  analystLens, needsYou, ownerOf, stockLens, summarize, teamNow, whatChanged,
+  analystLens, awaitingReply, filterEntries, filterStocks, needsYou, stockLens, summarize,
+  whatChanged,
 } from '@/lib/commandCenter/home'
-import type { ActivityFeedRow, EventReview } from '@/lib/commandCenter/types'
+import { sectorOptions } from '@/lib/commandCenter/sectors'
+import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 import HomeHeader from './HomeHeader'
 import ScopeBar from './ScopeBar'
 import TickerTape from './TickerTape'
 import NeedsYouPanel from './NeedsYouPanel'
 import WhatChangedPanel from './WhatChangedPanel'
-import TeamNowPanel from './TeamNowPanel'
+import LensBar from './LensBar'
 import StockLens from './StockLens'
 import AnalystLens from './AnalystLens'
 import AnalyticsPanel from './AnalyticsPanel'
@@ -22,19 +25,19 @@ import { EventContactsContext } from '@/hooks/commandCenter/eventContactsContext
 import { useEventContacts } from '@/hooks/commandCenter/useCommandCenterEvents'
 
 const STALE_DAYS = 30
-const MONTH = 30 * 86_400_000
 
 /**
  * "What matters right now?" -- the desk's home screen.
  *
  * Reads one window of entries (the last ~month plus what is booked ahead), the coverage
- * board and the reviews on that window, and derives every panel from them in
+ * board and the replies to anything pushed, and derives every panel from them in
  * lib/commandCenter/home.ts. Panels are in priority order in the DOM, so a phone reads
  * exceptions first; the desktop grid rearranges nothing.
  */
 export default function HomeView() {
-  const { userId, role, canReviewAnything } = useCommandCenterSession()
+  const { userId, role } = useCommandCenterSession()
   const scope = useHomeScope()
+  const { filters, setFilters } = useLensFilters()
   const { data: board = [], isPending: boardPending } = useCoverageBoard()
   const windowQuery = useHomeWindow(scope.userIds, scope.ready)
   const rows = useMemo(() => windowQuery.data ?? [], [windowQuery.data])
@@ -45,49 +48,57 @@ export default function HomeView() {
   const updatedAt = windowQuery.dataUpdatedAt
   const now = useMemo(() => new Date(updatedAt || 0), [updatedAt])
 
-  const reviewIds = useMemo(
-    () => rows.filter((r) => !r.is_scheduled && now.getTime() - new Date(r.created_at).getTime() <= MONTH)
+  // A push is answered by a reply in the entry's comments, so who has commented on the
+  // pushed entries decides what is still waiting -- on the viewer, or on their PM.
+  const pushedIds = useMemo(
+    () => rows.filter((r) => !r.is_scheduled && (r.review_requested || r.push_to_pm || r.push_to_admin))
       .map((r) => r.event_id),
-    [rows, now]
+    [rows]
   )
-  const { data: reviews = [], isPending: reviewsQueryPending } = useReviews(reviewIds)
-  // The review query is disabled (and so permanently pending) when there is nothing to
-  // review; only wait for it when it will actually run.
-  const reviewsPending = reviewIds.length > 0 && reviewsQueryPending
-  const reviewsByEvent = useMemo(() => {
-    const map = new Map<string, EventReview[]>()
-    for (const r of reviews) map.set(r.event_id, [...(map.get(r.event_id) ?? []), r])
-    return map
-  }, [reviews])
-  const reviewsFor = useCallback((id: string) => reviewsByEvent.get(id) ?? [], [reviewsByEvent])
+  const { data: replies = [], isPending: repliesQueryPending } = useCommentAuthors(pushedIds)
+  // The query is disabled (and so permanently pending) when nothing was pushed; only
+  // wait for it when it will actually run.
+  const repliesPending = pushedIds.length > 0 && repliesQueryPending
 
   const scopeUserIds = scope.userIds
     ?? (role === 'admin' ? null : scope.roster?.map((m) => m.user_id) ?? null)
 
   const derived = useMemo(() => {
     const needs = needsYou({
-      rows, reviews, board, viewerId: userId, canReview: canReviewAnything,
+      rows, replies, board, viewerId: userId,
       viewerRole: role, scopeUserIds, staleDays: STALE_DAYS, now,
     })
-    const waitingOnPm = rows.filter((r) => r.review_requested && !r.is_scheduled
-      && ownerOf(r) === userId && !reviewsByEvent.has(r.event_id))
+    const waitingOnPm = awaitingReply(rows, replies, userId)
+    // The table reads the filtered entries; everything else keeps the whole scope.
+    const shown = filterEntries(rows, filters)
+    const allStocks = stockLens(rows, board, now, scopeUserIds)
+    const lensRoster = filters.analystId
+      ? scope.roster?.filter((m) => m.user_id === filters.analystId) ?? null
+      : scope.roster
     return {
       summary: summarize(rows, now),
       changes: whatChanged(rows, now),
       needs,
       waitingOnPm,
-      people: teamNow(rows, scope.roster, now),
-      stocks: stockLens(rows, board, now, scopeUserIds),
-      analysts: analystLens(rows, scope.roster, reviews, now),
+      stocks: filterStocks(stockLens(shown, board, now, scopeUserIds), filters),
+      // Unfiltered: the analytics panel and the filter's own option list read this.
+      analysts: analystLens(rows, scope.roster, now),
+      lensAnalysts: analystLens(shown, lensRoster, now),
+      shown,
+      sectors: sectorOptions(allStocks),
+      stockOptions: allStocks
+        .filter((s) => !filters.sector || s.sector === filters.sector)
+        .map((s) => ({ value: s.coverageId, label: s.ticker }))
+        .sort((a, b) => a.label.localeCompare(b.label)),
       tape: rows.filter((r) => !r.is_scheduled).slice(0, 24),
     }
-  }, [rows, reviews, board, userId, canReviewAnything, role, scopeUserIds, now, scope.roster, reviewsByEvent])
+  }, [rows, replies, board, userId, role, scopeUserIds, now, scope.roster, filters])
 
   const isManager = role === 'admin' || role === 'portfolio_manager'
 
   // Every panel waits for everything it summarises. Rendering early would show "nothing
   // needs you" or "no stale names" and then change its mind a moment later.
-  if (!scope.ready || windowQuery.isPending || !updatedAt || boardPending || reviewsPending) {
+  if (!scope.ready || windowQuery.isPending || !updatedAt || boardPending || repliesPending) {
     return <HomeSkeleton isManager={isManager} />
   }
   const lens = isManager ? scope.lens : 'stock'
@@ -109,8 +120,6 @@ export default function HomeView() {
             teams={scope.teams}
             scope={scope.scope}
             onScope={scope.setScope}
-            lens={scope.lens}
-            onLens={scope.setLens}
             personName={scope.personName}
             onClearPerson={() => scope.setPerson(null)}
           />
@@ -130,42 +139,43 @@ export default function HomeView() {
           className="lg:col-span-5 lg:max-h-[440px]"
           needs={derived.needs}
           waitingOnPm={derived.waitingOnPm}
-          reviewsFor={reviewsFor}
-          canReview={canReviewAnything}
+          isManager={isManager}
           staleDays={STALE_DAYS}
           now={now}
           onOpen={setDrawer}
         />
         <WhatChangedPanel className="lg:col-span-7 lg:max-h-[440px]" items={derived.changes} now={now} onOpen={setDrawer} />
 
-        {lens === 'analyst' ? (
-          <AnalystLens
-            className="lg:col-span-8 lg:max-h-[560px]"
-            rows={derived.analysts}
-            entries={rows}
-            reviewsFor={reviewsFor}
-            now={now}
-            onOpen={setDrawer}
-            onFocusPerson={scope.setPerson}
+        <div className="flex min-w-0 flex-col gap-2 lg:col-span-12">
+          <LensBar
+            canToggleLens={isManager}
+            lens={lens}
+            onLens={scope.setLens}
+            filters={filters}
+            onFilters={setFilters}
+            analysts={derived.analysts.map((a) => ({ value: a.userId, label: a.name }))}
+            sectors={derived.sectors}
+            stocks={derived.stockOptions}
           />
-        ) : (
-          <StockLens
-            className="lg:col-span-8 lg:max-h-[560px]"
-            rows={derived.stocks}
-            entries={rows}
-            reviewsFor={reviewsFor}
-            now={now}
-            onOpen={setDrawer}
-          />
-        )}
-        <TeamNowPanel
-          className="lg:col-span-4 lg:max-h-[560px]"
-          people={derived.people}
-          now={now}
-          selected={scope.person}
-          onSelect={scope.setPerson}
-          onOpen={setDrawer}
-        />
+          {lens === 'analyst' ? (
+            <AnalystLens
+              className="lg:max-h-[560px]"
+              rows={derived.lensAnalysts}
+              entries={derived.shown}
+              now={now}
+              onOpen={setDrawer}
+              onFocusPerson={scope.setPerson}
+            />
+          ) : (
+            <StockLens
+              className="lg:max-h-[560px]"
+              rows={derived.stocks}
+              entries={derived.shown}
+              now={now}
+              onOpen={setDrawer}
+            />
+          )}
+        </div>
 
         {isManager && (
           <AnalyticsPanel

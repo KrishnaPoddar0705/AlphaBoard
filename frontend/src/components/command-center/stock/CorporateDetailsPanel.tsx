@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, Pencil, X } from 'lucide-react'
 import SectionCard from '../shared/SectionCard'
+import SectorPicker from '../shared/SectorPicker'
 import { UNDERSTANDING_LEVELS, MODEL_STATUSES } from '@/lib/commandCenter/constants'
 import { useUpdateCoverage } from '@/hooks/commandCenter/useCoverage'
 import { useRoster } from '@/hooks/commandCenter/useHome'
@@ -39,13 +40,17 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
   const { data: roster, isPending: rosterPending } = useRoster(null)
   const candidates = leadCandidates(coverage, roster)
 
+  // Every covered stock has a sector, so details cannot be saved without one.
+  const sectorMissing = !draft.sector.trim()
+
   const save = async () => {
+    if (sectorMissing) return
     await update.mutateAsync({
       id: coverage.id,
       patch: {
         understanding_level: (draft.understanding_level || null) as UnderstandingLevel | null,
         model_status: draft.model_status as ModelStatus,
-        sector: draft.sector.trim() || null,
+        sector: draft.sector.trim(),
         corporate_address: draft.corporate_address.trim() || null,
         lead_analyst_id: draft.lead_analyst_id || null,
       },
@@ -59,8 +64,9 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
       action={
         editing ? (
           <span className="flex gap-1">
-            <button type="button" onClick={save} aria-label="Save"
-                    className="rounded p-1 text-[#2F8F5B] hover:bg-[rgba(47,143,91,0.1)]">
+            <button type="button" onClick={save} aria-label="Save" disabled={sectorMissing}
+                    title={sectorMissing ? 'Pick a sector first' : undefined}
+                    className="rounded p-1 text-[#2F8F5B] hover:bg-[rgba(47,143,91,0.1)] disabled:opacity-40">
               <Check className="h-3.5 w-3.5" />
             </button>
             <button type="button" onClick={() => setEditing(false)} aria-label="Cancel"
@@ -114,11 +120,12 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
             </span>
           </label>
 
-          <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Sector</span>
-            <input className={inputClass} value={draft.sector}
-                   onChange={(e) => setDraft({ ...draft, sector: e.target.value })} />
-          </label>
+          <div className="flex flex-col gap-1">
+            <span className="font-mono text-[11px] text-[#6F6A60]">
+              Sector <span className="text-[#B23B2A]">· required</span>
+            </span>
+            <SectorPicker value={draft.sector} onChange={(sector) => setDraft({ ...draft, sector })} />
+          </div>
 
           <label className="flex flex-col gap-1">
             <span className="font-mono text-[11px] text-[#6F6A60]">Corporate address</span>
@@ -140,7 +147,12 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
             {coverage.lead_analyst_username ?? <span className="text-[#8B857A]">unassigned</span>}
           </Row>
           <Row label="Sector">
-            {coverage.sector ?? <span className="text-[#8B857A]">not set</span>}
+            {coverage.sector ?? (
+              <button type="button" onClick={() => setEditing(true)}
+                      className="text-[#B23B2A] underline-offset-2 hover:underline">
+                required · set sector
+              </button>
+            )}
           </Row>
           <Row label="Address">
             {coverage.corporate_address

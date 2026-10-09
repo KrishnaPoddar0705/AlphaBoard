@@ -3,7 +3,6 @@ import { ScrollText } from 'lucide-react'
 import { useCoverageEvents, useEventAttachments, useEventContacts }
   from '@/hooks/commandCenter/useCommandCenterEvents'
 import { useCommandCenterSession } from '@/hooks/commandCenter/useCommandCenterSession'
-import { useReviews } from '@/hooks/commandCenter/useHome'
 import { groupByMonth } from '@/lib/commandCenter/format'
 import { KIND_LABELS } from '@/lib/commandCenter/constants'
 import type { EventKind } from '@/lib/commandCenter/types'
@@ -40,15 +39,7 @@ export default function TimelineView({ coverageId, focusEventId, focusKey }: Pro
   )
 
   const { data: attachments = [] } = useEventAttachments(filtered.map((e) => e.event_id))
-  const eventIds = useMemo(() => filtered.map((e) => e.event_id), [filtered])
   const met = useEventContacts(filtered)
-  const { data: reviews = [], isPending: reviewsQueryPending } = useReviews(eventIds)
-  const reviewsLoading = eventIds.length > 0 && reviewsQueryPending
-  const reviewsByEvent = useMemo(() => {
-    const map = new Map<string, typeof reviews>()
-    for (const r of reviews) map.set(r.event_id, [...(map.get(r.event_id) ?? []), r])
-    return map
-  }, [reviews])
 
   const byEvent = useMemo(() => {
     const map = new Map<string, typeof attachments>()
@@ -117,8 +108,6 @@ export default function TimelineView({ coverageId, focusEventId, focusKey }: Pro
                 <TimelineEntry
                   event={e}
                   attachments={byEvent.get(e.event_id) ?? []}
-                  reviews={reviewsByEvent.get(e.event_id)}
-                  reviewsLoading={reviewsLoading}
                   metWith={met.byEvent.get(e.event_id)}
                   metLoading={met.loading}
                   // RLS is the real gate; this only hides a control that would fail.

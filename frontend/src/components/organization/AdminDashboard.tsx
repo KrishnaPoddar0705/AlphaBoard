@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Users, TrendingUp, BarChart3, Download } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import { updateMemberRole } from '../../lib/edgeFunctions';
+import {
+  addTeamMember, removeTeamMember, renameTeam, updateMemberRole,
+} from '../../lib/edgeFunctions';
 import { useTeams } from '../../hooks/useTeams';
 import { useOrgDashboardData } from '../../hooks/useOrgDashboardData';
 import { useAnalystDetails } from '../../hooks/useAnalystDetails';
@@ -19,6 +21,7 @@ import AnalystPerformanceTable from './dashboard/AnalystPerformanceTable';
 import AnalystRecommendationList from './dashboard/AnalystRecommendationList';
 import ExportPerformanceModal from './dashboard/ExportPerformanceModal';
 import OrganizationMembersList from './dashboard/OrganizationMembersList';
+import TeamNamesPanel from './dashboard/TeamNamesPanel';
 import { formatPercent } from './dashboard/types';
 
 const ROLE_CHANGE_COPY: Record<OrgRole, (name: string) => string> = {
@@ -53,7 +56,7 @@ export default function AdminDashboard() {
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(null);
   const [teamMemberIds, setTeamMemberIds] = useState<Set<string>>(new Set());
 
-  const { teams } = useTeams({ orgId: organizationId || undefined, autoFetch: !!organizationId });
+  const { teams, refresh: refreshTeams } = useTeams({ orgId: organizationId || undefined, autoFetch: !!organizationId });
   const { users, performance, joinCode, loading, error, refetch } = useOrgDashboardData({
     orgId: organizationId,
     enabled: !!organizationId,
@@ -84,6 +87,33 @@ export default function AdminDashboard() {
 
     fetchTeamMembers();
   }, [selectedTeamId]);
+
+  // Each member's teams come with the performance rows, which cover every member.
+  const teamIdsByUser = useMemo(
+    () => new Map(performance.map((p) => [p.userId, new Set(p.teams.map((t) => t.id))])),
+    [performance]
+  );
+  const [teamBusyKey, setTeamBusyKey] = useState<string | null>(null);
+
+  const handleToggleTeam = async (userId: string, teamId: string, isMember: boolean) => {
+    setTeamBusyKey(`${userId}:${teamId}`);
+    try {
+      if (isMember) await removeTeamMember(teamId, userId);
+      else await addTeamMember(teamId, userId);
+      await refetch();
+    } catch (err: unknown) {
+      safeError('Error updating team membership:', err);
+      alert('Failed to update team: ' + getUserFriendlyError(err));
+    } finally {
+      setTeamBusyKey(null);
+    }
+  };
+
+  const handleRenameTeam = async (teamId: string, name: string) => {
+    await renameTeam(teamId, name);
+    // The team list feeds the filter and the chips; the performance rows carry names too.
+    await Promise.all([refreshTeams(), refetch()]);
+  };
 
   const handleChangeRole = async (userId: string, username: string, newRole: OrgRole) => {
     if (!organizationId) return;
@@ -241,9 +271,15 @@ export default function AdminDashboard() {
           )}
         />
 
+        {teams.length > 0 && <TeamNamesPanel teams={teams} onRename={handleRenameTeam} />}
+
         <OrganizationMembersList
           users={users}
           currentUserId={session?.user?.id}
+          teams={teams}
+          teamIdsByUser={teamIdsByUser}
+          busyKey={teamBusyKey}
+          onToggleTeam={handleToggleTeam}
           onChangeRole={handleChangeRole}
           onRemove={handleRemoveUser}
         />

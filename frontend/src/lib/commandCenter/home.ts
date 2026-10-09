@@ -1,6 +1,7 @@
+import { eventTypeOf } from './constants'
 import { addDays, daysBetween, toDayString } from './format'
 import type {
-  ActivityFeedRow, CoverageBoardRow, EventKind, EventReview, RosterMember, ThesisImpact,
+  ActivityFeedRow, CommentAuthor, CoverageBoardRow, EventKind, RosterMember,
 } from './types'
 // Type-only, so this file stays free of any runtime dependency on the hooks layer.
 import type { OrgRole } from '@/hooks/useOrganization'
@@ -54,7 +55,7 @@ export interface HomeSummary {
   entries24h: number
   /** Distinct companies those entries were about. */
   companies24h: number
-  /** Logged entries in the last 7 days marked positive or negative for the thesis. */
+  /** Logged entries in the last 7 days with a Svan rating or a thesis move. */
   thesisChanges7d: number
   /** The most recent logged entry, for "nothing today -- last entry was ..." */
   lastEntry: ActivityFeedRow | null
@@ -80,16 +81,18 @@ const byEnteredDesc = (a: ActivityFeedRow, b: ActivityFeedRow) =>
 
 export interface ChangeItem {
   row: ActivityFeedRow
-  direction: Extract<ThesisImpact, 'positive' | 'negative'>
 }
 
-/** Logged entries from the last `days` that moved the thesis, newest first. */
+/**
+ * Logged entries from the last `days` that say something about where the desk stands:
+ * the analyst gave a Svan rating, or marked the thesis as moved. Newest first.
+ */
 export function whatChanged(rows: ActivityFeedRow[], now: Date = new Date(), days = 7): ChangeItem[] {
   return rows
     .filter((r) => isLogged(r) && enteredWithin(r, now, days * DAY)
-      && (r.thesis_impact === 'positive' || r.thesis_impact === 'negative'))
+      && (!!r.svan_rating || r.thesis_impact === 'positive' || r.thesis_impact === 'negative'))
     .sort(byEnteredDesc)
-    .map((row) => ({ row, direction: row.thesis_impact as ChangeItem['direction'] }))
+    .map((row) => ({ row }))
 }
 
 // ---------------------------------------------------------------------------
@@ -103,7 +106,7 @@ export interface StaleItem {
 }
 
 export interface NeedsYou {
-  /** Entries the analyst explicitly pushed to the viewer's role, not yet reviewed by them. */
+  /** Entries the analyst explicitly pushed to the viewer's role, not yet answered by them. */
   requests: ActivityFeedRow[]
   /** Covered names nobody has spoken to the company about in `staleDays`. */
   stale: StaleItem[]
@@ -112,11 +115,10 @@ export interface NeedsYou {
 
 export interface NeedsYouInput {
   rows: ActivityFeedRow[]
-  reviews: EventReview[]
+  /** Comment authors on the pushed entries: a reply is what answers a push. */
+  replies: CommentAuthor[]
   board: CoverageBoardRow[]
   viewerId: string | null
-  /** Admin or PM. RLS is the real gate; this only decides what to put in front of them. */
-  canReview: boolean
   /**
    * Which push target the viewer answers to: a PM sees "Push to PM" entries, an admin
    * sees "Push to Admin" entries. The two are independent, so an entry pushed only to
@@ -132,21 +134,24 @@ export interface NeedsYouInput {
 /**
  * Escalation is opt-in.
  *
- * Entries reach a reviewer only because the analyst pushed them there -- there is no
- * automatic queue. Logging work and asking for a verdict on it are separate acts, so the
+ * Entries reach a PM or an admin only because the analyst pushed them there -- there is
+ * no automatic queue. Logging work and asking for a view on it are separate acts, so the
  * desk's routine output stays out of the PM's and the admin's way.
+ *
+ * A push is a question, and it is answered in the entry's comments: once the viewer has
+ * commented, the entry leaves their queue.
  */
 export function needsYou({
-  rows, reviews, board, viewerId, canReview, viewerRole, scopeUserIds,
+  rows, replies, board, viewerId, viewerRole, scopeUserIds,
   staleDays = 30, now = new Date(),
 }: NeedsYouInput): NeedsYou {
-  const reviewedByMe = new Set(
-    reviews.filter((r) => r.reviewer_id === viewerId).map((r) => r.event_id)
+  const answeredByMe = new Set(
+    replies.filter((c) => c.author_id === viewerId).map((c) => c.event_id)
   )
-  const reviewable = (r: ActivityFeedRow) =>
-    canReview && isLogged(r) && !!viewerId
+  const unanswered = (r: ActivityFeedRow) =>
+    isLogged(r) && !!viewerId
     && r.created_by !== viewerId && ownerOf(r) !== viewerId
-    && !reviewedByMe.has(r.event_id)
+    && !answeredByMe.has(r.event_id)
 
   // Undefined (not false) means the push migration is not applied yet. Treating it as
   // "not pushed" is the safe reading: an empty queue, never the old firehose.
@@ -154,7 +159,7 @@ export function needsYou({
     (viewerRole === 'portfolio_manager' && r.push_to_pm === true)
     || (viewerRole === 'admin' && r.push_to_admin === true)
 
-  const requests = rows.filter((r) => reviewable(r) && pushedToMe(r)).sort(byEnteredDesc)
+  const requests = rows.filter((r) => unanswered(r) && pushedToMe(r)).sort(byEnteredDesc)
 
   const stale: StaleItem[] = board
     // Undefined means the home migration is not applied -- no signal, so no claim.
@@ -170,56 +175,21 @@ export function needsYou({
   return { requests, stale, total: requests.length + stale.length }
 }
 
-// ---------------------------------------------------------------------------
-// Team right now
-// ---------------------------------------------------------------------------
-
-export interface PersonNow {
-  userId: string
-  name: string
-  role: string | null
-  lastEntry: ActivityFeedRow | null
-  nextEvent: ActivityFeedRow | null
-  entries7d: number
-}
-
 /**
- * Per person: what they last logged and what they have booked next. People on the roster
- * with nothing in the window still appear -- "nothing logged" is itself the signal.
+ * The viewer's own pushes that nobody else has commented on yet. Their own comments do
+ * not count: adding context to a question is not an answer to it.
  */
-export function teamNow(
-  rows: ActivityFeedRow[], roster: RosterMember[] | null, now: Date = new Date()
-): PersonNow[] {
-  const todayIso = toDayString(now)
-  const people = new Map<string, PersonNow>()
-  const ensure = (userId: string, name: string, role: string | null) => {
-    let p = people.get(userId)
-    if (!p) {
-      p = { userId, name, role, lastEntry: null, nextEvent: null, entries7d: 0 }
-      people.set(userId, p)
-    }
-    return p
-  }
-
-  for (const m of roster ?? []) ensure(m.user_id, m.username ?? 'Unknown', m.role)
-
-  for (const r of rows) {
-    const id = ownerOf(r)
-    // With a roster, only people on it; without one (migration pending), whoever appears.
-    if (roster && !people.has(id)) continue
-    const p = ensure(id, ownerName(r), null)
-    if (isLogged(r)) {
-      if (!p.lastEntry || r.created_at > p.lastEntry.created_at) p.lastEntry = r
-      if (enteredWithin(r, now, 7 * DAY)) p.entries7d++
-    } else if (r.event_date >= todayIso) {
-      if (!p.nextEvent || r.event_date < p.nextEvent.event_date) p.nextEvent = r
-    }
-  }
-
-  return [...people.values()].sort((a, b) => {
-    if (!a.lastEntry || !b.lastEntry) return a.lastEntry ? -1 : b.lastEntry ? 1 : a.name.localeCompare(b.name)
-    return b.lastEntry.created_at.localeCompare(a.lastEntry.created_at)
-  })
+export function awaitingReply(
+  rows: ActivityFeedRow[], replies: CommentAuthor[], viewerId: string | null
+): ActivityFeedRow[] {
+  if (!viewerId) return []
+  const answered = new Set(
+    replies.filter((c) => c.author_id !== viewerId).map((c) => c.event_id)
+  )
+  return rows
+    .filter((r) => isLogged(r) && r.review_requested && ownerOf(r) === viewerId
+      && !answered.has(r.event_id))
+    .sort(byEnteredDesc)
 }
 
 // ---------------------------------------------------------------------------
@@ -230,8 +200,7 @@ export function teamNow(
  * 'Today' / 'Tomorrow' / 'Fri' (within a week) / '+9d'.
  *
  * The Coming Up panel that once owned this file section is gone; the Calendar tab
- * covers scheduling now. The label survives because the stock, analyst and team
- * panels each show a "next event" cell.
+ * covers scheduling now. The label survives for the bookings listed under an analyst.
  */
 export function whenLabel(iso: string, now: Date = new Date()): string {
   const ahead = -daysBetween(iso, now)
@@ -248,17 +217,48 @@ export function whenLabel(iso: string, now: Date = new Date()): string {
 // Lenses
 // ---------------------------------------------------------------------------
 
+/** What the home table is narrowed to. Null means "all" for that filter. */
+export interface LensFilters {
+  analystId: string | null
+  sector: string | null
+  coverageId: string | null
+  /** An EVENT_TYPES id ('1:1', 'concall', ...), not a raw kind. */
+  typeId: string | null
+}
+
+/** The entries that pass every filter that is set. */
+export function filterEntries(rows: ActivityFeedRow[], f: LensFilters): ActivityFeedRow[] {
+  return rows.filter((r) =>
+    (!f.analystId || ownerOf(r) === f.analystId)
+    && (!f.sector || r.sector === f.sector)
+    && (!f.coverageId || r.coverage_id === f.coverageId)
+    && (!f.typeId || eventTypeOf(r.kind, r.subtype).id === f.typeId))
+}
+
+/**
+ * The stocks to list, given rows built from already-filtered entries. An untouched name
+ * still shows under a sector or stock filter -- "nothing logged" is the signal -- but an
+ * analyst filter keeps only what they lead or logged on, and an activity filter only
+ * names with that activity.
+ */
+export function filterStocks(stocks: StockLensRow[], f: LensFilters): StockLensRow[] {
+  return stocks.filter((s) =>
+    (!f.sector || s.sector === f.sector)
+    && (!f.coverageId || s.coverageId === f.coverageId)
+    && (!f.analystId || s.leadAnalystId === f.analystId || !!s.lastEntry)
+    && (!f.typeId || !!s.lastEntry))
+}
+
 export interface StockLensRow {
   coverageId: string
   ticker: string
   companyName: string | null
+  sector: string | null
+  leadAnalystId: string | null
   leadAnalyst: string | null
   /** Logged entries entered in the last 7 days. */
   new7d: number
   lastEntry: ActivityFeedRow | null
-  /** Thesis impact of the most recent entry that recorded one. */
-  latestSignal: ThesisImpact | null
-  nextEvent: ActivityFeedRow | null
   daysSincePrimary: number | null | undefined
 }
 
@@ -266,16 +266,21 @@ export function stockLens(
   rows: ActivityFeedRow[], board: CoverageBoardRow[], now: Date = new Date(),
   scopeUserIds?: string[] | null
 ): StockLensRow[] {
-  const todayIso = toDayString(now)
   const byId = new Map<string, StockLensRow>()
-  const ensure = (id: string, ticker: string, name: string | null) => {
+  const ensure = (
+    id: string, ticker: string, name: string | null,
+    from?: Pick<ActivityFeedRow, 'sector' | 'lead_analyst_id'>
+  ) => {
     let s = byId.get(id)
     if (!s) {
       const cov = board.find((c) => c.id === id)
       s = {
         coverageId: id, ticker, companyName: name,
+        // The board is the source; an entry on a name the board no longer lists says the same.
+        sector: cov?.sector ?? from?.sector ?? null,
+        leadAnalystId: cov?.lead_analyst_id ?? from?.lead_analyst_id ?? null,
         leadAnalyst: cov?.lead_analyst_username ?? null,
-        new7d: 0, lastEntry: null, latestSignal: null, nextEvent: null,
+        new7d: 0, lastEntry: null,
         daysSincePrimary: cov?.last_primary_research_on === undefined ? undefined
           : cov.last_primary_research_on ? daysBetween(cov.last_primary_research_on, now) : null,
       }
@@ -294,14 +299,10 @@ export function stockLens(
 
   const sorted = [...rows].sort(byEnteredDesc)
   for (const r of sorted) {
-    const s = ensure(r.coverage_id, r.ticker, r.company_name)
-    if (isLogged(r)) {
-      if (enteredWithin(r, now, 7 * DAY)) s.new7d++
-      if (!s.lastEntry) s.lastEntry = r
-      if (!s.latestSignal && r.thesis_impact) s.latestSignal = r.thesis_impact
-    } else if (r.event_date >= todayIso && (!s.nextEvent || r.event_date < s.nextEvent.event_date)) {
-      s.nextEvent = r
-    }
+    if (!isLogged(r)) continue
+    const s = ensure(r.coverage_id, r.ticker, r.company_name, r)
+    if (enteredWithin(r, now, 7 * DAY)) s.new7d++
+    if (!s.lastEntry) s.lastEntry = r
   }
 
   return [...byId.values()].sort((a, b) =>
@@ -318,32 +319,18 @@ export interface AnalystLensRow {
   entries30d: number
   stocks30d: number
   lastEntry: ActivityFeedRow | null
-  upcoming: number
-  endorsed: number
-  rejected: number
-  /** Their logged entries from the last 30 days that nobody has reviewed yet. */
-  unreviewed: number
 }
 
 export function analystLens(
-  rows: ActivityFeedRow[], roster: RosterMember[] | null, reviews: EventReview[],
-  now: Date = new Date()
+  rows: ActivityFeedRow[], roster: RosterMember[] | null, now: Date = new Date()
 ): AnalystLensRow[] {
-  const todayIso = toDayString(now)
-  const verdicts = new Map<string, { endorse: number; reject: number }>()
-  for (const r of reviews) {
-    const v = verdicts.get(r.event_id) ?? { endorse: 0, reject: 0 }
-    v[r.verdict]++
-    verdicts.set(r.event_id, v)
-  }
-
   const people = new Map<string, AnalystLensRow & { stocks: Set<string> }>()
   const ensure = (userId: string, name: string, role: string | null) => {
     let p = people.get(userId)
     if (!p) {
       p = {
         userId, name, role, entries7d: 0, entries30d: 0, stocks30d: 0, lastEntry: null,
-        upcoming: 0, endorsed: 0, rejected: 0, unreviewed: 0, stocks: new Set(),
+        stocks: new Set(),
       }
       people.set(userId, p)
     }
@@ -355,17 +342,12 @@ export function analystLens(
     const id = ownerOf(r)
     if (roster && !people.has(id)) continue
     const p = ensure(id, ownerName(r), null)
-    if (!isLogged(r)) {
-      if (r.event_date >= todayIso) p.upcoming++
-      continue
-    }
+    if (!isLogged(r)) continue
     if (!p.lastEntry || r.created_at > p.lastEntry.created_at) p.lastEntry = r
     if (!enteredWithin(r, now, 30 * DAY)) continue
     p.entries30d++
     p.stocks.add(r.coverage_id)
     if (enteredWithin(r, now, 7 * DAY)) p.entries7d++
-    const v = verdicts.get(r.event_id)
-    if (v) { p.endorsed += v.endorse; p.rejected += v.reject } else p.unreviewed++
   }
 
   return [...people.values()]

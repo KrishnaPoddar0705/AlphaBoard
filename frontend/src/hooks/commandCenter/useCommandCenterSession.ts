@@ -31,8 +31,6 @@ export interface CommandCenterSession {
   isSolo: boolean
   /** Admins and portfolio managers default to seeing the whole desk's activity. */
   seesWholeDesk: boolean
-  /** Admin or PM: may endorse / reject. A UI hint only -- RLS decides per entry. */
-  canReviewAnything: boolean
 }
 
 interface AuthState {
@@ -103,8 +101,6 @@ export function useCommandCenterSession(): CommandCenterSession {
       role,
       isSolo: resolved && !organization,
       seesWholeDesk: role === 'admin' || role === 'portfolio_manager',
-      /** Admin or PM: may endorse / reject. A UI hint only -- RLS decides per entry. */
-      canReviewAnything: role === 'admin' || role === 'portfolio_manager',
     }
   }, [auth, organization, orgLoading])
 }

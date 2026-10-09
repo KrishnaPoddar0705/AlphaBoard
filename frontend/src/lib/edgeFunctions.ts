@@ -555,6 +555,26 @@ export async function createTeam(
 }
 
 /**
+ * Rename a team (org admin, team creator, or a portfolio manager of that team)
+ */
+export async function renameTeam(teamId: string, name: string): Promise<CreateTeamResponse> {
+  const headers = await getAuthHeaders();
+
+  const response = await fetch(`${EDGE_FUNCTION_URL}/update-team`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ teamId, name }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || error.details || 'Failed to rename team');
+  }
+
+  return response.json();
+}
+
+/**
  * Join a team within the user's organization
  */
 export async function joinTeam(teamId: string): Promise<{ success: boolean; message: string }> {

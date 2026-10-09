@@ -2,47 +2,41 @@ import { Fragment, useState } from 'react'
 import { ChevronDown, ChevronRight } from 'lucide-react'
 import TerminalPanel, { PanelEmpty } from './TerminalPanel'
 import EntryLine from './EntryLine'
-import ReviewBar from '../review/ReviewBar'
 import { eventTypeOf } from '@/lib/commandCenter/constants'
 import { formatDayShort } from '@/lib/commandCenter/format'
 import { ownerOf, relativeTime, whenLabel, type AnalystLensRow } from '@/lib/commandCenter/home'
-import type { ActivityFeedRow, EventReview } from '@/lib/commandCenter/types'
+import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 
 interface Props {
   rows: AnalystLensRow[]
   entries: ActivityFeedRow[]
-  reviewsFor: (eventId: string) => EventReview[]
   now: Date
   onOpen: (row: ActivityFeedRow) => void
   onFocusPerson: (userId: string) => void
   className?: string
 }
 
-const th = 'px-2 py-1 text-right font-mono text-[10px] font-normal uppercase tracking-[0.12em] text-[#6F6A60] whitespace-nowrap'
+const th = 'px-2 py-1 font-mono text-[10px] font-normal uppercase tracking-[0.12em] text-[#6F6A60] whitespace-nowrap'
 const num = 'px-2 py-1.5 text-right font-mono text-xs tabular-nums align-top'
 
-/** Each person in scope: output, breadth, reviews, and -- on opening -- their work and bookings. */
-export default function AnalystLens({ rows, entries, reviewsFor, now, onOpen, onFocusPerson, className }: Props) {
+/** Each person in scope: output, breadth, and -- on opening -- their work and bookings. */
+export default function AnalystLens({ rows, entries, now, onOpen, onFocusPerson, className }: Props) {
   const [open, setOpen] = useState<string | null>(null)
 
   return (
     <TerminalPanel code="ANL" title="By analyst · last 30d" count={rows.length} className={className}>
       {rows.length === 0 ? (
-        <PanelEmpty>No one in this scope.</PanelEmpty>
+        <PanelEmpty>No one matches.</PanelEmpty>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] border-collapse">
+          <table className="w-full min-w-[480px] border-collapse">
             <thead className="sticky top-0 z-10 bg-[#F1EEE0]">
               <tr>
                 <th className={`${th} text-left`}>Analyst</th>
-                <th className={th}>7d</th>
-                <th className={th}>30d</th>
-                <th className={th}>Stocks</th>
+                <th className={`${th} text-right`}>7d</th>
+                <th className={`${th} text-right`}>30d</th>
+                <th className={`${th} text-right`}>Stocks</th>
                 <th className={`${th} text-left`}>Last entry</th>
-                <th className={th}>Booked</th>
-                <th className={th} title="Endorsed">✓</th>
-                <th className={th} title="Rejected">✗</th>
-                <th className={th}>Unreviewed</th>
               </tr>
             </thead>
             <tbody>
@@ -78,14 +72,10 @@ export default function AnalystLens({ rows, entries, reviewsFor, now, onOpen, on
                           </>
                         ) : <span className="text-[#8B857A]">Nothing logged</span>}
                       </td>
-                      <td className={num}>{a.upcoming}</td>
-                      <td className={`${num} text-[#2F8F5B]`}>{a.endorsed}</td>
-                      <td className={`${num} text-[#B23B2A]`}>{a.rejected}</td>
-                      <td className={`${num} ${a.unreviewed ? 'text-[#B04E22]' : 'text-[#8B857A]'}`}>{a.unreviewed}</td>
                     </tr>
                     {isOpen && (
                       <tr className="bg-[#FBF7ED]">
-                        <td colSpan={9} className="border-t border-[#E3DDCF] p-0">
+                        <td colSpan={5} className="border-t border-[#E3DDCF] p-0">
                           <div className="grid gap-0 md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                             <div className="border-l-2 border-[#1C1B17] md:ml-6">
                               <p className="bg-[#F1EEE0] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6F6A60]">Recent entries</p>
@@ -94,10 +84,7 @@ export default function AnalystLens({ rows, entries, reviewsFor, now, onOpen, on
                               ) : (
                                 <ul>
                                   {logged.map((e) => (
-                                    <EntryLine
-                                      key={e.event_id} row={e} now={now} onOpen={onOpen}
-                                      actions={<ReviewBar event={e} reviews={reviewsFor(e.event_id)} compact />}
-                                    />
+                                    <EntryLine key={e.event_id} row={e} now={now} onOpen={onOpen} />
                                   ))}
                                 </ul>
                               )}

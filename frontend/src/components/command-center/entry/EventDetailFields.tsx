@@ -96,7 +96,7 @@ export default function EventDetailFields({
         Deliberately not behind a disclosure.
         These three decide whether the entry is ever seen again: the thesis signal is
         what What Changed reads, and the push targets are the only route into a
-        reviewer's queue. Collapsed, they were routinely missed -- so the 20-second log
+        PM's or an admin's queue. Collapsed, they were routinely missed -- so the 20-second log
         is now bought by keeping the fields terse, not by hiding them.
       */}
       <div className="flex flex-col gap-3 rounded-lg border border-[#E3DDCF] bg-[#FBF7ED] p-3">
@@ -137,7 +137,7 @@ export default function EventDetailFields({
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <label className={labelClass}>Push for review</label>
+          <label className={labelClass}>Push</label>
           {/*
             Opt-in escalation. Nothing reaches a PM's or an admin's queue unless it is
             pushed here, and the two targets are independent -- pushing to the PM does

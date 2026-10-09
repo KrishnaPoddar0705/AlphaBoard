@@ -23,6 +23,7 @@ import { latestCompletedKey, periodLabels } from '@/lib/commandCenter/periods'
 import type { EventTypeOption } from '@/lib/commandCenter/constants'
 import EventTypePicker from './EventTypePicker'
 import CoveragePicker from './CoveragePicker'
+import SvanViewField, { type SvanValues } from './SvanViewField'
 import EventDetailFields, { type DetailValues } from './EventDetailFields'
 import EventContactsField from './EventContactsField'
 
@@ -71,6 +72,7 @@ export default function LogEventSheet({
   const [eventDate, setEventDate] = useState(today())
   const [isScheduled, setIsScheduled] = useState(!!initialScheduled)
   const [kta, setKta] = useState('')
+  const [svan, setSvan] = useState<SvanValues>({ rating: null, view: '' })
   const [details, setDetails] = useState<DetailValues>(
     () => ({ ...EMPTY_DETAILS, periodLabel: initialPeriod ?? '' })
   )
@@ -211,11 +213,13 @@ export default function LogEventSheet({
         period_label: details.periodLabel || null,
         broker_id: details.brokerId,
         kta: kta || null,
+        svan_view: svan.view || null,
+        svan_rating: svan.rating,
         thesis_impact: details.thesisImpact,
         open_questions: details.openQuestions || null,
         analyst_id: userId,
         contact_ids: contactIds,
-        // A plan is not reviewable yet; only logged work gets pushed.
+        // A plan has nothing to ask about yet; only logged work gets pushed.
         push_to_pm: !isScheduled && details.pushToPm,
         push_to_admin: !isScheduled && details.pushToAdmin,
         review_note: details.reviewNote || null,
@@ -347,6 +351,8 @@ export default function LogEventSheet({
                 wantsPeriod={!!type.wantsPeriod}
                 periodOptions={periodOptions}
               />
+
+              <SvanViewField values={svan} onChange={setSvan} />
 
               <div className="flex flex-col gap-1.5">
                 <span className={labelClass}>Key takeaways</span>

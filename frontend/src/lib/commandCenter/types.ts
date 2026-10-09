@@ -35,6 +35,8 @@ export type EventSubtype =
 export type Attendance = 'yes' | 'no' | 'na'
 
 export type ThesisImpact = 'positive' | 'negative' | 'neutral'
+/** The Svan View meter, from most bearish to most bullish. */
+export type SvanRating = 'strong_sell' | 'sell' | 'neutral' | 'buy' | 'strong_buy'
 
 export type ContactDesignation =
   | 'IR' | 'CSO' | 'CFO' | 'MD' | 'CEO' | 'COO' | 'Chairman' | 'Other'
@@ -120,6 +122,8 @@ export interface CommandCenterEvent {
   review_note?: string | null
   push_to_pm?: boolean
   push_to_admin?: boolean
+  svan_view?: string | null
+  svan_rating?: SvanRating | null
 }
 
 /** A row of `cc_activity_feed` -- the event plus everything the UI shows beside it. */
@@ -166,6 +170,12 @@ export interface ActivityFeedRow {
   push_to_pm?: boolean
   push_to_admin?: boolean
   comment_count?: number
+  /**
+   * The analyst's own opinion and where they stand on the stock. Added by
+   * migration_command_center_svan_view.sql -- undefined on a database without it.
+   */
+  svan_view?: string | null
+  svan_rating?: SvanRating | null
 }
 
 /** A row of the `cc_search_events` RPC. `snippet` carries <mark> tags. */
@@ -247,6 +257,8 @@ export interface EventDraft {
   push_to_pm?: boolean
   push_to_admin?: boolean
   review_note?: string | null
+  svan_view?: string | null
+  svan_rating?: SvanRating | null
 }
 
 export interface ActivityFilters {
@@ -260,20 +272,13 @@ export interface ActivityFilters {
 }
 
 // ---------------------------------------------------------------------------
-// Reviews, comments and teams (database/migration_command_center_home.sql)
+// Comments and teams (database/migration_command_center_home.sql)
 // ---------------------------------------------------------------------------
 
-export type ReviewVerdict = 'endorse' | 'reject'
-
-export interface EventReview {
-  id: string
+/** Who has commented on which entry -- enough to tell whether a push was answered. */
+export interface CommentAuthor {
   event_id: string
-  reviewer_id: string
-  reviewer_username: string | null
-  verdict: ReviewVerdict
-  note: string | null
-  created_at: string
-  updated_at: string
+  author_id: string
 }
 
 export interface EventComment {

@@ -97,7 +97,8 @@ export interface NewCoverage {
   ticker: string
   company_name?: string | null
   market?: string | null
-  sector?: string | null
+  /** Required: every covered stock belongs to a sector (see lib/commandCenter/sectors.ts). */
+  sector: string
   lead_analyst_id?: string | null
 }
 
@@ -114,6 +115,8 @@ export interface NewCoverage {
  */
 export async function addCoverage(input: NewCoverage): Promise<Coverage> {
   const ticker = input.ticker.trim().toUpperCase()
+  const sector = input.sector.trim()
+  if (!sector) throw new Error(`Pick a sector for ${ticker} before adding it`)
 
   const existing = await supabase
     .from('cc_coverage')
@@ -125,7 +128,7 @@ export async function addCoverage(input: NewCoverage): Promise<Coverage> {
   if (existing.data) {
     // Re-adding something previously removed should revive it, not fail.
     if (existing.data.is_active) throw new Error(`${ticker} is already in your coverage`)
-    return updateCoverage(existing.data.id, { is_active: true })
+    return updateCoverage(existing.data.id, { is_active: true, sector })
   }
 
   const { data, error } = await supabase
@@ -134,7 +137,7 @@ export async function addCoverage(input: NewCoverage): Promise<Coverage> {
       ticker,
       company_name: input.company_name ?? null,
       market: input.market ?? null,
-      sector: input.sector ?? null,
+      sector,
       lead_analyst_id: input.lead_analyst_id ?? null,
     })
     .select()
@@ -262,6 +265,11 @@ export async function createEvent(input: CreateEventInput): Promise<CommandCente
             review_requested: true,
             review_note: event.review_note?.trim() || null,
           }
+        : {}),
+      // Likewise only when filled in, so logging works before
+      // migration_command_center_svan_view.sql is applied.
+      ...(event.svan_view?.trim() || event.svan_rating
+        ? { svan_view: event.svan_view?.trim() || null, svan_rating: event.svan_rating ?? null }
         : {}),
     })
     .select()

@@ -37,8 +37,8 @@ function Toggle({ label, on, busy, compact, onClick }: {
  * logged entry: the stock timeline, the activity feed and the home drawer.
  *
  * Toggling off withdraws the push, which is why review_requested is recomputed from both
- * targets rather than simply cleared. A plan is not reviewable yet, so scheduled entries
- * render nothing.
+ * targets rather than simply cleared. A plan has nothing to ask about yet, so scheduled
+ * entries render nothing.
  */
 export default function PushControl({ event, compact = false }: Props) {
   const update = useUpdateEvent()

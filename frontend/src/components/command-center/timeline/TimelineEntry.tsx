@@ -3,23 +3,20 @@ import { ChevronDown, ChevronRight, MessageSquare, Trash2 } from 'lucide-react'
 import ThesisMarkdown from '@/components/thesis/ThesisMarkdown'
 import EventKindBadge from '../shared/EventKindBadge'
 import AttachmentList from '../shared/AttachmentList'
-import ReviewBar from '../review/ReviewBar'
 import EventComments from '../review/EventComments'
-import ReviewRequestPanel from '../review/ReviewRequestPanel'
+import PushNote from '../review/PushNote'
 import PushControl from '../review/PushControl'
 import MetWith from '../shared/MetWith'
+import SvanView from '../shared/SvanView'
 import type { EventContactTag } from '@/lib/commandCenter/api'
 import { formatDay } from '@/lib/commandCenter/format'
-import { THESIS_IMPACTS } from '@/lib/commandCenter/constants'
+import { THESIS_IMPACTS, svanRatingOf } from '@/lib/commandCenter/constants'
 import { useDeleteEvent } from '@/hooks/commandCenter/useCommandCenterEvents'
-import type { ActivityFeedRow, EventAttachment, EventReview } from '@/lib/commandCenter/types'
+import type { ActivityFeedRow, EventAttachment } from '@/lib/commandCenter/types'
 
 interface Props {
   event: ActivityFeedRow
   attachments: EventAttachment[]
-  reviews?: EventReview[]
-  /** Verdicts still loading: hold the review banner's slot instead of guessing. */
-  reviewsLoading?: boolean
   metWith?: EventContactTag['contact'][]
   metLoading?: boolean
   canDelete: boolean
@@ -30,10 +27,10 @@ interface Props {
 }
 
 export default function TimelineEntry({
-  event, attachments, reviews = [], reviewsLoading, metWith, metLoading, canDelete, focused, focusKey,
+  event, attachments, metWith, metLoading, canDelete, focused, focusKey,
 }: Props) {
   // Entries with a body start collapsed so a long timeline stays scannable.
-  const hasBody = !!(event.kta || event.open_questions)
+  const hasBody = !!(event.kta || event.open_questions || event.svan_view || event.svan_rating)
   const [open, setOpen] = useState(!hasBody)
   const deleteEvent = useDeleteEvent()
   const ref = useRef<HTMLElement>(null)
@@ -57,6 +54,7 @@ export default function TimelineEntry({
   }, [focused, focusKey])
 
   const impact = THESIS_IMPACTS.find((t) => t.value === event.thesis_impact)
+  const svan = svanRatingOf(event.svan_rating)
 
   return (
     <article
@@ -83,6 +81,11 @@ export default function TimelineEntry({
             {impact.label}
           </span>
         )}
+        {svan && (
+          <span className="rounded px-1.5 font-mono text-[10px] text-[#F7F2E6]" style={{ backgroundColor: svan.color }}>
+            {svan.label}
+          </span>
+        )}
         <span className="ml-auto font-mono text-[11px] text-[#6F6A60]">
           {event.analyst_username ?? event.created_by_username ?? ''}
         </span>
@@ -105,6 +108,7 @@ export default function TimelineEntry({
 
       {open && (
         <div className="mt-2 flex flex-col gap-2 pl-6">
+          <SvanView event={event} />
           {event.kta && (
             <div className="font-mono text-xs leading-relaxed text-[#1C1B17]">
               <ThesisMarkdown content={event.kta} />
@@ -124,15 +128,13 @@ export default function TimelineEntry({
 
       {event.review_requested && !event.is_scheduled && (
         <div className="mt-2">
-          <ReviewRequestPanel event={event} reviews={reviews} loading={reviewsLoading} />
+          <PushNote event={event} />
         </div>
       )}
 
       {!event.is_scheduled && (
         <footer className="mt-2 flex flex-col gap-2 border-t border-[#E3DDCF] pt-2">
           <div className="flex flex-wrap items-center gap-2">
-            {/* A requested review is answered in the panel above; don't offer it twice. */}
-            {!event.review_requested && <ReviewBar event={event} reviews={reviews} compact />}
             <PushControl event={event} compact />
             <button
               type="button"

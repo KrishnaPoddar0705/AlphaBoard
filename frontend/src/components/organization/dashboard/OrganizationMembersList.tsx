@@ -1,4 +1,4 @@
-import { Trash2 } from 'lucide-react';
+import { Check, Plus, Trash2 } from 'lucide-react';
 import type { OrgRole } from '../../../hooks/useOrganization';
 import { formatDate, type OrganizationUser } from './types';
 
@@ -24,11 +24,21 @@ const ROLE_BADGE_CLASS: Partial<Record<OrgRole, string>> = {
 export default function OrganizationMembersList({
   users,
   currentUserId,
+  teams,
+  teamIdsByUser,
+  busyKey,
+  onToggleTeam,
   onChangeRole,
   onRemove,
 }: {
   users: OrganizationUser[];
   currentUserId?: string;
+  /** Every team in the organization, offered as a toggle on each member. */
+  teams: Array<{ id: string; name: string }>;
+  teamIdsByUser: Map<string, Set<string>>;
+  /** `${userId}:${teamId}` of the toggle being saved, to disable just that chip. */
+  busyKey: string | null;
+  onToggleTeam: (userId: string, teamId: string, isMember: boolean) => void;
   onChangeRole: (userId: string, username: string, newRole: OrgRole) => void;
   onRemove: (userId: string, username: string) => void;
 }) {
@@ -65,6 +75,37 @@ export default function OrganizationMembersList({
                   <div className="text-xs text-[var(--text-secondary)] mt-1">
                     Joined {formatDate(user.joinedAt)}
                   </div>
+                  {/* One chip per team: filled when they are on it, tap to add or remove. */}
+                  {teams.length > 0 && (
+                    <div
+                      className="mt-2 flex flex-wrap items-center gap-1.5"
+                      role="group"
+                      aria-label={`Teams for ${user.username || 'this user'}`}
+                    >
+                      <span className="text-xs text-[var(--text-secondary)]">Teams</span>
+                      {teams.map((team) => {
+                        const isMember = teamIdsByUser.get(user.userId)?.has(team.id) ?? false;
+                        return (
+                          <button
+                            key={team.id}
+                            type="button"
+                            aria-pressed={isMember}
+                            disabled={busyKey === `${user.userId}:${team.id}`}
+                            onClick={() => onToggleTeam(user.userId, team.id, isMember)}
+                            title={isMember ? `Remove from ${team.name}` : `Add to ${team.name}`}
+                            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors disabled:opacity-50 ${
+                              isMember
+                                ? 'bg-blue-500/20 text-blue-400 border-blue-500/40'
+                                : 'border-dashed border-[var(--border-color)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
+                            }`}
+                          >
+                            {isMember ? <Check className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                            {team.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* An admin cannot change or remove themselves. Losing your own admin

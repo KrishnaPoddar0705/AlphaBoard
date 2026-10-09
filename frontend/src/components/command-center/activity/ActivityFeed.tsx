@@ -1,11 +1,8 @@
-import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Radio } from 'lucide-react'
 import EventKindBadge from '../shared/EventKindBadge'
 import EmptyState from '../shared/EmptyState'
 import { EntryListSkeleton } from '../shared/Skeleton'
-import ReviewStatus from '../review/ReviewStatus'
-import { useReviews } from '@/hooks/commandCenter/useHome'
 import { AttachmentCount } from '../shared/AttachmentList'
 import Snippet from '../shared/Snippet'
 import { formatDay, groupByMonth } from '@/lib/commandCenter/format'
@@ -13,7 +10,7 @@ import { THESIS_IMPACTS } from '@/lib/commandCenter/constants'
 import { useActivityFeed, useEventSearch } from '@/hooks/commandCenter/useActivityFeed'
 import { useEventContacts } from '@/hooks/commandCenter/useCommandCenterEvents'
 import MetWith from '../shared/MetWith'
-import type { ActivityFilters, EventReview } from '@/lib/commandCenter/types'
+import type { ActivityFilters } from '@/lib/commandCenter/types'
 
 function ImpactDot({ impact }: { impact: string | null }) {
   if (!impact) return null
@@ -39,16 +36,7 @@ export default function ActivityFeed({ filters }: { filters: ActivityFilters }) 
   const feed = useActivityFeed(filters)
   const search = useEventSearch(filters)
 
-  // Verdicts for the rows on screen, so a requested review reads "reviewed" once answered.
-  const reviewIds = useMemo(() => (feed.data?.rows ?? []).map((r) => r.event_id), [feed.data])
-  const { data: reviews, isPending: reviewsPending } = useReviews(reviewIds)
   const met = useEventContacts(feed.data?.rows ?? [])
-  const reviewsLoading = reviewIds.length > 0 && reviewsPending
-  const reviewsByEvent = useMemo(() => {
-    const map = new Map<string, EventReview[]>()
-    for (const r of reviews ?? []) map.set(r.event_id, [...(map.get(r.event_id) ?? []), r])
-    return map
-  }, [reviews])
 
   if (searching ? search.isPending : feed.isPending) {
     return <EntryListSkeleton count={5} />
@@ -119,11 +107,11 @@ export default function ActivityFeed({ filters }: { filters: ActivityFilters }) 
                     </span>
                     <ImpactDot impact={e.thesis_impact} />
                     <span className="ml-auto flex items-center gap-2">
-                      <ReviewStatus
-                        requested={e.review_requested}
-                        reviews={reviewsByEvent.get(e.event_id) ?? []}
-                        loading={reviewsLoading}
-                      />
+                      {e.review_requested && (
+                        <span className="rounded border border-dashed border-[#D06030] px-1 font-mono text-[10px] text-[#B04E22]">
+                          pushed
+                        </span>
+                      )}
                       {(e.comment_count ?? 0) > 0 && (
                         <span className="font-mono text-[10px] text-[#6F6A60]">{e.comment_count} comments</span>
                       )}

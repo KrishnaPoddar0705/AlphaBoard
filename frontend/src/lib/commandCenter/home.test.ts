@@ -1,9 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import {
-  summarize, whatChanged, needsYou, teamNow, whenLabel, stockLens, analystLens,
-  weeklyCounts, relativeTime,
+  summarize, whatChanged, needsYou, awaitingReply, whenLabel, stockLens, analystLens,
+  weeklyCounts, relativeTime, filterEntries, filterStocks, type LensFilters,
 } from './home'
-import type { ActivityFeedRow, CoverageBoardRow, EventReview, RosterMember } from './types'
+import type { ActivityFeedRow, CoverageBoardRow } from './types'
 
 const NOW = new Date(2026, 8, 17, 9, 0, 0) // Thu 17 Sep 2026, 09:00 local
 const hoursAgo = (h: number) => new Date(NOW.getTime() - h * 3_600_000).toISOString()
@@ -39,11 +39,6 @@ function coverage(over: Partial<CoverageBoardRow> = {}): CoverageBoardRow {
   } as CoverageBoardRow
 }
 
-const review = (over: Partial<EventReview>): EventReview => ({
-  id: 'r', event_id: 'e', reviewer_id: 'pm', reviewer_username: 'PM', verdict: 'endorse',
-  note: null, created_at: hoursAgo(1), updated_at: hoursAgo(1), ...over,
-})
-
 describe('relativeTime', () => {
   it('reads minutes, hours, yesterday and days', () => {
     expect(relativeTime(hoursAgo(0.7), NOW)).toBe('42m ago')
@@ -75,6 +70,12 @@ describe('summarize', () => {
 })
 
 describe('whatChanged', () => {
+  it('includes an entry with a Svan rating even when the thesis did not move', () => {
+    const rated = row({ thesis_impact: 'neutral', svan_rating: 'buy' })
+    expect(whatChanged([rated, row({ thesis_impact: 'neutral' })], NOW).map((c) => c.row.event_id))
+      .toEqual([rated.event_id])
+  })
+
   it('keeps positive and negative thesis impacts from the last week, newest first', () => {
     const older = row({ thesis_impact: 'negative', created_at: hoursAgo(30) })
     const newer = row({ thesis_impact: 'positive', created_at: hoursAgo(1) })
@@ -93,11 +94,21 @@ describe('needsYou', () => {
     const pushed = row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: true })
     const unpushed = row({ analyst_id: 'rahul', created_by: 'rahul' })
     const mine = row({ analyst_id: 'pm', created_by: 'pm', push_to_pm: true })
-    const reviewed = row({ analyst_id: 'rahul', created_by: 'rahul', push_to_pm: true })
+    const answered = row({ analyst_id: 'rahul', created_by: 'rahul', push_to_pm: true })
     const out = needsYou({
-      rows: [pushed, unpushed, mine, reviewed],
-      reviews: [review({ event_id: reviewed.event_id, reviewer_id: 'pm' })],
-      board: [], viewerId: 'pm', canReview: true, viewerRole: 'portfolio_manager', now: NOW,
+      rows: [pushed, unpushed, mine, answered],
+      replies: [{ event_id: answered.event_id, author_id: 'pm' }],
+      board: [], viewerId: 'pm', viewerRole: 'portfolio_manager', now: NOW,
+    })
+    expect(out.requests.map((r) => r.event_id)).toEqual([pushed.event_id])
+  })
+
+  it('keeps a pushed entry queued until the viewer themselves replies', () => {
+    const pushed = row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: true })
+    const out = needsYou({
+      rows: [pushed],
+      replies: [{ event_id: pushed.event_id, author_id: 'aditi' }],
+      board: [], viewerId: 'pm', viewerRole: 'portfolio_manager', now: NOW,
     })
     expect(out.requests.map((r) => r.event_id)).toEqual([pushed.event_id])
   })
@@ -105,7 +116,7 @@ describe('needsYou', () => {
   it('never queues an entry nobody pushed, however recent', () => {
     const out = needsYou({
       rows: [row({ analyst_id: 'aditi', created_by: 'aditi', created_at: hoursAgo(1) })],
-      reviews: [], board: [], viewerId: 'pm', canReview: true,
+      replies: [], board: [], viewerId: 'pm',
       viewerRole: 'portfolio_manager', now: NOW,
     })
     expect(out.requests).toEqual([])
@@ -120,7 +131,7 @@ describe('needsYou', () => {
     })
     const args = {
       rows: [toPm, toAdmin, toBoth],
-      reviews: [], board: [], viewerId: 'viewer', canReview: true, now: NOW,
+      replies: [], board: [], viewerId: 'viewer', now: NOW,
     }
     const pm = needsYou({ ...args, viewerRole: 'portfolio_manager' })
     const admin = needsYou({ ...args, viewerRole: 'admin' })
@@ -134,16 +145,16 @@ describe('needsYou', () => {
   it('reads a missing push column as not pushed, so a pre-migration database is quiet', () => {
     const out = needsYou({
       rows: [row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: undefined })],
-      reviews: [], board: [], viewerId: 'pm', canReview: true,
+      replies: [], board: [], viewerId: 'pm',
       viewerRole: 'portfolio_manager', now: NOW,
     })
     expect(out.requests).toEqual([])
   })
 
-  it('shows analysts no review queue', () => {
+  it('shows analysts no pushed queue', () => {
     const out = needsYou({
       rows: [row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: true })],
-      reviews: [], board: [], viewerId: 'krishna', canReview: false,
+      replies: [], board: [], viewerId: 'krishna',
       viewerRole: 'analyst', now: NOW,
     })
     expect(out.requests).toEqual([])
@@ -155,13 +166,13 @@ describe('needsYou', () => {
       coverage({ id: 'old', last_primary_research_on: '2026-08-07' }),     // 41 days
       coverage({ id: 'never', last_primary_research_on: null }),
     ]
-    const out = needsYou({ rows: [], reviews: [], board, viewerId: 'pm', canReview: true, viewerRole: 'portfolio_manager', now: NOW })
+    const out = needsYou({ rows: [], replies: [], board, viewerId: 'pm', viewerRole: 'portfolio_manager', now: NOW })
     expect(out.stale.map((s) => [s.coverage.id, s.days])).toEqual([['never', null], ['old', 41]])
   })
 
   it('makes no staleness claim before the migration adds the column', () => {
     const board = [coverage({ last_primary_research_on: undefined })]
-    const out = needsYou({ rows: [], reviews: [], board, viewerId: 'pm', canReview: true, viewerRole: 'portfolio_manager', now: NOW })
+    const out = needsYou({ rows: [], replies: [], board, viewerId: 'pm', viewerRole: 'portfolio_manager', now: NOW })
     expect(out.stale).toEqual([])
   })
 
@@ -172,40 +183,10 @@ describe('needsYou', () => {
       coverage({ id: 'unowned', lead_analyst_id: null }),
     ]
     const out = needsYou({
-      rows: [], reviews: [], board, viewerId: 'pm', canReview: true,
+      rows: [], replies: [], board, viewerId: 'pm',
       viewerRole: 'portfolio_manager', scopeUserIds: ['aditi'], now: NOW,
     })
     expect(out.stale.map((s) => s.coverage.id)).toEqual(['ours'])
-  })
-})
-
-describe('teamNow', () => {
-  const roster: RosterMember[] = [
-    { user_id: 'krishna', username: 'Krishna', role: 'analyst', team_ids: [] },
-    { user_id: 'neha', username: 'Neha', role: 'analyst', team_ids: [] },
-  ]
-
-  it('pairs each person with their last entry and next booking', () => {
-    const last = row({ analyst_id: 'krishna', created_at: hoursAgo(1) })
-    const next = row({ analyst_id: 'krishna', is_scheduled: true, event_date: '2026-09-18' })
-    const later = row({ analyst_id: 'krishna', is_scheduled: true, event_date: '2026-09-30' })
-    const people = teamNow([row({ analyst_id: 'krishna', created_at: hoursAgo(5) }), last, later, next], roster, NOW)
-    expect(people[0].userId).toBe('krishna')
-    expect(people[0].lastEntry?.event_id).toBe(last.event_id)
-    expect(people[0].nextEvent?.event_id).toBe(next.event_id)
-    expect(people[0].entries7d).toBe(2)
-  })
-
-  it('lists people with nothing logged last, with no invented status', () => {
-    const people = teamNow([row({ analyst_id: 'krishna' })], roster, NOW)
-    expect(people[1]).toEqual({
-      userId: 'neha', name: 'Neha', role: 'analyst', lastEntry: null, nextEvent: null, entries7d: 0,
-    })
-  })
-
-  it('ignores entries from people outside the roster', () => {
-    expect(teamNow([row({ analyst_id: 'stranger', created_by: 'stranger' })], roster, NOW)
-      .map((p) => p.userId)).toEqual(['krishna', 'neha'])
   })
 })
 
@@ -217,7 +198,7 @@ describe('whenLabel', () => {
 })
 
 describe('stockLens', () => {
-  it('counts new research and picks the latest signal and next event per stock', () => {
+  it('counts new research per stock and ignores bookings', () => {
     const board = [coverage({ id: 'bse', last_primary_research_on: '2026-09-15' }),
       coverage({ id: 'quiet', ticker: 'QUIET', lead_analyst_id: 'krishna' })]
     const rows = [
@@ -226,23 +207,77 @@ describe('stockLens', () => {
       row({ coverage_id: 'bse', is_scheduled: true, event_date: '2026-09-26' }),
     ]
     const [bse, quiet] = stockLens(rows, board, NOW)
-    expect(bse).toMatchObject({ ticker: 'BSE.NS', new7d: 2, latestSignal: 'positive', daysSincePrimary: 2 })
-    expect(bse.nextEvent?.event_date).toBe('2026-09-26')
+    expect(bse).toMatchObject({ ticker: 'BSE.NS', new7d: 2, daysSincePrimary: 2 })
     expect(quiet).toMatchObject({ ticker: 'QUIET', new7d: 0, lastEntry: null, daysSincePrimary: null })
   })
 })
 
+describe('lens filters', () => {
+  const none: LensFilters = { analystId: null, sector: null, coverageId: null, typeId: null }
+  const board = [
+    coverage({ id: 'bse', ticker: 'BSE.NS', sector: 'Exchanges', lead_analyst_id: 'krishna' }),
+    coverage({ id: 'ncc', ticker: 'NCC.NS', sector: 'Infra', lead_analyst_id: 'aditi' }),
+    coverage({ id: 'dlf', ticker: 'DLF.NS', sector: 'Infra', lead_analyst_id: 'krishna' }),
+  ]
+  const call = row({ coverage_id: 'bse', sector: 'Exchanges', analyst_id: 'krishna', kind: 'concall' })
+  const visit = row({
+    coverage_id: 'ncc', ticker: 'NCC.NS', sector: 'Infra', analyst_id: 'aditi',
+    kind: 'management_meeting', subtype: 'plant_visit',
+  })
+  const tickers = (f: LensFilters) =>
+    filterStocks(stockLens(filterEntries([call, visit], f), board, NOW), f).map((s) => s.ticker).sort()
+
+  it('narrows entries by analyst, sector, stock and activity type', () => {
+    const ids = (f: Partial<LensFilters>) =>
+      filterEntries([call, visit], { ...none, ...f }).map((r) => r.event_id)
+    expect(ids({})).toEqual([call.event_id, visit.event_id])
+    expect(ids({ analystId: 'aditi' })).toEqual([visit.event_id])
+    expect(ids({ sector: 'Exchanges' })).toEqual([call.event_id])
+    expect(ids({ coverageId: 'ncc' })).toEqual([visit.event_id])
+    expect(ids({ typeId: 'plant_visit' })).toEqual([visit.event_id])
+    expect(ids({ typeId: 'concall', analystId: 'aditi' })).toEqual([])
+  })
+
+  it('keeps untouched names under a sector filter', () => {
+    expect(tickers({ ...none, sector: 'Infra' })).toEqual(['DLF.NS', 'NCC.NS'])
+  })
+
+  it('lists what an analyst leads or logged on', () => {
+    expect(tickers({ ...none, analystId: 'krishna' })).toEqual(['BSE.NS', 'DLF.NS'])
+  })
+
+  it('lists only names with the chosen activity', () => {
+    expect(tickers({ ...none, typeId: 'plant_visit' })).toEqual(['NCC.NS'])
+  })
+})
+
+describe('awaitingReply', () => {
+  it('lists the viewer\'s own pushes until someone else replies', () => {
+    const open = row({ analyst_id: 'aditi', created_by: 'aditi', review_requested: true })
+    const selfOnly = row({ analyst_id: 'aditi', created_by: 'aditi', review_requested: true })
+    const answered = row({ analyst_id: 'aditi', created_by: 'aditi', review_requested: true })
+    const notPushed = row({ analyst_id: 'aditi', created_by: 'aditi' })
+    const someoneElses = row({ analyst_id: 'rahul', created_by: 'rahul', review_requested: true })
+    const out = awaitingReply(
+      [open, selfOnly, answered, notPushed, someoneElses],
+      [
+        { event_id: selfOnly.event_id, author_id: 'aditi' },
+        { event_id: answered.event_id, author_id: 'pm' },
+      ],
+      'aditi',
+    )
+    expect(out.map((r) => r.event_id).sort()).toEqual([open.event_id, selfOnly.event_id].sort())
+  })
+})
+
 describe('analystLens', () => {
-  it('tallies entries, stocks and verdicts per person', () => {
+  it('tallies entries and stocks per person', () => {
     const a = row({ analyst_id: 'aditi', coverage_id: 'bse', created_at: hoursAgo(3) })
     const b = row({ analyst_id: 'aditi', coverage_id: 'cdsl', created_at: hoursAgo(24 * 10) })
     const c = row({ analyst_id: 'aditi', coverage_id: 'cdsl', created_at: hoursAgo(24 * 12) })
-    const lens = analystLens([a, b, c], null, [
-      review({ event_id: a.event_id, verdict: 'endorse' }),
-      review({ event_id: b.event_id, verdict: 'reject' }),
-    ], NOW)
+    const lens = analystLens([a, b, c], null, NOW)
     expect(lens[0]).toMatchObject({
-      userId: 'aditi', entries7d: 1, entries30d: 3, stocks30d: 2, endorsed: 1, rejected: 1, unreviewed: 1,
+      userId: 'aditi', entries7d: 1, entries30d: 3, stocks30d: 2,
     })
   })
 })
