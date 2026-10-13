@@ -10,7 +10,7 @@ import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Any
 from bs4 import BeautifulSoup
-from openai import OpenAI
+from .llm import make_openai_client, trace
 from dotenv import load_dotenv
 from urllib.parse import quote_plus
 import ssl
@@ -25,7 +25,7 @@ if hasattr(ssl, '_create_unverified_context'):
 load_dotenv()
 
 # Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = make_openai_client()
 
 # API Keys
 NEWSAPI_KEY = os.getenv("NEWSAPI_KEY", "")
@@ -344,6 +344,7 @@ Content: {article_content[:2000]}
 Provide a simple explanation (3-4 sentences) that a 12-year-old would understand."""
 
         response = client.chat.completions.create(
+            **trace("news_summary"),
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a financial news analyst providing concise, accurate summaries."},

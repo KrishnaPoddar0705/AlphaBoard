@@ -11,6 +11,7 @@ import type {
 } from '@/lib/commandCenter/types'
 import { useCommandCenterSession } from './useCommandCenterSession'
 import { ccKeys, NO_SESSION_MESSAGE } from './useCoverage'
+import { track } from '@/lib/analytics'
 
 export function useCoverageEvents(coverageId: string | undefined) {
   const { ready } = useCommandCenterSession()
@@ -73,10 +74,23 @@ export function useCreateEvent() {
       if (!authenticated) throw new Error(NO_SESSION_MESSAGE)
       return createEvent(input)
     },
-    onSuccess: () => {
+    onSuccess: (_row, input) => {
       // Prefix invalidation: the board's health numbers, the stock timeline, the
       // calendar and the org activity feed all move when one entry lands.
       qc.invalidateQueries({ queryKey: ccKeys.all })
+      track('cc_entry_logged', {
+        kind: input.kind,
+        subtype: input.subtype ?? null,
+        is_scheduled: !!input.is_scheduled,
+        thesis_impact: input.thesis_impact ?? null,
+        svan_rating: input.svan_rating ?? null,
+        has_svan_view: !!input.svan_view,
+        has_takeaways: !!input.kta,
+        attachment_count: input.attachments?.length ?? 0,
+        contact_count: input.contact_ids?.length ?? 0,
+        pushed_to_pm: !!input.push_to_pm,
+        pushed_to_admin: !!input.push_to_admin,
+      })
     },
     onError: (err) => {
       toast.error(err.message)
@@ -98,7 +112,12 @@ export function useUpdateEvent() {
       if (contactIds) await setEventContacts(id, contactIds)
       return row
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ccKeys.all }),
+    onSuccess: (_row, { patch }) => {
+      qc.invalidateQueries({ queryKey: ccKeys.all })
+      if (patch.push_to_pm !== undefined || patch.push_to_admin !== undefined) {
+        track('cc_entry_pushed', { to_pm: !!patch.push_to_pm, to_admin: !!patch.push_to_admin })
+      }
+    },
     onError: (err) => toast.error(err.message),
   })
 }
@@ -110,6 +129,7 @@ export function useDeleteEvent() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ccKeys.all })
       toast.success('Entry deleted')
+      track('cc_entry_deleted', {})
     },
     onError: (err) => toast.error(err.message),
   })

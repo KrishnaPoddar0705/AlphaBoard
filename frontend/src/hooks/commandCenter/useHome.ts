@@ -10,6 +10,7 @@ import type {
 } from '@/lib/commandCenter/types'
 import { useCommandCenterSession } from './useCommandCenterSession'
 import { ccKeys } from './useCoverage'
+import { track } from '@/lib/analytics'
 
 const homeKeys = {
   teams: () => [...ccKeys.all, 'home', 'teams'] as const,
@@ -92,6 +93,7 @@ export function useAddComment(eventId: string) {
     onSuccess: () => {
       // The whole comments subtree: this thread, and who has answered which push.
       qc.invalidateQueries({ queryKey: [...ccKeys.all, 'comments'] })
+      track('cc_comment_added', {})
       // comment_count lives on the feed rows.
       qc.invalidateQueries({ queryKey: [...ccKeys.all, 'home'] })
       qc.invalidateQueries({ queryKey: [...ccKeys.all, 'events'] })

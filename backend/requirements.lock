@@ -12,6 +12,8 @@ anyio==4.14.2
     #   watchfiles
 apscheduler==3.11.3
     # via -r requirements.txt
+backoff==2.2.1
+    # via posthog
 beautifulsoup4==4.15.0
     # via
     #   -r requirements.txt
@@ -39,7 +41,9 @@ deprecation==2.1.0
     #   postgrest
     #   storage3
 distro==1.9.0
-    # via openai
+    # via
+    #   openai
+    #   posthog
 fastapi==0.141.1
     # via -r requirements.txt
 feedparser==6.0.14
@@ -102,6 +106,8 @@ platformdirs==4.11.2
     # via yfinance
 postgrest==2.31.0
     # via supabase
+posthog==7.68.0
+    # via -r requirements.txt
 propcache==0.5.2
     # via yarl
 protobuf==7.35.1
@@ -136,6 +142,7 @@ realtime==2.31.0
 requests==2.34.2
     # via
     #   -r requirements.txt
+    #   posthog
     #   yfinance
 six==1.17.0
     # via python-dateutil
@@ -162,6 +169,7 @@ typing-extensions==4.16.0
     #   beautifulsoup4
     #   fastapi
     #   openai
+    #   posthog
     #   pydantic
     #   pydantic-core
     #   realtime

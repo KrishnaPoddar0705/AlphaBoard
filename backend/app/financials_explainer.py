@@ -3,12 +3,12 @@ Fast AI explanation for financial statements using lightweight models
 """
 import os
 from typing import Dict, Any, List
-from openai import OpenAI
+from .llm import make_openai_client, trace
 from dotenv import load_dotenv
 
 load_dotenv()
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = make_openai_client()
 
 def explain_financials(ticker: str, income_data: List[Dict[str, Any]]) -> Dict[str, str]:
     """
@@ -57,6 +57,7 @@ Provide a brief, professional explanation highlighting:
 Keep it under 100 words, professional tone."""
 
         response = client.chat.completions.create(
+            **trace("financials_explainer"),
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a financial analyst providing concise explanations of income statements."},

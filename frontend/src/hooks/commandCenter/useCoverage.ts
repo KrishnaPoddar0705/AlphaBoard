@@ -6,6 +6,7 @@ import {
 } from '@/lib/commandCenter/api'
 import type { Coverage, CoverageBoardRow } from '@/lib/commandCenter/types'
 import { useCommandCenterSession } from './useCommandCenterSession'
+import { track } from '@/lib/analytics'
 
 /**
  * Shown when supabase-js has no access token. Names the cause, because the underlying
@@ -59,9 +60,10 @@ export function useAddCoverage() {
       if (!authenticated) throw new Error(NO_SESSION_MESSAGE)
       return addCoverage(input)
     },
-    onSuccess: (row) => {
+    onSuccess: (row, input) => {
       qc.invalidateQueries({ queryKey: ccKeys.all })
       toast.success(`${row.ticker} added to coverage`)
+      track('cc_coverage_added', { ticker: row.ticker, sector: input.sector })
     },
     onError: (err) => toast.error(err.message),
   })
@@ -87,6 +89,7 @@ export function useArchiveCoverage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ccKeys.all })
       toast.success('Removed from coverage')
+      track('cc_coverage_archived', {})
     },
     onError: (err) => toast.error(err.message),
   })

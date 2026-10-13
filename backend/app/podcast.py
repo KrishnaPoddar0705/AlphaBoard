@@ -7,14 +7,14 @@ import os
 import json
 import base64
 from typing import Dict, List, Any, Optional
-from openai import OpenAI
+from .llm import make_openai_client, trace
 from dotenv import load_dotenv
 from .news import get_company_name_from_ticker
 
 load_dotenv()
 
 # Initialize OpenAI client
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+client = make_openai_client()
 
 # FinPod AI System Prompt
 FINPOD_SYSTEM_PROMPT = """You are "FinPod AI", a financial-expert podcast generator for a stock-analysis dashboard.
@@ -191,6 +191,7 @@ def generate_podcast_script(
 
         # Call GPT-4o-mini
         response = client.chat.completions.create(
+            **trace("podcast_script"),
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": FINPOD_SYSTEM_PROMPT},

@@ -6,7 +6,7 @@ import httpx
 from dotenv import load_dotenv
 import time
 import json
-from openai import OpenAI
+from .llm import make_openai_client, trace
 
 load_dotenv()
 
@@ -16,7 +16,7 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Initialize OpenAI client
 openai_client = None
 if OPENAI_API_KEY:
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    openai_client = make_openai_client(OPENAI_API_KEY)
 
 # Simple in-memory cache
 # Structure: { "key": { "data": ..., "expires": timestamp } }
@@ -725,6 +725,7 @@ Respond ONLY with valid JSON in this exact format:
         
         # Call OpenAI API
         response = openai_client.chat.completions.create(
+            **trace("investment_thesis"),
             model="gpt-4o",  # Using latest GPT-4 model
             messages=[
                 {"role": "system", "content": "You are an expert equity research analyst providing investment analysis. Always respond with valid JSON only."},

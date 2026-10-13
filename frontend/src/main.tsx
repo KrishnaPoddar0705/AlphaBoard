@@ -8,6 +8,10 @@ import { ThemeProvider } from './contexts/ThemeContext'
 import { SearchProvider } from './contexts/SearchContext'
 import { validateCurrentOrigin } from './config/allowedOrigins'
 import ErrorBoundary from './components/ErrorBoundary'
+import AnalyticsIdentity from './components/AnalyticsIdentity'
+import { initAnalytics } from './lib/analytics'
+
+initAnalytics()
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -101,6 +105,7 @@ if (!checkFor404()) {
             afterSignInUrl="/"
             afterSignUpUrl="/"
           >
+            <AnalyticsIdentity />
             <ThemeProvider>
               <SearchProvider>
                 <App />
