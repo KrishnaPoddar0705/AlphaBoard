@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import {
-  listHomeWindow, listMyTeams, listRoster,
+  listHomeWindow, listMatrixWindow, listMyTeams, listRoster,
   listComments, listCommentAuthors, addComment, deleteComment,
 } from '@/lib/commandCenter/collabApi'
 import type {
@@ -16,6 +16,7 @@ const homeKeys = {
   teams: () => [...ccKeys.all, 'home', 'teams'] as const,
   roster: (teamId: string | null) => [...ccKeys.all, 'home', 'roster', teamId ?? 'visible'] as const,
   window: (key: string) => [...ccKeys.all, 'home', 'window', key] as const,
+  matrix: () => [...ccKeys.all, 'matrix'] as const,
   commentAuthors: (key: string) => [...ccKeys.all, 'comments', 'authors', key] as const,
   comments: (eventId: string) => [...ccKeys.all, 'comments', eventId] as const,
 }
@@ -27,6 +28,20 @@ export function useMyTeams() {
     queryFn: listMyTeams,
     enabled: ready,
     staleTime: 5 * 60_000,
+  })
+}
+
+/**
+ * A year of entries plus what is scheduled ahead, for the Matrix. Under `ccKeys.all`,
+ * so logging an entry or adding a stock anywhere refreshes the grid.
+ */
+export function useMatrixWindow() {
+  const { ready } = useCommandCenterSession()
+  return useQuery<ActivityFeedRow[]>({
+    queryKey: homeKeys.matrix(),
+    queryFn: () => listMatrixWindow(),
+    enabled: ready,
+    staleTime: 60_000,
   })
 }
 

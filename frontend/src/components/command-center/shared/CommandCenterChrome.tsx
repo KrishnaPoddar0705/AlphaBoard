@@ -1,14 +1,15 @@
 import { useNavigate } from 'react-router-dom'
-import { CalendarDays, Gauge, LayoutGrid, Plus, Radio, Stethoscope } from 'lucide-react'
+import { CalendarDays, Gauge, LayoutGrid, Plus, Radio, Stethoscope, Table2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export type View = 'home' | 'board' | 'calendar' | 'activity' | 'diagnostics'
+export type View = 'home' | 'board' | 'matrix' | 'calendar' | 'activity' | 'diagnostics'
 
 // Not exported: a value export alongside a component breaks Fast Refresh, and nothing
 // outside this file needs the list. The `View` type is erased, so it may stay.
 const VIEWS: Array<{ id: View; label: string; icon: typeof LayoutGrid }> = [
   { id: 'home', label: 'Today', icon: Gauge },
   { id: 'board', label: 'Coverage', icon: LayoutGrid },
+  { id: 'matrix', label: 'Matrix', icon: Table2 },
   { id: 'calendar', label: 'Calendar', icon: CalendarDays },
   { id: 'activity', label: 'Activity', icon: Radio },
   // Stripped from production builds: import.meta.env.DEV is statically replaced, so

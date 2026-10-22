@@ -12,6 +12,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@base-ui/react": "^1.9.0",
     "@clerk/clerk-react": "^5.0.0",
     "@nivo/bar": "^0.99.0",
     "@nivo/bump": "^0.99.0",
@@ -49,6 +50,7 @@
     "lucide-react": "^0.555.0",
     "posthog-js": "^1.438.9",
     "prop-types": "^15.8.1",
+    "radix-ui": "^1.8.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-hot-toast": "^2.6.0",

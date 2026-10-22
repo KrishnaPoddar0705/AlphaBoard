@@ -69,6 +69,39 @@ export async function listHomeWindow({
   return (data ?? []) as ActivityFeedRow[]
 }
 
+/** PostgREST caps a response at 1000 rows, so the matrix reads in pages of that size. */
+const MATRIX_PAGE = 1000
+/** A hard ceiling so a runaway org cannot stall the page; ~20k entries is years of desk work. */
+const MATRIX_MAX_ROWS = 20_000
+
+/**
+ * Every entry the matrix plots: a year of logged work plus what is scheduled ahead, for
+ * every stock the caller can see. Unlike the home window this is read in full, page by
+ * page -- a timeline with silently missing dots is worse than a slower first paint.
+ */
+export async function listMatrixWindow({
+  lookbackDays = 365, aheadDays = 60,
+}: { lookbackDays?: number; aheadDays?: number } = {}): Promise<ActivityFeedRow[]> {
+  const from = addDays(today(), -lookbackDays)
+  const to = addDays(today(), aheadDays)
+  const rows: ActivityFeedRow[] = []
+
+  for (let start = 0; start < MATRIX_MAX_ROWS; start += MATRIX_PAGE) {
+    const { data, error } = await supabase
+      .from('cc_activity_feed')
+      .select('*')
+      .gte('event_date', from)
+      .lte('event_date', to)
+      .order('event_date', { ascending: false })
+      .order('event_id', { ascending: true })   // stable paging across equal dates
+      .range(start, start + MATRIX_PAGE - 1)
+    if (error) throw describeCcError(error, 'Could not load the matrix')
+    rows.push(...((data ?? []) as ActivityFeedRow[]))
+    if (!data || data.length < MATRIX_PAGE) break
+  }
+  return rows
+}
+
 // ---------------------------------------------------------------------------
 // Teams
 // ---------------------------------------------------------------------------

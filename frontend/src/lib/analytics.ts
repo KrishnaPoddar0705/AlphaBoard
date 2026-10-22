@@ -92,6 +92,10 @@ export interface AnalyticsEvents {
   cc_comment_added: Record<string, never>
   cc_coverage_added: { ticker: string; sector: string }
   cc_coverage_archived: Record<string, never>
+  cc_matrix_viewed: { grouping: string }
+  cc_matrix_cell_opened: { column: string }
+  /** Demand signal for the not-yet-built data enrichment. */
+  cc_matrix_enrich_clicked: Record<string, never>
 }
 
 export function track<E extends keyof AnalyticsEvents>(event: E, properties: AnalyticsEvents[E]): void {

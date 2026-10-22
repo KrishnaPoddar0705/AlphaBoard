@@ -1,0 +1,115 @@
+/*
+ * Matrix design tokens.
+ *
+ * Scoped to `.mx` so the Matrix can carry a calmer, workstation-grade surface without
+ * re-theming the rest of the app. Two directions share one token set:
+ *
+ *   default            A -- refined warm editorial (AlphaBoard's ivory, deliberate layers)
+ *   [data-theme=graphite]  B -- graphite institutional (near-black, charcoal layers)
+ *
+ * Components only ever read these variables (bg-(--mx-surface) etc.), never raw hex,
+ * so a direction is a single attribute flip.
+ */
+
+.mx {
+  /* Surfaces, from the page back to the most raised */
+  --mx-canvas: #F3F0E6;
+  --mx-surface: #FCFAF4;
+  --mx-sunken: #F6F2E8;
+  --mx-raised: #FFFFFF;
+  --mx-hover: rgba(28, 27, 23, 0.035);
+  --mx-selected: rgba(176, 82, 40, 0.07);
+
+  /* Text */
+  --mx-text: #1C1B17;
+  --mx-text-2: #5E5A51;
+  --mx-text-3: #938D80;
+  --mx-text-inverse: #FCFAF4;
+
+  /* Lines */
+  --mx-line: #E8E2D4;
+  --mx-line-strong: #D8D0BF;
+
+  /* Accent: used for the next event, the selected row and focus -- nothing decorative */
+  --mx-accent: #B05228;
+  --mx-accent-soft: rgba(176, 82, 40, 0.10);
+  --mx-focus: rgba(176, 82, 40, 0.35);
+
+  /* Primary action */
+  --mx-primary: #1C1B17;
+  --mx-primary-text: #FCFAF4;
+
+  --mx-shadow: 0 1px 2px rgba(28, 27, 23, 0.04), 0 0 0 1px rgba(28, 27, 23, 0.02);
+  --mx-shadow-pop: 0 24px 48px -12px rgba(28, 27, 23, 0.22), 0 0 0 1px rgba(28, 27, 23, 0.06);
+
+  /* Radii, control and row sizes */
+  --mx-radius-sm: 4px;
+  --mx-radius: 6px;
+  --mx-radius-lg: 10px;
+  --mx-control-h: 28px;
+  --mx-row-compact: 40px;
+  --mx-row-default: 64px;
+
+  color: var(--mx-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+.mx[data-theme="graphite"] {
+  --mx-canvas: #0E0F11;
+  --mx-surface: #141518;
+  --mx-sunken: #191A1E;
+  --mx-raised: #1E2024;
+  --mx-hover: rgba(255, 255, 255, 0.035);
+  --mx-selected: rgba(224, 128, 84, 0.10);
+
+  --mx-text: #ECEBE7;
+  --mx-text-2: #A6A39B;
+  --mx-text-3: #6F6C66;
+  --mx-text-inverse: #141518;
+
+  --mx-line: #24262B;
+  --mx-line-strong: #31343A;
+
+  --mx-accent: #E08054;
+  --mx-accent-soft: rgba(224, 128, 84, 0.14);
+  --mx-focus: rgba(224, 128, 84, 0.45);
+
+  --mx-primary: #ECEBE7;
+  --mx-primary-text: #141518;
+
+  --mx-shadow: 0 0 0 1px rgba(255, 255, 255, 0.02);
+  --mx-shadow-pop: 0 24px 48px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/*
+ * The app sets IBM Plex Mono on every element in the base layer. The Matrix uses its
+ * sans sibling for the interface and keeps mono for tickers, dates and counts. Declared
+ * in the same layer with higher specificity, so `font-mono` utilities still win.
+ */
+@layer base {
+  .mx,
+  .mx * {
+    font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font-feature-settings: normal;
+  }
+  .mx .font-mono {
+    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .mx :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--mx-focus);
+  }
+  .mx ::selection {
+    background-color: var(--mx-accent-soft);
+  }
+}
+
+/* Thin, quiet scrollbars inside the grid -- the table scrolls both ways. */
+.mx-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: var(--mx-line-strong) transparent;
+}
+.mx-scroll::-webkit-scrollbar { height: 8px; width: 8px; }
+.mx-scroll::-webkit-scrollbar-thumb { background: var(--mx-line-strong); border-radius: 8px; }
+.mx-scroll::-webkit-scrollbar-track { background: transparent; }

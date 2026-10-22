@@ -10,6 +10,7 @@ import LogEventSheet from '@/components/command-center/entry/LogEventSheet'
 import CalendarView from '@/components/command-center/calendar/CalendarView'
 import ActivityView from '@/components/command-center/activity/ActivityView'
 import HomeView from '@/components/command-center/home/HomeView'
+import MatrixView from '@/components/command-center/matrix/MatrixView'
 
 /**
  * The desk's research command centre.
@@ -32,18 +33,19 @@ export default function CommandCenter() {
 
   const setView = (next: View) => {
     const p = new URLSearchParams(params)
-    // Home-screen scope params mean nothing on the other views.
-    for (const k of ['scope', 'lens', 'person']) p.delete(k)
+    // Home-screen scope and matrix tab params mean nothing on the other views.
+    for (const k of ['scope', 'lens', 'person', 'group', 'tab']) p.delete(k)
     if (next === 'home') p.delete('view')
     else p.set('view', next)
     setParams(p, { replace: true })
   }
 
   return (
-    // Coverage carries a 260px rail beside the content, so it gets more room.
+    // Coverage carries a 260px rail beside the content and the Matrix is a wide grid,
+    // so both get more room.
     <div className={[
       'mx-auto w-full px-3 py-4 sm:px-5 sm:py-6',
-      view === 'board' ? 'max-w-[1600px]' : 'max-w-7xl',
+      view === 'board' || view === 'matrix' ? 'max-w-[1600px]' : 'max-w-7xl',
     ].join(' ')}>
       <CommandCenterChrome
         view={view}
@@ -56,6 +58,7 @@ export default function CommandCenter() {
 
       {view === 'home' && <HomeView />}
       {view === 'board' && <CoverageBoard onAdd={() => setAddOpen(true)} />}
+      {view === 'matrix' && <MatrixView onAdd={() => setAddOpen(true)} />}
       {view === 'calendar' && <CalendarView />}
       {view === 'activity' && <ActivityView />}
       {view === 'diagnostics' && import.meta.env.DEV && <DevDiagnostics />}
