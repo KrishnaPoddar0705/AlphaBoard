@@ -51,7 +51,9 @@ export default function MatrixGrid({
   let n = 0
 
   return (
-    <div className="mx-scroll max-h-[calc(100vh-250px)] min-h-[320px] overflow-auto">
+    // contain: inline-size -- the grid's width never feeds back into its ancestors'
+    // sizing, so however wide the table gets it scrolls here instead of widening the page.
+    <div className="mx-scroll max-h-[calc(100vh-250px)] min-h-[320px] overflow-auto [contain:inline-size]">
       <table className="w-max min-w-full border-separate border-spacing-0">
         <thead className="sticky top-0 z-20">
           <tr>
