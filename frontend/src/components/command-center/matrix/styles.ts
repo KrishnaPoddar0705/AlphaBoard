@@ -43,3 +43,16 @@ export const table = {
   /** Divider after the sticky identity column, so it reads as a frozen pane. */
   frozen: 'border-r border-(--mx-line-strong)',
 } as const
+
+/**
+ * Column content widths. Every header and cell wraps its content in a box of exactly
+ * this width: in an auto-sized table a column otherwise grows to the full length of its
+ * longest title (truncation needs a definite width), and the grid runs off sideways.
+ */
+export const col = {
+  identity: 'w-[216px]',
+  meta: 'w-[128px]',
+  docs: 'w-[224px]',
+  activity: 'w-[212px]',
+  activityCompact: 'w-[148px]',
+} as const

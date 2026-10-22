@@ -4,7 +4,7 @@ import MatrixRow from './MatrixRow'
 import type { EventTypeOption } from '@/lib/commandCenter/constants'
 import type { MatrixCells, MatrixDensity, MatrixGroup, MatrixGrouping } from '@/lib/commandCenter/matrix'
 import type { MatrixSelection } from './MatrixPopView'
-import { table, type } from './styles'
+import { col, table, type } from './styles'
 
 interface Props {
   grouping: MatrixGrouping
@@ -20,11 +20,13 @@ interface Props {
   onLog: (coverageId: string | undefined, typeId: string) => void
 }
 
-function Head({ icon: Icon, children, className = '' }: { icon: typeof User; children: string; className?: string }) {
+function Head({ icon: Icon, children, width, className = '' }: {
+  icon: typeof User; children: string; width: string; className?: string
+}) {
   return (
     <th scope="col" className={`${table.th} ${className}`}>
-      <span className={`${type.header} inline-flex items-center gap-1.5`}>
-        <Icon className="size-3.5 opacity-70" />{children}
+      <span className={`${type.header} ${width} flex items-center gap-1.5`}>
+        <Icon className="size-3.5 shrink-0 opacity-70" /><span className="truncate">{children}</span>
       </span>
     </th>
   )
@@ -45,7 +47,7 @@ export default function MatrixGrid({
   })
   const span = columns.length + 4
   const byAnalyst = grouping === 'team'
-  const colW = density === 'compact' ? 'min-w-[168px]' : 'min-w-[236px] w-[236px]'
+  const colW = density === 'compact' ? col.activityCompact : col.activity
   let n = 0
 
   return (
@@ -54,12 +56,12 @@ export default function MatrixGrid({
         <thead className="sticky top-0 z-20">
           <tr>
             <th scope="col" className={`${table.th} sticky left-0 z-30 w-10`}><span className="sr-only">Row</span></th>
-            <Head icon={byAnalyst ? User : Building2} className={`${table.frozen} sticky left-10 z-30 w-[240px] min-w-[240px]`}>
+            <Head icon={byAnalyst ? User : Building2} width={col.identity} className={`${table.frozen} sticky left-10 z-30`}>
               {byAnalyst ? 'Analyst' : 'Company'}
             </Head>
-            <Head icon={byAnalyst ? Building2 : Tag} className="min-w-[140px]">{byAnalyst ? 'Companies' : 'Sector'}</Head>
-            <Head icon={FileText} className="min-w-[248px] w-[248px]">Source documents</Head>
-            {columns.map((c) => <Head key={c.id} icon={c.icon} className={colW}>{c.label}</Head>)}
+            <Head icon={byAnalyst ? Building2 : Tag} width={col.meta}>{byAnalyst ? 'Companies' : 'Sector'}</Head>
+            <Head icon={FileText} width={col.docs}>Source documents</Head>
+            {columns.map((c) => <Head key={c.id} icon={c.icon} width={colW}>{c.label}</Head>)}
           </tr>
         </thead>
         <tbody>

@@ -34,7 +34,7 @@ export default function CommandCenter() {
   const setView = (next: View) => {
     const p = new URLSearchParams(params)
     // Home-screen scope and matrix tab params mean nothing on the other views.
-    for (const k of ['scope', 'lens', 'person', 'group', 'tab']) p.delete(k)
+    for (const k of ['scope', 'lens', 'person', 'group', 'pick']) p.delete(k)
     if (next === 'home') p.delete('view')
     else p.set('view', next)
     setParams(p, { replace: true })

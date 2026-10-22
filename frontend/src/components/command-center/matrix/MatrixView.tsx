@@ -3,7 +3,8 @@ import { useSearchParams } from 'react-router-dom'
 import { Table2 } from 'lucide-react'
 import './matrix.css'
 import MatrixToolbar from './MatrixToolbar'
-import MatrixTabs, { type MatrixTab } from './MatrixTabs'
+import MatrixTabs from './MatrixTabs'
+import type { GroupOption } from './GroupFilter'
 import MatrixGrid from './MatrixGrid'
 import MatrixMobileList from './MatrixMobileList'
 import MatrixSkeleton from './MatrixSkeleton'
@@ -46,13 +47,19 @@ function readHidden(): Set<string> {
  * tabbed by team, each cell their work of that kind across every company. What a viewer
  * sees is whatever RLS already lets them see on the other tabs.
  *
- * Grouping and the open tab live in the URL (?group=team&tab=<id>) so a PM can share
- * "my team's matrix".
+ * The lens and the chosen sectors or teams live in the URL (?group=team&pick=[...]) so
+ * a PM can share "my team's matrix".
  */
 export default function MatrixView({ onAdd }: { onAdd: () => void }) {
   const [params, setParams] = useSearchParams()
   const grouping: MatrixGrouping = params.get('group') === 'team' ? 'team' : 'sector'
-  const tab = params.get('tab') ?? 'all'
+  // Chosen sectors or teams, as a JSON array in ?pick= (names may contain commas).
+  const picked = useMemo<string[]>(() => {
+    try {
+      const v = JSON.parse(params.get('pick') ?? '[]')
+      return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+    } catch { return [] }
+  }, [params])
   const [query, setQuery] = useState('')
   const [hidden, setHidden] = useState<Set<string>>(readHidden)
   const [density, setDensityState] = useState<MatrixDensity>(readDensity)
@@ -73,7 +80,7 @@ export default function MatrixView({ onAdd }: { onAdd: () => void }) {
   const setParam = (key: string, value: string | null) => {
     const next = new URLSearchParams(params)
     if (value) next.set(key, value); else next.delete(key)
-    if (key === 'group') next.delete('tab')
+    if (key === 'group') next.delete('pick')
     setParams(next, { replace: true })
   }
 
@@ -93,17 +100,13 @@ export default function MatrixView({ onAdd }: { onAdd: () => void }) {
     return grouping === 'team' ? groupByTeam(rows, teams) : groupBySector(rows)
   }, [board.data, feed.data, query, grouping, roster, teams])
 
-  const tabs: MatrixTab[] = useMemo(() => {
-    const unique = new Set(allGroups.flatMap((g) => g.rows.map((r) => r.id)))
-    return [
-      { key: 'all', label: 'All', count: unique.size },
-      ...allGroups.map((g) => ({ key: g.key, label: g.label, count: g.rows.length })),
-    ]
-  }, [allGroups])
-
-  const activeTab = tabs.some((t) => t.key === tab) ? tab : 'all'
-  const groups = activeTab === 'all' ? allGroups : allGroups.filter((g) => g.key === activeTab)
-  const showGroupHeaders = activeTab === 'all' && allGroups.length > 1
+  const options: GroupOption[] = useMemo(
+    () => allGroups.map((g) => ({ key: g.key, label: g.label, count: g.rows.length })),
+    [allGroups],
+  )
+  const live = picked.filter((k) => options.some((o) => o.key === k))
+  const groups = live.length === 0 ? allGroups : allGroups.filter((g) => live.includes(g.key))
+  const showGroupHeaders = groups.length > 1
 
   const toggleColumn = (id: string) => setHidden((prev) => {
     const next = new Set(prev)
@@ -154,9 +157,9 @@ export default function MatrixView({ onAdd }: { onAdd: () => void }) {
       <MatrixTabs
         grouping={grouping}
         onGrouping={(g) => setParam('group', g === 'sector' ? null : g)}
-        tabs={tabs}
-        active={activeTab}
-        onChange={(k) => setParam('tab', k === 'all' ? null : k)}
+        options={options}
+        selected={live}
+        onSelect={(keys) => setParam('pick', keys.length ? JSON.stringify(keys) : null)}
       />
 
       <div className="overflow-hidden rounded-(--mx-radius-lg) border border-(--mx-line) bg-(--mx-surface) shadow-(--mx-shadow)">

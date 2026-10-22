@@ -8,7 +8,7 @@ import { documentEntries, rowEntries, type MatrixDensity, type MatrixSubject } f
 import type { EventTypeOption } from '@/lib/commandCenter/constants'
 import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 import type { MatrixSelection } from './MatrixPopView'
-import { table, type } from './styles'
+import { col, table, type } from './styles'
 
 interface Props {
   index: number
@@ -36,28 +36,36 @@ function MatrixRow({ index, subject, columns, byType, density, selected, onOpen,
         {selected && <span aria-hidden className="absolute inset-y-1.5 left-0 w-0.5 rounded-full bg-(--mx-accent)" />}
         <span className={selected ? 'text-(--mx-accent)' : ''}>{index}</span>
       </td>
-      <td className={`${table.td} ${pad} ${table.frozen} sticky left-10 z-10 w-[240px] max-w-[240px] bg-inherit`}>
-        {isStock ? <StockIdentity subject={subject} /> : <AnalystIdentity subject={subject} />}
+      <td className={`${table.td} ${pad} ${table.frozen} sticky left-10 z-10 bg-inherit`}>
+        <div className={col.identity}>
+          {isStock ? <StockIdentity subject={subject} /> : <AnalystIdentity subject={subject} />}
+        </div>
       </td>
       <td className={`${table.td} ${pad}`}>
-        {isStock
-          ? <span className={type.meta}>{subject.stock.sector ?? <span className="text-(--mx-text-3)">—</span>}</span>
-          : <Companies entries={rowEntries(byType)} />}
+        <div className={col.meta}>
+          {isStock
+            ? <span className={`${type.meta} line-clamp-2`} title={subject.stock.sector ?? undefined}>{subject.stock.sector ?? <span className="text-(--mx-text-3)">—</span>}</span>
+            : <Companies entries={rowEntries(byType)} />}
+        </div>
       </td>
       <td className={cell}>
-        <SourceDocsCell entries={documentEntries(byType)} showTicker={!isStock}
-          onOpen={(eventId) => onOpen({ subject, column: 'docs', eventId })} />
+        <div className={col.docs}>
+          <SourceDocsCell entries={documentEntries(byType)} showTicker={!isStock}
+            onOpen={(eventId) => onOpen({ subject, column: 'docs', eventId })} />
+        </div>
       </td>
       {columns.map((c) => (
         <td key={c.id} className={cell}>
-          <TimelineCell
-            entries={byType?.get(c.id)}
-            label={c.label}
-            density={density}
-            showTicker={!isStock}
-            onOpen={(eventId) => onOpen({ subject, column: c.id, eventId })}
-            onAdd={() => onLog(isStock ? subject.id : undefined, c.id)}
-          />
+          <div className={density === 'compact' ? col.activityCompact : col.activity}>
+            <TimelineCell
+              entries={byType?.get(c.id)}
+              label={c.label}
+              density={density}
+              showTicker={!isStock}
+              onOpen={(eventId) => onOpen({ subject, column: c.id, eventId })}
+              onAdd={() => onLog(isStock ? subject.id : undefined, c.id)}
+            />
+          </div>
         </td>
       ))}
     </tr>
@@ -117,7 +125,7 @@ function Companies({ entries }: { entries: ActivityFeedRow[] }) {
   const tickers = [...new Set(entries.filter((e) => !e.is_scheduled).map((e) => e.ticker))]
   if (tickers.length === 0) return <span className={`${type.monoFaint} opacity-50`}>—</span>
   return (
-    <span className="flex max-w-[200px] flex-wrap gap-x-2 gap-y-0.5">
+    <span className="flex flex-wrap gap-x-2 gap-y-0.5">
       {tickers.slice(0, 5).map((t) => (
         <Link key={t} to={`/command-center/stock/${encodeURIComponent(t)}`}
           className="font-mono text-[11px] text-(--mx-text-2) hover:text-(--mx-text) hover:underline">
