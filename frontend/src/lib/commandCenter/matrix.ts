@@ -1,4 +1,5 @@
 import { EVENT_TYPES, eventTypeOf, type EventTypeOption } from './constants'
+import { isBoardEntry } from './boardFormat'
 import { sectorOptions } from './sectors'
 import type { ActivityFeedRow, CoverageBoardRow, RosterMember, TeamOption } from './types'
 
@@ -86,9 +87,12 @@ export function rowEntries(byType: Map<string, ActivityFeedRow[]> | undefined): 
   return [...byType.values()].flat().sort((a, b) => b.event_date.localeCompare(a.event_date))
 }
 
-/** Entries of a row that carry files, newest first -- the Source Documents column. */
+/**
+ * Entries of a row that are research artifacts, newest first -- the Source Documents
+ * column: anything carrying files, and notes written on the Thinking Board.
+ */
 export function documentEntries(byType: Map<string, ActivityFeedRow[]> | undefined): ActivityFeedRow[] {
-  return rowEntries(byType).filter((r) => r.attachment_count > 0)
+  return rowEntries(byType).filter((r) => r.attachment_count > 0 || isBoardEntry(r.kta))
 }
 
 export interface MatrixGroup {

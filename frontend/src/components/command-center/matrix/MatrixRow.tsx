@@ -51,6 +51,7 @@ function MatrixRow({ index, subject, columns, byType, density, selected, onOpen,
       <td className={cell}>
         <div className={col.docs}>
           <SourceDocsCell entries={documentEntries(byType)} showTicker={!isStock}
+            coverageId={isStock ? subject.id : undefined}
             onOpen={(eventId) => onOpen({ subject, column: 'docs', eventId })} />
         </div>
       </td>

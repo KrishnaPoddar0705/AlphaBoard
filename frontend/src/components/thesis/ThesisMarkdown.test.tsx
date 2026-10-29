@@ -110,3 +110,27 @@ describe('markdown features', () => {
     expect(render('   \n  ')).toBe('')
   })
 })
+
+describe('ThesisMarkdown with Thinking Board markers', () => {
+  it('never shows board or chart markers as text', () => {
+    const md = '<!-- alphaboard:board -->\n\n#### Balance sheet\n\n<!-- alphaboard:chart {"type":"bar","periods":["Mar 2024","Mar 2025","Mar 2026"],"series":[{"label":"Reserves","values":[1,2,3]}]} -->\n\n| Line item | Mar 2026 |\n| --- | ---: |\n| Reserves | 3 |'
+    const out = text(md)
+    expect(out).not.toContain('alphaboard')
+    expect(out).toContain('Balance sheet')
+    expect(out).toContain('Reserves')
+  })
+})
+
+describe('ThesisMarkdown highlights', () => {
+  const html = (content: string) => renderToStaticMarkup(<ThesisMarkdown content={content} />)
+
+  it('renders ==text== as a highlight, also inside bold', () => {
+    expect(html('Margins ==expand sharply== this year')).toMatch(/<mark[^>]*>expand sharply<\/mark>/)
+    expect(html('**==both==**')).toMatch(/<strong[^>]*><mark[^>]*>both<\/mark><\/strong>/)
+  })
+
+  it('leaves comparisons and code alone', () => {
+    expect(html('if a == b == c')).not.toContain('<mark')
+    expect(html('`x ==y== z`')).not.toContain('<mark')
+  })
+})

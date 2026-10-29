@@ -26,6 +26,8 @@ export const ccKeys = {
   brokers: () => [...ccKeys.all, 'brokers'] as const,
   activity: (key: string) => [...ccKeys.all, 'activity', key] as const,
   calendar: (from: string, to: string) => [...ccKeys.all, 'calendar', from, to] as const,
+  boardTree: () => [...ccKeys.all, 'thinking', 'tree'] as const,
+  boardDoc: (id: string) => [...ccKeys.all, 'thinking', 'doc', id] as const,
 }
 
 export function useCoverageBoard() {

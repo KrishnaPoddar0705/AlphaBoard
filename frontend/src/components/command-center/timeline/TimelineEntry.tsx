@@ -8,6 +8,7 @@ import PushNote from '../review/PushNote'
 import PushControl from '../review/PushControl'
 import MetWith from '../shared/MetWith'
 import SvanView from '../shared/SvanView'
+import BoardLink from '../shared/BoardLink'
 import type { EventContactTag } from '@/lib/commandCenter/api'
 import { formatDay } from '@/lib/commandCenter/format'
 import { THESIS_IMPACTS, svanRatingOf } from '@/lib/commandCenter/constants'
@@ -109,6 +110,7 @@ export default function TimelineEntry({
       {open && (
         <div className="mt-2 flex flex-col gap-2 pl-6">
           <SvanView event={event} />
+          <BoardLink eventId={event.event_id} />
           {event.kta && (
             <div className="font-mono text-xs leading-relaxed text-[#1C1B17]">
               <ThesisMarkdown content={event.kta} />

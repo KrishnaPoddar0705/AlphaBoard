@@ -101,3 +101,8 @@ nothing until you regenerate it.
 Frontend (in `frontend/.env`): `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_API_URL`
 
 Backend (in `backend/.env`): `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`
+
+Optional: `DRISHTI_API_KEY` (Fly secret). Feeds the Thinking Board's concall, announcements,
+news and results connectors (`backend/app/research_sources.py`). Without it those fall back to
+Screener.in / Yahoo. `/api/board/sources/*` is the one FastAPI route that verifies the caller's
+Supabase access token (`app/auth.py`), because each pull spends credits or scrapes.

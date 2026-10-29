@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -11,6 +12,8 @@ import { useCoverageBoard } from '@/hooks/commandCenter/useCoverage'
 import { useBrokers } from '@/hooks/commandCenter/useBrokers'
 import { useContacts } from '@/hooks/commandCenter/useContacts'
 import { useCreateEvent } from '@/hooks/commandCenter/useCommandCenterEvents'
+import { useCreateBoard } from '@/hooks/commandCenter/useBoards'
+import { STARTER_DOC, starterTitle } from '@/lib/commandCenter/boardTypes'
 import { createContact } from '@/lib/commandCenter/api'
 import { useCommandCenterSession } from '@/hooks/commandCenter/useCommandCenterSession'
 import {
@@ -62,6 +65,8 @@ export default function LogEventSheet({
   const { data: coverage = [] } = useCoverageBoard()
   const { data: brokers = [] } = useBrokers()
   const createEvent = useCreateEvent()
+  const createBoard = useCreateBoard()
+  const navigate = useNavigate()
 
   const [selectedCoverage, setSelectedCoverage] = useState<string | null>(coverageId ?? null)
   const [type, setType] = useState<EventTypeOption | null>(
@@ -151,6 +156,24 @@ export default function LogEventSheet({
     if (files.length === 0) return
     e.preventDefault()
     attachments.addFiles(nameClipboardFiles(files))
+  }
+
+  // Hands the work to the Thinking Board. With a stock chosen, the note exists before the
+  // board opens; without one, the board opens on its stock picker. Files already uploaded
+  // for this draft are discarded, as on Cancel -- the board has its own data pulls.
+  const startBoard = async () => {
+    if (!selectedCoverage) {
+      discardUploads(); onClose()
+      navigate('/command-center?view=thinking&new=pick')
+      return
+    }
+    const stock = coverage.find((c) => c.id === selectedCoverage)
+    const board = await createBoard.mutateAsync({
+      coverage_id: selectedCoverage, title: starterTitle(stock?.ticker), doc: STARTER_DOC,
+    }).catch(() => null)
+    if (!board) return
+    discardUploads(); onClose()
+    navigate(`/command-center?view=thinking&note=${board.id}`)
   }
 
   const canSave =
@@ -355,7 +378,16 @@ export default function LogEventSheet({
               <SvanViewField values={svan} onChange={setSvan} />
 
               <div className="flex flex-col gap-1.5">
-                <span className={labelClass}>Key takeaways</span>
+                <div className="flex items-baseline justify-between gap-2">
+                  <span className={labelClass}>Key takeaways</span>
+                  {/* For a full report with pulled financials, the board is the better desk;
+                      it publishes back into this same log. */}
+                  {/* Starts a board for the stock picked above, or asks which stock. */}
+                  <button type="button" onClick={startBoard} disabled={createBoard.isPending}
+                    className="font-mono text-[10.5px] text-[#2C4F7C] hover:underline disabled:opacity-50">
+                    Writing a full report? Start a Thinking Board
+                  </button>
+                </div>
                 <ThesisEditor
                   value={kta}
                   onChange={setKta}

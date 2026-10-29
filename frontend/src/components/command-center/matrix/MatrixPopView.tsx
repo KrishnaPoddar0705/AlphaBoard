@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/compone
 import ThesisMarkdown from '@/components/thesis/ThesisMarkdown'
 import { Bone } from '../shared/Skeleton'
 import AttachmentPreview from './AttachmentPreview'
+import BoardLink from '../shared/BoardLink'
 import { useEventAttachments } from '@/hooks/commandCenter/useCommandCenterEvents'
 import { EVENT_TYPES, eventTypeOf, svanRatingOf } from '@/lib/commandCenter/constants'
 import { formatDay, formatDayShort, relativeDays } from '@/lib/commandCenter/format'
@@ -143,6 +144,7 @@ function EntryDocument({ entry, onOpenEntry }: { entry: ActivityFeedRow; onOpenE
 
       <section>
         <h3 className={type.label}>Key takeaways</h3>
+        <BoardLink eventId={entry.event_id} className="mt-2" />
         <div className="mt-2 text-[13px] leading-relaxed text-(--mx-text)">
           {entry.kta ? <ThesisMarkdown content={entry.kta} /> : <p className="text-(--mx-text-3)">None written.</p>}
         </div>

@@ -3221,3 +3221,29 @@ scheduler.add_job(
 
 print("Scheduled daily price update at 10:00 AM GMT")
 print("Scheduled daily cumulative portfolio return update at 10:00 AM GMT")
+
+
+# ---------------------------------------------------------------------------
+# Thinking Board connectors (Command Center). Authenticated with the caller's Supabase
+# access token -- unlike the routes above -- because each pull spends Drishti credits
+# or scrapes Screener. Sync def on purpose: the sources are blocking httpx / yfinance,
+# and FastAPI runs sync routes on its threadpool.
+# ---------------------------------------------------------------------------
+from .auth import require_supabase_user, enforce_rate_limit
+from .research_sources import get_source as _board_get_source, NoSourceData, CONNECTORS as _BOARD_CONNECTORS
+
+
+@app.get("/api/board/sources/{connector}")
+def board_source(
+    connector: str,
+    ticker: str = Query(..., min_length=1, max_length=40),
+    quarter: str | None = Query(None, pattern=r"^q[1-4]_\d{2}$"),
+    user_id: str = Depends(require_supabase_user),
+):
+    if connector not in _BOARD_CONNECTORS:
+        raise HTTPException(status_code=404, detail=f"Unknown connector '{connector}'.")
+    enforce_rate_limit(user_id)
+    try:
+        return _board_get_source(connector, ticker, quarter)
+    except NoSourceData as e:
+        raise HTTPException(status_code=404, detail=str(e))

@@ -1,0 +1,188 @@
+/*
+ * Thinking Board -- a manuscript on a paper desk.
+ *
+ * The chrome stays in Plex Mono like the rest of Command Center; the document itself is
+ * set in Plex Serif because it is long-form writing, read top to bottom. Everything is
+ * scoped under .tb-* so the global `* { font-family: mono }` rule in index.css only
+ * loses where this file says so.
+ */
+
+.tb-canvas {
+  background-color: #F1EEE0;
+  background-image: radial-gradient(circle at 1px 1px, #D3CBB8 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+.tb-sheet {
+  background: #FBF7ED;
+  border: 1px solid #DDD6C7;
+  border-radius: 14px;
+  box-shadow:
+    0 1px 0 rgba(28, 27, 23, 0.04),
+    0 30px 60px -36px rgba(28, 27, 23, 0.28);
+}
+
+.tb-card {
+  background: rgba(251, 247, 237, 0.94);
+  backdrop-filter: blur(6px);
+  border: 1px solid #DDD6C7;
+  border-radius: 12px;
+  box-shadow: 0 18px 40px -28px rgba(28, 27, 23, 0.35);
+}
+
+/* ------------------------------------------------------------------ document */
+
+.tb-prose {
+  color: #1C1B17;
+  font-size: 16.5px;
+  line-height: 1.72;
+  outline: none;
+  min-height: 52vh;
+}
+.tb-prose,
+.tb-prose * {
+  font-family: 'IBM Plex Serif', Georgia, 'Times New Roman', serif;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+}
+.tb-prose > * + * { margin-top: 0.85em; }
+
+.tb-prose h1 { font-size: 1.95em; line-height: 1.18; font-weight: 600; letter-spacing: -0.012em; margin-top: 1.4em; }
+.tb-prose h2 { font-size: 1.42em; line-height: 1.25; font-weight: 600; margin-top: 1.5em; }
+.tb-prose h3 { font-size: 1.14em; line-height: 1.35; font-weight: 600; margin-top: 1.3em; }
+.tb-prose > :first-child { margin-top: 0; }
+
+.tb-prose a { color: #2C4F7C; text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #A9B8CC; }
+.tb-prose strong { font-weight: 600; }
+.tb-prose mark { background: #F2DE9B; color: inherit; border-radius: 2px; padding: 0 1px; }
+.tb-prose code {
+  font-family: 'IBM Plex Mono', monospace; font-size: 0.86em;
+  background: #EFE9DA; border-radius: 4px; padding: 0.1em 0.35em;
+}
+.tb-prose pre {
+  background: #1C1B17; color: #F1EEE0; border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+}
+.tb-prose pre, .tb-prose pre * { font-family: 'IBM Plex Mono', monospace; font-size: 13px; line-height: 1.6; }
+.tb-prose pre code { background: none; padding: 0; color: inherit; }
+
+.tb-prose blockquote {
+  border-left: 2px solid #1C1B17;
+  padding: 0.1em 0 0.1em 1.1em;
+  color: #3F3C35;
+  font-style: italic;
+}
+.tb-prose hr { border: 0; border-top: 1px solid #D7D0C2; margin: 2em 0; }
+
+.tb-prose ul, .tb-prose ol { padding-left: 1.4em; }
+.tb-prose ul { list-style: disc; }
+.tb-prose ol { list-style: decimal; }
+.tb-prose li > p { margin: 0; }
+.tb-prose li + li { margin-top: 0.3em; }
+.tb-prose li::marker { color: #8B857A; }
+
+.tb-prose ul[data-type='taskList'] { list-style: none; padding-left: 0.1em; }
+.tb-prose ul[data-type='taskList'] li { display: flex; gap: 0.6em; align-items: flex-start; }
+.tb-prose ul[data-type='taskList'] li > label { margin-top: 0.38em; flex: none; }
+.tb-prose ul[data-type='taskList'] li > div { flex: 1; }
+.tb-prose ul[data-type='taskList'] input[type='checkbox'] { accent-color: #1C1B17; width: 15px; height: 15px; }
+.tb-prose ul[data-type='taskList'] li[data-checked='true'] > div { color: #8B857A; text-decoration: line-through; }
+
+/* Tables the analyst writes. Scoped with :not(.tb-datatable) so pulled data tables inside
+   a connector block -- which live in the same ProseMirror tree -- keep their own layout
+   (fixed equal columns and serif cells here would truncate labels and crush figures). */
+.tb-prose table:not(.tb-datatable) { border-collapse: collapse; width: 100%; margin: 1.2em 0; table-layout: fixed; overflow: hidden; }
+.tb-prose table:not(.tb-datatable) th, .tb-prose table:not(.tb-datatable) td {
+  border: 1px solid #DDD6C7; padding: 6px 10px; vertical-align: top; position: relative;
+  font-size: 14.5px;
+}
+.tb-prose table:not(.tb-datatable) th { background: #F3EEE1; font-weight: 600; text-align: left; }
+.tb-prose table:not(.tb-datatable) td *, .tb-prose table:not(.tb-datatable) th * { font-variant-numeric: lining-nums tabular-nums; }
+.tb-prose .selectedCell::after {
+  content: ''; position: absolute; inset: 0; background: rgba(44, 79, 124, 0.08); pointer-events: none;
+}
+.tb-prose .column-resize-handle { position: absolute; right: -2px; top: 0; bottom: 0; width: 4px; background: #2C4F7C; }
+
+.tb-prose p.is-editor-empty:first-child::before,
+.tb-prose .is-empty::before {
+  content: attr(data-placeholder);
+  color: #A39D90;
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.tb-prose .ProseMirror-selectednode { outline: 2px solid #2C4F7C; outline-offset: 4px; border-radius: 10px; }
+
+/* Title field above the body: same face, bigger, no chrome. */
+.tb-title {
+  font-family: 'IBM Plex Serif', Georgia, serif !important;
+  font-size: 2.15rem; line-height: 1.15; font-weight: 600; letter-spacing: -0.015em;
+  color: #1C1B17; background: transparent; outline: none; width: 100%;
+}
+.tb-title::placeholder { color: #B9B2A3; }
+
+/* -------------------------------------------------------- data inside cards */
+
+.tb-data, .tb-data * {
+  font-family: 'IBM Plex Mono', monospace;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.tb-shimmer {
+  background: linear-gradient(90deg, #ECE6D6 0%, #F7F2E6 45%, #ECE6D6 90%);
+  background-size: 220% 100%;
+  animation: tb-shimmer 1.3s linear infinite;
+}
+@keyframes tb-shimmer { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .tb-shimmer { animation: none; }
+}
+
+/* ------------------------------------------------------- pulled data tables */
+/* Natural column widths and no wrapping inside a figure; the wrapper scrolls sideways
+   when a statement runs wider than the page, with the line-item column pinned. */
+.tb-datatable { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: auto; margin: 0; }
+.tb-datatable th, .tb-datatable td { border: 0; border-bottom: 1px solid #ECE6D6; background: transparent; }
+.tb-datatable tbody tr:last-child td { border-bottom: 0; }
+.tb-datatable thead th { border-bottom: 1px solid #D7D0C2; }
+.tb-datatable .tb-pin { position: sticky; left: 0; z-index: 1; background: var(--tb-pin-bg, #FBF7ED); }
+.tb-datatable tbody tr:hover td { background: rgba(28, 27, 23, 0.025); }
+.tb-datatable tbody tr:hover .tb-pin { background: var(--tb-pin-bg, #FBF7ED); }
+
+/* ----------------------------------------------------------- source blocks */
+/* Pulled text is editable note content, set a step smaller than the analyst's own
+   writing so the two read as different voices. */
+.tb-prose .tb-source-body { font-size: 15px; line-height: 1.62; }
+.tb-prose .tb-source-body [data-node-view-content-react] > * + *,
+.tb-prose .tb-source-body [data-node-view-content] > * + *,
+.tb-prose .tb-source-body > div > * + * { margin-top: 0.55em; }
+.tb-prose .tb-source-body h4 { font-size: 1.05em; font-weight: 600; margin: 0.4em 0 0; }
+.tb-prose .tb-source-body p:has(> strong:only-child) { margin-top: 1em; font-size: 0.92em; color: #4A463E; }
+
+/* ------------------------------------------------------------------- PDF */
+/* exportPdf.ts clones the page into #tb-print; on paper it is the only thing shown. */
+#tb-print { display: none; }
+
+@media print {
+  @page { size: A4; margin: 16mm 14mm 18mm; }
+  body > *:not(#tb-print) { display: none !important; }
+  html, body { background: #fff !important; }
+  #tb-print { display: block; color: #1C1B17; }
+  #tb-print .tb-sheet { border: 0; box-shadow: none; border-radius: 0; background: #fff; }
+  #tb-print .tb-sheet > div > div:last-child { padding: 0 !important; }   /* page padding */
+  #tb-print .tb-title { font-size: 24pt; }
+  #tb-print .tb-prose { font-size: 11pt; min-height: 0; }
+  #tb-print .tb-source { background: #fff; break-inside: auto; }
+  #tb-print .tb-source-body { font-size: 10pt; }
+  #tb-print .tb-datatable { font-size: 8.5pt; }
+  #tb-print .tb-datatable .tb-pin { position: static; }
+  #tb-print tr, #tb-print [data-source-data], #tb-print h1, #tb-print h2, #tb-print h3, #tb-print h4 { break-inside: avoid; }
+  #tb-print h1, #tb-print h2, #tb-print h3, #tb-print h4 { break-after: avoid; }
+  #tb-print a { color: #1C1B17; text-decoration: underline; }
+  #tb-print .tb-print-header {
+    display: flex; justify-content: space-between; gap: 12px;
+    border-bottom: 1px solid #1C1B17; padding-bottom: 6px; margin-bottom: 18px;
+    font: 500 8.5pt 'IBM Plex Mono', monospace; color: #3F3C35;
+  }
+  #tb-print * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

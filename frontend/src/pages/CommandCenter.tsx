@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { lazy, Suspense, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import SessionNotice from '@/components/command-center/shared/SessionNotice'
@@ -11,6 +11,9 @@ import CalendarView from '@/components/command-center/calendar/CalendarView'
 import ActivityView from '@/components/command-center/activity/ActivityView'
 import HomeView from '@/components/command-center/home/HomeView'
 import MatrixView from '@/components/command-center/matrix/MatrixView'
+
+// Lazy: the editor (TipTap/ProseMirror) and its charts only download when the tab opens.
+const ThinkingBoardView = lazy(() => import('@/components/command-center/thinking/ThinkingBoardView'))
 
 /**
  * The desk's research command centre.
@@ -35,6 +38,7 @@ export default function CommandCenter() {
     const p = new URLSearchParams(params)
     // Home-screen scope and matrix tab params mean nothing on the other views.
     for (const k of ['scope', 'lens', 'person', 'group', 'pick']) p.delete(k)
+    if (next !== 'thinking') p.delete('note')
     if (next === 'home') p.delete('view')
     else p.set('view', next)
     setParams(p, { replace: true })
@@ -42,10 +46,11 @@ export default function CommandCenter() {
 
   return (
     // Coverage carries a 260px rail beside the content and the Matrix is a wide grid,
-    // so both get more room.
+    // so both get more room. The Thinking Board is a canvas and takes the whole width.
     <div className={[
       'mx-auto w-full px-3 py-4 sm:px-5 sm:py-6',
-      view === 'board' || view === 'matrix' ? 'max-w-[1600px]' : 'max-w-7xl',
+      view === 'thinking' ? 'max-w-none'
+        : view === 'board' || view === 'matrix' ? 'max-w-[1600px]' : 'max-w-7xl',
     ].join(' ')}>
       <CommandCenterChrome
         view={view}
@@ -59,20 +64,26 @@ export default function CommandCenter() {
       {view === 'home' && <HomeView />}
       {view === 'board' && <CoverageBoard onAdd={() => setAddOpen(true)} />}
       {view === 'matrix' && <MatrixView onAdd={() => setAddOpen(true)} />}
+      {view === 'thinking' && (
+        <Suspense fallback={<div className="h-[calc(100dvh-11.5rem)] animate-pulse rounded-xl bg-[#EFE9DA]" />}>
+          <ThinkingBoardView />
+        </Suspense>
+      )}
       {view === 'calendar' && <CalendarView />}
       {view === 'activity' && <ActivityView />}
       {view === 'diagnostics' && import.meta.env.DEV && <DevDiagnostics />}
 
       {/* Thumb-reachable capture on mobile -- the whole point is logging a meeting in
           the sixty seconds after it ends. */}
-      <button
+      {/* Not on the Thinking Board: its connector dock owns the bottom edge there. */}
+      {view !== 'thinking' && <button
         type="button"
         onClick={openLog}
         aria-label="Log an interaction"
         className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6] shadow-lg transition-transform active:scale-95 sm:hidden"
       >
         <Plus className="h-6 w-6" />
-      </button>
+      </button>}
 
       <AddCoverageDialog open={addOpen} onClose={() => setAddOpen(false)} />
       <LogEventSheet key={logSession} open={logOpen} onClose={() => setLogOpen(false)} />

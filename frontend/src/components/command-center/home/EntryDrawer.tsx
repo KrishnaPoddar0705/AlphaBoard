@@ -4,6 +4,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import ThesisMarkdown from '@/components/thesis/ThesisMarkdown'
 import EventKindBadge from '../shared/EventKindBadge'
 import AttachmentList from '../shared/AttachmentList'
+import BoardLink from '../shared/BoardLink'
 import EventComments from '../review/EventComments'
 import PushNote from '../review/PushNote'
 import PushControl from '../review/PushControl'
@@ -62,6 +63,7 @@ export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow
 
               <div>
                 <p className={label}>Key takeaways</p>
+                <BoardLink eventId={entry.event_id} className="mt-1" />
                 {entry.kta ? (
                   <div className="mt-1 font-mono text-xs leading-relaxed text-[#1C1B17]">
                     <ThesisMarkdown content={entry.kta} />

@@ -12,6 +12,7 @@ interface MdNode {
   type: string
   value?: string
   children?: MdNode[]
+  data?: Record<string, unknown>
 }
 
 /** Node types whose text is literal and must not be reflowed. */
@@ -51,6 +52,39 @@ export function remarkHardBreaks() {
   return (tree: MdNode) => {
     splitBreaks(tree)
   }
+}
+
+/**
+ * remark plugin: `==text==` becomes a highlight (<mark>), the convention Thinking Board
+ * notes publish their highlighter with. Text-node only: the publisher always writes `==`
+ * as the innermost marker (`**==x==**`), so a highlight never spans nodes. Requires a
+ * non-space just inside each `==` so prose like "a == b" is left alone. No lookbehind
+ * (see stripMarkdown for why).
+ */
+const HIGHLIGHT = /==(?=\S)([^=\n]*?\S)==/g
+
+export function remarkHighlight() {
+  const mark = (node: MdNode): void => {
+    if (!node.children) return
+    const out: MdNode[] = []
+    for (const child of node.children) {
+      if (child.type === 'text' && typeof child.value === 'string' && child.value.includes('==')) {
+        let last = 0
+        for (const m of child.value.matchAll(HIGHLIGHT)) {
+          if (m.index! > last) out.push({ type: 'text', value: child.value.slice(last, m.index) })
+          // mdast-to-hast renders any node with data.hName as that element.
+          out.push({ type: 'emphasis', data: { hName: 'mark' }, children: [{ type: 'text', value: m[1] }] } as MdNode)
+          last = m.index! + m[0].length
+        }
+        if (last < child.value.length) out.push({ type: 'text', value: child.value.slice(last) })
+        continue
+      }
+      if (!LITERAL_NODES.has(child.type)) mark(child)
+      out.push(child)
+    }
+    node.children = out
+  }
+  return (tree: MdNode) => { mark(tree) }
 }
 
 const FENCE = /^ {0,3}(```+|~~~+)/
@@ -104,6 +138,8 @@ export function prepareThesis(raw: string | null | undefined): string {
 export function stripMarkdown(raw: string | null | undefined, maxLen = 0): string {
   let t = (raw ?? '').replace(/\r\n?/g, '\n')
 
+  // HTML comments carry machine data (Thinking Board chart markers), never prose.
+  t = t.replace(/<!--[\s\S]*?-->/g, ' ')
   t = t.replace(/^```[\s\S]*?^```/gm, ' ').replace(/`+([^`]*)`+/g, '$1')
   t = t.replace(/!\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
   t = t.replace(/^ {0,3}#{1,6}\s+/gm, '')
@@ -120,7 +156,7 @@ export function stripMarkdown(raw: string | null | undefined, maxLen = 0): strin
   t = t.replace(/\|/g, ' ')
 
   t = t.replace(/(\*\*|__)(.+?)\1/g, '$2').replace(/(\*|_)([^*_\n]+?)\1/g, '$2')
-  t = t.replace(/~~(.+?)~~/g, '$1')
+  t = t.replace(/~~(.+?)~~/g, '$1').replace(/==(\S[^=\n]*?)==/g, '$1')
   t = t.replace(/\\([\\`*_{}[\]()#+\-.!])/g, '$1')
   t = t.split(PIPE).join('|')
   t = t.replace(/\s+/g, ' ').trim()

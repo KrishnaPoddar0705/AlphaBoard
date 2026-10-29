@@ -1,6 +1,11 @@
+import { lazy, Suspense } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { prepareThesis, remarkHardBreaks } from '@/lib/markdown/thesis'
+import { prepareThesis, remarkHardBreaks, remarkHighlight } from '@/lib/markdown/thesis'
+import { splitChartMarkers } from '@/lib/commandCenter/boardFormat'
+
+// Only fetched when a published Thinking Board note actually contains a chart.
+const PublishedChart = lazy(() => import('@/components/command-center/thinking/connectors/PublishedChart'))
 
 interface ThesisMarkdownProps {
   content: string | null | undefined
@@ -31,13 +36,40 @@ function clean<T extends object>(props: T & { node?: unknown }): T {
 }
 
 export default function ThesisMarkdown({ content, className = '' }: ThesisMarkdownProps) {
-  const source = prepareThesis(content)
-  if (!source.trim()) return null
-
+  // Thinking Board notes embed markers (HTML comments) for their charts. They are split
+  // out of the RAW text first: prepareThesis escapes '<', which would turn a marker into
+  // visible text. Every other thesis is one markdown part and renders exactly as before.
+  const parts = splitChartMarkers(content ?? '')
+    .map((p) => (p.kind === 'chart' ? p : { ...p, text: prepareThesis(p.text) }))
+    .filter((p) => p.kind === 'chart' || p.text.trim())
+  if (!parts.length) return null
   return (
     <div className={`thesis-markdown leading-relaxed ${className}`}>
+      {parts.map((part, i) => part.kind === 'chart' ? (
+        <Suspense key={i} fallback={<div className="my-3 h-[240px] rounded-lg bg-current/5" />}>
+          <PublishedChart plan={part.plan} />
+        </Suspense>
+      ) : part.kind === 'fold' ? (
+        // A Thinking Board "Full analysis": folded in the log as it was on the board.
+        <details key={i} className="group my-2">
+          <summary className="cursor-pointer select-none text-[0.92em] underline-offset-2 opacity-80 hover:underline">
+            {part.title}
+          </summary>
+          <div className="mt-2 rounded border border-current/15 px-3 py-2">
+            <MarkdownPart source={part.text} />
+          </div>
+        </details>
+      ) : (
+        <MarkdownPart key={i} source={part.text} />
+      ))}
+    </div>
+  )
+}
+
+function MarkdownPart({ source }: { source: string }) {
+  return (
       <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkHardBreaks]}
+        remarkPlugins={[remarkGfm, remarkHardBreaks, remarkHighlight]}
         components={{
           h1: (props) => <h1 className="mt-4 mb-2 text-base font-semibold first:mt-0" {...clean(props)} />,
           h2: (props) => <h2 className="mt-4 mb-2 text-base font-semibold first:mt-0" {...clean(props)} />,
@@ -75,6 +107,8 @@ export default function ThesisMarkdown({ content, className = '' }: ThesisMarkdo
           hr: (props) => <hr className="my-4 border-current/20" {...clean(props)} />,
           strong: (props) => <strong className="font-semibold" {...clean(props)} />,
           em: (props) => <em className="italic" {...clean(props)} />,
+          // Thinking Board highlights (==text==), in the board's highlighter yellow.
+          mark: (props) => <mark className="rounded-[2px] bg-[#F2DE9B] px-0.5 text-inherit" {...clean(props)} />,
           a: (props) => (
             <a
               {...clean(props)}
@@ -87,6 +121,5 @@ export default function ThesisMarkdown({ content, className = '' }: ThesisMarkdo
       >
         {source}
       </ReactMarkdown>
-    </div>
   )
 }

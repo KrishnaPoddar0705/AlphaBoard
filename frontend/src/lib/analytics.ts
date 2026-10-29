@@ -91,6 +91,9 @@ export interface AnalyticsEvents {
   cc_entry_deleted: Record<string, never>
   cc_comment_added: Record<string, never>
   cc_coverage_added: { ticker: string; sector: string }
+  cc_board_created: { coverage_id: string }
+  cc_board_source_pulled: { connector: string; source: string; ticker: string }
+  cc_board_published: { kind: string; republish: boolean; words: number; blocks: number }
   cc_coverage_archived: Record<string, never>
   cc_matrix_viewed: { grouping: string }
   cc_matrix_cell_opened: { column: string }
