@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
+import { Popover as PopoverPrimitive } from 'radix-ui';
 import { X, Loader2 } from 'lucide-react';
 import { searchStocks } from '../../lib/api';
 
@@ -28,23 +29,6 @@ export default function TickerInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<number | null>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
 
   // Search stocks when input changes
   useEffect(() => {
@@ -132,69 +116,86 @@ export default function TickerInput({
     setInputValue(e.target.value);
   };
 
+  const showResults = isOpen && !disabled && (searchResults.length > 0 || isSearching);
+  const portalContainer =
+    typeof document !== 'undefined' ? document.getElementById('radix-portal-root') : null;
+
   return (
-    <div className="relative" ref={containerRef}>
-      {/* Input Container */}
-      <div
-        className={`w-full min-h-[42px] bg-[#FBF7ED] border-2 rounded-lg px-3 py-2 transition-all duration-300 ${
-          disabled
-            ? 'border-[#D7D0C2] opacity-50 cursor-not-allowed'
-            : isOpen
-            ? 'border-[#1D4ED8] bg-[#F7F2E6]'
-            : 'border-[#D7D0C2] hover:border-[#1D4ED8]/50'
-        } flex flex-wrap items-center gap-2`}
-      >
-        {/* Ticker Pills */}
-        {value.map((ticker) => (
-          <motion.div
-            key={ticker}
-            initial={{ scale: 0, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0, opacity: 0 }}
-            className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#1D4ED8]/10 border border-[#1D4ED8]/30 rounded-full text-sm font-medium text-[#1C1B17]"
+    <PopoverPrimitive.Root open={showResults} onOpenChange={(open) => !open && setIsOpen(false)}>
+      <div className="relative">
+        {/* Input Container */}
+        <PopoverPrimitive.Anchor asChild>
+          <div
+            ref={containerRef}
+            className={`w-full min-h-[42px] bg-[#FBF7ED] border-2 rounded-lg px-3 py-2 transition-all duration-300 ${
+              disabled
+                ? 'border-[#D7D0C2] opacity-50 cursor-not-allowed'
+                : isOpen
+                ? 'border-[#1D4ED8] bg-[#F7F2E6]'
+                : 'border-[#D7D0C2] hover:border-[#1D4ED8]/50'
+            } flex flex-wrap items-center gap-2`}
           >
-            <span>{ticker}</span>
-            {!disabled && (
-              <button
-                type="button"
-                onClick={() => handleRemoveTicker(ticker)}
-                className="hover:bg-[#1D4ED8]/20 rounded-full p-0.5 transition-colors"
-                tabIndex={-1}
+            {/* Ticker Pills */}
+            {value.map((ticker) => (
+              <motion.div
+                key={ticker}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0, opacity: 0 }}
+                className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#1D4ED8]/10 border border-[#1D4ED8]/30 rounded-full text-sm font-medium text-[#1C1B17]"
               >
-                <X className="w-3.5 h-3.5" />
-              </button>
+                <span>{ticker}</span>
+                {!disabled && (
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveTicker(ticker)}
+                    className="hover:bg-[#1D4ED8]/20 rounded-full p-0.5 transition-colors"
+                    tabIndex={-1}
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </motion.div>
+            ))}
+
+            {/* Input Field */}
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
+              onFocus={() => inputValue.trim().length >= 2 && setIsOpen(true)}
+              disabled={disabled}
+              placeholder={value.length === 0 ? placeholder : ''}
+              className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-[#1C1B17] placeholder-[#8B857A] text-sm"
+            />
+
+            {/* Search Icon */}
+            {isSearching && (
+              <Loader2 className="w-4 h-4 text-[#6F6A60] animate-spin" />
             )}
-          </motion.div>
-        ))}
+          </div>
+        </PopoverPrimitive.Anchor>
 
-        {/* Input Field */}
-        <input
-          ref={inputRef}
-          type="text"
-          value={inputValue}
-          onChange={handleInputChange}
-          onKeyDown={handleKeyDown}
-          onFocus={() => inputValue.trim().length >= 2 && setIsOpen(true)}
-          disabled={disabled}
-          placeholder={value.length === 0 ? placeholder : ''}
-          className="flex-1 min-w-[120px] bg-transparent border-none outline-none text-[#1C1B17] placeholder-[#8B857A] text-sm"
-        />
-
-        {/* Search Icon */}
-        {isSearching && (
-          <Loader2 className="w-4 h-4 text-[#6F6A60] animate-spin" />
-        )}
-      </div>
-
-      {/* Search Results Dropdown */}
-      <AnimatePresence>
-        {isOpen && !disabled && (searchResults.length > 0 || isSearching) && (
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            transition={{ duration: 0.2 }}
-            className="absolute z-50 w-full mt-2 rounded-lg border-2 border-[#D7D0C2] bg-[#F7F2E6] overflow-hidden shadow-2xl max-h-60 overflow-y-auto"
+        {/* Search Results Dropdown — portalled so a scrolling parent (e.g. a dialog body) can't clip it */}
+        <PopoverPrimitive.Portal container={portalContainer ?? undefined}>
+          <PopoverPrimitive.Content
+            align="start"
+            sideOffset={8}
+            collisionPadding={16}
+            // Keep typing focus in the input; the list is mouse/touch driven
+            onOpenAutoFocus={(e) => e.preventDefault()}
+            onCloseAutoFocus={(e) => e.preventDefault()}
+            onInteractOutside={(e) => {
+              if (containerRef.current?.contains(e.target as Node)) e.preventDefault();
+            }}
+            // A modal Radix dialog blocks wheel/touch scrolling on anything outside
+            // its own DOM node at the document level; stop those events here so
+            // this list can still scroll when rendered inside one.
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            className="z-[60] w-[var(--radix-popover-trigger-width)] max-h-[min(15rem,var(--radix-popover-content-available-height))] overflow-y-auto overscroll-contain rounded-lg border-2 border-[#D7D0C2] bg-[#F7F2E6] shadow-2xl data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           >
             {isSearching ? (
               <div className="flex items-center justify-center px-4 py-3 text-[#6F6A60]">
@@ -233,17 +234,17 @@ export default function TickerInput({
                 No results found for "{inputValue}"
               </div>
             ) : null}
-          </motion.div>
-        )}
-      </AnimatePresence>
+          </PopoverPrimitive.Content>
+        </PopoverPrimitive.Portal>
 
-      {/* Helper Text */}
-      <p className="text-xs text-[#6F6A60] mt-1">
-        {value.length === 0
-          ? 'Enter ticker symbols separated by commas or search'
-          : `${value.length} ticker${value.length !== 1 ? 's' : ''} selected`}
-      </p>
-    </div>
+        {/* Helper Text */}
+        <p className="text-xs text-[#6F6A60] mt-1">
+          {value.length === 0
+            ? 'Enter ticker symbols separated by commas or search'
+            : `${value.length} ticker${value.length !== 1 ? 's' : ''} selected`}
+        </p>
+      </div>
+    </PopoverPrimitive.Root>
   );
 }
 
