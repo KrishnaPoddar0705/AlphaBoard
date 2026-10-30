@@ -4,7 +4,7 @@
 import type { RetrievedChunk, RankedChunk } from './types.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
-const GEMINI_MODEL = 'gemini-2.0-flash-exp'; // Fast model for reranking
+const GEMINI_MODEL = 'gemini-3.1-flash-lite'; // Fast model for reranking
 
 /**
  * Rerank chunks by relevance to the question

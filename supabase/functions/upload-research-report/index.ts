@@ -228,123 +228,156 @@ serve(async (req) => {
 
     console.log(`[Upload] Report record created: ${reportId}`);
 
-    // Upload to Gemini for indexing (async - don't block response)
-    try {
-      console.log(`[Upload] Starting Gemini upload...`);
-      
-      // Update status to indexing
-      await supabaseClient
-        .from('research_reports')
-        .update({ upload_status: 'indexing' })
-        .eq('id', reportId);
-
-      const metadata: GeminiFileMetadata = {
-        org_id: orgId,
-        analyst_id: analystId,
-        sector: sector,
-        tickers: tickers,
-        report_id: reportId,
-        filename: originalFilename,
-      };
-
-      console.log(`[Upload] Calling uploadToGemini...`);
-      
-      const { fileId, uri, storeId } = await uploadToGemini(
-        fileBuffer,
-        sanitizedFilename,  // Use sanitized filename for Gemini too
-        metadata
-      );
-
-      console.log(`[Upload] Gemini upload successful!`);
-      console.log(`[Upload] - File ID: ${fileId}`);
-      console.log(`[Upload] - URI: ${uri}`);
-      console.log(`[Upload] - Store ID: ${storeId}`);
-
-      // Update report with Gemini IDs
-      const { error: updateError } = await supabaseClient
-        .from('research_reports')
-        .update({
-          gemini_file_id: fileId,
-          gemini_vector_store_id: storeId,  // Store the File Search Store ID (fileSearchStores/xxx)
-          upload_status: 'indexed',
-        })
-        .eq('id', reportId);
-
-      if (updateError) {
-        console.error('[Upload] Failed to update report with Gemini IDs:', updateError);
-      } else {
-        console.log(`[Upload] Report status updated to 'indexed'`);
+    // Index and parse in the background. Parsing a long report with Gemini can run past
+    // the ~150s request limit; doing it inline got the whole request killed (504/546)
+    // and left the row stuck on 'parsing'. The response below no longer waits for it.
+    const processInBackground = async () => {
+      // Page text for keyword search. Independent of Gemini: a failure here only means this
+      // report is missing from keyword search, so it never stops indexing or parsing.
+      try {
+        const { extractPdfPages } = await import('../_shared/pdf-text.ts');
+        const pages = await extractPdfPages(fileBuffer);
+        if (pages.length === 0) {
+          console.warn(`[Upload] No text layer found in ${originalFilename} (scanned PDF?); keyword search will not cover it`);
+        } else {
+          const { error: chunkError } = await supabaseClient
+            .from('research_report_chunks')
+            .upsert(
+              pages.map((p) => ({ report_id: reportId, org_id: orgId, page_number: p.page_number, content: p.content })),
+              { onConflict: 'report_id,page_number' }
+            );
+          if (chunkError) throw chunkError;
+          console.log(`[Upload] Stored text for ${pages.length} pages`);
+        }
+      } catch (textError: any) {
+        console.error('[Upload] Text extraction for keyword search failed:', textError?.message || textError);
       }
 
-      // Trigger parsing by directly calling parseReportWithGemini
-      // Note: We do this inline instead of calling another edge function to avoid 404 issues
-      console.log(`[Upload] Starting inline parsing with Gemini...`);
-      
+      // Upload to Gemini for indexing (async - don't block response)
       try {
-        // Import parse function directly
-        const { parseReportWithGemini } = await import('../_shared/gemini-client.ts');
-        const { RESEARCH_REPORT_EXTRACTION_PROMPT } = await import('../_shared/prompts.ts');
-        
-        // Update status to parsing
+        console.log(`[Upload] Starting Gemini upload...`);
+      
+        // Update status to indexing
         await supabaseClient
           .from('research_reports')
-          .update({ upload_status: 'parsing' })
+          .update({ upload_status: 'indexing' })
           .eq('id', reportId);
-        
-        console.log(`[Upload] Calling parseReportWithGemini...`);
-        
-        const parsedData = await parseReportWithGemini(
-          storeId,
-          RESEARCH_REPORT_EXTRACTION_PROMPT,
-          reportId
+
+        const metadata: GeminiFileMetadata = {
+          org_id: orgId,
+          analyst_id: analystId,
+          sector: sector,
+          tickers: tickers,
+          report_id: reportId,
+          filename: originalFilename,
+        };
+
+        console.log(`[Upload] Calling uploadToGemini...`);
+      
+        const { fileId, uri, storeId } = await uploadToGemini(
+          fileBuffer,
+          sanitizedFilename,  // Use sanitized filename for Gemini too
+          metadata
         );
-        
-        parsedData.report_id = reportId;
-        
-        console.log(`[Upload] Parse successful, updating database...`);
-        
-        // Update report with parsed data
-        await supabaseClient
+
+        console.log(`[Upload] Gemini upload successful!`);
+        console.log(`[Upload] - File ID: ${fileId}`);
+        console.log(`[Upload] - URI: ${uri}`);
+        console.log(`[Upload] - Store ID: ${storeId}`);
+
+        // Update report with Gemini IDs
+        const { error: updateError } = await supabaseClient
           .from('research_reports')
           .update({
-            parsed: parsedData,
-            upload_status: 'parsed',
-            updated_at: new Date().toISOString(),
+            gemini_file_id: fileId,
+            gemini_vector_store_id: storeId,  // Store the File Search Store ID (fileSearchStores/xxx)
+            upload_status: 'indexed',
           })
           .eq('id', reportId);
+
+        if (updateError) {
+          console.error('[Upload] Failed to update report with Gemini IDs:', updateError);
+        } else {
+          console.log(`[Upload] Report status updated to 'indexed'`);
+        }
+
+        // Trigger parsing by directly calling parseReportWithGemini
+        // Note: We do this inline instead of calling another edge function to avoid 404 issues
+        console.log(`[Upload] Starting inline parsing with Gemini...`);
+      
+        try {
+          // Import parse function directly
+          const { parseReportWithGemini } = await import('../_shared/gemini-client.ts');
+          const { RESEARCH_REPORT_EXTRACTION_PROMPT } = await import('../_shared/prompts.ts');
         
-        console.log(`[Upload] Report parsed and saved successfully!`);
+          // Update status to parsing
+          await supabaseClient
+            .from('research_reports')
+            .update({ upload_status: 'parsing' })
+            .eq('id', reportId);
         
-      } catch (parseError: any) {
-        console.error('[Upload] Parsing failed:', parseError);
+          console.log(`[Upload] Calling parseReportWithGemini...`);
         
-        // Update status to failed
+          const parsedData = await parseReportWithGemini(
+            storeId,
+            RESEARCH_REPORT_EXTRACTION_PROMPT,
+            reportId
+          );
+        
+          parsedData.report_id = reportId;
+        
+          console.log(`[Upload] Parse successful, updating database...`);
+        
+          // Update report with parsed data
+          await supabaseClient
+            .from('research_reports')
+            .update({
+              parsed: parsedData,
+              upload_status: 'parsed',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', reportId);
+        
+          console.log(`[Upload] Report parsed and saved successfully!`);
+        
+        } catch (parseError: any) {
+          console.error('[Upload] Parsing failed:', parseError);
+        
+          // Update status to failed
+          await supabaseClient
+            .from('research_reports')
+            .update({
+              upload_status: 'failed',
+              error_message: `Parse failed: ${parseError.message}`,
+            })
+            .eq('id', reportId);
+        }
+
+        console.log(`[Upload] Parse job trigger sent (async)`);
+
+      } catch (geminiError) {
+        console.error('[Upload] Gemini upload error:', geminiError);
+      
+        // Update status to failed but don't delete the record
         await supabaseClient
           .from('research_reports')
           .update({
             upload_status: 'failed',
-            error_message: `Parse failed: ${parseError.message}`,
+            error_message: geminiError.message,
           })
           .eq('id', reportId);
+
+        // Return success for storage upload even if Gemini failed
+        // User can retry Gemini indexing later
       }
+    };
 
-      console.log(`[Upload] Parse job trigger sent (async)`);
-
-    } catch (geminiError) {
-      console.error('[Upload] Gemini upload error:', geminiError);
-      
-      // Update status to failed but don't delete the record
-      await supabaseClient
-        .from('research_reports')
-        .update({
-          upload_status: 'failed',
-          error_message: geminiError.message,
-        })
-        .eq('id', reportId);
-
-      // Return success for storage upload even if Gemini failed
-      // User can retry Gemini indexing later
-    }
+    // EdgeRuntime only exists on Supabase's runtime, where waitUntil keeps the worker
+    // alive after the response. Under plain Deno (local docker) it is undefined; the
+    // promise just runs on, since that server never exits.
+    const background = processInBackground();
+    // @ts-ignore EdgeRuntime is provided by the Supabase edge runtime
+    if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(background);
 
     return new Response(
       JSON.stringify({

@@ -5,6 +5,8 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
 import { queryGeminiRAG, generateEvidenceFirstAnswer } from '../_shared/gemini-client.ts';
 import { rewriteQuery } from '../_shared/rag/query-rewrite.ts';
+import type { ChatTurn } from '../_shared/rag/types.ts';
+import { locateExcerpt } from '../_shared/rag/locate-excerpt.ts';
 import { multiQueryRetrieve } from '../_shared/rag/multi-retrieve.ts';
 import { rerankChunks } from '../_shared/rag/rerank.ts';
 import { normalizeQuestion, sha256Hash, checkCache, cacheAnswer } from '../_shared/rag/cache.ts';
@@ -15,6 +17,48 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Access-Control-Max-Age': '86400',
 };
+
+const HISTORY_MESSAGES = 6; // last 3 turns
+const HISTORY_ANSWER_CHARS = 500;
+const TITLE_CHARS = 60;
+
+/** Lowercase letters and digits only, so "My Report.pdf" and "My_Report.pdf" compare equal. */
+const squash = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Does a document label from the model (a file name or title) refer to this report? */
+function labelMatchesReport(label: string | undefined, report: { filename?: string; title?: string }): boolean {
+  const l = squash(label || '');
+  if (l.length < 6) return false;
+  return [report.filename, report.title].some((name) => {
+    const n = squash(name || '');
+    return n.length >= 6 && (n === l || n.includes(l) || l.includes(n));
+  });
+}
+
+const jsonHeaders = { ...corsHeaders, 'Content-Type': 'application/json' };
+
+/** Prior messages of a thread, oldest first, with assistant turns shortened to their direct answer. */
+async function loadHistory(supabaseClient: any, conversationId: string): Promise<ChatTurn[]> {
+  const { data, error } = await supabaseClient
+    .from('research_messages')
+    .select('role, content, response')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_MESSAGES);
+  if (error || !data) {
+    console.warn('[RAG Query] Failed to load history:', error?.message);
+    return [];
+  }
+  return data.reverse().map((m: any) => {
+    const text: string = m.role === 'assistant'
+      ? (m.response?.enhanced_answer?.direct_answer || m.content || '')
+      : m.content;
+    return {
+      role: m.role,
+      content: m.role === 'assistant' ? text.substring(0, HISTORY_ANSWER_CHARS) : text,
+    };
+  });
+}
 
 serve(async (req) => {
   // Handle CORS preflight
@@ -110,7 +154,7 @@ serve(async (req) => {
     const orgId = membership.organization_id;
 
     // Parse request body
-    const { query, filters, report_ids } = await req.json();
+    const { query, filters, report_ids, conversation_id } = await req.json();
 
     if (!query || typeof query !== 'string' || query.trim().length === 0) {
       return new Response(
@@ -128,6 +172,30 @@ serve(async (req) => {
     console.log(`[RAG Query] ========================================`);
 
     const startTime = Date.now();
+
+    // Resolve the conversation. This function uses the service role, so this lookup is the
+    // access control: a thread is only usable by the user and org that own it.
+    let conversationId: string | null = null;
+    let conversationTitle: string | null = null;
+    let history: ChatTurn[] = [];
+    if (conversation_id) {
+      const { data: convo } = await supabaseClient
+        .from('research_conversations')
+        .select('id, title')
+        .eq('id', conversation_id)
+        .eq('user_id', analystId)
+        .eq('org_id', orgId)
+        .maybeSingle();
+      if (!convo) {
+        return new Response(
+          JSON.stringify({ error: 'Conversation not found' }),
+          { status: 404, headers: jsonHeaders }
+        );
+      }
+      conversationId = convo.id;
+      conversationTitle = convo.title;
+      history = await loadHistory(supabaseClient, convo.id);
+    }
 
     // Build database query for reports
     let dbQuery = supabaseClient
@@ -244,13 +312,81 @@ serve(async (req) => {
     // ENHANCED RAG PIPELINE
     // ========================================
 
-    // Step 0: Cache check
-    const normalizedQuestion = normalizeQuestion(query);
-    const questionHash = await sha256Hash(normalizedQuestion);
-    const cachedResponse = await checkCache(orgId, questionHash, supabaseClient);
-    if (cachedResponse) {
-      console.log(`[RAG Query] Cache hit - returning cached response`);
-      return cachedResponse;
+    // Save the exchange to the thread (creating the thread on a first message) and build the
+    // HTTP response. The body is a superset of the old one, so RAGSearchBar keeps working.
+    const respondAndPersist = async (payload: any, cacheHeader?: string, standalone?: string): Promise<Response> => {
+      const reportIdsUsed: string[] = (payload.relevant_reports || [])
+        .map((r: any) => (typeof r === 'string' ? r : r?.id))
+        .filter(Boolean);
+      let messageId: string | null = null;
+      try {
+        if (!conversationId) {
+          const { data: created, error: createError } = await supabaseClient
+            .from('research_conversations')
+            .insert({
+              org_id: orgId,
+              user_id: analystId,
+              title: query.trim().substring(0, TITLE_CHARS),
+              filters: filters || null,
+            })
+            .select('id, title')
+            .single();
+          if (createError) throw createError;
+          conversationId = created.id;
+          conversationTitle = created.title;
+        }
+        const now = Date.now();
+        const { data: inserted, error: msgError } = await supabaseClient
+          .from('research_messages')
+          .insert([
+            {
+              conversation_id: conversationId,
+              role: 'user',
+              content: query,
+              scope_report_ids: Array.isArray(report_ids) && report_ids.length > 0 ? report_ids : null,
+              created_at: new Date(startTime).toISOString(),
+            },
+            {
+              conversation_id: conversationId,
+              role: 'assistant',
+              content: payload.answer,
+              response: payload,
+              standalone_question: standalone || null,
+              report_ids_used: reportIdsUsed,
+              execution_time_ms: now - startTime,
+              created_at: new Date(Math.max(now, startTime + 1)).toISOString(),
+            },
+          ])
+          .select('id, role');
+        if (msgError) throw msgError;
+        messageId = inserted?.find((m: any) => m.role === 'assistant')?.id || null;
+        await supabaseClient
+          .from('research_conversations')
+          .update({ updated_at: new Date().toISOString() })
+          .eq('id', conversationId);
+      } catch (persistError: any) {
+        // The answer is still good; the thread just won't have it saved.
+        console.error('[RAG Query] Failed to save conversation:', persistError?.message || persistError);
+      }
+      const headers: Record<string, string> = { ...jsonHeaders };
+      if (cacheHeader) headers['X-Cache'] = cacheHeader;
+      return new Response(
+        JSON.stringify({ ...payload, conversation_id: conversationId, message_id: messageId, title: conversationTitle }),
+        { status: 200, headers }
+      );
+    };
+
+    // Step 0: Cache check. A first message is keyed on its own text. A follow-up is only
+    // meaningful with its history ("and margins?"), so it is keyed after the rewrite on the
+    // standalone question instead (see Step 1).
+    const scopeKey = JSON.stringify([filters || null, [...(report_ids || [])].sort()]);
+    let questionHash = await sha256Hash(normalizeQuestion(query) + scopeKey);
+    if (history.length === 0) {
+      const cachedResponse = await checkCache(orgId, questionHash, supabaseClient);
+      if (cachedResponse) {
+        console.log(`[RAG Query] Cache hit - returning cached response`);
+        return await respondAndPersist(await cachedResponse.json(), cachedResponse.headers.get('X-Cache') || 'HIT');
+      }
     }
 
     let enhancedResponse: any = null;
@@ -258,6 +394,11 @@ serve(async (req) => {
     let retrievedChunks: any[] = [];
     let rankedChunks: any[] = [];
     let lastError: Error | null = null;
+    // Tickers the reports in scope were tagged with, as a hint for writing company names
+    const knownTickers = [...new Set(
+      reports.flatMap((r: any) => r.tickers || []).map((t: string) => String(t).trim().toUpperCase()).filter(Boolean)
+    )] as string[];
+    let question: string = query; // what retrieval/answering actually use (standalone for follow-ups)
 
     try {
       // Step 1: Query rewrite
@@ -267,8 +408,17 @@ serve(async (req) => {
         tickers: filters?.tickers,
         date_from: filters?.date_from,
         date_to: filters?.date_to,
-      });
+      }, history);
       console.log(`[RAG Query] Query rewrite complete: intent=${queryObject.intent}, subqueries=${queryObject.subqueries.length}`);
+      question = queryObject.standalone_question || query;
+      if (history.length > 0) {
+        console.log(`[RAG Query] Standalone question: "${question}"`);
+        questionHash = await sha256Hash(normalizeQuestion(question) + scopeKey);
+        const cachedResponse = await checkCache(orgId, questionHash, supabaseClient);
+        if (cachedResponse) {
+          return await respondAndPersist(await cachedResponse.json(), 'HIT');
+        }
+      }
 
       // Step 2: Multi-query retrieval
       console.log(`[RAG Query] Step 2: Multi-query retrieval (${queryObject.subqueries.length} subqueries)...`);
@@ -279,9 +429,24 @@ serve(async (req) => {
         throw new Error('No chunks retrieved from multi-query search');
       }
 
+      // The File Search store covers the whole org, so narrowing to chosen reports happens
+      // here, by matching each chunk's document title to the chosen reports. If nothing
+      // matches (titles can differ from what Gemini returns), keep everything.
+      if (Array.isArray(report_ids) && report_ids.length > 0) {
+        const wanted = reports.map((r: any) => [r.title, r.original_filename]).flat().filter(Boolean).map((t: string) => t.toLowerCase());
+        const scoped = retrievedChunks.filter((c: any) => {
+          const t = (c.documentTitle || '').toLowerCase();
+          return t && wanted.some((w: string) => w.includes(t) || t.includes(w));
+        });
+        if (scoped.length > 0) {
+          console.log(`[RAG Query] Scoped to chosen reports: ${scoped.length}/${retrievedChunks.length} chunks`);
+          retrievedChunks = scoped;
+        }
+      }
+
       // Step 3: Rerank
       console.log(`[RAG Query] Step 3: Reranking top ${Math.min(50, retrievedChunks.length)} candidates...`);
-      rankedChunks = await rerankChunks(query, retrievedChunks, 10);
+      rankedChunks = await rerankChunks(question, retrievedChunks, 10);
       console.log(`[RAG Query] Reranked to top ${rankedChunks.length} chunks`);
 
       if (rankedChunks.length === 0) {
@@ -291,10 +456,11 @@ serve(async (req) => {
       // Step 4: Evidence-first answer generation
       console.log(`[RAG Query] Step 4: Evidence-first answer generation...`);
       enhancedResponse = await generateEvidenceFirstAnswer(
-        query,
+        question,
         rankedChunks,
         queryObject.required_sections || ['Direct Answer', 'Detailed Breakdown'],
-        fileSearchStoreId
+        fileSearchStoreId,
+        knownTickers
       );
       console.log(`[RAG Query] Answer generated: length=${enhancedResponse.answer.length}`);
 
@@ -305,7 +471,7 @@ serve(async (req) => {
 
       // Fallback to legacy pipeline
       try {
-        const legacyResponse = await queryGeminiRAG(query, fileSearchStoreId, {
+        const legacyResponse = await queryGeminiRAG(question, fileSearchStoreId, {
           sector: filters?.sector,
           tickers: filters?.tickers,
           org_id: orgId,
@@ -334,6 +500,7 @@ serve(async (req) => {
             query_time_ms: queryTime,
             total_reports_searched: reports.length,
             error: error.message,
+            pipeline_failed: true,
           }),
           { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -351,6 +518,7 @@ serve(async (req) => {
           graphs: [],
           query_time_ms: queryTime,
           total_reports_searched: reports.length,
+          pipeline_failed: true,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -370,6 +538,7 @@ serve(async (req) => {
           graphs: [],
           query_time_ms: queryTime,
           total_reports_searched: reports.length,
+          pipeline_failed: true,
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -433,15 +602,11 @@ serve(async (req) => {
         }
       }
 
-      // Fallback: Try to match citation source to report filename or title
-      if (!reportId && citation.source) {
+      // Fallback: match the document label to a report's file name or title. Gemini's own
+      // `source` is often empty; the citation's `doc` carries the file name it quoted from.
+      if (!reportId) {
         for (const [reportIdValue, metadata] of reportMap.entries()) {
-          if (
-            citation.source.includes(metadata.filename) ||
-            citation.source.includes(metadata.title) ||
-            metadata.filename.includes(citation.source) ||
-            metadata.title.includes(citation.source)
-          ) {
+          if (labelMatchesReport(citation.source, metadata) || labelMatchesReport(citation.doc, metadata)) {
             reportId = reportIdValue;
             reportTitle = metadata.title;
             break;
@@ -461,6 +626,36 @@ serve(async (req) => {
         title: reportTitle,
       };
     });
+
+    // Place each quote in the report's stored page text: gives the true page and the report's
+    // own wording. Best effort; a citation that can't be placed keeps Gemini's quote.
+    try {
+      const citedReportIds = [...new Set(enhancedCitations.map((c: any) => c.report_id).filter(Boolean))];
+      if (citedReportIds.length > 0) {
+        const { data: pageRows, error: pagesError } = await supabaseClient
+          .from('research_report_chunks')
+          .select('report_id, page_number, content')
+          .in('report_id', citedReportIds);
+        if (pagesError) throw pagesError;
+        let located = 0;
+        for (const citation of enhancedCitations) {
+          if (!citation.report_id || !citation.excerpt) continue;
+          const pages = (pageRows || []).filter((p: any) => p.report_id === citation.report_id);
+          const hit = locateExcerpt(citation.excerpt, pages);
+          const refPage = parseInt(String(citation.ref || '').match(/\d+/)?.[0] || '', 10);
+          if (!citation.page && refPage > 0) citation.page = refPage;
+          if (hit) {
+            citation.page = hit.page;
+            citation.passage = hit.passage;
+            citation.passage_hit = hit.hit;
+            located++;
+          }
+        }
+        console.log(`[RAG Query] Located ${located}/${enhancedCitations.length} citations in page text`);
+      }
+    } catch (locateError: any) {
+      console.warn('[RAG Query] Could not locate citations in page text:', locateError?.message || locateError);
+    }
 
     console.log(`[RAG Query] Enhanced ${enhancedCitations.length} citations, ${enhancedCitations.filter(c => c.report_id).length} matched to reports`);
 
@@ -496,12 +691,7 @@ serve(async (req) => {
     if (enhancedResponse.evidence) {
       for (const evidence of enhancedResponse.evidence) {
         for (const [reportIdValue, metadata] of reportMap.entries()) {
-          if (evidence.doc && (
-            evidence.doc.includes(metadata.filename) ||
-            evidence.doc.includes(metadata.title) ||
-            metadata.filename.includes(evidence.doc) ||
-            metadata.title.includes(evidence.doc)
-          )) {
+          if (labelMatchesReport(evidence.doc, metadata)) {
             relevantReportIds.add(reportIdValue);
             break;
           }
@@ -542,6 +732,7 @@ serve(async (req) => {
           missing_info: enhancedResponse.missing_info,
           relevant_reports: finalRelevantReportIds,
         },
+        conversation_id: conversationId,
         report_ids_used: finalRelevantReportIds,
         filters_applied: filters || null,
         execution_time_ms: queryTime,
@@ -550,6 +741,17 @@ serve(async (req) => {
       console.error('[RAG Query] Failed to log query:', logError);
       // Non-critical, continue
     }
+
+    // Get final relevant reports with metadata
+    const finalRelevantReports = reports
+      .filter(r => finalRelevantReportIds.includes(r.id))
+      .map(r => ({
+        id: r.id,
+        title: r.title,
+        sector: r.sector,
+        tickers: r.tickers,
+        created_at: r.created_at,
+      }));
 
     // Cache the response
     try {
@@ -573,17 +775,6 @@ serve(async (req) => {
       console.warn('[RAG Query] Failed to cache response:', cacheError);
       // Non-critical, continue
     }
-
-    // Get final relevant reports with metadata
-    const finalRelevantReports = reports
-      .filter(r => finalRelevantReportIds.includes(r.id))
-      .map(r => ({
-        id: r.id,
-        title: r.title,
-        sector: r.sector,
-        tickers: r.tickers,
-        created_at: r.created_at,
-      }));
 
     console.log(`[RAG Query] ========================================`);
     console.log(`[RAG Query] QUERY SUCCESS`);
@@ -618,10 +809,7 @@ serve(async (req) => {
       },
     };
 
-    return new Response(
-      JSON.stringify(finalResponse),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return await respondAndPersist(finalResponse, undefined, question);
 
   } catch (error: any) {
     console.error('[RAG Query] ========================================');
