@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Download, 
@@ -58,6 +58,10 @@ export default function ReportDetail() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'summary' | 'insights' | 'risks' | 'catalysts' | 'financials' | 'citations'>('summary');
   const [pdfUrl, setPdfUrl] = useState<string>('');
+  // ?page=N (from keyword search) opens the preview at that page
+  const [searchParams] = useSearchParams();
+  const startPage = parseInt(searchParams.get('page') || '', 10);
+  const findText = searchParams.get('q') || '';
 
   useEffect(() => {
     if (id) {
@@ -92,12 +96,14 @@ export default function ReportDetail() {
 
       // Get public URL for PDF
       if (data.storage_path) {
-        const { data: urlData } = await supabase.storage
+        const { data: urlData, error: urlError } = await supabase.storage
           .from('research-reports')
           .createSignedUrl(data.storage_path, 3600); // 1 hour expiry
 
         if (urlData) {
           setPdfUrl(urlData.signedUrl);
+        } else {
+          console.warn('[ReportDetail] Could not create PDF link:', urlError?.message);
         }
       }
     } catch (err: any) {
@@ -212,7 +218,7 @@ export default function ReportDetail() {
           <div className="aspect-[3/4] bg-[#FBF7ED]">
             {pdfUrl ? (
               <iframe
-                src={pdfUrl}
+                src={startPage > 0 ? `${pdfUrl}#page=${startPage}${findText ? `&search=${encodeURIComponent(findText)}` : ''}` : pdfUrl}
                 className="w-full h-full"
                 title="PDF Preview"
               />

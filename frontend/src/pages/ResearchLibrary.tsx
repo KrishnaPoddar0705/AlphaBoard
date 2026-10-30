@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Plus, Search, Filter, Loader2, X } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, Filter, Loader2, X, Sparkles } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import ReportCard from '../components/research/ReportCard';
 import UploadReportModal from '../components/research/UploadReportModal';
-import RAGSearchBar from '../components/research/RAGSearchBar';
+import ReportTextMatches from '../components/research/ReportTextMatches';
+import type { ChatLocationState } from '../types/researchChat';
+import { useReportSearch } from '../hooks/useReportSearch';
 import SectorDropdown from '../components/ui/SectorDropdown';
 import TickerFilter from '../components/ui/TickerFilter';
 import { Card, CardContent } from '../components/ui/card-new';
@@ -34,22 +37,17 @@ const STATUS_OPTIONS = [
 
 export default function ResearchLibrary() {
   const [reports, setReports] = useState<Report[]>([]);
-  const [filteredReports, setFilteredReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sectorFilter, setSectorFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [tickerFilter, setTickerFilter] = useState<string[]>([]);
-  const [showRAGSearch, setShowRAGSearch] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchReports();
   }, []);
-
-  useEffect(() => {
-    filterReports();
-  }, [reports, searchTerm, sectorFilter, statusFilter, tickerFilter]);
 
   const fetchReports = async () => {
     try {
@@ -86,43 +84,38 @@ export default function ResearchLibrary() {
     }
   };
 
-  const filterReports = () => {
-    let filtered = [...reports];
-
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(
-        (report) =>
-          report.title.toLowerCase().includes(term) ||
-          report.original_filename.toLowerCase().includes(term) ||
-          report.tickers?.some((ticker) => ticker.toLowerCase().includes(term))
-      );
-    }
-
-    // Sector filter
-    if (sectorFilter) {
-      filtered = filtered.filter((report) => report.sector === sectorFilter);
-    }
-
-    // Status filter
-    if (statusFilter) {
-      filtered = filtered.filter((report) => report.upload_status === statusFilter);
-    }
-
-    // Ticker filter (show reports that contain any of the selected tickers)
+  // Reports that pass the sector / status / ticker filters. Both kinds of search, the
+  // title-and-ticker match and the search inside report text, only look at these.
+  const inScope = useMemo(() => reports.filter((report) => {
+    if (sectorFilter && report.sector !== sectorFilter) return false;
+    if (statusFilter && report.upload_status !== statusFilter) return false;
+    // Any of the selected tickers
     if (tickerFilter.length > 0) {
-      filtered = filtered.filter((report) =>
-        report.tickers?.some((ticker) =>
-          tickerFilter.some((filterTicker) =>
-            ticker.toUpperCase() === filterTicker.toUpperCase()
-          )
-        )
+      return !!report.tickers?.some((ticker) =>
+        tickerFilter.some((filterTicker) => ticker.toUpperCase() === filterTicker.toUpperCase())
       );
     }
+    return true;
+  }), [reports, sectorFilter, statusFilter, tickerFilter]);
 
-    setFilteredReports(filtered);
-  };
+  const scopeFiltered = inScope.length !== reports.length;
+  // Undefined means "no filter": search the text of every report.
+  const textSearch = useReportSearch(searchTerm, scopeFiltered ? inScope.map((r) => r.id) : undefined);
+  const textHitIds = useMemo(() => new Set((textSearch.data ?? []).map((h) => h.report_id)), [textSearch.data]);
+
+  // One search box: a report shows if its title, file name or tickers match, or the words
+  // appear inside its text.
+  const filteredReports = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return inScope;
+    return inScope.filter(
+      (report) =>
+        report.title.toLowerCase().includes(term) ||
+        report.original_filename.toLowerCase().includes(term) ||
+        report.tickers?.some((ticker) => ticker.toLowerCase().includes(term)) ||
+        textHitIds.has(report.id)
+    );
+  }, [inScope, searchTerm, textHitIds]);
 
   const uniqueSectors = Array.from(new Set(reports.map((r) => r.sector).filter((s): s is string => Boolean(s)))).sort();
   
@@ -166,35 +159,43 @@ export default function ResearchLibrary() {
         </Button>
       </div>
 
-      {/* RAG Search */}
-      {showRAGSearch && (
-        <div className="animate-in fade-in duration-300">
-          <RAGSearchBar />
-        </div>
-      )}
-
-      {/* Toggle RAG Search */}
-      <button
-        onClick={() => setShowRAGSearch(!showRAGSearch)}
-        className="text-sm text-[#1D4ED8] hover:text-[#1D4ED8]/80 transition-colors font-medium"
-      >
-        {showRAGSearch ? 'Hide' : 'Show'} AI Search
-      </button>
+      <div>
+        <Button asChild variant="outline">
+          <Link to="/research/chat">All Chats</Link>
+        </Button>
+      </div>
 
       {/* Filters */}
       <Card>
         <CardContent className="p-4 md:p-6">
           <div className="space-y-4">
-            {/* First Row: Search */}
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[#6F6A60]" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search reports by title, ticker..."
-                className="w-full bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg pl-9 md:pl-10 pr-4 py-2 text-[#1C1B17] placeholder-[#8B857A] focus:outline-none focus:ring-2 focus:ring-[#1D4ED8]/20 focus:border-[#1D4ED8] transition-all text-sm md:text-base"
-              />
+            {/* First Row: one search box. It filters live; Ask AI sends the same text to the chat. */}
+            <div className="flex gap-3">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[#6F6A60]" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search reports, or ask a question..."
+                  className="w-full bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg pl-9 md:pl-10 pr-4 py-2 text-[#1C1B17] placeholder-[#8B857A] focus:outline-none focus:ring-2 focus:ring-[#1D4ED8]/20 focus:border-[#1D4ED8] transition-all text-base md:text-base"
+                />
+              </div>
+              <Button
+                disabled={!searchTerm.trim() || (scopeFiltered && inScope.length === 0)}
+                title={scopeFiltered && inScope.length === 0 ? 'No reports match the current filters' : undefined}
+                onClick={() => navigate('/research/chat', {
+                  state: {
+                    question: searchTerm.trim(),
+                    // The sector / status / ticker filters decide which reports the AI may use
+                    reports: scopeFiltered ? inScope.map((r) => ({ id: r.id, title: r.title })) : undefined,
+                  } satisfies ChatLocationState,
+                })}
+                className="flex items-center gap-2 whitespace-nowrap"
+              >
+                <Sparkles className="w-4 h-4" />
+                Ask AI
+              </Button>
             </div>
 
             {/* Second Row: Sector, Status, and Ticker Filters */}
@@ -283,6 +284,17 @@ export default function ResearchLibrary() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Where the words appear inside report text (only when a search is typed) */}
+      {textSearch.query.length >= 2 && searchTerm.trim() !== '' && (
+        <ReportTextMatches
+          query={textSearch.query}
+          loading={textSearch.pending || textSearch.isFetching}
+          error={textSearch.error}
+          hits={textSearch.data}
+          scopeEmpty={scopeFiltered && inScope.length === 0}
+        />
+      )}
 
       {/* Reports Grid */}
       {loading ? (

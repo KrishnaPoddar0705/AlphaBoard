@@ -24,6 +24,7 @@ import TeamDashboard from './components/organization/TeamDashboard';
 import OrganizationSettings from './components/organization/OrganizationSettings';
 import PrivacySettings from './components/settings/PrivacySettings';
 import ResearchLibrary from './pages/ResearchLibrary';
+import ResearchChat from './pages/ResearchChat';
 import ReportDetail from './pages/ReportDetail';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
@@ -129,8 +130,8 @@ function App() {
         }}
       />
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/login/*" element={<Login />} />
+        <Route path="/sign-up/*" element={<SignUpPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route element={<LayoutV2 />}>
           {/* Community routes - accessible to all */}
@@ -188,6 +189,16 @@ function App() {
           <Route path="/research" element={
             <PrivateRoute>
               <ResearchLibrary />
+            </PrivateRoute>
+          } />
+          <Route path="/research/chat" element={
+            <PrivateRoute>
+              <ResearchChat />
+            </PrivateRoute>
+          } />
+          <Route path="/research/chat/:conversationId" element={
+            <PrivateRoute>
+              <ResearchChat />
             </PrivateRoute>
           } />
           <Route path="/research/:id" element={
