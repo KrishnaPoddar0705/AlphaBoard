@@ -9,6 +9,7 @@ import LibraryOverview from '../components/research/workspace/LibraryOverview';
 import BrainComposer, { type ComposerMode } from '../components/research/workspace/BrainComposer';
 import ChatView from '../components/research/workspace/ChatView';
 import RecentChats from '../components/research/workspace/RecentChats';
+import ChatHistoryList from '../components/research/workspace/ChatHistoryList';
 import UploadReportModal from '../components/research/UploadReportModal';
 import { Sheet, SheetContent, SheetTitle } from '../components/ui/sheet';
 import { useResearchReports, useInvalidateReports } from '../hooks/useResearchReports';
@@ -114,6 +115,7 @@ export default function ResearchWorkspace() {
   };
   const askAbout = (r: ChatReport) => { select([r.id], true); setFocusSignal((n) => n + 1); };
   const goHome = () => { chat.reset(); patch({ chat: null, doc: null, page: null, find: null }); setShowResults(false); };
+  const openChat = (id: string) => { chat.reset(); patch({ chat: id, doc: null, page: null, find: null }); setShowResults(false); setTreeOpen(false); };
   const chatInView = !docId && (!!chatId || chat.pending !== null);
 
   const composer = (
@@ -147,6 +149,16 @@ export default function ResearchWorkspace() {
       selected={selected}
       onSelect={select}
       onUpload={() => setUploadOpen(true)}
+      chats={
+        <ChatHistoryList
+          conversations={chat.conversations.data ?? []}
+          loading={chat.conversations.isLoading}
+          activeId={chatId}
+          onOpen={openChat}
+          onNew={() => { goHome(); setTreeOpen(false); setFocusSignal((n) => n + 1); }}
+          onDelete={chat.remove}
+        />
+      }
     />
   );
 
@@ -203,7 +215,7 @@ export default function ResearchWorkspace() {
           <RecentChats
             conversations={chat.conversations.data ?? []}
             loading={chat.conversations.isLoading}
-            onOpen={(id) => { chat.select(id); }}
+            onOpen={openChat}
             onDelete={chat.remove}
           />
         }

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { MessageSquare, Trash2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
-import { Button } from '../../ui/button';
+import DeleteChatDialog from './DeleteChatDialog';
 import { lastActive } from '../../../lib/researchChat';
 import type { ResearchConversation } from '../../../types/researchChat';
 
@@ -60,18 +59,7 @@ export default function RecentChats({ conversations, loading, onOpen, onDelete }
         ))}
       </ul>
 
-      <Dialog open={!!deleting} onOpenChange={(open) => !open && setDeleting(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete this conversation?</DialogTitle>
-            <DialogDescription>“{deleting?.title}” and all its messages will be permanently deleted.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDeleting(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => { if (deleting) onDelete(deleting.id); setDeleting(null); }}>Delete</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <DeleteChatDialog conversation={deleting} onCancel={() => setDeleting(null)} onConfirm={onDelete} />
     </section>
   );
 }

@@ -20,6 +20,8 @@ interface LibraryPanelProps {
   selected: Set<string>;
   onSelect: (ids: string[], on: boolean) => void;
   onUpload: () => void;
+  /** The bottom half of the panel: the Brain conversations. */
+  chats: React.ReactNode;
 }
 
 function Check({ state, onChange, label }: { state: 'on' | 'off' | 'some'; onChange: (on: boolean) => void; label: string }) {
@@ -52,6 +54,8 @@ export default function LibraryPanel(props: LibraryPanelProps) {
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#FBF7ED]">
+      {/* Reports and chats share the panel half and half; each scrolls on its own. */}
+      <div className="flex min-h-0 flex-1 basis-0 flex-col">
       <div className="px-4 pt-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -85,7 +89,7 @@ export default function LibraryPanel(props: LibraryPanelProps) {
         </div>
       </div>
 
-      <nav aria-label="Reports" className="mt-2 min-h-0 flex-1 overflow-y-auto px-2 pb-24">
+      <nav aria-label="Reports" className="mt-2 min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {props.loading && <p className="flex items-center gap-2 px-2 py-3 text-sm text-[#6F6A60]"><Loader2 className="h-4 w-4 animate-spin" />Loading reports…</p>}
         {!props.loading && reports.length === 0 && (
           <p className="px-2 py-3 text-sm text-[#6F6A60]">No reports yet. Upload a PDF to start the library.</p>
@@ -143,6 +147,9 @@ export default function LibraryPanel(props: LibraryPanelProps) {
           );
         })}
       </nav>
+      </div>
+
+      <div className="flex min-h-0 flex-1 basis-0 flex-col border-t border-[#E4DDCC]">{props.chats}</div>
     </div>
   );
 }
