@@ -49,18 +49,23 @@ export default function EditReportDialog({ report, open, onClose, brokers, secto
     setSaving(true);
     setError(null);
     try {
-      const { data, error: err } = await supabase
-        .from('research_reports')
-        .update({ title: withBroker(title, broker), sector: sector.trim() || null })
-        .eq('id', report.id)
-        .select('id');
-      if (err) throw err;
-      // RLS turns a forbidden update into zero rows rather than an error.
-      if (!data?.length) throw new Error('Only the analyst who uploaded this report can edit it.');
+      // Any member of the report's organization may correct these fields; the function
+      // checks membership and touches only title and sector (research_report_edit_details.sql).
+      const { error: err } = await supabase.rpc('update_research_report_details', {
+        p_report_id: report.id,
+        p_title: withBroker(title, broker),
+        p_sector: sector.trim() || null,
+      });
+      if (err) {
+        // PGRST202: the function is not in this database yet (migration not applied).
+        if (err.code === 'PGRST202') throw new Error('Editing is not switched on in this database yet. Apply database/migrations/research_report_edit_details.sql.');
+        if (err.code === '42501') throw new Error('This report belongs to another organization.');
+        throw err;
+      }
       await invalidate();
       onClose();
     } catch (e) {
-      setError(e instanceof Error && e.message.startsWith('Only') ? e.message : getUserFriendlyError(e));
+      setError(e instanceof Error && /^(Editing|This report)/.test(e.message) ? e.message : getUserFriendlyError(e));
     } finally {
       setSaving(false);
     }
