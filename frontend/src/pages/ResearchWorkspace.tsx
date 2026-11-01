@@ -6,7 +6,7 @@ import LibraryPanel from '../components/research/workspace/LibraryPanel';
 import DocumentView from '../components/research/workspace/DocumentView';
 import SearchResults from '../components/research/workspace/SearchResults';
 import LibraryOverview from '../components/research/workspace/LibraryOverview';
-import BrainComposer from '../components/research/workspace/BrainComposer';
+import BrainComposer, { type ComposerMode } from '../components/research/workspace/BrainComposer';
 import BrainPanel from '../components/research/workspace/BrainPanel';
 import UploadReportModal from '../components/research/UploadReportModal';
 import { Sheet, SheetContent, SheetTitle } from '../components/ui/sheet';
@@ -58,19 +58,28 @@ export default function ResearchWorkspace() {
   const [treeOpen, setTreeOpen] = useState(false); // the phone's folder sheet
   const [brainOpen, setBrainOpen] = useState(!!chatId);
   const [showResults, setShowResults] = useState(false);
+  const [mode, setMode] = useState<ComposerMode>('ask');
+  const [focusSignal, setFocusSignal] = useState(0);
   const reduce = useReducedMotion();
 
   useEffect(() => { try { localStorage.setItem(FOLDER_MODE_KEY, folderMode); } catch { /* private mode */ } }, [folderMode]);
 
+  // "/" jumps to search from anywhere on the screen, as in most document tools.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement;
+      if (e.key !== '/' || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName) || t.isContentEditable) return;
+      e.preventDefault();
+      setMode('search');
+      setFocusSignal((n) => n + 1);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const textSearch = useReportSearch(query);
-  const textHitIds = useMemo(() => new Set((textSearch.data ?? []).map((h) => h.report_id)), [textSearch.data]);
   const trimmed = query.trim();
   const titleMatches = useMemo(() => (trimmed ? reports.filter((r) => fuzzyMatchReport(r, trimmed)) : reports), [reports, trimmed]);
-  // The tree keeps a report when its title matches or the words appear inside it.
-  const visible = useMemo(
-    () => (trimmed ? reports.filter((r) => textHitIds.has(r.id) || titleMatches.includes(r)) : reports),
-    [reports, trimmed, textHitIds, titleMatches],
-  );
 
   const scope: ChatReport[] = useMemo(
     () => reports.filter((r) => selected.has(r.id)).map((r) => ({ id: r.id, title: r.title, sector: r.sector ?? undefined })),
@@ -97,7 +106,11 @@ export default function ResearchWorkspace() {
     setShowResults(false);
     setTreeOpen(false);
   };
-  const ask = (q: string) => { setBrainOpen(true); chat.ask(q, scope); };
+  const ask = (q: string) => {
+    if (mode === 'search') { setMode('ask'); setQuery(''); setShowResults(false); }
+    setBrainOpen(true);
+    chat.ask(q, scope);
+  };
   const askAbout = (r: ChatReport) => { select([r.id], true); setBrainOpen(true); };
 
   const composer = (docked: boolean) => (
@@ -110,6 +123,17 @@ export default function ResearchWorkspace() {
       onSend={ask}
       busy={chat.busy}
       suggestions={suggestions}
+      mode={mode}
+      onMode={(m) => {
+        setMode(m);
+        setShowResults(m === 'search' && trimmed.length > 0);
+        // On a phone the Brain covers the screen, so step out of it to see search results.
+        if (m === 'search' && window.innerWidth < 768) setBrainOpen(false);
+      }}
+      query={query}
+      onQuery={onQuery}
+      searching={textSearch.pending || textSearch.isFetching}
+      focusSignal={focusSignal}
       autoFocus={docked}
     />
   );
@@ -118,11 +142,7 @@ export default function ResearchWorkspace() {
     <LibraryPanel
       orgName={orgName}
       reports={reports}
-      visible={visible}
       loading={reportsQuery.isLoading}
-      query={query}
-      onQuery={onQuery}
-      searching={textSearch.pending || textSearch.isFetching}
       folderMode={folderMode}
       onFolderMode={setFolderMode}
       activeId={docId}
@@ -134,7 +154,7 @@ export default function ResearchWorkspace() {
   );
 
   let center: React.ReactNode;
-  if (showResults && trimmed) {
+  if (mode === 'search' && showResults && trimmed) {
     center = (
       <SearchResults
         query={trimmed}
@@ -181,7 +201,6 @@ export default function ResearchWorkspace() {
             <FolderTree className="h-4 w-4" /> Reports
             <span className="text-xs text-[#6F6A60]">{reports.length}</span>
           </button>
-          {trimmed && <span className="truncate text-xs text-[#6F6A60]">Searching “{trimmed}”</span>}
         </div>
 
         <div className="min-h-0 flex-1">{center}</div>
@@ -196,7 +215,7 @@ export default function ResearchWorkspace() {
               transition={{ type: 'spring', stiffness: 380, damping: 32 }}
               className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6"
             >
-              <div className="pointer-events-auto w-full max-w-2xl">
+              <div className="pointer-events-auto w-full max-w-3xl">
                 {chatId && (
                   <button onClick={() => setBrainOpen(true)} className="mb-2 ml-3 text-xs text-[#6F6A60] underline-offset-2 hover:text-[#1C1B17] hover:underline">
                     Back to “{chat.title}”
@@ -218,7 +237,7 @@ export default function ResearchWorkspace() {
             animate={{ x: 0, opacity: 1 }}
             exit={reduce ? { opacity: 0 } : { x: 48, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 360, damping: 34 }}
-            className="fixed inset-0 z-50 md:static md:z-auto md:w-[400px] md:shrink-0 md:border-l md:border-[#E4DDCC] xl:w-[440px]"
+            className="fixed inset-0 z-50 md:static md:z-auto md:w-[440px] md:shrink-0 md:border-l md:border-[#E4DDCC] xl:w-[520px]"
           >
             <BrainPanel
               orgName={orgName}

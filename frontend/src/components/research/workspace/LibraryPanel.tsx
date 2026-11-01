@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { ChevronRight, FileText, Folder, FolderOpen, Loader2, Plus, Search, X } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { ChevronRight, FileText, Folder, FolderOpen, Loader2, Upload } from 'lucide-react';
 import { groupIntoFolders } from '../../../lib/researchFolders';
 import type { FolderMode, LibraryReport } from '../../../types/researchLibrary';
 
@@ -12,12 +12,7 @@ const MODES: Array<{ id: FolderMode; label: string }> = [
 interface LibraryPanelProps {
   orgName: string;
   reports: LibraryReport[];
-  /** Reports left after the search; the tree shows only these. */
-  visible: LibraryReport[];
   loading: boolean;
-  query: string;
-  onQuery: (q: string) => void;
-  searching: boolean;
   folderMode: FolderMode;
   onFolderMode: (m: FolderMode) => void;
   activeId: string | null;
@@ -44,24 +39,9 @@ function Check({ state, onChange, label }: { state: 'on' | 'off' | 'some'; onCha
 const statusDot: Record<string, string> = { failed: 'bg-[#B23B2A]', parsed: '' };
 
 export default function LibraryPanel(props: LibraryPanelProps) {
-  const { reports, visible, query, selected, activeId, folderMode } = props;
+  const { reports, selected, activeId, folderMode } = props;
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const searchRef = useRef<HTMLInputElement>(null);
-  const folders = useMemo(() => groupIntoFolders(visible, folderMode), [visible, folderMode]);
-  const searching = query.trim().length > 0;
-
-  // "/" jumps to the search box from anywhere on the screen, as in most document tools.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement;
-      if (e.key === '/' && !['INPUT', 'TEXTAREA'].includes(t.tagName) && !t.isContentEditable) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  const folders = useMemo(() => groupIntoFolders(reports, folderMode), [reports, folderMode]);
 
   const toggleFolder = (key: string) =>
     setCollapsed((prev) => {
@@ -75,38 +55,20 @@ export default function LibraryPanel(props: LibraryPanelProps) {
       <div className="px-4 pt-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <h1 className="text-[15px] font-semibold leading-tight text-[#1C1B17]">Institutional Memory</h1>
+            <h1 className="truncate text-[15px] font-semibold leading-tight text-[#1C1B17]">Institutional Memory</h1>
             <p className="mt-0.5 truncate text-xs text-[#6F6A60]">
               {props.orgName} · {reports.length} report{reports.length === 1 ? '' : 's'}
             </p>
           </div>
           <button
             onClick={props.onUpload}
-            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md bg-[#1C1B17] px-2.5 text-xs font-medium text-[#FBF7ED] transition-transform hover:bg-[#2c2a24] active:scale-[0.97]"
+            aria-label="Upload a report"
+            title="Upload a report"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#1C1B17] text-[#FBF7ED] transition-transform hover:bg-[#2c2a24] active:scale-[0.95]"
           >
-            <Plus className="h-3.5 w-3.5" /> Upload
+            <Upload className="h-4 w-4" />
           </button>
         </div>
-
-        <label className="relative mt-3 block">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B857A]" />
-          <input
-            ref={searchRef}
-            value={query}
-            onChange={(e) => props.onQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Escape' && props.onQuery('')}
-            placeholder="Search titles and report text"
-            aria-label="Search reports"
-            className="h-9 w-full rounded-md border border-[#D7D0C2] bg-[#F1EEE0] pl-8 pr-8 text-base text-[#1C1B17] placeholder:text-[#8B857A] focus:border-[#1D4ED8] focus:outline-none focus:ring-2 focus:ring-[#1D4ED8]/15 md:text-sm"
-          />
-          {searching ? (
-            <button onClick={() => props.onQuery('')} aria-label="Clear search" className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-[#6F6A60] hover:text-[#1C1B17]">
-              {props.searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <X className="h-3.5 w-3.5" />}
-            </button>
-          ) : (
-            <kbd className="pointer-events-none absolute right-2 top-1/2 hidden -translate-y-1/2 rounded border border-[#D7D0C2] px-1.5 text-[10px] text-[#8B857A] md:block">/</kbd>
-          )}
-        </label>
 
         <div role="tablist" aria-label="File reports by" className="mt-3 flex rounded-md bg-[#F1EEE0] p-0.5 text-xs">
           {MODES.map((m) => (
@@ -128,12 +90,9 @@ export default function LibraryPanel(props: LibraryPanelProps) {
         {!props.loading && reports.length === 0 && (
           <p className="px-2 py-3 text-sm text-[#6F6A60]">No reports yet. Upload a PDF to start the library.</p>
         )}
-        {!props.loading && reports.length > 0 && visible.length === 0 && (
-          <p className="px-2 py-3 text-sm text-[#6F6A60]">No titles match “{query.trim()}”. Text matches, if any, are listed on the right.</p>
-        )}
 
         {folders.map((f) => {
-          const open = searching || !collapsed.has(f.key);
+          const open = !collapsed.has(f.key);
           const ids = f.reports.map((r) => r.id);
           const nSel = ids.filter((id) => selected.has(id)).length;
           const FolderIcon = open ? FolderOpen : Folder;
