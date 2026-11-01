@@ -16,7 +16,8 @@ import { useResearchReports, useInvalidateReports } from '../hooks/useResearchRe
 import { useReportSearch } from '../hooks/useReportSearch';
 import { useBrainChat } from '../hooks/useBrainChat';
 import { useOrganization } from '../hooks/useOrganization';
-import { fuzzyMatchReport, suggestQuestions } from '../lib/researchFolders';
+import { brokerOf, fuzzyMatchReport, suggestQuestions } from '../lib/researchFolders';
+import { useAuth } from '../hooks/useAuth';
 import type { FolderMode } from '../types/researchLibrary';
 import type { ChatReport } from '../types/researchChat';
 
@@ -48,6 +49,7 @@ export default function ResearchWorkspace() {
     }, { replace: true });
 
   const { organization } = useOrganization();
+  const { session } = useAuth();
   const orgName = organization?.name ?? 'Team';
   const reportsQuery = useResearchReports();
   const reports = useMemo(() => reportsQuery.data ?? [], [reportsQuery.data]);
@@ -86,6 +88,8 @@ export default function ResearchWorkspace() {
     () => reports.filter((r) => selected.has(r.id)).map((r) => ({ id: r.id, title: r.title, sector: r.sector ?? undefined })),
     [reports, selected],
   );
+  const brokers = useMemo(() => [...new Set(reports.map(brokerOf))].filter((b) => b !== 'Unfiled').sort(), [reports]);
+  const sectors = useMemo(() => [...new Set(reports.map((r) => r.sector).filter((s): s is string => !!s))].sort(), [reports]);
   const openTitle = reports.find((r) => r.id === docId)?.title;
   const suggestions = useMemo(
     () => suggestQuestions(reports, { openTitle: scope.length === 0 ? openTitle : undefined, scopeCount: scope.length }),
@@ -199,6 +203,9 @@ export default function ResearchWorkspace() {
         onClose={() => patch({ doc: null, page: null, find: null })}
         inScope={selected.has(docId)}
         onToggleScope={() => select([docId], !selected.has(docId))}
+        userId={session?.user?.id}
+        brokers={brokers}
+        sectors={sectors}
       />
     );
   } else {
@@ -225,7 +232,7 @@ export default function ResearchWorkspace() {
 
   return (
     <div className="flex h-[calc(100dvh-4rem)] min-h-[480px] overflow-hidden bg-[#F1EEE0] md:h-[calc(100dvh-5rem)]">
-      <aside className="hidden w-[280px] shrink-0 border-r border-[#E4DDCC] md:block">{library}</aside>
+      <aside className="hidden w-[288px] shrink-0 md:block">{library}</aside>
 
       <Sheet open={treeOpen} onOpenChange={setTreeOpen}>
         <SheetContent side="left" className="w-[88vw] max-w-[340px] p-0">

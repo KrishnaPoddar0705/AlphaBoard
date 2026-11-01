@@ -1,5 +1,6 @@
 import { ArrowLeft, SquarePen } from 'lucide-react';
 import ChatThread from '../chat/ChatThread';
+import { shortChatTitle } from '../../../lib/researchChat';
 import type { BrainChat } from '../../../hooks/useBrainChat';
 import type { ChatReport } from '../../../types/researchChat';
 
@@ -25,7 +26,7 @@ export default function ChatView({ orgName, chat, conversationId, totalReports, 
           <ArrowLeft className="h-4 w-4" />
         </button>
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-sm font-semibold text-[#1C1B17]">{chat.pending && !conversationId ? chat.pending : chat.title}</h2>
+          <h2 className="truncate text-sm font-semibold text-[#1C1B17]">{chat.pending && !conversationId ? shortChatTitle(chat.pending) : chat.title}</h2>
           <p className="truncate text-xs text-[#6F6A60]">{orgName} Brain</p>
         </div>
         <button onClick={onHome} className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-[#1C1B17] hover:bg-[#1C1B17]/[0.05] active:scale-[0.97]">

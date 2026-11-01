@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Loader2, SquarePen, Trash2 } from 'lucide-react';
-import { groupConversations, lastActive } from '../../../lib/researchChat';
+import { groupConversations, lastActive, shortChatTitle } from '../../../lib/researchChat';
 import DeleteChatDialog from './DeleteChatDialog';
 import type { ResearchConversation } from '../../../types/researchChat';
 
@@ -50,7 +50,7 @@ export default function ChatHistoryList({ conversations, loading, activeId, onOp
                       aria-current={active ? 'page' : undefined}
                       className="min-w-0 flex-1 truncate px-2 py-1.5 text-left text-[13px] text-[#1C1B17]"
                     >
-                      {c.title}
+                      {shortChatTitle(c.title)}
                     </button>
                     <button
                       onClick={() => setDeleting(c)}

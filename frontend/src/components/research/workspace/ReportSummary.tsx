@@ -197,21 +197,24 @@ export default function ReportSummary({ parsed: p, status, onJumpToPage }: Repor
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div role="tablist" aria-label="AI summary" className="flex shrink-0 gap-1 overflow-x-auto border-b border-[#E4DDCC] px-3 [scrollbar-width:none]">
-        {TABS.map(({ id, label, Icon }) => (
-          <button
-            key={id}
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => setTab(id)}
-            className={`-mb-px inline-flex shrink-0 items-center gap-1.5 border-b-2 px-2 py-2.5 text-xs transition-colors ${tab === id ? 'border-[#1D4ED8] font-medium text-[#1C1B17]' : 'border-transparent text-[#6F6A60] hover:text-[#1C1B17]'}`}
-          >
-            <Icon className="h-3.5 w-3.5" />{label}
-          </button>
-        ))}
+    <div className="h-full min-h-0 overflow-y-auto">
+      {/* A small floating card of pills; the section text scrolls beneath it. */}
+      <div className="sticky top-0 z-10 bg-[#F1EEE0] px-3 pb-1 pt-3">
+        <div role="tablist" aria-label="AI summary" className="flex flex-wrap gap-1 rounded-2xl border border-[#E4DDCC] bg-[#FBF7ED] p-1.5 shadow-[0_6px_18px_-10px_rgba(28,27,23,0.35)]">
+          {TABS.map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              role="tab"
+              aria-selected={tab === id}
+              onClick={() => setTab(id)}
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs transition-colors active:scale-[0.97] ${tab === id ? 'bg-[#1C1B17] font-medium text-[#FBF7ED]' : 'text-[#6F6A60] hover:bg-[#1C1B17]/[0.06] hover:text-[#1C1B17]'}`}
+            >
+              <Icon className="h-3.5 w-3.5" />{label}
+            </button>
+          ))}
+        </div>
       </div>
-      <div role="tabpanel" className="min-h-0 flex-1 overflow-y-auto px-4 py-5 pb-36 md:px-5">{body}</div>
+      <div role="tabpanel" className="px-4 pb-36 pt-4 md:px-5">{body}</div>
     </div>
   );
 }

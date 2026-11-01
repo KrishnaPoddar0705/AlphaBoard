@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { MessageSquare, Trash2 } from 'lucide-react';
 import DeleteChatDialog from './DeleteChatDialog';
-import { lastActive } from '../../../lib/researchChat';
+import { lastActive, shortChatTitle } from '../../../lib/researchChat';
 import type { ResearchConversation } from '../../../types/researchChat';
 
 const LIMIT = 6;
@@ -44,7 +44,7 @@ export default function RecentChats({ conversations, loading, onOpen, onDelete }
             >
               <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-[#8B857A]" />
               <span className="min-w-0">
-                <span className="block truncate text-sm font-medium text-[#1C1B17]">{c.title}</span>
+                <span className="block truncate text-sm font-medium text-[#1C1B17]" title={c.title}>{shortChatTitle(c.title)}</span>
                 <span className="mt-0.5 block text-xs text-[#6F6A60]">Last message {lastActive(c.updated_at).toLowerCase()}</span>
               </span>
             </button>

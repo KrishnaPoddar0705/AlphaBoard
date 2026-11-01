@@ -1,6 +1,6 @@
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, Landmark, Tag, Upload } from 'lucide-react';
-import { brokerOf } from '../../../lib/researchFolders';
+import { bareTitle, brokerOf } from '../../../lib/researchFolders';
 import type { LibraryReport } from '../../../types/researchLibrary';
 
 interface LibraryOverviewProps {
@@ -16,8 +16,6 @@ interface LibraryOverviewProps {
 }
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-/** "[Kotak] Consumer Durables…" reads as "Consumer Durables…" once the broker has its own mark. */
-const bareTitle = (title: string) => title.replace(/^\s*\[[^\]]{1,40}\]\s*/, '');
 
 /** A PDF as a pill: the file mark, its title, then who wrote it and what it covers. */
 function ReportPill({ report, onOpen }: { report: LibraryReport; onOpen: () => void }) {

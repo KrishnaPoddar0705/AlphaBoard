@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, Loader2, MessageSquarePlus, Check, X } from 'lucide-react';
+import { Download, Loader2, MessageSquarePlus, Check, Pencil, X } from 'lucide-react';
+import EditReportDialog from './EditReportDialog';
+import { brokerOf } from '../../../lib/researchFolders';
 import { useReportDetail } from '../../../hooks/useResearchReports';
 import ReportSummary from './ReportSummary';
 
@@ -11,6 +13,10 @@ interface DocumentViewProps {
   onClose: () => void;
   inScope: boolean;
   onToggleScope: () => void;
+  /** Who is looking: only the uploader may edit a report. */
+  userId: string | undefined;
+  brokers: string[];
+  sectors: string[];
 }
 
 /** Below this width the preview and the summary take turns instead of sitting side by side. */
@@ -28,7 +34,8 @@ function useWidth<T extends HTMLElement>() {
   return [ref, width] as const;
 }
 
-export default function DocumentView({ reportId, page, findText, onPage, onClose, inScope, onToggleScope }: DocumentViewProps) {
+export default function DocumentView({ reportId, page, findText, onPage, onClose, inScope, onToggleScope, userId, brokers, sectors }: DocumentViewProps) {
+  const [editing, setEditing] = useState(false);
   const { data: report, isLoading, error } = useReportDetail(reportId);
   const [ref, width] = useWidth<HTMLDivElement>();
   const [pane, setPane] = useState<'preview' | 'summary'>('summary');
@@ -57,6 +64,7 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
           </h2>
           {report && (
             <p className="mt-0.5 flex flex-wrap gap-x-2 text-xs text-[#6F6A60]">
+              {brokerOf(report) !== 'Unfiled' && <span>{brokerOf(report)}</span>}
               {report.sector && <span>{report.sector}</span>}
               {!!report.tickers?.length && <span className="font-medium text-[#1C1B17]">{report.tickers.join(' · ')}</span>}
               <span>{new Date(report.created_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
@@ -73,6 +81,17 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
             {inScope ? <Check className="h-3.5 w-3.5" /> : <MessageSquarePlus className="h-3.5 w-3.5" />}
             <span className="hidden sm:inline">{inScope ? 'In your question' : 'Ask about this'}</span>
           </button>
+          {report && (
+            <button
+              onClick={() => setEditing(true)}
+              disabled={!!report.analyst_id && report.analyst_id !== userId}
+              aria-label="Edit broker, title and sector"
+              title={report.analyst_id && report.analyst_id !== userId ? 'Only the analyst who uploaded this report can edit it' : 'Edit broker, title and sector'}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-[#1C1B17] hover:bg-[#1C1B17]/[0.05] disabled:opacity-40 disabled:hover:bg-transparent"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+          )}
           <a
             href={report?.pdfUrl || undefined}
             target="_blank"
@@ -103,6 +122,10 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
             </button>
           ))}
         </div>
+      )}
+
+      {report && editing && (
+        <EditReportDialog key={report.id} report={report} open onClose={() => setEditing(false)} brokers={brokers} sectors={sectors} />
       )}
 
       {isLoading && <p className="flex items-center gap-2 p-6 text-sm text-[#6F6A60]"><Loader2 className="h-4 w-4 animate-spin" />Loading the report…</p>}

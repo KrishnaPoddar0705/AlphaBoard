@@ -96,3 +96,13 @@ export function suggestQuestions(
   out.push('What changed in our research this month?');
   return out;
 }
+
+/** The title without its "[Broker]" prefix. */
+export const bareTitle = (title: string) => title.replace(/^\s*\[[^\]]{1,40}\]\s*/, '');
+
+/** Put a broker in front of a title the way broker notes are named: "[Kotak] Consumer Durables…". */
+export function withBroker(title: string, broker: string): string {
+  const bare = bareTitle(title).trim();
+  const b = broker.replace(/[[\]]/g, '').trim();
+  return b ? `[${b}] ${bare}` : bare;
+}

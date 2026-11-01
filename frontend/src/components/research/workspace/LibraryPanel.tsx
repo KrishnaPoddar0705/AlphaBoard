@@ -53,9 +53,9 @@ export default function LibraryPanel(props: LibraryPanelProps) {
     });
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#FBF7ED]">
-      {/* Reports and chats share the panel half and half; each scrolls on its own. */}
-      <div className="flex min-h-0 flex-1 basis-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col gap-2 bg-[#F1EEE0] p-2">
+      {/* Reports and chats share the panel half and half, as two cards; each scrolls on its own. */}
+      <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden rounded-2xl border border-[#E4DDCC] bg-[#FBF7ED]">
       <div className="px-4 pt-4">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
@@ -149,7 +149,7 @@ export default function LibraryPanel(props: LibraryPanelProps) {
       </nav>
       </div>
 
-      <div className="flex min-h-0 flex-1 basis-0 flex-col border-t border-[#E4DDCC]">{props.chats}</div>
+      <div className="flex min-h-0 flex-1 basis-0 flex-col overflow-hidden rounded-2xl border border-[#E4DDCC] bg-[#FBF7ED]">{props.chats}</div>
     </div>
   );
 }

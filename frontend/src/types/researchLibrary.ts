@@ -30,6 +30,7 @@ export interface ParsedReport {
 }
 
 export interface ReportDetailData extends LibraryReport {
+  analyst_id?: string;
   storage_path?: string;
   parsed?: ParsedReport;
   pdfUrl: string;

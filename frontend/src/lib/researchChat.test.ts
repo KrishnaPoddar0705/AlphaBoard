@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { groupConversations, deriveTitle } from './researchChat'
+import { groupConversations, deriveTitle, shortChatTitle } from './researchChat'
 import type { ResearchConversation } from '../types/researchChat'
 
 const convo = (id: string, updated_at: string): ResearchConversation => ({
@@ -40,3 +40,16 @@ describe('deriveTitle', () => {
     expect(t.endsWith('…')).toBe(true)
   })
 })
+
+describe('shortChatTitle', () => {
+  it('drops the question wording and keeps the subject', () => {
+    expect(shortChatTitle('how much is the Commercial refrigeration valued at?')).toBe('Commercial refrigeration valued');
+    expect(shortChatTitle('What is the outlook for Consumer Discretionary across our reports?')).toBe('Outlook for Consumer Discretionary');
+  });
+  it('leaves a short title alone', () => {
+    expect(shortChatTitle('Commercial')).toBe('Commercial');
+  });
+  it('caps long titles at five words', () => {
+    expect(shortChatTitle('Compare the views on BLUESTARCO and VOLTAS for the summer season')).toBe('Compare views on BLUESTARCO');
+  });
+});

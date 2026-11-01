@@ -3,6 +3,7 @@ import {
   useConversations, useMessages, useSendMessage, useRenameConversation, useDeleteConversation,
 } from './useResearchChat';
 import { getUserFriendlyError } from '../lib/errorSanitizer';
+import { shortChatTitle } from '../lib/researchChat';
 import type { ChatReport } from '../types/researchChat';
 
 /**
@@ -44,7 +45,7 @@ export function useBrainChat(conversationId: string | undefined, setConversation
     pendingScope,
     error,
     busy: pending !== null && error === null,
-    title: conversations.data?.find((c) => c.id === conversationId)?.title ?? 'New conversation',
+    title: shortChatTitle(conversations.data?.find((c) => c.id === conversationId)?.title ?? 'New conversation'),
     ask,
     retry: () => pending && ask(pending, pendingScope),
     /** Forget an unsent or failed question without touching the URL. */
