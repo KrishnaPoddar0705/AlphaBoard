@@ -47,6 +47,8 @@ export function useBrainChat(conversationId: string | undefined, setConversation
     title: conversations.data?.find((c) => c.id === conversationId)?.title ?? 'New conversation',
     ask,
     retry: () => pending && ask(pending, pendingScope),
+    /** Forget an unsent or failed question without touching the URL. */
+    reset,
     startNew: () => { reset(); setConversationId(undefined); },
     select: (id: string) => { reset(); setConversationId(id); },
     rename: (id: string, title: string) => rename.mutate({ id, title }),

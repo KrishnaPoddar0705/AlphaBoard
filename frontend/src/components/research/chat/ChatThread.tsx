@@ -59,7 +59,8 @@ export default function ChatThread({
   const empty = !loading && messages.length === 0 && !pendingQuestion;
 
   return (
-    <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-4 py-5">
+    <div className="min-h-0 flex-1 overflow-y-auto px-4 md:px-8">
+      <div className="mx-auto max-w-3xl space-y-8 pb-48 pt-6">
       {loading && <p className="flex items-center gap-2 text-sm text-[#6F6A60]"><Loader2 className="h-4 w-4 animate-spin" />Loading the conversation…</p>}
 
       {empty && (
@@ -98,6 +99,7 @@ export default function ChatThread({
         )}
       </AnimatePresence>
       <div ref={endRef} />
+      </div>
     </div>
   );
 }

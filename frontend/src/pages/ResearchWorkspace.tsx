@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { FolderTree } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
+import { ArrowLeft, FolderTree } from 'lucide-react';
 import LibraryPanel from '../components/research/workspace/LibraryPanel';
 import DocumentView from '../components/research/workspace/DocumentView';
 import SearchResults from '../components/research/workspace/SearchResults';
 import LibraryOverview from '../components/research/workspace/LibraryOverview';
 import BrainComposer, { type ComposerMode } from '../components/research/workspace/BrainComposer';
-import BrainPanel from '../components/research/workspace/BrainPanel';
+import ChatView from '../components/research/workspace/ChatView';
+import RecentChats from '../components/research/workspace/RecentChats';
 import UploadReportModal from '../components/research/UploadReportModal';
 import { Sheet, SheetContent, SheetTitle } from '../components/ui/sheet';
 import { useResearchReports, useInvalidateReports } from '../hooks/useResearchReports';
@@ -56,7 +57,6 @@ export default function ResearchWorkspace() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [uploadOpen, setUploadOpen] = useState(false);
   const [treeOpen, setTreeOpen] = useState(false); // the phone's folder sheet
-  const [brainOpen, setBrainOpen] = useState(!!chatId);
   const [showResults, setShowResults] = useState(false);
   const [mode, setMode] = useState<ComposerMode>('ask');
   const [focusSignal, setFocusSignal] = useState(0);
@@ -106,14 +106,17 @@ export default function ResearchWorkspace() {
     setShowResults(false);
     setTreeOpen(false);
   };
+  // Asking always brings the conversation to the main board, in place of a report or results.
   const ask = (q: string) => {
     if (mode === 'search') { setMode('ask'); setQuery(''); setShowResults(false); }
-    setBrainOpen(true);
+    if (docId) patch({ doc: null, page: null, find: null });
     chat.ask(q, scope);
   };
-  const askAbout = (r: ChatReport) => { select([r.id], true); setBrainOpen(true); };
+  const askAbout = (r: ChatReport) => { select([r.id], true); setFocusSignal((n) => n + 1); };
+  const goHome = () => { chat.reset(); patch({ chat: null, doc: null, page: null, find: null }); setShowResults(false); };
+  const chatInView = !docId && (!!chatId || chat.pending !== null);
 
-  const composer = (docked: boolean) => (
+  const composer = (
     <BrainComposer
       orgName={orgName}
       totalReports={reports.length}
@@ -124,17 +127,11 @@ export default function ResearchWorkspace() {
       busy={chat.busy}
       suggestions={suggestions}
       mode={mode}
-      onMode={(m) => {
-        setMode(m);
-        setShowResults(m === 'search' && trimmed.length > 0);
-        // On a phone the Brain covers the screen, so step out of it to see search results.
-        if (m === 'search' && window.innerWidth < 768) setBrainOpen(false);
-      }}
+      onMode={(m) => { setMode(m); setShowResults(m === 'search' && trimmed.length > 0); }}
       query={query}
       onQuery={onQuery}
       searching={textSearch.pending || textSearch.isFetching}
       focusSignal={focusSignal}
-      autoFocus={docked}
     />
   );
 
@@ -166,6 +163,20 @@ export default function ResearchWorkspace() {
         onAsk={ask}
       />
     );
+  } else if (chatInView) {
+    center = (
+      <ChatView
+        orgName={orgName}
+        chat={chat}
+        conversationId={chatId}
+        totalReports={reports.length}
+        examples={suggestions}
+        onAsk={ask}
+        onAskAboutReport={askAbout}
+        onOpenReport={openReport}
+        onHome={goHome}
+      />
+    );
   } else if (docId) {
     center = (
       <DocumentView
@@ -180,7 +191,23 @@ export default function ResearchWorkspace() {
     );
   } else {
     center = (
-      <LibraryOverview orgName={orgName} reports={reports} loading={reportsQuery.isLoading} onOpen={openReport} onUpload={() => setUploadOpen(true)} onAsk={ask} suggestions={suggestions} />
+      <LibraryOverview
+        orgName={orgName}
+        reports={reports}
+        loading={reportsQuery.isLoading}
+        onOpen={openReport}
+        onUpload={() => setUploadOpen(true)}
+        onAsk={ask}
+        suggestions={suggestions}
+        footer={
+          <RecentChats
+            conversations={chat.conversations.data ?? []}
+            loading={chat.conversations.isLoading}
+            onOpen={(id) => { chat.select(id); }}
+            onDelete={chat.remove}
+          />
+        }
+      />
     );
   }
 
@@ -205,55 +232,23 @@ export default function ResearchWorkspace() {
 
         <div className="min-h-0 flex-1">{center}</div>
 
-        <AnimatePresence>
-          {!brainOpen && (
-            <motion.div
-              key="floating-composer"
-              initial={reduce ? false : { opacity: 0, y: 24 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0, y: 24 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-              className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6"
-            >
-              <div className="pointer-events-auto w-full max-w-3xl">
-                {chatId && (
-                  <button onClick={() => setBrainOpen(true)} className="mb-2 ml-3 text-xs text-[#6F6A60] underline-offset-2 hover:text-[#1C1B17] hover:underline">
-                    Back to “{chat.title}”
-                  </button>
-                )}
-                {composer(false)}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+          className="pointer-events-none absolute inset-x-0 bottom-0 flex justify-center px-3 pb-[max(1rem,env(safe-area-inset-bottom))] md:px-6"
+        >
+          <div className="pointer-events-auto w-full max-w-3xl">
+            {/* A report opened from the conversation leaves the conversation one click away. */}
+            {docId && chatId && (
+              <button onClick={() => patch({ doc: null, page: null, find: null })} className="mb-2 ml-3 inline-flex items-center gap-1 rounded-full bg-[#FBF7ED] px-2.5 py-1 text-xs text-[#1C1B17] shadow-[0_2px_8px_-2px_rgba(28,27,23,0.2)] hover:text-[#1D4ED8]">
+                <ArrowLeft className="h-3 w-3" /> Back to “{chat.title}”
+              </button>
+            )}
+            {composer}
+          </div>
+        </motion.div>
       </main>
-
-      <AnimatePresence>
-        {brainOpen && (
-          <motion.aside
-            key="brain"
-            aria-label={`${orgName} Brain`}
-            initial={reduce ? false : { x: 48, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={reduce ? { opacity: 0 } : { x: 48, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 360, damping: 34 }}
-            className="fixed inset-0 z-50 md:static md:z-auto md:w-[440px] md:shrink-0 md:border-l md:border-[#E4DDCC] xl:w-[520px]"
-          >
-            <BrainPanel
-              orgName={orgName}
-              chat={chat}
-              conversationId={chatId}
-              totalReports={reports.length}
-              examples={suggestions}
-              onAsk={ask}
-              onAskAboutReport={askAbout}
-              onOpenReport={(id, p) => { openReport(id, p); if (window.innerWidth < 768) setBrainOpen(false); }}
-              onCollapse={() => setBrainOpen(false)}
-              composer={composer(true)}
-            />
-          </motion.aside>
-        )}
-      </AnimatePresence>
 
       <UploadReportModal isOpen={uploadOpen} onClose={() => setUploadOpen(false)} onSuccess={invalidateReports} />
     </div>

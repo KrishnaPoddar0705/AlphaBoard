@@ -11,6 +11,8 @@ interface LibraryOverviewProps {
   onUpload: () => void;
   onAsk: (q: string) => void;
   suggestions: string[];
+  /** Rendered under Recently added: the earlier conversations. */
+  footer?: React.ReactNode;
 }
 
 const shortDate = (iso: string) => new Date(iso).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
@@ -44,7 +46,7 @@ function ReportPill({ report, onOpen }: { report: LibraryReport; onOpen: () => v
 }
 
 /** The centre of the workspace when nothing is open: what the library holds and where to start. */
-export default function LibraryOverview({ orgName, reports, loading, onOpen, onUpload, onAsk, suggestions }: LibraryOverviewProps) {
+export default function LibraryOverview({ orgName, reports, loading, onOpen, onUpload, onAsk, suggestions, footer }: LibraryOverviewProps) {
   const reduce = useReducedMotion();
   const rise = (i: number) => (reduce ? {} : {
     initial: { opacity: 0, y: 14 },
@@ -130,6 +132,8 @@ export default function LibraryOverview({ orgName, reports, loading, onOpen, onU
           {reports.slice(0, 10).map((r) => <ReportPill key={r.id} report={r} onOpen={() => onOpen(r.id)} />)}
         </div>
       </motion.section>
+
+      {footer && <motion.div {...rise(5)}>{footer}</motion.div>}
     </div>
   );
 }
