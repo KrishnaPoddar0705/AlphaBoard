@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
 import { bareTitle, brokerOf, withBroker } from '../../../lib/researchFolders';
 import { getUserFriendlyError } from '../../../lib/errorSanitizer';
 import { useInvalidateReports } from '../../../hooks/useResearchReports';
+import { useBrokers } from '../../../hooks/commandCenter/useBrokers';
+import BrokerCombobox from './BrokerCombobox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../ui/dialog';
 import { Button } from '../../ui/button';
 import type { LibraryReport } from '../../../types/researchLibrary';
@@ -12,7 +14,7 @@ interface EditReportDialogProps {
   report: LibraryReport;
   open: boolean;
   onClose: () => void;
-  /** Existing brokers and sectors, offered as suggestions so folders don't split on spelling. */
+  /** Brokers and sectors already on reports, offered so folders don't split on spelling. */
   brokers: string[];
   sectors: string[];
 }
@@ -31,6 +33,16 @@ export default function EditReportDialog({ report, open, onClose, brokers, secto
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const invalidate = useInvalidateReports();
+  // The same broker list Command Center's coverage uses, plus any broker already on a report.
+  const ccBrokers = useBrokers();
+  const brokerOptions = useMemo(() => {
+    const byKey = new Map<string, string>();
+    for (const name of [...(ccBrokers.data ?? []).map((b) => b.name), ...brokers]) {
+      const key = name.trim().toLowerCase();
+      if (key && !byKey.has(key)) byKey.set(key, name.trim());
+    }
+    return [...byKey.values()].sort((a, b) => a.localeCompare(b));
+  }, [ccBrokers.data, brokers]);
 
   const save = async () => {
     if (!title.trim()) { setError('The report needs a title.'); return; }
@@ -65,8 +77,7 @@ export default function EditReportDialog({ report, open, onClose, brokers, secto
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); save(); }}>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-[#1C1B17]">Broker</span>
-            <input list="research-brokers" value={broker} onChange={(e) => setBroker(e.target.value)} placeholder="e.g. Kotak, ICICI Securities" className={field} autoFocus />
-            <datalist id="research-brokers">{brokers.map((b) => <option key={b} value={b} />)}</datalist>
+            <BrokerCombobox value={broker} onChange={setBroker} options={brokerOptions} loading={ccBrokers.isLoading} />
           </label>
           <label className="block">
             <span className="mb-1.5 block text-xs font-medium text-[#1C1B17]">Title</span>

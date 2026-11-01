@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Download, Loader2, MessageSquarePlus, Check, Pencil, X } from 'lucide-react';
 import EditReportDialog from './EditReportDialog';
+import PdfErrorBoundary from './pdf/PdfErrorBoundary';
 
 // PDF.js is about 1 MB; it loads the first time a report is opened, not with the app.
 const PdfViewer = lazy(() => import('./pdf/PdfViewer'));
@@ -135,9 +136,11 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
           {(split || pane === 'preview') && (
             <div className="min-w-0 flex-1 bg-[#E9E5D6]">
               {report.pdfUrl ? (
-                <Suspense fallback={<p className="flex items-center gap-2 p-6 text-sm text-[#6F6A60]"><Loader2 className="h-4 w-4 animate-spin" />Opening the PDF…</p>}>
-                  <PdfViewer key={report.pdfUrl} url={report.pdfUrl} title={report.title} page={page} findText={findText} />
-                </Suspense>
+                <PdfErrorBoundary key={report.pdfUrl} url={report.pdfUrl}>
+                  <Suspense fallback={<p className="flex items-center gap-2 p-6 text-sm text-[#6F6A60]"><Loader2 className="h-4 w-4 animate-spin" />Opening the PDF…</p>}>
+                    <PdfViewer url={report.pdfUrl} title={report.title} page={page} findText={findText} />
+                  </Suspense>
+                </PdfErrorBoundary>
               ) : (
                 <p className="p-6 text-sm text-[#6F6A60]">The PDF file is not available for this report.</p>
               )}
