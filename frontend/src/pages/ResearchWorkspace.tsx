@@ -17,7 +17,6 @@ import { useReportSearch } from '../hooks/useReportSearch';
 import { useBrainChat } from '../hooks/useBrainChat';
 import { useOrganization } from '../hooks/useOrganization';
 import { brokerOf, fuzzyMatchReport, suggestQuestions } from '../lib/researchFolders';
-import { useAuth } from '../hooks/useAuth';
 import type { FolderMode } from '../types/researchLibrary';
 import type { ChatReport } from '../types/researchChat';
 
@@ -49,7 +48,6 @@ export default function ResearchWorkspace() {
     }, { replace: true });
 
   const { organization } = useOrganization();
-  const { session } = useAuth();
   const orgName = organization?.name ?? 'Team';
   const reportsQuery = useResearchReports();
   const reports = useMemo(() => reportsQuery.data ?? [], [reportsQuery.data]);
@@ -203,7 +201,6 @@ export default function ResearchWorkspace() {
         onClose={() => patch({ doc: null, page: null, find: null })}
         inScope={selected.has(docId)}
         onToggleScope={() => select([docId], !selected.has(docId))}
-        userId={session?.user?.id}
         brokers={brokers}
         sectors={sectors}
       />
