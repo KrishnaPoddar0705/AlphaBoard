@@ -120,8 +120,7 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
             </div>
           )}
           {(split || pane === 'summary') && (
-            <aside aria-label="AI summary" className={`min-h-0 overflow-y-auto px-4 py-5 pb-28 md:px-6 ${split ? 'w-[360px] shrink-0 border-l border-[#E4DDCC] xl:w-[400px]' : 'flex-1'}`}>
-              {split && <h3 className="mb-3 text-xs font-medium text-[#6F6A60]">AI summary</h3>}
+            <aside aria-label="AI summary" className={`min-h-0 ${split ? 'w-[380px] shrink-0 border-l border-[#E4DDCC] xl:w-[440px]' : 'flex-1'}`}>
               <ReportSummary parsed={report.parsed ?? {}} status={report.upload_status} onJumpToPage={jump} />
             </aside>
           )}
