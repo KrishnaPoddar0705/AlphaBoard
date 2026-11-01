@@ -21,7 +21,7 @@ declare const Deno: {
 
 // Environment variables
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
-const GEMINI_MODEL = 'gemini-flash-latest'; // Latest Flash model with File Search support
+const GEMINI_MODEL = 'gemini-3.1-flash-lite'; // Flash-Lite, supports File Search
 
 console.log('[Gemini Client] Initializing Google GenAI SDK...');
 console.log(`[Gemini Client] Model: ${GEMINI_MODEL}`);
@@ -109,13 +109,16 @@ export async function getOrCreateFileSearchStore(orgId: string): Promise<string>
 
         // Try to list existing stores
         try {
-            const listResponse = await ai.fileSearchStores.list();
-            const stores = listResponse.fileSearchStores || [];
-
-            const existingStore = stores.find((store: any) =>
-                store.displayName === storeDisplayName ||
-                store.displayName?.includes(orgId)
-            );
+            // list() returns a Pager, not a response object -- iterate it to walk every
+            // page. Reading `.fileSearchStores` off it always gave [], so every upload
+            // created a fresh store and the org's reports ended up scattered across them.
+            let existingStore: any = null;
+            for await (const store of await ai.fileSearchStores.list()) {
+                if (store.displayName === storeDisplayName || store.displayName?.includes(orgId)) {
+                    existingStore = store;
+                    break;
+                }
+            }
 
             if (existingStore) {
                 console.log(`[Gemini] Found existing store: ${existingStore.name}`);
@@ -282,7 +285,7 @@ export async function parseReportWithGemini(
             ]
         };
 
-        console.log(`[Gemini] Request URL (v1beta): ${url}`);
+        console.log(`[Gemini] Request URL (v1beta): ${url.replace(GEMINI_API_KEY, '***')}`);
         console.log(`[Gemini] Store in request: ${fileSearchStoreId}`);
 
         const response = await fetch(url, {
@@ -325,6 +328,22 @@ export async function parseReportWithGemini(
 /**
  * Query reports using RAG with File Search (via REST API)
  */
+/**
+ * How the model must write company names. The app turns "(NSE: TICKER)" into a screener.in
+ * link, so the format is exact and a wrong symbol is worse than no symbol.
+ */
+export function companyTickerRules(knownTickers: string[] = []): string {
+    const known = knownTickers.length > 0
+        ? `\nTICKERS THE USER TAGGED THESE REPORTS WITH (use as a hint; a company matches one only if the report names that company): ${knownTickers.join(', ')}`
+        : '';
+    return `COMPANY NAMES AND TICKERS (strict):
+- Every time the answer names a listed company, write it as: Company Name (NSE: SYMBOL), for example Hindustan Aeronautics Ltd (NSE: HAL). Repeat the ticker at each mention in tables and in each section; in running text, the first mention in a paragraph is enough.
+- SYMBOL is the company's NSE trading symbol exactly as screener.in uses it: capital letters, digits, & or - only, no spaces and no ".NS". A company with no NSE listing but a BSE code uses (BSE: 500325).
+- Take the ticker from the context when the report prints it. Otherwise give it only if you are certain of that exact company's symbol (well-known Indian listed companies). If you are not certain, write the company name WITHOUT a ticker. Never guess, never invent, never reuse a similar company's symbol (Tata Motors, Tata Steel and Tata Power are different).
+- Use the company name exactly as the report gives it; do not merge parents, subsidiaries or group companies. Do not add a ticker for private, unlisted or foreign-only companies: write the name and, if the report prints one, its foreign exchange form such as (NYSE: JPM).
+- Never put a ticker on something that is not a single company (an index, ETF, sector or a broker).${known}`;
+}
+
 export async function queryGeminiRAG(
     query: string,
     fileSearchStoreId: string,
@@ -351,6 +370,8 @@ export async function queryGeminiRAG(
 
         const promptText = `${contextString}
 Query: ${query}
+
+${companyTickerRules()}
 
 You are a financial research analyst. Provide a comprehensive, detailed answer based on the research reports in the File Search Store. Your response MUST be valid JSON only - no markdown code blocks, no explanatory text, just the JSON object.
 
@@ -815,7 +836,8 @@ export async function generateEvidenceFirstAnswer(
     question: string,
     chunks: RankedChunk[],
     requiredSections: string[],
-    fileSearchStoreId: string
+    fileSearchStoreId: string,
+    knownTickers: string[] = []
 ): Promise<EnhancedRAGResponse> {
     try {
         console.log(`[Gemini] ========================================`);
@@ -861,31 +883,12 @@ INSTRUCTIONS:
 
 REQUIRED SECTIONS: ${requiredSections.join(', ')}
 
+${companyTickerRules(knownTickers)}
+
 OUTPUT JSON SCHEMA:
 {
-  "answer": "string (markdown formatted answer with inline citations [1], [2], etc. - for backward compatibility)",
-  "enhanced_answer": {
-    "direct_answer": "string (2-3 sentences directly answering question)",
-    "detailed_breakdown": [
-      {
-        "heading": "string",
-        "details": "string (markdown formatted)",
-        "supporting_points": ["string"],
-        "citations": [1, 2, 3]
-      }
-    ],
-    "numbers": [
-      {
-        "metric": "string",
-        "value": "string",
-        "context": "string",
-        "source_ref": "string (chunk ID or doc name)"
-      }
-    ],
-    "assumptions": ["string"],
-    "risks": ["string"],
-    "missing_info": ["string (what couldn't be found)"]
-  },
+  "answer": "string (markdown formatted answer with inline citations [1], [2], etc.)",
+  "direct_answer": "string (the 2-3 sentence direct answer, plain text)",
   "citations": [
     {
       "id": 1,
@@ -895,14 +898,7 @@ OUTPUT JSON SCHEMA:
       "relevance": "string"
     }
   ],
-  "evidence": [
-    {
-      "doc": "string",
-      "ref": "string",
-      "quote": "string (<=25 words, exact quote)"
-    }
-  ],
-  "missing_info": ["string"]
+  "missing_info": ["string (what couldn't be found)"]
 }
 
 CRITICAL CONSTRAINTS:
@@ -911,8 +907,7 @@ CRITICAL CONSTRAINTS:
 - Every number, percentage, and claim must have a citation.
 - Use exact quotes from context when possible.
 - If the question asks for something not in context, list what's missing in "missing_info".
-- The "answer" field should be a comprehensive markdown-formatted text (for backward compatibility).
-- The "enhanced_answer" field contains the structured breakdown.
+- The "answer" field is the full response and carries the detail: findings, numbers, risks and assumptions, laid out in markdown. Do not repeat it elsewhere in the JSON.
 
 Return ONLY valid JSON, no markdown code blocks.`;
 
@@ -928,13 +923,8 @@ Return ONLY valid JSON, no markdown code blocks.`;
                         parts: [{ text: prompt }],
                     },
                 ],
-                tools: [
-                    {
-                        file_search: {
-                            file_search_store_names: [fileSearchStoreId],
-                        },
-                    },
-                ],
+                // No File Search tool here: retrieval and reranking already put the passages in
+                // the prompt, and a second search only added latency and billed tokens.
                 generationConfig: {
                     temperature: 0.1,
                     topK: 20,
@@ -990,12 +980,26 @@ Return ONLY valid JSON, no markdown code blocks.`;
         if (!Array.isArray(enhancedResponse.citations)) {
             enhancedResponse.citations = [];
         }
-        if (!Array.isArray(enhancedResponse.evidence)) {
-            enhancedResponse.evidence = [];
-        }
         if (!Array.isArray(enhancedResponse.missing_info)) {
             enhancedResponse.missing_info = [];
         }
+        // The model no longer writes the structured breakdown or the evidence list (the chat
+        // never showed them). Keep the shapes the rest of the pipeline reads: the short
+        // answer is what follow-up questions see of this turn, and evidence comes from citations.
+        const directAnswer = (enhancedResponse as any).direct_answer;
+        enhancedResponse.enhanced_answer = {
+            direct_answer: typeof directAnswer === 'string' && directAnswer ? directAnswer : enhancedResponse.answer.substring(0, 500),
+            detailed_breakdown: [],
+            numbers: [],
+            assumptions: [],
+            risks: [],
+            missing_info: enhancedResponse.missing_info,
+        };
+        enhancedResponse.evidence = enhancedResponse.citations.map((c: any) => ({
+            doc: c.doc || c.source || '',
+            ref: c.ref || '',
+            quote: c.excerpt || '',
+        }));
 
         console.log(`[Gemini] Evidence-first answer generated: answer length=${enhancedResponse.answer.length}, citations=${enhancedResponse.citations.length}, evidence=${enhancedResponse.evidence.length}`);
 

@@ -117,7 +117,10 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
       // Upload to Edge Function
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
       const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
-      const uploadUrl = `${supabaseUrl}/functions/v1/upload-research-report`;
+      // Local override for testing this function in docker without deploying it.
+      // Unset everywhere else, so production keeps using the deployed function.
+      const uploadUrl = import.meta.env.VITE_UPLOAD_FUNCTION_URL
+        || `${supabaseUrl}/functions/v1/upload-research-report`;
 
       setUploadStatus('Uploading to server...');
 
@@ -258,9 +261,6 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
               disabled={uploading}
               placeholder="e.g., AAPL, MSFT, GOOGL"
             />
-            <p className="text-xs text-[#6F6A60]">
-              Enter ticker symbols separated by commas or search
-            </p>
           </div>
 
           {/* Status */}

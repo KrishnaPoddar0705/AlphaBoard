@@ -1,6 +1,13 @@
 // Type definitions for Enhanced RAG System
 
+// One prior message in the conversation, as fed to the query rewrite
+export interface ChatTurn {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface QueryRewrite {
+  standalone_question: string; // The user's question made self-contained using the conversation
   intent: string; // e.g., "regulatory_changes", "financial_metrics", "risk_analysis", "company_comparison", "sector_outlook"
   entities: string[]; // ["BEE norms", "GST", "RAC", "consumer durables"]
   constraints: {
@@ -11,7 +18,7 @@ export interface QueryRewrite {
     must_include_forecasts?: boolean;
   };
   synonyms: string[]; // ["BEE", "Bureau of Energy Efficiency", "energy efficiency norms"]
-  subqueries: string[]; // 4-8 focused queries
+  subqueries: string[]; // 3 focused queries
   required_sections: string[]; // ["Direct Answer", "Detailed Breakdown", "Numbers & Calculations", "Risks", "Implementation Details"]
   expected_output: string; // "detailed_breakdown" | "comparison_table" | "step_by_step" | "bullets"
 }

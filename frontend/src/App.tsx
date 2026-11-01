@@ -23,8 +23,8 @@ import AdminDashboard from './components/organization/AdminDashboard';
 import TeamDashboard from './components/organization/TeamDashboard';
 import OrganizationSettings from './components/organization/OrganizationSettings';
 import PrivacySettings from './components/settings/PrivacySettings';
-import ResearchLibrary from './pages/ResearchLibrary';
-import ReportDetail from './pages/ReportDetail';
+import ResearchWorkspace from './pages/ResearchWorkspace';
+import LegacyResearchRedirect from './components/research/workspace/LegacyResearchRedirect';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
 import InlineLogin from './components/InlineLogin';
@@ -129,8 +129,8 @@ function App() {
         }}
       />
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/sign-up" element={<SignUpPage />} />
+        <Route path="/login/*" element={<Login />} />
+        <Route path="/sign-up/*" element={<SignUpPage />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route element={<LayoutV2 />}>
           {/* Community routes - accessible to all */}
@@ -185,16 +185,15 @@ function App() {
           } />
 
           {/* Organization routes */}
+          {/* Institutional Memory: library, search and the Brain on one screen */}
           <Route path="/research" element={
             <PrivateRoute>
-              <ResearchLibrary />
+              <ResearchWorkspace />
             </PrivateRoute>
           } />
-          <Route path="/research/:id" element={
-            <PrivateRoute>
-              <ReportDetail />
-            </PrivateRoute>
-          } />
+          <Route path="/research/chat" element={<LegacyResearchRedirect kind="chat" />} />
+          <Route path="/research/chat/:conversationId" element={<LegacyResearchRedirect kind="chat" />} />
+          <Route path="/research/:id" element={<LegacyResearchRedirect kind="report" />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/leaderboard/public" element={<PublicLeaderboard />} />
           <Route path="/analyst/:id/performance" element={

@@ -58,6 +58,7 @@
     "highcharts-react-official": "^3.2.3",
     "jspdf": "^2.5.2",
     "lucide-react": "^0.555.0",
+    "pdfjs-dist": "^4.10.38",
     "posthog-js": "^1.438.9",
     "prop-types": "^15.8.1",
     "radix-ui": "^1.8.1",

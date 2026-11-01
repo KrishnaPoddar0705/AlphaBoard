@@ -71,17 +71,24 @@ export function extractGroundingChunks(response: any): RetrievedChunk[] {
   const groundingChunks = groundingMetadata?.groundingChunks || [];
   
   for (const chunk of groundingChunks) {
+    // File Search currently returns { retrievedContext: { title, text, ... } }; the other
+    // shapes below are older ones, kept so a change in either direction still works.
+    const rc = chunk.retrievedContext;
+
     // Extract file/document info
-    const fileUri = chunk.file?.uri || 
-                   chunk.file?.name || 
+    const fileUri = rc?.uri ||
+                   rc?.documentName ||
+                   chunk.file?.uri ||
+                   chunk.file?.name ||
                    chunk.fileUri ||
                    (typeof chunk.file === 'string' ? chunk.file : null);
-    
+
     const documentId = fileUri ? fileUri.split('/').pop() : undefined;
-    const documentTitle = chunk.file?.displayName || chunk.file?.name || documentId;
-    
+    const documentTitle = rc?.title || chunk.file?.displayName || chunk.file?.name || documentId;
+
     // Extract chunk text
-    const chunkText = chunk.chunk?.chunkText || 
+    const chunkText = rc?.text ||
+                    chunk.chunk?.chunkText ||
                     chunk.chunk?.text || 
                     chunk.chunkText ||
                     chunk.text ||
