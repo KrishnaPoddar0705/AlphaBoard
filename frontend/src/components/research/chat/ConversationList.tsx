@@ -31,7 +31,7 @@ export default function ConversationList({
   return (
     <div className="flex h-full flex-col">
       <div className="p-3">
-        <button onClick={onNew} className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#1D4ED8] px-3 py-2.5 text-sm font-medium text-white">
+        <button onClick={onNew} className="flex w-full items-center justify-center gap-2 rounded-md bg-[#1C1B17] px-3 py-2 text-sm font-medium text-[#FBF7ED] active:scale-[0.98]">
           <Plus className="w-4 h-4" /> New chat
         </button>
       </div>
@@ -43,11 +43,11 @@ export default function ConversationList({
         )}
         {groupConversations(conversations).map((group) => (
           <div key={group.label} className="mb-3">
-            <div className="px-2 py-1 text-xs font-semibold uppercase tracking-wide text-[#6F6A60]">{group.label}</div>
+            <div className="px-2 py-1 text-xs font-medium text-[#6F6A60]">{group.label}</div>
             {group.items.map((c) => (
               <div
                 key={c.id}
-                className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 ${c.id === activeId ? 'bg-[#1D4ED8]/10' : 'hover:bg-[#1C1B17]/5'}`}
+                className={`group flex items-center gap-1 rounded-lg px-2 py-1.5 ${c.id === activeId ? 'bg-[#1C1B17]/[0.07]' : 'hover:bg-[#1C1B17]/5'}`}
               >
                 {editingId === c.id ? (
                   <>

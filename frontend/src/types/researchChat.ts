@@ -62,10 +62,3 @@ export interface SendMessageResult extends ChatAnswer {
   pipeline_failed?: boolean;
   error?: string;
 }
-
-/** Router state `/research/chat` reads to send a question as soon as it opens. */
-export interface ChatLocationState {
-  question?: string;
-  /** Reports to limit the question to (the library's active filters). */
-  reports?: Array<Pick<ChatReport, 'id' | 'title'>>;
-}

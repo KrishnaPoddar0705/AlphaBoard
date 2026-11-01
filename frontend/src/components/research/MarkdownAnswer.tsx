@@ -12,7 +12,7 @@ interface MarkdownAnswerProps {
     report_id?: string;
     title?: string;
   }>;
-  onCitationClick?: (reportId: string) => void;
+  onCitationClick?: (reportId: string, page?: number) => void;
   /** Prefix for the `citation-ref-N` ids this links to; set it when several answers share a page. */
   idPrefix?: string;
 }
@@ -163,10 +163,10 @@ export default function MarkdownAnswer({
                       }
                       // Also navigate to report if available
                       if (citation.report_id && onCitationClick) {
-                        onCitationClick(citation.report_id);
+                        onCitationClick(citation.report_id, citation.page);
                       }
                     }}
-                    className="inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-indigo-400 bg-indigo-500/20 hover:bg-indigo-500/30 rounded-full transition-all hover:scale-110 ml-1 align-super"
+                    className="inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-[#1D4ED8] bg-[#1D4ED8]/10 hover:bg-[#1D4ED8]/20 rounded-full transition-all hover:scale-110 ml-1 align-super"
                     title={`Citation ${citationNum}: Page ${citation.page || 'N/A'}${citation.title ? ` - ${citation.title}` : ''}`}
                   >
                     {citationNum}
