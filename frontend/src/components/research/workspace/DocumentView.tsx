@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Download, Loader2, MessageSquarePlus, Check, Pencil, X } from 'lucide-react';
 import EditReportDialog from './EditReportDialog';
+
+// PDF.js is about 1 MB; it loads the first time a report is opened, not with the app.
+const PdfViewer = lazy(() => import('./pdf/PdfViewer'));
 import { brokerOf } from '../../../lib/researchFolders';
 import { useReportDetail } from '../../../hooks/useResearchReports';
 import ReportSummary from './ReportSummary';
@@ -50,10 +53,6 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
     if (jumpKey) setPane('preview');
   }
   const jump = (p: number) => onPage(p);
-
-  const pdfSrc = report?.pdfUrl
-    ? `${report.pdfUrl}#page=${page ?? 1}${findText ? `&search=${encodeURIComponent(findText)}` : ''}`
-    : '';
 
   return (
     <div ref={ref} className="flex h-full min-h-0 flex-col">
@@ -135,8 +134,10 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
         <div className="flex min-h-0 flex-1">
           {(split || pane === 'preview') && (
             <div className="min-w-0 flex-1 bg-[#E9E5D6]">
-              {pdfSrc ? (
-                <iframe key={pdfSrc} src={pdfSrc} title={`${report.title} PDF`} className="h-full w-full" />
+              {report.pdfUrl ? (
+                <Suspense fallback={<p className="flex items-center gap-2 p-6 text-sm text-[#6F6A60]"><Loader2 className="h-4 w-4 animate-spin" />Opening the PDF…</p>}>
+                  <PdfViewer key={report.pdfUrl} url={report.pdfUrl} title={report.title} page={page} findText={findText} />
+                </Suspense>
               ) : (
                 <p className="p-6 text-sm text-[#6F6A60]">The PDF file is not available for this report.</p>
               )}
