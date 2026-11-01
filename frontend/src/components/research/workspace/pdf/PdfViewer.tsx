@@ -93,8 +93,7 @@ export default function PdfViewer({ url, title, page, findText }: PdfViewerProps
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#E9E5D6]">
-      <div className="flex shrink-0 items-center gap-1 border-b border-[#E4DDCC] bg-[#F6F3E8] px-3 py-1.5 text-xs text-[#1C1B17]">
-        <span className="min-w-0 flex-1 truncate text-[#6F6A60]" title={title}>{title}</span>
+      <div aria-label={`${title}, PDF controls`} className="flex shrink-0 items-center justify-center gap-1 border-b border-[#E4DDCC] bg-[#F6F3E8] px-3 py-1.5 text-xs text-[#1C1B17]">
         <label className="flex items-center gap-1 tabular-nums">
           <span className="sr-only">Page</span>
           <input

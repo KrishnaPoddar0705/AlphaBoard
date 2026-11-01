@@ -1,13 +1,13 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { Download, Loader2, MessageSquarePlus, Check, Pencil, X } from 'lucide-react';
 import EditReportDialog from './EditReportDialog';
 import PdfErrorBoundary from './pdf/PdfErrorBoundary';
+import ReportSummary from './ReportSummary';
+import { brokerOf } from '../../../lib/researchFolders';
+import { useReportDetail } from '../../../hooks/useResearchReports';
 
 // PDF.js is about 1 MB; it loads the first time a report is opened, not with the app.
 const PdfViewer = lazy(() => import('./pdf/PdfViewer'));
-import { brokerOf } from '../../../lib/researchFolders';
-import { useReportDetail } from '../../../hooks/useResearchReports';
-import ReportSummary from './ReportSummary';
 
 interface DocumentViewProps {
   reportId: string;
@@ -23,40 +23,12 @@ interface DocumentViewProps {
   sectors: string[];
 }
 
-/** Below this width the preview and the summary take turns instead of sitting side by side. */
-const SPLIT_MIN = 860;
-
-function useWidth<T extends HTMLElement>() {
-  const ref = useRef<T>(null);
-  const [width, setWidth] = useState(0);
-  useEffect(() => {
-    if (!ref.current) return;
-    const ro = new ResizeObserver(([e]) => setWidth(e.contentRect.width));
-    ro.observe(ref.current);
-    return () => ro.disconnect();
-  }, []);
-  return [ref, width] as const;
-}
-
 export default function DocumentView({ reportId, page, findText, onPage, onClose, inScope, onToggleScope, userId, brokers, sectors }: DocumentViewProps) {
   const [editing, setEditing] = useState(false);
   const { data: report, isLoading, error } = useReportDetail(reportId);
-  const [ref, width] = useWidth<HTMLDivElement>();
-  const [pane, setPane] = useState<'preview' | 'summary'>('summary');
-  const split = width >= SPLIT_MIN;
-
-  // A page jump (from the summary, a search hit or a chat citation) should land on the
-  // preview when the two panes take turns.
-  const jumpKey = page ? `${reportId}:${page}` : null;
-  const [seenJump, setSeenJump] = useState(jumpKey);
-  if (jumpKey !== seenJump) {
-    setSeenJump(jumpKey);
-    if (jumpKey) setPane('preview');
-  }
-  const jump = (p: number) => onPage(p);
 
   return (
-    <div ref={ref} className="flex h-full min-h-0 flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       <header className="flex items-start gap-3 border-b border-[#E4DDCC] px-4 py-3 md:px-6">
         <div className="min-w-0 flex-1">
           <h2 className="text-base font-semibold leading-snug text-[#1C1B17] md:text-lg">
@@ -108,22 +80,6 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
         </div>
       </header>
 
-      {!split && (
-        <div role="tablist" className="flex gap-4 border-b border-[#E4DDCC] px-4 text-sm md:px-6">
-          {(['summary', 'preview'] as const).map((p) => (
-            <button
-              key={p}
-              role="tab"
-              aria-selected={pane === p}
-              onClick={() => setPane(p)}
-              className={`-mb-px border-b-2 py-2 ${pane === p ? 'border-[#1C1B17] font-medium text-[#1C1B17]' : 'border-transparent text-[#6F6A60] hover:text-[#1C1B17]'}`}
-            >
-              {p === 'summary' ? 'AI summary' : 'PDF'}
-            </button>
-          ))}
-        </div>
-      )}
-
       {report && editing && (
         <EditReportDialog key={report.id} report={report} open onClose={() => setEditing(false)} brokers={brokers} sectors={sectors} />
       )}
@@ -132,26 +88,21 @@ export default function DocumentView({ reportId, page, findText, onPage, onClose
       {error && <p className="p-6 text-sm text-[#B23B2A]">This report could not be opened. It may have been deleted, or you may not have access.</p>}
 
       {report && (
-        <div className="flex min-h-0 flex-1">
-          {(split || pane === 'preview') && (
-            <div className="min-w-0 flex-1 bg-[#E9E5D6]">
-              {report.pdfUrl ? (
-                <PdfErrorBoundary key={report.pdfUrl} url={report.pdfUrl}>
-                  <Suspense fallback={<p className="flex items-center gap-2 p-6 text-sm text-[#6F6A60]"><Loader2 className="h-4 w-4 animate-spin" />Opening the PDF…</p>}>
-                    <PdfViewer url={report.pdfUrl} title={report.title} page={page} findText={findText} />
-                  </Suspense>
-                </PdfErrorBoundary>
-              ) : (
-                <p className="p-6 text-sm text-[#6F6A60]">The PDF file is not available for this report.</p>
-              )}
-            </div>
-          )}
-          {(split || pane === 'summary') && (
-            <aside aria-label="AI summary" className={`min-h-0 ${split ? 'w-[380px] shrink-0 border-l border-[#E4DDCC] xl:w-[440px]' : 'flex-1'}`}>
-              <ReportSummary parsed={report.parsed ?? {}} status={report.upload_status} onJumpToPage={jump} />
-            </aside>
-          )}
-        </div>
+        <>
+          {/* AI insights run across the top; the PDF keeps the full width under them. */}
+          <ReportSummary parsed={report.parsed ?? {}} status={report.upload_status} onJumpToPage={onPage} />
+          <div className="min-h-0 flex-1 bg-[#E9E5D6]">
+            {report.pdfUrl ? (
+              <PdfErrorBoundary key={report.pdfUrl} url={report.pdfUrl}>
+                <Suspense fallback={<p className="flex items-center gap-2 p-6 text-sm text-[#6F6A60]"><Loader2 className="h-4 w-4 animate-spin" />Opening the PDF…</p>}>
+                  <PdfViewer url={report.pdfUrl} title={report.title} page={page} findText={findText} />
+                </Suspense>
+              </PdfErrorBoundary>
+            ) : (
+              <p className="p-6 text-sm text-[#6F6A60]">The PDF file is not available for this report.</p>
+            )}
+          </div>
+        </>
       )}
     </div>
   );

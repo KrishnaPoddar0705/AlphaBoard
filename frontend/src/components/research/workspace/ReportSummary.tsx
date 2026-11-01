@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertTriangle, BarChart3, FileText, Lightbulb, Loader2, Quote, TrendingUp } from 'lucide-react';
+import { AlertTriangle, BarChart3, ChevronUp, FileText, Lightbulb, Loader2, Quote, Sparkles, TrendingUp } from 'lucide-react';
 import type { ParsedReport } from '../../../types/researchLibrary';
 
 interface ReportSummaryProps {
@@ -21,7 +21,7 @@ type TabId = (typeof TABS)[number]['id'];
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mt-6 first:mt-0">
+    <section className="mb-6 break-inside-avoid last:mb-0">
       <h3 className="text-[13px] font-semibold text-[#1C1B17]">{title}</h3>
       <div className="mt-2">{children}</div>
     </section>
@@ -85,26 +85,33 @@ function TableData({ data }: { data: unknown }) {
 const has = (a?: unknown[]): a is unknown[] => !!a && a.length > 0;
 const Empty = ({ what }: { what: string }) => <p className="text-sm text-[#6F6A60]">The report does not state any {what}.</p>;
 
-/** The parsed report in the six tabs analysts know: summary through to the quoted passages. */
+/**
+ * The parsed report as a horizontal strip over the PDF: six pills, the key takeaway while
+ * closed, and the chosen section in a drawer of its own height so the PDF keeps the width.
+ */
 export default function ReportSummary({ parsed: p, status, onJumpToPage }: ReportSummaryProps) {
-  const [tab, setTab] = useState<TabId>('summary');
+  const [tab, setTab] = useState<TabId | null>(null);
 
   const pageLink = (page?: number) =>
     page && page > 0 ? (
       <button onClick={() => onJumpToPage(page)} className="text-xs text-[#1D4ED8] hover:underline">Page {page}</button>
     ) : null;
 
-  let body: React.ReactNode;
+  const strip = 'shrink-0 border-b border-[#E4DDCC] bg-[#F6F3E8] px-4 py-2.5 md:px-6';
   if (status === 'failed') {
-    body = <p className="text-sm text-[#B23B2A]">This report could not be processed, so there is no AI summary. The PDF is still readable.</p>;
-  } else if (status !== 'parsed') {
-    body = (
-      <p className="flex items-center gap-2 text-sm text-[#6F6A60]">
+    return <p className={`${strip} text-sm text-[#B23B2A]`}>This report could not be processed, so there are no AI insights. The PDF is still readable.</p>;
+  }
+  if (status !== 'parsed') {
+    return (
+      <p className={`${strip} flex items-center gap-2 text-sm text-[#6F6A60]`}>
         <Loader2 className="h-4 w-4 animate-spin" />
-        Still {status}. The summary appears here when reading finishes; the list refreshes on its own.
+        Still {status}. AI insights appear here when reading finishes.
       </p>
     );
-  } else if (tab === 'summary') {
+  }
+
+  let body: React.ReactNode = null;
+  if (tab === 'summary') {
     body = !p.summary_sentence && !p.one_paragraph_thesis && !p.sector_outlook && !p.valuation_summary ? <Empty what="summary" /> : (
       <>
         {p.summary_sentence && <Section title="Key takeaway"><p className="text-[15px] font-medium leading-snug text-[#1C1B17]">{p.summary_sentence}</p></Section>}
@@ -180,7 +187,7 @@ export default function ReportSummary({ parsed: p, status, onJumpToPage }: Repor
         )}
       </>
     );
-  } else {
+  } else if (tab === 'citations') {
     body = !has(p.citations) ? <Empty what="citations" /> : (
       <ul className="space-y-4">
         {p.citations.map((c, i) => (
@@ -197,24 +204,44 @@ export default function ReportSummary({ parsed: p, status, onJumpToPage }: Repor
   }
 
   return (
-    <div className="h-full min-h-0 overflow-y-auto">
-      {/* A small floating card of pills; the section text scrolls beneath it. */}
-      <div className="sticky top-0 z-10 bg-[#F1EEE0] px-3 pb-1 pt-3">
-        <div role="tablist" aria-label="AI summary" className="flex flex-wrap gap-1 rounded-2xl border border-[#E4DDCC] bg-[#FBF7ED] p-1.5 shadow-[0_6px_18px_-10px_rgba(28,27,23,0.35)]">
+    <section aria-label="AI insights" className={strip}>
+      <div className="flex items-center gap-2">
+        <span className="hidden shrink-0 items-center gap-1.5 text-xs font-medium text-[#1C1B17] sm:inline-flex">
+          <Sparkles className="h-3.5 w-3.5 text-[#1D4ED8]" /> AI insights
+        </span>
+        <div role="tablist" aria-label="AI insights" className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]">
           {TABS.map(({ id, label, Icon }) => (
             <button
               key={id}
               role="tab"
               aria-selected={tab === id}
-              onClick={() => setTab(id)}
-              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs transition-colors active:scale-[0.97] ${tab === id ? 'bg-[#1C1B17] font-medium text-[#FBF7ED]' : 'text-[#6F6A60] hover:bg-[#1C1B17]/[0.06] hover:text-[#1C1B17]'}`}
+              onClick={() => setTab(tab === id ? null : id)}
+              className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2.5 py-1 text-xs transition-colors active:scale-[0.97] ${tab === id ? 'border-[#1C1B17] bg-[#1C1B17] font-medium text-[#FBF7ED]' : 'border-[#E4DDCC] bg-[#FBF7ED] text-[#1C1B17] hover:border-[#1C1B17]/30'}`}
             >
               <Icon className="h-3.5 w-3.5" />{label}
             </button>
           ))}
         </div>
+        {tab && (
+          <button onClick={() => setTab(null)} aria-label="Close AI insights" title="Close" className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#6F6A60] hover:bg-[#1C1B17]/[0.06] hover:text-[#1C1B17]">
+            <ChevronUp className="h-4 w-4" />
+          </button>
+        )}
       </div>
-      <div role="tabpanel" className="px-4 pb-36 pt-4 md:px-5">{body}</div>
-    </div>
+
+      {!tab && p.summary_sentence && (
+        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-[#1C1B17]">
+          {p.summary_sentence}{' '}
+          <button onClick={() => setTab('summary')} className="text-[#1D4ED8] hover:underline">Read the summary</button>
+        </p>
+      )}
+
+      {tab && (
+        <div role="tabpanel" className="mt-3 max-h-[38vh] overflow-y-auto pb-1 pr-1">
+          {/* Lists run in two columns to use the width; tables and quotes keep one. */}
+          <div className={tab === 'financials' || tab === 'citations' ? '' : 'md:columns-2 md:gap-10'}>{body}</div>
+        </div>
+      )}
+    </section>
   );
 }
