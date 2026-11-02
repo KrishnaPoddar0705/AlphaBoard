@@ -32,7 +32,7 @@ import DeskMatrix from '../ui/DeskMatrix.astro';
     grid-template-rows: auto 1fr; min-height: calc(100svh - 64px); padding-inline: var(--margin);
     background: var(--ground); overflow: hidden;
   }
-  .say { grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: subgrid; align-items: end; padding-top: clamp(48px, 9vh, 96px); }
+  .say { grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: subgrid; align-items: end; padding-top: clamp(148px, calc(9vh + 100px), 196px); }
   h1 { grid-column: 1 / 8; font-size: var(--s-5); }
   .sub { grid-column: 8 / 13; display: grid; gap: 26px; justify-items: start; padding-bottom: 10px; }
   .sub p { font-size: var(--s-2); line-height: 1.45; max-width: 40ch; }

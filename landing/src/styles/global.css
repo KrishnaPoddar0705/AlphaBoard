@@ -165,10 +165,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .js [data-reveal] > * { transform: none; transition: opacity 300ms linear; }
 }
 
-/* Masked line reveal: each line rises from behind its own baseline. */
-.mask { display: block; overflow: hidden; padding-bottom: 0.06em; margin-bottom: -0.06em; }
+/* Masked line reveal: each line rises from behind its own baseline. The padding gives the
+   tall serif ascenders and descenders headroom, since the tight leading is shorter than the glyphs. */
+.mask { display: block; overflow: hidden; padding-block: 0.16em 0.1em; margin-block: -0.16em -0.1em; }
 .mask > span { display: block; }
-.js .mask > span { transform: translateY(105%); transition: transform 900ms var(--ease-out); }
+.js .mask > span { transform: translateY(130%); transition: transform 900ms var(--ease-out); }
 .js .is-up .mask > span { transform: none; }
 .js .is-up .mask + .mask > span { transition-delay: 110ms; }
 @media (prefers-reduced-motion: reduce) { .js .mask > span { transform: none; transition: none; } }
