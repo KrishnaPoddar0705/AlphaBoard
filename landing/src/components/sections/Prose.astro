@@ -1,0 +1,25 @@
+---
+/** Plain reading pages (about, privacy, terms): title at the margin, one column of text beside it. */
+interface Props { title: string; updated?: string; lede?: string }
+const { title, updated, lede } = Astro.props;
+---
+<article class="prose wrap" data-section="prose">
+  <header>
+    <h1>{title}</h1>
+    {lede && <p class="lede">{lede}</p>}
+    {updated && <p class="upd">Last updated {updated}</p>}
+  </header>
+  <div class="body"><slot /></div>
+</article>
+<style>
+  .prose { display: grid; grid-template-columns: var(--axis) 1fr; column-gap: var(--gap); padding-block: 72px var(--section); }
+  header { grid-column: 1; }
+  h1 { font-size: var(--s-4); max-width: 11em; }
+  .lede { font-size: var(--s-2); margin-top: 24px; max-width: 40ch; }
+  .upd { margin-top: 16px; color: var(--ink-soft); font-size: 16px; }
+  .body { grid-column: 2; grid-row: 1; max-width: 64ch; display: grid; gap: 18px; }
+  .body :global(h2) { font-size: var(--s-3); margin-top: 28px; }
+  .body :global(ul) { list-style: disc; padding-left: 1.2em; display: grid; gap: 8px; }
+  .body :global(a) { text-underline-offset: 4px; }
+  @media (max-width: 860px) { .prose { grid-template-columns: 1fr; } header, .body { grid-column: 1; grid-row: auto; } header { margin-bottom: 40px; } }
+</style>

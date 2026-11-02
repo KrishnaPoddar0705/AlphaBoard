@@ -1,0 +1,23 @@
+---
+/** Needs You: the coverage that has gone quiet, in the app's own words. */
+const items = [
+  ['VINDHYACEM', 'No meeting, concall or AGM in 94d', 'P. Nair'],
+  ['GODAVARIPW', 'Exit pushed to PM, awaiting decision', 'K. Rao'],
+  ['COROMANDRT', 'Q2 FY27 concall tomorrow, 16:00', 'A. Shah'],
+  ['MALABARPOLY', 'Model not updated since initiation', 'A. Shah'],
+];
+---
+<div class="ny" data-ui role="img" aria-label="Needs You panel: four coverage items that need attention">
+  <div class="title"><span>Needs you</span><span class="n">4</span></div>
+  {items.map(([t, why, who]) => (
+    <div class="it"><span class="t">{t}</span><span class="why">{why}</span><span class="who">{who}</span></div>
+  ))}
+</div>
+<style>
+  .ny { color: var(--ink); background: var(--ground-2); padding: 16px; display: grid; gap: 6px; font-size: 13px; height: 100%; align-content: start; }
+  .title { display: flex; justify-content: space-between; font-weight: 500; padding-bottom: 6px; }
+  .n { background: var(--neg); color: #fff; padding: 0 8px; }
+  .it { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 8px 10px; background: var(--ground); }
+  .t { font-weight: 500; } .who { color: var(--ink-soft); text-align: right; }
+  .why { grid-column: 1 / -1; color: var(--ink-soft); }
+</style>

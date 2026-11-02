@@ -1,0 +1,69 @@
+---
+import { NAV, APP_URL } from '../lib/site';
+
+/** A plain bar: wordmark, the links, one action. It stays with the reader. */
+const path = Astro.url.pathname;
+---
+<header class="bar">
+  <a class="mark" href="/" aria-label="AlphaBoard home">AlphaBoard</a>
+
+  <div class="right">
+    <nav class="links" aria-label="Primary">
+      {NAV.map((n) => (
+        <a href={n.href} aria-current={path === n.href || path.startsWith(`${n.href}/`) ? 'page' : undefined}>{n.label}</a>
+      ))}
+    </nav>
+    <a class="signin" href={APP_URL} data-track-cta="header-signin">Sign in</a>
+    <a class="btn" href="/demo" data-track-cta="header">Book a demo</a>
+    <details class="menu">
+      <summary>Menu</summary>
+      <div class="sheet">
+        {NAV.map((n) => <a href={n.href}>{n.label}</a>)}
+        <a href="/india">Built for India</a>
+        <a href={APP_URL}>Sign in</a>
+      </div>
+    </details>
+  </div>
+</header>
+
+<style>
+  .bar {
+    position: sticky; top: 0; z-index: 40;
+    display: flex; align-items: center; justify-content: space-between; gap: var(--gap);
+    min-height: 64px; padding: 0 var(--margin);
+    background: var(--ground); color: var(--ink);
+  }
+
+  .mark {
+    font-family: var(--display); font-size: 25px; letter-spacing: -0.03em; line-height: 1;
+    text-decoration: none;
+  }
+
+  .right { display: flex; align-items: center; gap: 28px; }
+  .links { display: flex; gap: 28px; font-size: 15px; }
+  .links a, .signin { text-decoration: none; font-size: 15px; transition: color 200ms var(--ease); }
+  .links a:hover, .signin:hover, .links a[aria-current='page'] { color: var(--accent); }
+  .right .btn { min-height: 44px; padding: 0 18px; font-size: 15px; }
+
+  .menu { display: none; position: relative; }
+  .menu summary { list-style: none; cursor: pointer; font-size: 16px; padding: 10px 0; }
+  .menu summary::-webkit-details-marker { display: none; }
+  .sheet {
+    position: absolute; right: 0; top: calc(100% + 10px); min-width: 240px; padding: 8px;
+    display: grid; background: var(--card);
+    box-shadow: 0 24px 60px rgb(28 27 23 / 0.22); /* taste-skill-ignore: a menu truly floats */
+  }
+  .menu:not([open]) .sheet { display: none; }
+  .sheet a { padding: 12px 14px; text-decoration: none; font-size: 16px; }
+  .sheet a:hover { background: var(--ground-2); }
+
+  @media (max-width: 1080px) {
+    .links, .signin { display: none; }
+    .menu { display: block; }
+    .right { gap: 16px; }
+  }
+  @media (max-width: 420px) {
+    .mark { font-size: 22px; }
+    .right .btn { padding: 0 14px; font-size: 14px; }
+  }
+</style>

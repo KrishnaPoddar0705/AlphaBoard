@@ -1,0 +1,150 @@
+---
+/**
+ * Institutional Memory as four panels of one accordion: Ask, Search, Folders, Add. The
+ * sample answers are canned from the illustrative desk; the panel says so.
+ */
+import { ANSWERS, PASSAGES, REPORTS, type Report } from '../../data/desk';
+import { renderAnswer } from '../../lib/desk-render';
+
+const groups: { id: string; label: string; key: keyof Report }[] = [
+  { id: 'sector', label: 'Sector', key: 'sector' },
+  { id: 'broker', label: 'Broker', key: 'broker' },
+  { id: 'month', label: 'Month', key: 'month' },
+];
+const grouped = (key: keyof Report) => [...new Set(REPORTS.map((r) => r[key]))].map((name) => ({ name, items: REPORTS.filter((r) => r[key] === name) }));
+const panels = [
+  { id: 'ask', name: 'Ask', text: 'The Brain reads across every report and answers with numbered sources you can open.' },
+  { id: 'search', name: 'Search', text: 'Find a title or an exact phrase on any page, without asking anything.' },
+  { id: 'folders', name: 'Folders', text: 'The same reports, sorted by sector, by broker or by month.' },
+  { id: 'add', name: 'Add', text: 'Upload a PDF and it joins the firm’s memory: transcripts, broker notes, annual reports.' },
+];
+---
+<div class="ac" data-memory>
+  {panels.map((p, i) => (
+    <div class:list={['ap', `ap-${i + 1}`, { 'is-open': i === 0 }]} data-panel>
+      <h3 class="ap-h">
+        <button type="button" data-panel-open aria-expanded={i === 0 ? 'true' : 'false'} aria-controls={`panel-${p.id}`}><span>{p.name}</span></button>
+      </h3>
+      <div class="ap-body" id={`panel-${p.id}`}>
+        <p class="ap-text">{p.text}</p>
+        <div class="ap-ui ui-card" data-ui data-lenis-prevent>
+          {p.id === 'ask' && (
+            <Fragment>
+              <div class="br-qs">
+                {ANSWERS.map((a) => <button type="button" data-ask>{a.question}</button>)}
+              </div>
+              <form class="br-form" data-ask-form>
+                <input data-ask-input value={ANSWERS[0].question} aria-label="Ask the Brain" />
+                <button type="submit">Ask</button>
+              </form>
+              <div class="br-ans" data-answer aria-live="polite" set:html={renderAnswer(ANSWERS[0])}></div>
+              <p class="br-note">Sample desk. Questions are answered from illustrative reports.</p>
+            </Fragment>
+          )}
+          {p.id === 'search' && (
+            <Fragment>
+              <input class="br-search" data-search type="search" value="" placeholder="Try export or credit cost" aria-label="Search every report" />
+              <p class="br-note" data-hit-count>{PASSAGES.length} passages</p>
+              <ul class="br-hits" data-hits>
+                {PASSAGES.map((h) => <li data-hit><b>{h.report}</b> <span >p. {h.page}</span><br />{h.text}</li>)}
+              </ul>
+            </Fragment>
+          )}
+          {p.id === 'folders' && (
+            <Fragment>
+              <div class="dx-seg" role="group" aria-label="Group reports by">
+                {groups.map((g, gi) => <button type="button" data-group={g.id} aria-pressed={gi === 0 ? 'true' : 'false'}>{g.label}</button>)}
+              </div>
+              {groups.map((g, gi) => (
+                <div class="br-folders" data-folders={g.id} hidden={gi !== 0}>
+                  {grouped(g.key).map((f) => (
+                    <div><b>{f.name}</b> <span class="br-c">{f.items.length}</span><ul>{f.items.map((r) => <li>{r.title}</li>)}</ul></div>
+                  ))}
+                </div>
+              ))}
+            </Fragment>
+          )}
+          {p.id === 'add' && (
+            <div class="br-add">
+              <p>Recently added</p>
+              <ul>{REPORTS.slice(0, 5).map((r) => <li><span class="br-pdf">PDF</span><span><b>{r.title}</b><small>{r.broker} · {r.sector} · {r.month}</small></span></li>)}</ul>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
+
+<script>
+  import { mountMemory } from '../../lib/desk';
+  document.querySelectorAll<HTMLElement>('[data-memory]').forEach(mountMemory);
+</script>
+
+<style is:global>
+  .ac { display: flex; min-height: 640px; }
+  .ap { --tone: #2f2c25; flex: 0 0 auto; width: 84px; display: flex; background: var(--tone); color: var(--paper-on-ink); transition: width 450ms var(--ease); min-width: 0; overflow: hidden; }
+  .ap-2 { --tone: #3e3a31; } .ap-3 { --tone: #4e493e; } .ap-4 { --tone: #5e584b; }
+  .ap.is-open { flex: 1 1 auto; width: auto; }
+  .ap-h { flex: 0 0 84px; font-family: var(--text); font-size: 20px; letter-spacing: 0; }
+  .ap-h button { width: 100%; height: 100%; padding: 20px 0; border: 0; cursor: pointer; background: transparent; color: inherit; font: inherit; display: flex; align-items: flex-end; justify-content: center; transition: background-color 200ms var(--ease); }
+  .ap-h button:hover { background: rgb(255 255 255 / 0.07); }
+  .ap-h span { writing-mode: vertical-rl; transform: rotate(180deg); }
+  .ap.is-open .ap-h button { align-items: flex-start; cursor: default; }
+  .ap-body { display: none; flex: 1; min-width: 0; padding: 24px 24px 24px 0; grid-template-columns: minmax(150px, 0.34fr) minmax(0, 1fr); gap: 24px; }
+  .ap.is-open .ap-body { display: grid; animation: ap-in 420ms 120ms var(--ease-out) backwards; }
+  @keyframes ap-in { from { opacity: 0; transform: translateY(10px); } }
+  .ap-text { align-self: end; font-size: 17px; }
+  .ap-ui { padding: 18px; font-size: 15px; line-height: 1.5; max-height: 592px; overflow-y: auto; }
+
+  .br-qs { display: flex; flex-wrap: wrap; gap: 6px; }
+  .br-qs button { min-height: 38px; padding: 4px 10px; border: 0; border-radius: 8px; cursor: pointer; font: inherit; font-size: 14px; text-align: left; color: var(--ink); background: var(--ground-2); transition: background-color 180ms var(--ease); }
+  .br-qs button:hover { background: var(--ground-3); }
+  .br-form { display: flex; gap: 6px; margin-top: 12px; }
+  .br-form input, .br-search { flex: 1; width: 100%; min-width: 0; min-height: 46px; padding: 0 12px; font: inherit; color: var(--ink); background: var(--ground); border: 1px solid var(--ground-4); border-radius: 8px; }
+  .br-form button { min-height: 46px; padding: 0 16px; border: 0; border-radius: 8px; cursor: pointer; background: var(--ink); color: var(--paper-on-ink); font: inherit; font-weight: 500; transition: background-color 180ms var(--ease); }
+  .br-form button:hover { background: var(--accent); }
+  .br-ans { margin-top: 14px; }
+  .br-a { font-family: var(--display); font-size: 18px; line-height: 1.5; }
+  .br-cite { display: inline-grid; place-items: center; min-width: 22px; height: 22px; margin: 0 2px; padding: 0 3px; vertical-align: 2px; border: 0; border-radius: 5px; cursor: pointer; background: var(--ground-3); color: var(--ink); font-size: 12px; transition: background-color 180ms var(--ease), color 180ms var(--ease); }
+  .br-cite:hover { background: var(--ink); color: var(--paper-on-ink); }
+  .br-src { margin-top: 12px; display: grid; gap: 4px; }
+  .br-src li { display: grid; grid-template-columns: 22px 1fr; gap: 8px; padding: 7px 8px; border-radius: 7px; background: var(--ground); font-size: 14px; line-height: 1.35; }
+  .br-src b { font-weight: 500; }
+  .br-src small { display: block; font-size: 13px; color: var(--ink-soft); }
+  .br-src q { display: block; margin-top: 6px; font-family: var(--display); font-size: 15px; }
+  .br-src li.is-open { background: #f4e3a6; }
+  .br-num { font-size: 13px; }
+  .br-note { margin-top: 10px; font-size: 13px; color: var(--ink-soft); }
+  .br-hits { display: grid; gap: 4px; margin-top: 8px; }
+  .br-hits li { padding: 8px 10px; background: var(--ground); border-radius: 7px; font-size: 14px; }
+  .br-hits li[hidden] { display: none; }
+  .br-hits b { font-weight: 500; }
+  .br-hits span { font-size: 12px; color: var(--ink-soft); }
+  .br-folders { margin-top: 12px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); font-size: 14px; }
+  .br-folders[hidden] { display: none; }
+  .br-folders b { font-weight: 500; }
+  .br-folders ul { margin-top: 4px; display: grid; gap: 2px; color: var(--ink-3); }
+  .br-c { color: var(--ink-soft); font-size: 13px; }
+  .br-add { display: grid; gap: 8px; }
+  .br-add ul { display: grid; gap: 6px; }
+  .br-add li { display: flex; gap: 10px; align-items: center; padding: 8px 10px; background: var(--ground); border-radius: 7px; font-size: 14px; }
+  .br-add b { font-weight: 500; } .br-add small { display: block; font-size: 13px; color: var(--ink-soft); }
+  .br-pdf { padding: 4px 6px; border-radius: 5px; background: var(--ground-3); color: var(--accent); font-size: 12px; }
+
+  html:not(.js) .ac { flex-direction: column; }
+  html:not(.js) .ap { width: auto; }
+  html:not(.js) .ap-body { display: grid; }
+
+  @media (max-width: 960px) {
+    .ac { flex-direction: column; min-height: 0; }
+    .ap, .ap.is-open { width: auto; display: block; }
+    .ap-h button { min-height: 64px; padding: 0 20px; justify-content: flex-start; align-items: center; font-size: 18px; }
+    .ap.is-open .ap-h button { align-items: center; }
+    .ap-h span { writing-mode: horizontal-tb; transform: none; }
+    .ap-body { padding: 0 12px 16px; grid-template-columns: 1fr; gap: 12px; }
+    .ap-text { padding: 0 8px; }
+    .ap-ui { max-height: none; padding: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .ap { transition: none; } .ap.is-open .ap-body { animation: none; } }
+</style>

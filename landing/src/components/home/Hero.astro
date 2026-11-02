@@ -1,0 +1,61 @@
+---
+/** Hero, "Fragment on a shaped stage": the bound red cover with the live Matrix on it. */
+import DeskMatrix from '../ui/DeskMatrix.astro';
+---
+<section class="hero" data-section="hero" data-hero aria-labelledby="hero-title">
+  <div class="say">
+    <h1 id="hero-title" class="type-wide">
+      <span class="mask"><span>The firm</span></span>
+      <span class="mask"><span>never forgets.</span></span>
+    </h1>
+    <div class="sub">
+      <p>AlphaBoard is institutional memory for Indian investment firms: every concall, meeting and broker note on one timeline, and every report a question away.</p>
+      <div class="acts">
+        <a class="btn" href="/demo" data-track-cta="hero">Book a demo <span class="arrow" aria-hidden="true">→</span></a>
+        <a class="link" href="#brain" data-track-cta="hero-brain">Ask the Brain</a>
+      </div>
+    </div>
+  </div>
+  <div class="stage">
+    <div class="gem" data-diamond="main" aria-hidden="true"></div>
+    <div class="frag" data-shutter>
+      <DeskMatrix lens="analyst" columns={['Documents', 'Concall', '1:1', 'Plant visit']} tools={false} />
+    </div>
+  </div>
+</section>
+
+<script is:inline>document.querySelector('[data-hero]').classList.add('is-up');</script>
+
+<style>
+  .hero {
+    position: relative; display: grid; grid-template-columns: repeat(12, 1fr); column-gap: var(--gap);
+    grid-template-rows: auto 1fr; min-height: calc(100svh - 64px); padding-inline: var(--margin);
+    background: var(--ground); overflow: hidden;
+  }
+  .say { grid-column: 1 / -1; grid-row: 1; display: grid; grid-template-columns: subgrid; align-items: end; padding-top: clamp(48px, 9vh, 96px); }
+  h1 { grid-column: 1 / 8; font-size: var(--s-5); }
+  .sub { grid-column: 8 / 13; display: grid; gap: 26px; justify-items: start; padding-bottom: 10px; }
+  .sub p { font-size: var(--s-2); line-height: 1.45; max-width: 40ch; }
+  .acts { display: flex; align-items: center; gap: 24px; font-size: 16px; }
+  .stage {
+    grid-column: 1 / -1; grid-row: 2; margin: clamp(48px, 8vh, 80px) calc(var(--margin) * -1) 0;
+    background: var(--field-red); min-height: 380px; position: relative; overflow: hidden;
+    clip-path: polygon(0 56px, 34% 56px, calc(34% + 56px) 0, 100% 0, 100% 100%, 0 100%); /* the notch of a ledger's cloth tab */
+  }
+  .frag { position: absolute; inset: 128px clamp(32px, 4vw, 64px) auto; }
+  /* Rises from behind the Matrix: the card crops its lower half. */
+  .gem { position: absolute; top: -10px; right: 9%; width: 300px; }
+  @media (max-width: 1080px) {
+    .say { display: block; padding-top: 40px; }
+    h1 { margin-bottom: 20px; }
+  }
+  @media (max-width: 760px) {
+    .hero { min-height: 0; }
+    h1 { font-size: 15vw; }
+    .sub p { font-size: 17px; }
+    .acts { gap: 18px; }
+    .gem { width: 190px; top: -14px; right: 2%; }
+    .stage { height: 580px; clip-path: polygon(0 40px, 72px 40px, 112px 0, 100% 0, 100% 100%, 0 100%); }
+    .frag { inset: 104px 12px 0 12px; overflow: hidden; }
+  }
+</style>

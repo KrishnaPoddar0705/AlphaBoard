@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+import Prose from '../components/sections/Prose.astro';
+---
+<Base title="Privacy note" description="How the AlphaBoard website handles visitor data: analytics, demo requests and your choices." noindex>
+  <Prose title="Privacy note" updated="25 October 2026">
+    <p>This note covers this marketing website. The AlphaBoard application has its own terms, shared with customers on signing up.</p>
+    <h2>What we collect here</h2>
+    <ul>
+      <li><strong>Analytics.</strong> PostHog records page views, clicks and, for some visits, a session replay with every form field masked. It tells us which pages help and which do not.</li>
+      <li><strong>AI crawlers.</strong> When a known search or AI crawler requests a page, we record the crawler’s name, the page and its country. No personal data is involved.</li>
+      <li><strong>Demo requests.</strong> The name, email, firm and other details you type into the demo form, used only to arrange and prepare your demo.</li>
+    </ul>
+    <h2>Your choices</h2>
+    <p>You can block analytics with any standard content blocker. To see, correct or delete what you sent us through the demo form, reply to any email from us or request it through the <a href="/demo">contact form</a>.</p>
+    <p>This note is a plain summary and will be replaced by a full policy reviewed by counsel.</p>
+  </Prose>
+</Base>

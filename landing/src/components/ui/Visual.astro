@@ -1,0 +1,16 @@
+---
+import type { Visual } from '../../data/pages';
+import MatrixFrag from './MatrixFrag.astro';
+import MemoryFrag from './MemoryFrag.astro';
+import NeedsYouFrag from './NeedsYouFrag.astro';
+import WhatsAppFrag from './WhatsAppFrag.astro';
+import BoardMini from './BoardMini.astro';
+
+interface Props { kind: Visual }
+const { kind } = Astro.props;
+---
+{kind === 'matrix' && <MatrixFrag />}
+{kind === 'memory' && <MemoryFrag />}
+{kind === 'needs' && <NeedsYouFrag />}
+{kind === 'whatsapp' && <WhatsAppFrag />}
+{kind === 'board' && <BoardMini />}

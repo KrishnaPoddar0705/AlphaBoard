@@ -1,0 +1,20 @@
+---
+import Base from '../layouts/Base.astro';
+import Masthead from '../components/sections/Masthead.astro';
+import Points from '../components/sections/Points.astro';
+import Mosaic from '../components/sections/Mosaic.astro';
+import Proof from '../components/sections/Proof.astro';
+import Close from '../components/home/Close.astro';
+import { CONNECTORS } from '../data/connectors';
+import { INDIA_POINTS } from '../data/static';
+import { breadcrumbs } from '../lib/schema';
+
+const indian = CONNECTORS.filter((c) => /Indian|Filings|Research/.test(c.category)).map((c) => c.name);
+---
+<Base title="Built for Indian markets: research software for Dalal Street" description="AlphaBoard is built for Indian investing: NSE and BSE data, results season and AGM tracking, WhatsApp-first workflows, rupee and IST conventions, and SEBI-ready research records." schema={[breadcrumbs([{ name: 'AlphaBoard', path: '/' }, { name: 'Built for India', path: '/india' }])]}>
+  <Masthead title="Built on Dalal Street’s terms" lede="Global research tools were built for New York and London. AlphaBoard was built for the way Indian funds actually work: NSE and BSE filings as the source, concalls and AGMs as the calendar, WhatsApp as the desk." image={{ name: 'bombay-fort-1936', alt: 'Bombay Fort seen from the sea, 1936', caption: 'Bombay Fort from the sea.' }} visual="board" />
+  <Points title="What ‘built for India’ means" points={INDIA_POINTS} aside="Dalal Street runs through what was the old Bombay Fort, PIN 400001." />
+  <Mosaic start={4} caption="Dalal Street, the BSE and the old Fort, Mumbai." />
+  <Proof title="Indian sources first" text={`On the connector roadmap, Indian sources come first: ${indian.slice(0, 9).join(', ')} and more.`} visual="whatsapp" />
+  <Close title="On the record." text="See AlphaBoard with your own Indian coverage list loaded." />
+</Base>

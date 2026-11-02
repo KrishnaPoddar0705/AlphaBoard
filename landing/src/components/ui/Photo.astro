@@ -1,0 +1,28 @@
+---
+/** A photograph from src/lib/images.ts, served as responsive AVIF/WebP in the site's greyscale treatment. */
+import { Picture } from 'astro:assets';
+import { IMAGES, type ImageName } from '../../lib/images';
+
+interface Props {
+  name: ImageName;
+  alt: string;
+  sizes?: string;
+  eager?: boolean;
+  class?: string;
+  style?: string;
+}
+const { name, alt, sizes = '(max-width: 760px) 100vw, 50vw', eager = false, class: cls = '', style } = Astro.props;
+---
+<Picture
+  src={IMAGES[name]}
+  alt={alt}
+  widths={[480, 800, 1200, 1600]}
+  sizes={sizes}
+  formats={['avif', 'webp']}
+  quality={68}
+  loading={eager ? 'eager' : 'lazy'}
+  fetchpriority={eager ? 'high' : 'auto'}
+  decoding={eager ? 'sync' : 'async'}
+  class:list={['photo', cls]}
+  style={style}
+/>

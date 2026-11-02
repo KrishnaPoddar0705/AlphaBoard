@@ -1,0 +1,10 @@
+---
+import PageTemplate from '../../components/sections/PageTemplate.astro';
+import { PRODUCTS, type LandingPage } from '../../data/pages';
+
+export function getStaticPaths() {
+  return PRODUCTS.map((page) => ({ params: { slug: page.slug }, props: { page } }));
+}
+const { page } = Astro.props as { page: LandingPage };
+---
+<PageTemplate page={page} section="product" />

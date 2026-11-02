@@ -1,0 +1,48 @@
+---
+/** Intro, "Staircase statement": the problem, descending, with the street beside it. */
+import Photo from '../ui/Photo.astro';
+const lines = ['The concall note stays in a notebook.', 'The broker report stays in an inbox.', 'The real take stays on WhatsApp.'];
+---
+<section class="rec chapter chapter--ink" data-section="intro" aria-labelledby="rec-title">
+  <div class="stairs" data-reveal>
+    <h2 id="rec-title" class="type-wide">
+      <span class="s0">When an analyst leaves,</span>
+      <span class="s1">the view leaves too.</span>
+    </h2>
+    <p class="s2">{lines[0]}</p>
+    <p class="s3">{lines[1]}</p>
+    <p class="s4">{lines[2]}</p>
+  </div>
+  <div class="pics">
+    <Photo name="dalal-street-sign" alt="The Dalal Street road sign, PIN 400001" sizes="(max-width: 760px) 50vw, 20vw" />
+    <Photo name="bse-tower-2006" alt="Phiroze Jeejeebhoy Towers, home of the BSE" sizes="(max-width: 760px) 50vw, 20vw" />
+  </div>
+  <div class="gem" data-diamond="heat" aria-hidden="true"></div>
+  <p class="note">Indian merchant houses settled this long ago. They kept one red-bound book, the bahi-khata, and handed it on. AlphaBoard is that book for a research desk.</p>
+</section>
+
+<style>
+  .rec {
+    display: grid; grid-template-columns: minmax(0, 1fr) 20vw; column-gap: var(--gap); grid-template-rows: 1fr auto;
+    min-height: 100svh; padding: 88px var(--margin) 48px;
+  }
+  .stairs { align-self: center; display: grid; gap: 14px; }
+  h2 { font-size: var(--s-5); display: grid; gap: 4px; margin-bottom: 20px; }
+  h2 span { display: block; white-space: nowrap; }
+  .s1 { padding-left: 6vw; }
+  .stairs p { font-family: var(--display); font-size: clamp(24px, 2.5vw, 36px); line-height: 1.15; letter-spacing: -0.015em; color: var(--paper-on-ink-soft); }
+  .s2 { padding-left: 12vw; } .s3 { padding-left: 18vw; } .s4 { padding-left: 24vw; }
+  .pics { grid-column: 2; grid-row: 1; display: grid; gap: var(--gap); align-content: start; }
+  .pics :global(.photo) { aspect-ratio: 3 / 2; }
+  .gem { grid-column: 2; grid-row: 2; width: 100%; align-self: end; }
+  .note { grid-column: 1; grid-row: 2; align-self: end; max-width: 52ch; font-size: 17px; }
+  @media (max-width: 960px) {
+    .rec { display: block; min-height: 0; padding-block: 72px 56px; }
+    h2 { font-size: 8.4vw; }
+    .s1 { padding-left: 5vw; }
+    .s2 { padding-left: 10vw; } .s3 { padding-left: 15vw; } .s4 { padding-left: 20vw; }
+    .pics { grid-template-columns: 1fr 1fr; margin-top: 40px; gap: 8px; }
+    .gem { width: 64vw; margin: 24px auto 0; }
+    .note { margin-top: 12px; }
+  }
+</style>

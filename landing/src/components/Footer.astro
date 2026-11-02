@@ -1,0 +1,62 @@
+---
+/** Footer, "Name first, places under it": the book's back cover. Credits for the found
+ * photographs follow at legal size. */
+import photoCredits from '../data/photo-credits.json';
+import videoCredits from '../data/video-credits.json';
+import { APP_URL, FOOTER_COLUMNS } from '../lib/site';
+
+const credits = [...photoCredits, ...videoCredits];
+const year = new Date().getFullYear();
+const columns = FOOTER_COLUMNS.filter((c) => c.title !== 'Talk to us');
+---
+<footer class="foot chapter chapter--ink">
+  <p class="name" aria-label="AlphaBoard">AlphaBoard</p>
+  <div class="row">
+    <ul class="places">
+      <li><a href="/demo">Book a demo</a></li>
+      <li><a href={APP_URL}>Sign in</a></li>
+    </ul>
+    <nav class="cols" aria-label="Footer">
+      {columns.map((c) => (
+        <div>
+          <p>{c.title}</p>
+          <ul>{c.links.map((l) => <li><a href={l.href}>{l.label}</a></li>)}</ul>
+        </div>
+      ))}
+    </nav>
+  </div>
+  <p class="fine">
+    Illustrative data on this site is sample data, not investment advice or a research recommendation.
+    Photographs and film: {credits.map((c, i) => (
+      <span><a href={c.page} rel="noopener">{c.title}</a>, {c.creator ?? 'unknown'}, {c.license}{i < credits.length - 1 ? '; ' : '.'}</span>
+    ))}
+  </p>
+  <div class="legal">
+    <p>© {year} Unicorn Labs · <a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="/llms.txt">llms.txt</a></p>
+    <a href="#main">Back to top</a>
+  </div>
+</footer>
+
+<style>
+  .foot { padding: 48px var(--margin) 28px; overflow: hidden; }
+  .name { font-family: var(--display); font-size: 18.4vw; line-height: 1; letter-spacing: -0.04em; }
+  .row { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--gap); margin-top: 72px; }
+  .places { grid-column: 1 / 6; display: grid; gap: 8px; align-content: start; font-family: var(--display); font-size: clamp(28px, 2.5vw, 36px); letter-spacing: -0.02em; }
+  .places a { text-decoration: none; transition: color 200ms var(--ease); }
+  .places a:hover { color: var(--paper-on-ink-soft); }
+  .cols { grid-column: 7 / 13; display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); font-size: 15px; }
+  .cols p { margin-bottom: 10px; color: var(--paper-on-ink-soft); }
+  .cols ul { display: grid; gap: 6px; }
+  .cols a, .legal a { text-decoration: none; transition: color 200ms var(--ease); }
+  .cols a:hover, .legal a:hover { color: var(--paper-on-ink-soft); }
+  .fine { margin-top: 72px; font-size: var(--s-0); color: var(--paper-on-ink-soft); max-width: 120ch; }
+  .fine a { color: inherit; }
+  .legal { display: flex; justify-content: space-between; gap: var(--gap); margin-top: 16px; font-size: var(--s-0); }
+  @media (max-width: 760px) {
+    .foot { padding-top: 32px; }
+    .row { display: block; margin-top: 40px; }
+    .places { font-size: 26px; }
+    .cols { grid-template-columns: 1fr 1fr; margin-top: 36px; }
+    .legal { flex-wrap: wrap; }
+  }
+</style>

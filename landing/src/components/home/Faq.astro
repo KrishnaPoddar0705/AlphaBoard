@@ -1,0 +1,34 @@
+---
+/** FAQ, "A band per question": every answer open, bands alternating by tone. Also feeds
+ * the FAQPage schema. */
+import { HOME_FAQ, type Faq } from '../../data/faq';
+
+interface Props { items?: Faq[]; title?: string }
+const { items = HOME_FAQ, title = 'Questions from the desk' } = Astro.props;
+---
+<section class="faq" data-section="faq" aria-labelledby="faq-title">
+  <div class="head chapter chapter--ink"><h2 id="faq-title" class="type-wide">{title}</h2></div>
+  {items.map((f) => (
+    <div class="pair" data-reveal>
+      <h3 class="q">{f.q}</h3>
+      <p class="ans">{f.a}</p>
+    </div>
+  ))}
+</section>
+
+<style>
+  .head { display: flex; align-items: flex-end; min-height: 40svh; padding: 56px var(--margin) 40px; }
+  h2 { font-size: var(--s-5); }
+  .pair { display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--gap); padding: 56px var(--margin); }
+  .pair:nth-child(even) { background: var(--ground); }
+  .pair:nth-child(odd) { background: var(--ground-2); }
+  .q { grid-column: 1 / 6; font-size: clamp(24px, 2.2vw, 32px); line-height: 1.12; max-width: 20em; }
+  .ans { grid-column: 7 / 13; font-size: var(--s-1); line-height: 1.5; max-width: 60ch; }
+  @media (max-width: 760px) {
+    .head { min-height: 30svh; }
+    .pair { grid-template-columns: 1fr; gap: 12px; padding-block: 32px; }
+    .q, .ans { grid-column: 1; }
+    .q { font-size: 22px; }
+    .ans { font-size: 17px; }
+  }
+</style>

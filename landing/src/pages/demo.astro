@@ -1,0 +1,162 @@
+---
+import Base from '../layouts/Base.astro';
+import Mosaic from '../components/sections/Mosaic.astro';
+import Photo from '../components/ui/Photo.astro';
+import { breadcrumbs } from '../lib/schema';
+
+const FIRM_TYPES = ['PMS', 'AIF Category III', 'AIF Category II', 'Wealth manager', 'Family office', 'Private equity or venture', 'Other'];
+const AUM_BANDS = ['Under ₹100 crore', '₹100–500 crore', '₹500–2,000 crore', '₹2,000–10,000 crore', 'Over ₹10,000 crore'];
+const TEAM = ['1–3', '4–10', '11–25', '26–50', '50+'];
+---
+<Base
+  title="Book a demo"
+  description="Book a 30-minute AlphaBoard demo with your own coverage list loaded: the Matrix, Institutional Memory answering on your documents, and the Command Center."
+  schema={[breadcrumbs([{ name: 'AlphaBoard', path: '/' }, { name: 'Book a demo', path: '/demo' }])]}
+>
+  <section class="demo wrap" data-section="demo-form">
+    <div class="intro" data-reveal>
+      <h1 class="type-wide">Book a demo</h1>
+      <p>Thirty minutes. Send us the names you cover and we will load them before the call, so you see your own Matrix, Institutional Memory answering on your documents, and the Command Center.</p>
+      <ul class="facts">
+        <li>For PMS, AIF, wealth and family-office teams in India</li>
+        <li>We reply within one working day, IST</li>
+        <li>No commitment and no card</li>
+      </ul>
+      <figure class="ph">
+        <Photo name="dalal-street-sign" alt="Dalal Street road sign, PIN 400001" sizes="420px" />
+      </figure>
+    </div>
+
+    <form class="form" method="post" action="/api/demo" data-demo-form novalidate>
+      <div class="ok" hidden data-ok role="status">
+        <h2>Thank you. We have your request.</h2>
+        <p>Someone from AlphaBoard will write to you within one working day to fix a time.</p>
+      </div>
+      <fieldset data-fields>
+        <legend class="sr-only">Your details</legend>
+        <label>Full name<input name="name" required autocomplete="name" /></label>
+        <label>Work email<input name="email" type="email" required autocomplete="email" /></label>
+        <label>Firm<input name="firm" required autocomplete="organization" /></label>
+        <label>Your role<input name="role" placeholder="CIO, fund manager, analyst…" autocomplete="organization-title" /></label>
+        <label>Firm type
+          <select name="firm_type" required>
+            <option value="">Choose one</option>
+            {FIRM_TYPES.map((t) => <option>{t}</option>)}
+          </select>
+        </label>
+        <label>Assets under management
+          <select name="aum_band">
+            <option value="">Prefer not to say</option>
+            {AUM_BANDS.map((t) => <option>{t}</option>)}
+          </select>
+        </label>
+        <label>Research team size
+          <select name="team_size">
+            <option value="">Choose one</option>
+            {TEAM.map((t) => <option>{t}</option>)}
+          </select>
+        </label>
+        <label class="wide">Anything we should prepare?<textarea name="message" rows="4" placeholder="Sectors you cover, tools you use today, a connector you need…"></textarea></label>
+        <input type="hidden" name="connector" data-connector />
+        <input type="hidden" name="source" data-source />
+        <label class="hp" aria-hidden="true">Leave empty<input name="website" tabindex="-1" autocomplete="off" /></label>
+        <p class="err" hidden data-err role="alert"></p>
+        <button class="btn wide" type="submit">Request a demo <span class="arrow" aria-hidden="true">→</span></button>
+        <p class="fine wide">We use these details only to arrange and prepare your demo. See our <a class="link" href="/privacy">privacy note</a>.</p>
+      </fieldset>
+    </form>
+  </section>
+
+  <section class="next wrap" data-section="demo-next" aria-labelledby="next-title">
+    <h2 id="next-title" data-reveal><span>What happens next</span></h2>
+    <ol class="steps" data-reveal>
+      <li><h3>We write back within a day</h3><p>A short email from someone who has worked on an Indian research desk, to fix a time that suits your market hours.</p></li>
+      <li><h3>We load your coverage</h3><p>Send your list of names, sectors and analysts. We set them up so the demo shows your book, not a sample one.</p></li>
+      <li><h3>Thirty minutes on your desk</h3><p>The Matrix, Institutional Memory and the Command Center, on your names, with your questions.</p></li>
+    </ol>
+  </section>
+  <Mosaic start={1} />
+</Base>
+
+<script>
+  import { track } from '../lib/analytics';
+  const form = document.querySelector<HTMLFormElement>('[data-demo-form]');
+  if (form) {
+    const params = new URLSearchParams(location.search);
+    const conn = params.get('connector');
+    const connInput = form.querySelector<HTMLInputElement>('[data-connector]')!;
+    const msg = form.querySelector<HTMLTextAreaElement>('textarea')!;
+    if (conn) { connInput.value = conn; msg.value = `We would like the ${conn} connector.`; }
+    // The home page's closing dialog hands over the firm and its type.
+    const firm = params.get('firm');
+    if (firm) form.querySelector<HTMLInputElement>('[name="firm"]')!.value = firm.slice(0, 120);
+    const type = params.get('firm_type');
+    const sel = form.querySelector<HTMLSelectElement>('[name="firm_type"]')!;
+    if (type && [...sel.options].some((o) => o.value === type)) sel.value = type;
+    form.querySelector<HTMLInputElement>('[data-source]')!.value = params.get('utm_source') || document.referrer || '';
+    if (params.get('sent') === '1') { form.querySelector<HTMLElement>('[data-ok]')!.hidden = false; form.querySelector<HTMLElement>('[data-fields]')!.hidden = true; }
+
+    let started = false;
+    form.addEventListener('input', () => { if (!started) { started = true; track('demo_form_started', {}); } });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const err = form.querySelector<HTMLElement>('[data-err]')!;
+      if (!form.checkValidity()) { err.hidden = false; err.textContent = 'Please fill in your name, a work email, your firm and its type.'; form.reportValidity(); return; }
+      const data = Object.fromEntries(new FormData(form)) as Record<string, string>;
+      const button = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+      button.disabled = true;
+      try {
+        const res = await fetch('/api/demo', { method: 'POST', headers: { 'content-type': 'application/json', accept: 'application/json' }, body: JSON.stringify(data) });
+        if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Something went wrong');
+        track('demo_form_submitted', { firm_type: data.firm_type || '', aum_band: data.aum_band || '', team_size: data.team_size || '' });
+        form.querySelector<HTMLElement>('[data-fields]')!.hidden = true;
+        form.querySelector<HTMLElement>('[data-ok]')!.hidden = false;
+      } catch (ex) {
+        err.hidden = false;
+        err.textContent = `${(ex as Error).message}. You can also try again in a minute.`;
+        button.disabled = false;
+      }
+    });
+  }
+</script>
+
+<style>
+  .demo { display: grid; grid-template-columns: 5fr 7fr; gap: 64px var(--gap); padding-block: 72px var(--section); }
+  h1 { font-size: clamp(40px, 5.6vw, 92px); max-width: 7em; margin-bottom: 28px; }
+  .intro p { font-size: var(--s-2); max-width: 36ch; }
+  .facts { margin-top: 32px; display: grid; gap: 10px; }
+  .facts li { padding-left: 22px; position: relative; }
+  .facts li::before { content: ''; position: absolute; left: 0; top: 0.6em; width: 8px; height: 8px; background: var(--accent); }
+  .ph { margin: 48px 0 0; aspect-ratio: 4 / 3; overflow: hidden; max-width: 420px; }
+
+  .form { background: var(--ground-2); padding: 40px; align-self: start; }
+  fieldset { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 22px var(--gap); }
+  label { display: grid; gap: 8px; font-size: 16px; font-weight: 500; }
+  .wide { grid-column: 1 / -1; }
+  input, select, textarea {
+    font: inherit; font-weight: 400; font-size: 17px; color: var(--ink);
+    min-height: 52px; padding: 12px 14px; background: var(--ground); border: 2px solid var(--ground-4); border-radius: 0;
+  }
+  textarea { resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  .hp { position: absolute; left: -9999px; }
+  .err { color: var(--neg); grid-column: 1 / -1; }
+  .fine { font-size: 15px; color: var(--ink-soft); }
+  button[disabled] { opacity: 0.6; cursor: progress; }
+  .ok h2 { font-size: var(--s-3); margin-bottom: 12px; }
+  .next { display: grid; grid-template-columns: var(--axis) 1fr; column-gap: var(--gap); padding-bottom: var(--section); }
+  .next h2 { font-size: var(--s-4); max-width: 8em; }
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--gap); }
+  .steps h3 { font-size: var(--s-3); margin-bottom: 12px; max-width: 10em; }
+  .steps p { max-width: 30ch; }
+
+  @media (max-width: 900px) {
+    .demo { grid-template-columns: 1fr; padding-top: 40px; }
+    .form { padding: 24px 16px; }
+    fieldset { grid-template-columns: 1fr; }
+    .ph { display: none; }
+    .next, .steps { grid-template-columns: 1fr; }
+    .next h2 { margin-bottom: 32px; }
+  }
+</style>

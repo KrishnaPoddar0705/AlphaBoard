@@ -1,0 +1,149 @@
+---
+import Base from '../layouts/Base.astro';
+import Masthead from '../components/sections/Masthead.astro';
+import Mosaic from '../components/sections/Mosaic.astro';
+import Close from '../components/home/Close.astro';
+import { CONNECTORS, CATEGORIES } from '../data/connectors';
+import { breadcrumbs } from '../lib/schema';
+
+const live = CONNECTORS.filter((c) => c.status === 'Live').length;
+const order = { Live: 0, Beta: 1, Roadmap: 2 } as const;
+const sorted = [...CONNECTORS].sort((a, b) => order[a.status] - order[b.status]);
+---
+<Base
+  title="Connectors: NSE, BSE, SEBI filings, broker research, WhatsApp and more"
+  description={`AlphaBoard connectors for Indian investment teams: ${live} live today, including NSE and BSE prices, Indian market news, WhatsApp and broker report PDFs, with NSE/BSE announcements, SEBI filings, concall transcripts, Screener.in, Trendlyne, Bloomberg and an MCP server on the roadmap.`}
+  schema={[breadcrumbs([{ name: 'AlphaBoard', path: '/' }, { name: 'Connectors', path: '/integrations' }])]}
+>
+  <Masthead
+    title="Every source, one record"
+    lede={`Research is only as good as what feeds it. ${live} connectors are live today; the rest are on the roadmap below, India first. Tell us which one your desk needs next.`}
+    visual="memory"
+    cta={{ href: '#all', label: 'Browse connectors' }}
+  />
+
+  <section id="all" class="wrap conn" data-section="connector-grid" aria-labelledby="all-title">
+    <div class="bar">
+      <h2 id="all-title">All connectors</h2>
+      <label class="search">
+        <span class="sr-only">Search connectors</span>
+        <input type="search" placeholder="Search: SEBI, concall, Bloomberg…" data-q autocomplete="off" />
+      </label>
+    </div>
+    <div class="filters" role="group" aria-label="Filter by category">
+      <button type="button" aria-pressed="true" data-cat="all">All</button>
+      {CATEGORIES.map((c) => <button type="button" aria-pressed="false" data-cat={c}>{c}</button>)}
+    </div>
+
+    <table class="tbl">
+      <caption class="sr-only">AlphaBoard connectors with category, description and status</caption>
+      <thead><tr><th scope="col">Connector</th><th scope="col">Category</th><th scope="col">What it does</th><th scope="col">Status</th></tr></thead>
+      <tbody>
+        {sorted.map((c) => (
+          <tr data-row data-cat={c.category} data-text={`${c.name} ${c.category} ${c.does}`.toLowerCase()}>
+            <th scope="row">{c.name}</th>
+            <td class="cat">{c.category}</td>
+            <td class="does">{c.does}</td>
+            <td class:list={['st', c.status.toLowerCase()]}>
+              {c.status === 'Live' ? 'Live' : <a href={`/demo?connector=${encodeURIComponent(c.name)}`} data-request={c.name}>{c.status} · ask for it</a>}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+    <p class="empty" hidden data-empty>No connector matches. <a class="link" href="/demo" data-track-cta="integrations-empty">Tell us what you need</a>.</p>
+  </section>
+
+  <section class="wrap compare" data-section="compare" aria-labelledby="cmp-title">
+    <h2 id="cmp-title" data-reveal><span>Global AI tools, built for India.</span></h2>
+    <div class="cmp" data-reveal>
+      <p>Platforms like Hebbia connect US and European filings, FactSet and CapIQ to AI agents for banks and global funds. AlphaBoard starts from the other end: the research desk of an Indian fund, the people on it, and the record of what they did, connected to the sources Indian analysts actually read.</p>
+      <p>That means NSE and BSE first, rupees in crore, concalls and AGMs as first-class events, and WhatsApp as a place where research happens. Global sources and an MCP server follow, so your own AI agents can read the desk’s record with your permissions.</p>
+    </div>
+  </section>
+
+  <Mosaic start={1} />
+  <Close title="Need a connector?" text="Tell us which data your desk pays for. Indian sources are built first, in the order customers ask for them." />
+</Base>
+
+<script>
+  import { track } from '../lib/analytics';
+  const q = document.querySelector<HTMLInputElement>('[data-q]');
+  const rows = [...document.querySelectorAll<HTMLTableRowElement>('[data-row]')];
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-cat]')].filter((b) => b.tagName === 'BUTTON');
+  const empty = document.querySelector<HTMLElement>('[data-empty]');
+  let cat = 'all';
+  let timer: number | undefined;
+
+  function apply() {
+    const term = (q?.value || '').trim().toLowerCase();
+    let shown = 0;
+    for (const r of rows) {
+      const ok = (cat === 'all' || r.dataset.cat === cat) && (!term || (r.dataset.text || '').includes(term));
+      r.hidden = !ok;
+      if (ok) shown++;
+    }
+    if (empty) empty.hidden = shown > 0;
+    clearTimeout(timer);
+    timer = window.setTimeout(() => track('integration_filtered', { category: cat, query_length: term.length }), 600);
+  }
+  q?.addEventListener('input', apply);
+  for (const b of buttons) {
+    b.addEventListener('click', () => {
+      cat = b.dataset.cat || 'all';
+      buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      apply();
+    });
+  }
+  document.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement).closest<HTMLElement>('[data-request]');
+    if (a) track('integration_requested', { name: a.dataset.request || '' });
+  });
+</script>
+
+<style>
+  .conn { padding-bottom: var(--section); }
+  .bar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: var(--gap); margin-bottom: 28px; }
+  h2 { font-size: var(--s-4); }
+  .search input {
+    width: min(420px, 90vw); min-height: 52px; padding: 0 16px; font: inherit; font-size: 17px;
+    background: var(--ground-2); color: var(--ink); border: 2px solid var(--ground-4); border-radius: 0;
+  }
+  .search input:focus { outline: none; border-color: var(--accent); }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 40px; }
+  .filters button {
+    min-height: 40px; padding: 0 14px; font-size: 15px; cursor: pointer;
+    background: var(--ground-3); border: 0; border-radius: 0; transition: background-color 200ms var(--ease);
+  }
+  .filters button:hover { background: var(--ground-4); }
+  .filters button[aria-pressed='true'] { background: var(--ink); color: var(--paper-on-ink); }
+
+  .tbl { width: 100%; border-collapse: collapse; font-size: 16px; }
+  .tbl thead th { text-align: left; font-weight: 500; color: var(--ink-soft); padding: 0 16px 12px 0; }
+  .tbl tbody tr { border-top: 1px solid var(--ground-4); }
+  .tbl tbody th { text-align: left; font-weight: 500; padding: 18px 16px 18px 0; width: 22%; }
+  .tbl td { padding: 18px 16px 18px 0; vertical-align: top; }
+  .cat { color: var(--ink-soft); width: 18%; }
+  .does { max-width: 60ch; }
+  .st { white-space: nowrap; text-align: right; }
+  .st.live { color: var(--accent); font-weight: 500; }
+  .st a { color: var(--ink-soft); }
+  .st a:hover { color: var(--accent); }
+  .empty { margin-top: 24px; }
+
+  .compare { padding-bottom: var(--section); display: grid; grid-template-columns: var(--axis) 1fr; column-gap: var(--gap); }
+  .compare h2 { grid-column: 1 / -1; max-width: 13em; margin-bottom: 48px; }
+  .cmp { grid-column: 2; display: grid; grid-template-columns: 1fr 1fr; gap: var(--gap); }
+  .cmp p { max-width: 38ch; }
+
+  @media (max-width: 860px) {
+    .tbl thead { display: none; }
+    .tbl tbody tr { display: grid; grid-template-columns: 1fr auto; padding: 16px 0; }
+    .tbl tbody th, .tbl td { padding: 2px 0; width: auto; }
+    .cat { grid-row: 2; }
+    .does { grid-column: 1 / -1; }
+    .st { grid-row: 1; grid-column: 2; }
+    .compare { grid-template-columns: 1fr; }
+    .cmp { grid-column: 1; grid-template-columns: 1fr; }
+  }
+</style>

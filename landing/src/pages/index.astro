@@ -1,0 +1,35 @@
+---
+import Base from '../layouts/Base.astro';
+import Hero from '../components/home/Hero.astro';
+import Record from '../components/home/Record.astro';
+import Matrix from '../components/home/Matrix.astro';
+import ThinkingBoard from '../components/home/ThinkingBoard.astro';
+import Memory from '../components/home/Memory.astro';
+import Figures from '../components/home/Figures.astro';
+import India from '../components/home/India.astro';
+import Access from '../components/home/Access.astro';
+import Faq from '../components/home/Faq.astro';
+import Close from '../components/home/Close.astro';
+import { HOME_FAQ } from '../data/faq';
+import { softwareApplication, faqPage } from '../lib/schema';
+---
+<Base
+  title="AlphaBoard: institutional memory for Indian investment firms"
+  description="AlphaBoard keeps everything your desk reads, logs and decides in one book. The Matrix shows every event across every analyst and company, the Thinking Board turns data into a published note, and Institutional Memory answers across your firm’s reports."
+  schema={[softwareApplication(), faqPage(HOME_FAQ)]}
+>
+  <Hero />
+  <Record />
+  <Matrix />
+  <ThinkingBoard />
+  <Memory />
+  <Figures />
+  <India />
+  <Access />
+  <Faq />
+  <Close flush />
+</Base>
+
+<script>
+  import('../lib/diamonds').then(({ mountDiamonds }) => mountDiamonds());
+</script>

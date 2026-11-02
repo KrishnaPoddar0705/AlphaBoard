@@ -1,0 +1,105 @@
+---
+import '../styles/fonts.css';
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { SITE_NAME, DEFAULT_DESCRIPTION } from '../lib/site';
+import { organization, website, graph } from '../lib/schema';
+import { allPages } from '../lib/markdown';
+
+interface Props {
+  title: string;
+  description?: string;
+  /** Extra JSON-LD nodes for this page (FAQPage, BreadcrumbList, SoftwareApplication...). */
+  schema?: Record<string, unknown>[];
+  ogImage?: string;
+  noindex?: boolean;
+}
+
+const { title, description = DEFAULT_DESCRIPTION, schema = [], ogImage = '/og/default.png', noindex = false } = Astro.props;
+const pagePath = Astro.url.pathname.replace(/(\.html)?\/?$/, '').replace(/\/index$/, '') || '/';
+const canonical = new URL(pagePath, Astro.site);
+const fullTitle = title.includes(SITE_NAME) ? title : `${title} · ${SITE_NAME}`;
+const og = new URL(ogImage, Astro.site);
+const mdMirror = allPages().some((p) => p.path === pagePath) ? (pagePath === '/' ? '/index.md' : `${pagePath}.md`) : null;
+---
+<!doctype html>
+<html lang="en-IN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="en-IN" href={canonical} />
+    {mdMirror && <link rel="alternate" type="text/markdown" href={mdMirror} title="Markdown version for agents" />}
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta name="theme-color" content="#f1eee0" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:locale" content="en_IN" />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={og} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={fullTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={og} />
+
+    <link rel="preload" href="/fonts/newsreader-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="/fonts/ibm-plex-sans-latin.woff2" as="font" type="font/woff2" crossorigin />
+
+    <slot name="head" />
+    <script is:inline>document.documentElement.classList.add('js');</script>
+    <script type="application/ld+json" set:html={graph(organization(), website(), ...schema)} />
+  </head>
+  <body>
+    <a class="skip sr-only" href="#main">Skip to content</a>
+    <Header />
+    <div class="page">
+      <main id="main">
+        <slot />
+      </main>
+    </div>
+    <Footer />
+
+    <script>
+      import { initAnalytics, wireDom } from '../lib/analytics';
+      const idle = (window as Window & { requestIdleCallback?: (cb: () => void) => void }).requestIdleCallback ?? ((cb: () => void) => setTimeout(cb, 1500));
+      idle(() => void initAnalytics());
+      wireDom();
+
+      // Entrance: each [data-reveal] block staggers its children once, as it enters.
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) {
+            if (!e.isIntersecting) continue;
+            e.target.classList.add('is-in');
+            io.unobserve(e.target);
+          }
+        },
+        { rootMargin: '0px 0px -12% 0px' },
+      );
+      document.querySelectorAll('[data-reveal]').forEach((el) => io.observe(el));
+
+      // Lenis: inertial scroll on pointer devices; native scroll under reduced motion.
+      if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        import('../lib/scroll').then(({ startScroll }) => startScroll());
+      }
+    </script>
+  </body>
+</html>
+
+<style>
+    .page { position: relative; background: var(--ground); }
+  .skip:focus {
+    position: fixed; top: 8px; left: 8px; width: auto; height: auto; clip: auto; z-index: 100;
+    background: var(--ink); color: var(--paper-on-ink); padding: 10px 14px;
+  }
+</style>

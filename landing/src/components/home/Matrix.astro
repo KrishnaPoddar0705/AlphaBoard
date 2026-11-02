@@ -1,0 +1,29 @@
+---
+/** List, "Day tabs, banded agenda" carrying the Matrix: teams as tabs, the desk as bands. */
+import DeskMatrix from '../ui/DeskMatrix.astro';
+---
+<section class="mxs chapter chapter--tone" id="matrix" data-section="matrix" aria-labelledby="mx-title">
+  <div class="top" data-reveal>
+    <h2 id="mx-title"><span class="soft">Every analyst. Every company.</span><span>One timeline.</span></h2>
+    <a class="btn" href="/product/matrix" data-track-cta="home-matrix">How the Matrix works <span class="arrow" aria-hidden="true">→</span></a>
+  </div>
+  <p class="lead" data-reveal><span>Concalls, 1:1s, plant visits, broker reports, AGMs: ten kinds of work, logged by your analysts against the company they belong to. See what happened, what’s next, and where a blank cell means research nobody did.</span></p>
+  <DeskMatrix class="dx--full" lens="company" columns={['Documents', 'Concall', '1:1', 'Plant visit', 'Broker report']} />
+</section>
+
+<style>
+  .mxs { min-height: 90svh; padding: 96px var(--margin) 96px; display: grid; gap: 36px; }
+  .top { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--gap); }
+  h2 { font-size: var(--s-4); }
+  h2 span { display: block; }
+  .soft { color: var(--ink-soft); }
+  .lead { max-width: 62ch; font-size: var(--s-1); }
+  .mxs :global(.dx--full) { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; }
+  @media (max-width: 760px) {
+    .mxs { padding-block: 72px; gap: 24px; }
+    h2 { font-size: 7.3vw; }
+    .top { display: grid; justify-items: start; }
+    .top .btn { width: 100%; }
+    .mxs :global(.dx--full) { grid-template-columns: minmax(0, 1fr); }
+  }
+</style>

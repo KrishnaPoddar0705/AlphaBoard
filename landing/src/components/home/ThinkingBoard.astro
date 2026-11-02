@@ -1,0 +1,33 @@
+---
+/** Showcase, "Input half, output half": what the analyst hands in, the note it becomes.
+ * The heading is split across the edge at the top, so the section opens on it. */
+import DeskBoard from '../ui/DeskBoard.astro';
+---
+<section class="tb" id="thinking-board" data-section="thinking-board" data-board aria-labelledby="tb-title">
+  <h2 id="tb-title" class="type-wide"><span>One desk</span> <span>for the whole argument.</span></h2>
+  <div class="left chapter chapter--red">
+    <p class="lead">The only place the concall, the results, the statements and your own view sit side by side. Every block keeps its source and date. Print it to PDF, or publish it to the log. Try it: the entry lands in the Matrix.</p>
+    <DeskBoard part="in" />
+  </div>
+  <div class="right chapter">
+    <DeskBoard part="out" />
+  </div>
+</section>
+
+<style>
+  .tb { display: grid; grid-template-columns: 1fr 1fr; min-height: 100svh; }
+  h2 { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; font-size: clamp(38px, 4.4vw, 66px); }
+  h2 span { padding: 72px var(--margin) 20px; white-space: nowrap; }
+  h2 span:first-child { background: var(--field-red); color: var(--accent-ink); }
+  h2 span:last-child { background: var(--ground); color: var(--ink); }
+  .left { padding: 8px var(--margin) 56px; display: grid; gap: 32px; align-content: start; }
+  .lead { max-width: 52ch; font-size: var(--s-1); }
+  .right { padding: 8px var(--margin) 56px; }
+  @media (max-width: 960px) {
+    .tb { display: block; }
+    h2 { display: block; background: var(--field-red); padding: 64px 0 8px; font-size: 8.6vw; }
+    h2 span { display: block; padding: 0 var(--margin); }
+    h2 span:first-child, h2 span:last-child { background: none; color: var(--accent-ink); }
+    .right { padding: 12px 12px 32px; background: var(--ground-2); }
+  }
+</style>

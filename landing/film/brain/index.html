@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Panchang"; src: url("assets/fonts/panchang-700.woff2") format("woff2"); font-weight: 700; }
+      @font-face { font-family: "Switzer"; src: url("assets/fonts/switzer-400.woff2") format("woff2"); font-weight: 400; }
+      @font-face { font-family: "Switzer"; src: url("assets/fonts/switzer-500.woff2") format("woff2"); font-weight: 500; }
+      :root {
+        --ground: #0b0b0c;
+        --surface: #141416;
+        --ink: #f2f2f0;
+        --muted: #a1a1a6;
+        --accent: #e6c47e;
+        --glass: rgba(255, 255, 255, 0.045);
+        --font-display: "Panchang", sans-serif;
+        --font-text: "Switzer", sans-serif;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { margin: 0; width: 1600px; height: 1000px; overflow: hidden; background: var(--ground); }
+      #root { position: relative; width: 100%; height: 100%; font-family: var(--font-text); color: var(--ink); overflow: hidden; }
+
+      /* The brain: the Paper Heatmap diamond (pre-rendered from the shader), screened onto the ground. */
+      #crystal {
+        position: absolute; left: 340px; top: 40px; width: 920px; height: 920px;
+        object-fit: cover; mix-blend-mode: screen; z-index: 1;
+        /* The shader's grain lifts the clip's corners off black; fade them out. */
+        -webkit-mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+        mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+      }
+
+      .glass {
+        position: absolute; overflow: hidden;
+        background: var(--glass);
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+        border-radius: 18px;
+      }
+      .sheen {
+        position: absolute; top: -40%; left: 0; width: 70px; height: 180%;
+        background: rgba(255, 255, 255, 0.10); filter: blur(10px);
+        transform: translateX(-200px) rotate(18deg);
+      }
+
+      /* Beat 1: the question */
+      #ask { position: absolute; inset: 0; z-index: 4; }
+      #ask-box { left: 330px; top: 72px; width: 940px; height: 92px; display: flex; align-items: center; padding: 0 34px; gap: 20px; }
+      #ask-label { font-size: 26px; color: var(--muted); font-weight: 500; flex: none; }
+      #ask-text { font-size: 34px; font-weight: 500; letter-spacing: -0.01em; white-space: nowrap; }
+      #ask-text span { opacity: 0; }
+      #caret { display: inline-block; width: 3px; height: 38px; background: var(--ink); vertical-align: middle; margin-left: 4px; }
+
+      /* Beat 2: the sources */
+      #sources { position: absolute; inset: 0; z-index: 3; }
+      .src { width: 400px; height: 120px; padding: 20px 28px; display: grid; align-content: center; gap: 6px; }
+      .src b { font-size: 30px; font-weight: 500; letter-spacing: -0.01em; }
+      .src i { font-style: normal; font-size: 26px; color: var(--muted); }
+      #src-1 { left: 100px; top: 250px; }
+      #src-2 { left: 100px; top: 390px; }
+      #src-3 { left: 100px; top: 530px; }
+      #src-4 { left: 1100px; top: 310px; }
+      #src-5 { left: 1100px; top: 470px; }
+
+      /* Beat 3: the answer */
+      #answer { position: absolute; inset: 0; z-index: 5; }
+      #answer-box { left: 250px; top: 710px; width: 1100px; height: 200px; padding: 30px 40px; display: grid; align-content: start; gap: 18px; background: rgba(34, 36, 39, 0.55); }
+      #answer-line { font-size: 34px; line-height: 1.3; letter-spacing: -0.01em; max-width: 30em; }
+      #answer-line span { display: inline-block; opacity: 0; }
+      #cites { display: flex; gap: 14px; }
+      .cite { font-size: 26px; font-weight: 500; padding: 8px 14px; border-radius: 999px; background: rgba(255, 255, 255, 0.09); color: var(--ink); opacity: 0; }
+
+      /* Beat 4: filed to the record, then the name */
+      #filed { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; }
+      #filed-line { font-size: 40px; font-weight: 500; letter-spacing: -0.01em; display: flex; align-items: baseline; gap: 22px; margin-top: 560px; }
+      #filed-fig { font-family: var(--font-display); font-weight: 700; font-size: 72px; color: var(--accent); letter-spacing: -0.02em; }
+      #filed-vs { color: var(--muted); }
+
+      #endcard { position: absolute; inset: 0; z-index: 7; display: grid; place-content: center; text-align: center; gap: 22px; }
+      #end-name { font-family: var(--font-display); font-weight: 700; font-size: 104px; letter-spacing: -0.02em; line-height: 1; text-transform: uppercase; }
+      #end-sub { font-family: var(--font-display); font-weight: 700; font-size: 34px; letter-spacing: -0.01em; text-transform: uppercase; color: var(--muted); }
+
+      #veil { position: absolute; inset: 0; background: var(--ground); z-index: 9; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="14" data-width="1600" data-height="1000">
+      <video id="crystal" class="clip" data-start="0" data-duration="14" data-track-index="0" src="assets/diamond.mp4" muted playsinline></video>
+
+      <div id="ask" class="clip" data-start="0" data-duration="11.2" data-track-index="1">
+        <div id="ask-box" class="glass">
+          <div data-layout-ignore class="sheen" id="ask-sheen"></div>
+          <span id="ask-label">Ask the desk</span>
+          <span id="ask-text" data-text="What did Deccan Auto say about exports?"></span><span id="caret"></span>
+        </div>
+      </div>
+
+      <div id="sources" class="clip" data-start="2.4" data-duration="9.2" data-track-index="2">
+        <div id="src-1" class="glass src"><div data-layout-ignore class="sheen"></div><b>Concall</b><i>Q2 FY27 · R. Iyer</i></div>
+        <div id="src-2" class="glass src"><div data-layout-ignore class="sheen"></div><b>Plant visit</b><i>Chakan, Pune · S. Mehta</i></div>
+        <div id="src-3" class="glass src"><div data-layout-ignore class="sheen"></div><b>Broker report</b><i>Sell-side initiation</i></div>
+        <div id="src-4" class="glass src"><div data-layout-ignore class="sheen"></div><b>1:1 with CFO</b><i>Mumbai office</i></div>
+        <div id="src-5" class="glass src"><div data-layout-ignore class="sheen"></div><b>AGM</b><i>FY26 · P. Nair</i></div>
+      </div>
+
+      <div id="answer" class="clip" data-start="5.9" data-duration="5.3" data-track-index="3">
+        <div id="answer-box" class="glass">
+          <div data-layout-ignore class="sheen" id="answer-sheen"></div>
+          <p id="answer-line" data-text="Export orders are real; the second line runs at 60% and the ramp is two quarters away."></p>
+          <div id="cites"><span class="cite">[1] Plant visit p.2</span><span class="cite">[2] Concall p.7</span></div>
+        </div>
+      </div>
+
+      <div id="filed" class="clip" data-start="10.7" data-duration="3.3" data-track-index="4">
+        <p id="filed-line"><span>Filed to the Deccan Auto record ·</span><span id="filed-fig">5</span><span id="filed-vs">sources · 3 analysts</span></p>
+      </div>
+
+      <div id="endcard" class="clip" data-start="11.6" data-duration="2.4" data-track-index="5">
+        <p id="end-name">AlphaBoard</p>
+        <p id="end-sub">The company brain</p>
+      </div>
+
+      <div id="veil" class="clip" data-start="0" data-duration="14" data-track-index="6"></div>
+    </div>
+
+    <script>
+      // Split the typed question and the answer into spans once, deterministically.
+      const split = (el, by) => {
+        const parts = by === "char" ? [...el.dataset.text] : el.dataset.text.split(" ");
+        el.innerHTML = parts.map((p) => `<span>${p === " " ? "&nbsp;" : p}</span>`).join(by === "char" ? "" : " ");
+        return el.querySelectorAll("span");
+      };
+      const chars = split(document.getElementById("ask-text"), "char");
+      const words = split(document.getElementById("answer-line"), "word");
+
+      const tl = gsap.timeline({ paused: true });
+      const out = "power3.out", inn = "power2.in";
+
+      // Open from the ground (loop seam), crystal comes up.
+      tl.fromTo("#veil", { opacity: 1 }, { opacity: 0, duration: 0.6, ease: "none" }, 0);
+
+      // Beat 1: question types in.
+      tl.fromTo("#ask-box", { opacity: 0, y: -16 }, { opacity: 1, y: 0, duration: 0.5, ease: out }, 0.15);
+      tl.to(chars, { opacity: 1, duration: 0.01, stagger: 1.55 / chars.length, ease: "none" }, 0.55);
+      tl.fromTo("#caret", { opacity: 1 }, { opacity: 0, duration: 0.25, repeat: 9, yoyo: true, ease: "steps(1)" }, 0.3);
+      tl.fromTo("#ask-sheen", { x: -200 }, { x: 1100, duration: 0.9, ease: "power2.inOut" }, 2.1);
+
+      // Beat 2: sources fly in from the dark and settle around the crystal.
+      const from = [[-260, -40], [-300, 0], [-260, 40], [300, -30], [300, 30]];
+      ["#src-1", "#src-2", "#src-3", "#src-4", "#src-5"].forEach((id, i) => {
+        const t = 2.5 + i * 0.32;
+        tl.fromTo(id, { opacity: 0, x: from[i][0], y: from[i][1], scale: 0.86 },
+          { opacity: 1, x: 0, y: 0, scale: 1, duration: 0.9, ease: "expo.out" }, t);
+        tl.fromTo(`${id} .sheen`, { x: -200 }, { x: 500, duration: 0.8, ease: "power2.inOut" }, t + 0.5);
+      });
+      // Sources dim while the answer is read.
+      tl.to(".src", { opacity: 0.55, duration: 0.5, ease: "none" }, 6.1);
+
+      // Beat 3: the answer assembles word by word, then its citations.
+      tl.fromTo("#answer-box", { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.5, ease: out }, 6.0);
+      tl.fromTo(words, { opacity: 0, y: 10 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.075, ease: out }, 6.3);
+      tl.fromTo(".cite", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.35, stagger: 0.18, ease: out }, 7.75);
+      tl.fromTo("#answer-sheen", { x: -200 }, { x: 1300, duration: 1.0, ease: "power2.inOut" }, 8.1);
+
+      // Beat 4: everything collapses into the crystal.
+      tl.to(["#ask-box", "#answer-box"], { opacity: 0, y: 0, scale: 0.92, duration: 0.5, ease: inn }, 10.55);
+      tl.to("#src-1, #src-2, #src-3", { x: 420, y: (i) => [140, 0, -140][i] * 0.5, scale: 0.4, opacity: 0, duration: 0.6, ease: inn }, 10.6);
+      tl.to("#src-4, #src-5", { x: -420, y: (i) => [80, -80][i], scale: 0.4, opacity: 0, duration: 0.6, ease: inn }, 10.6);
+
+      tl.fromTo("#filed-line", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: out }, 10.85);
+      tl.fromTo("#filed-fig", { scale: 0.85 }, { scale: 1, duration: 0.6, ease: "back.out(2)" }, 10.9);
+
+      tl.fromTo("#crystal", { opacity: 1 }, { opacity: 0.35, duration: 0.5, ease: "none" }, 11.5);
+      tl.fromTo("#end-name", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6, ease: "expo.out" }, 11.65);
+      tl.fromTo("#end-sub", { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5, ease: out }, 11.75);
+
+      // Back to the ground for a clean loop.
+      tl.to("#veil", { opacity: 1, duration: 0.2, ease: "none" }, 13.8);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

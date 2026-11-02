@@ -1,0 +1,17 @@
+---
+/** The WhatsApp assistant, as a desk sees it. */
+---
+<div class="wa" data-ui role="img" aria-label="WhatsApp conversation with the AlphaBoard assistant about a price alert">
+  <div class="top">AlphaBoard · WhatsApp</div>
+  <p class="me">alert KONKANCAB below 612</p>
+  <p class="bot">Done. I will message you if Konkan Cables closes below ₹612. Last close ₹648.40 (+1.2%).</p>
+  <p class="me">close report</p>
+  <p class="bot">Close report: 3 concalls logged today, 2 broker reports filed. Watchlist: 7 up, 3 down.</p>
+</div>
+<style>
+  .wa { color: #e9edef; background: #0b141a; padding: 0 14px 16px; display: grid; gap: 8px; font-size: 14px; line-height: 1.4; height: 100%; align-content: start; }
+  .top { margin: 0 -14px 4px; padding: 10px 14px; background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+  .me, .bot { padding: 8px 10px; max-width: 85%; }
+  .me { justify-self: end; background: #005c4b; font-size: 14px; border-radius: 8px; }
+  .bot { background: #202c33; border-radius: 8px; }
+</style>

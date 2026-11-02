@@ -1,0 +1,26 @@
+[
+ {
+  "file": "landing/public/media/mumbai-street.mp4",
+  "media": "video",
+  "poster": "../../../private/tmp/claude-504/-Users-krishna-poddar-leaderboard/5b1398a7-8ab6-43bd-a873-ac68a8bbd0a2/scratchpad/vid/street-poster.jpg",
+  "ref": "commons:90459483",
+  "title": "Street in Mumbai (video) 01",
+  "creator": "Nicolas Vigier",
+  "creatorUrl": null,
+  "date": "2016-03-29",
+  "license": "CC0",
+  "licenseCode": "cc0",
+  "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/deed.en",
+  "creditRequired": false,
+  "page": "https://commons.wikimedia.org/wiki/File:Street_in_Mumbai_(video)_01.webm",
+  "via": "Wikimedia Commons",
+  "video": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Street_in_Mumbai_%28video%29_01.webm",
+  "width": 960,
+  "height": 540,
+  "duration": 22.1,
+  "bytes": 9151766,
+  "credit": "\"Street in Mumbai (video) 01\" by Nicolas Vigier, CC0, via Wikimedia Commons",
+  "notes": [],
+  "saved": "2026-10-24T19:16:43.065Z"
+ }
+]

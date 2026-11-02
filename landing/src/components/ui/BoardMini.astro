@@ -1,0 +1,22 @@
+---
+/** Three rows of the research log, for page mastheads. */
+import { BOARD } from '../../data/board';
+const rows = [BOARD[0], BOARD[3], BOARD[6]];
+---
+<div class="bm" data-ui role="img" aria-label="Three entries from an illustrative research log: company, kind of research and time">
+  {rows.map((r, i) => (
+    <div class:list={['r', { on: i === 1 }]}>
+      <span class="t">{r.company}</span><span class="e">{r.event}</span><span class="tm">{r.time}</span>
+      <span class="s">{r.analyst}</span>
+    </div>
+  ))}
+</div>
+<style>
+  .bm { padding: 10px; display: grid; gap: 4px; height: 100%; align-content: center; color: var(--ink); }
+  .r { display: grid; grid-template-columns: 1.8fr 1.2fr 0.6fr auto; gap: 10px; align-items: center; padding: 14px; background: var(--ground); border-radius: 12px; font-size: 15px; }
+  .r.on { background: var(--ground-3); }
+  .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r.on .t { color: var(--accent); }
+  .e, .tm, .s { color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .s { font-size: 13px; }
+</style>

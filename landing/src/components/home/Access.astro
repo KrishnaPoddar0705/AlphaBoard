@@ -1,0 +1,34 @@
+---
+/** Features, "Capabilities at poster scale": who sees what, in plain sentences. */
+const rows = [
+  ['Walled off', 'Row-level security keeps each organisation’s records away from every other.'],
+  ['Team by team', 'Analysts see their own work and what is shared with their teams.'],
+  ['The whole firm', 'Admins see every team, every analyst and every entry.'],
+  ['Yours until published', 'A Thinking Board note stays with its author. Only the published entry is shared.'],
+];
+---
+<section class="acc chapter chapter--tone" data-section="access" aria-labelledby="acc-title">
+  <h2 id="acc-title" class="line soft">Your book stays yours.</h2>
+  <ul data-reveal>
+    {rows.map(([name, text]) => <li class="row"><span class="line">{name}</span><p>{text}</p></li>)}
+  </ul>
+  <a class="link" href="/security">Security at AlphaBoard</a>
+</section>
+
+<style>
+  .acc { padding: 18vh var(--margin); display: grid; gap: 0.35em; justify-items: start; }
+  .line { font-family: var(--display); font-size: clamp(40px, 5.2vw, 84px); line-height: 1.04; letter-spacing: -0.03em; font-weight: 400; }
+  .soft { color: var(--ink-soft); }
+  ul { width: 100%; display: grid; gap: 0.35em; font-size: clamp(40px, 5.2vw, 84px); }
+  .row { display: grid; grid-template-columns: 8fr 4fr; gap: var(--gap); align-items: first baseline; transition: opacity 200ms var(--ease); }
+  .row p { font-size: 17px; letter-spacing: 0; line-height: 1.45; }
+  ul:hover .row:not(:hover) { opacity: 0.35; }
+  .link { margin-top: 28px; font-size: 17px; }
+  @media (max-width: 760px) {
+    .acc { padding-block: 80px; }
+    .line, ul { font-size: 11vw; }
+    .row { grid-template-columns: 1fr; gap: 6px; margin-bottom: 18px; }
+    .row p { padding-left: var(--margin); font-size: 16px; }
+    ul:hover .row:not(:hover) { opacity: 1; }
+  }
+</style>

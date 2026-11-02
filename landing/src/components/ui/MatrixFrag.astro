@@ -1,0 +1,29 @@
+---
+/** A crop of the Matrix: companies down, kinds of research work across. A filled cell is
+ * work logged with its notes; a blank one is research nobody did. */
+const cols = ['Filings', 'Concall', 'AGM', 'Broker', '1:1', 'Notes'];
+const rows: [string, string, number[]][] = [
+  ['Sahyadri Electronics', 'K. Rao', [3, 2, 1, 4, 2, 6]],
+  ['Konkan Cables', 'S. Mehta', [2, 2, 0, 3, 1, 4]],
+  ['Narmada Finance', 'R. Iyer', [3, 3, 1, 5, 0, 5]],
+  ['Aravalli Pharma', 'R. Iyer', [4, 1, 1, 2, 0, 3]],
+  ['Deccan Auto', 'S. Mehta', [2, 2, 0, 3, 2, 4]],
+  ['Vindhya Cement', 'P. Nair', [1, 0, 1, 1, 0, 1]],
+];
+---
+<div class="mx" data-ui role="img" aria-label="AlphaBoard Matrix: six fictional companies against six kinds of research work; blank cells are coverage gaps">
+  <div class="r h"><span>Company</span><span>Analyst</span>{cols.map((c) => <span>{c}</span>)}</div>
+  {rows.map(([t, a, cells], i) => (
+    <div class:list={['r', { on: i === 4 }]}><span class="t">{t}</span><span class="a">{a}</span>{cells.map((c) => <i class:list={['cell', { gap: c === 0 }]}>{c > 0 ? c : ''}</i>)}</div>
+  ))}
+</div>
+<style>
+  .mx { color: var(--ink); padding: 14px; font-size: 13px; display: grid; gap: 5px; width: 100%; height: 100%; align-content: center; }
+  .r { display: grid; grid-template-columns: 1.9fr 1fr repeat(6, 0.62fr); gap: 5px; align-items: center; }
+  .h { color: var(--ink-soft); padding-bottom: 4px; }
+  .h span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .t { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .a { color: var(--ink-soft); white-space: nowrap; }
+  .r.on .t { color: var(--accent); }
+  .cell { height: 24px; border-radius: 6px; background: var(--ground-3); display: grid; place-items: center; font-style: normal; font-size: 12px; color: var(--ink); }
+  .cell.gap { background: transparent; box-shadow: inset 0 0 0 1px var(--ground-4); } /* taste-skill-ignore: data-ui empty cell */
+</style>

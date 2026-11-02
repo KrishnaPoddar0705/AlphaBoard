@@ -1,0 +1,30 @@
+---
+/** A text page: the heading on the axis, the points in two reading columns to its right. */
+import type { Point } from '../../data/pages';
+interface Props { title: string; points: Point[]; aside?: string }
+const { title, points, aside } = Astro.props;
+---
+<section class="pts wrap" data-section="points" aria-label={title}>
+  <div class="side">{aside && <p>{aside}</p>}</div>
+  <div class="main">
+    <h2 data-reveal><span>{title}</span></h2>
+    <div class="cols">
+      {points.map((p) => (
+        <article data-reveal>
+          <h3>{p.title}</h3>
+          <p>{p.body}</p>
+        </article>
+      ))}
+    </div>
+  </div>
+</section>
+<style>
+  .pts { display: grid; grid-template-columns: var(--axis) 1fr; column-gap: var(--gap); padding-bottom: var(--section); }
+  .side p { font-size: 16px; color: var(--ink-soft); max-width: 28ch; padding-top: 18px; }
+  h2 { font-size: var(--s-4); max-width: 11em; margin-bottom: 64px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 56px var(--gap); }
+  h3 { font-size: var(--s-3); line-height: 1.1; margin-bottom: 14px; max-width: 14em; }
+  article p { max-width: 38ch; }
+  @media (max-width: 960px) { .pts { grid-template-columns: 1fr; } .side { display: none; } }
+  @media (max-width: 640px) { .cols { grid-template-columns: 1fr; gap: 40px; } }
+</style>

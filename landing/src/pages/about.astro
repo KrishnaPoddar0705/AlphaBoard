@@ -1,0 +1,17 @@
+---
+import Base from '../layouts/Base.astro';
+import Prose from '../components/sections/Prose.astro';
+import Mosaic from '../components/sections/Mosaic.astro';
+import Close from '../components/home/Close.astro';
+---
+<Base title="About AlphaBoard" description="AlphaBoard is built by Unicorn Labs for Indian investment teams who want their research process on the record.">
+  <Prose title="About AlphaBoard" lede="AlphaBoard is research software for Indian investment teams, built by Unicorn Labs in Mumbai’s market, for Dalal Street’s way of working.">
+    <p>Most Indian funds run on good analysts and a busy WhatsApp group. The ideas are real, but the record is not: who met which management, what they concluded, what the PM decided and whether it worked are scattered across chats, inboxes and spreadsheets.</p>
+    <p>AlphaBoard puts that process on the record. Analysts log their work in two minutes; PMs review it in one queue; the Matrix keeps one record per company; and Institutional Memory keeps the firm’s reading searchable after people move on.</p>
+    <p>We are building it with PMS, AIF, wealth and family-office teams, India first. Global sources and agent access through MCP follow.</p>
+    <h2>Who builds it</h2>
+    <p>AlphaBoard is a Unicorn Labs product. If you run a research desk and want to shape what we build next, <a href="/demo">talk to us</a>.</p>
+  </Prose>
+  <Mosaic start={0} />
+  <Close />
+</Base>

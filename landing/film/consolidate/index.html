@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1280, height=800" />
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <style>
+      @font-face { font-family: "Panchang"; src: url("assets/fonts/panchang-700.woff2") format("woff2"); font-weight: 700; }
+      @font-face { font-family: "Switzer"; src: url("assets/fonts/switzer-400.woff2") format("woff2"); font-weight: 400; }
+      @font-face { font-family: "Switzer"; src: url("assets/fonts/switzer-500.woff2") format("woff2"); font-weight: 500; }
+      :root {
+        --ground: #0b0b0c;
+        --ink: #f2f2f0;
+        --muted: #b4b4b9;
+        --accent: #e6c47e;
+        --glass: rgba(255, 255, 255, 0.045);
+        --font-text: "Switzer", sans-serif;
+      }
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body { width: 1280px; height: 800px; overflow: hidden; background: var(--ground); }
+      #root { position: relative; width: 100%; height: 100%; font-family: var(--font-text); color: var(--ink); overflow: hidden; background: var(--ground); }
+
+      /* The company brain: the Paper Heatmap diamond, screened onto the ground. */
+      #brain {
+        position: absolute; left: 340px; top: 100px; width: 600px; height: 600px;
+        object-fit: cover; mix-blend-mode: screen; z-index: 1;
+        -webkit-mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+        mask-image: radial-gradient(closest-side, #000 62%, transparent 100%);
+      }
+
+      .glass {
+        position: absolute; overflow: hidden;
+        background: var(--glass);
+        backdrop-filter: blur(16px) saturate(1.2);
+        -webkit-backdrop-filter: blur(16px) saturate(1.2);
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+      }
+
+      /* Phase 1–2: the scattered sources. */
+      #sources { position: absolute; inset: 0; z-index: 3; }
+      .chip { width: 272px; height: 84px; border-radius: 16px; padding: 12px 18px; display: grid; align-content: center; gap: 2px; }
+      .chip i { font-style: normal; font-size: 21px; color: var(--muted); line-height: 1.2; white-space: nowrap; }
+      .chip b { font-size: 24px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.2; white-space: nowrap; }
+
+      /* Phase 3: one record per stock. */
+      #record { position: absolute; inset: 0; z-index: 4; }
+      #grid { left: 160px; top: 262px; width: 960px; height: 470px; border-radius: 22px; padding: 18px 20px; }
+      .row { position: absolute; left: 20px; right: 20px; height: 62px; display: grid; grid-template-columns: 260px repeat(6, 1fr); align-items: center; border-radius: 12px; }
+      .row.head { height: 40px; }
+      .row.head span { font-size: 21px; color: var(--muted); text-align: center; }
+      .row.head span:first-child { text-align: left; padding-left: 14px; }
+      .row .name { font-size: 23px; font-weight: 500; letter-spacing: -0.01em; padding-left: 14px; white-space: nowrap; }
+      .cell { justify-self: center; width: 78px; height: 28px; border-radius: 999px; }
+      .cell.on { background: rgba(242, 242, 240, 0.8); }
+      .cell.gap { box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, 0.16); }
+      #row-1 { box-shadow: inset 0 0 0 1.5px var(--accent); background: rgba(230, 196, 126, 0.06); }
+      #row-1 .name { color: var(--accent); }
+
+      #flash { position: absolute; left: 540px; top: 300px; width: 200px; height: 200px; border-radius: 50%; background: rgba(255, 238, 200, 0.5); filter: blur(60px); z-index: 2; opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="8" data-width="1280" data-height="800">
+      <video id="brain" class="clip" data-start="0" data-duration="8" data-track-index="0" src="assets/diamond.mp4" muted playsinline data-layout-allow-overflow></video>
+      <div id="flash" class="clip" data-start="0" data-duration="8" data-track-index="1"></div>
+
+      <div id="sources" class="clip" data-start="0" data-duration="5.4" data-track-index="2">
+        <div id="c1" class="glass chip" style="left:40px;top:72px"><i>BSE filing</i><b>Q2 FY27 results</b></div>
+        <div id="c2" class="glass chip" style="left:340px;top:40px"><i>NSE announcement</i><b>Board meeting</b></div>
+        <div id="c3" class="glass chip" style="left:680px;top:52px"><i>Annual report</i><b>FY26, 212 pages</b></div>
+        <div id="c4" class="glass chip" style="left:978px;top:96px"><i>Concall transcript</i><b>Q2 FY27</b></div>
+        <div id="c5" class="glass chip" style="left:978px;top:250px"><i>Broker report</i><b>Initiation</b></div>
+        <div id="c6" class="glass chip" style="left:978px;top:420px"><i>Sector report</i><b>Autos, Q3 outlook</b></div>
+        <div id="c7" class="glass chip" style="left:978px;top:600px"><i>AGM notes</i><b>Vindhya Cement</b></div>
+        <div id="c8" class="glass chip" style="left:700px;top:690px"><i>1:1 · CFO</i><b>Sahyadri Electronics</b></div>
+        <div id="c9" class="glass chip" style="left:370px;top:700px"><i>Plant visit</i><b>Chakan, Pune</b></div>
+        <div id="c10" class="glass chip" style="left:40px;top:640px"><i>News</i><b>Results preview</b></div>
+        <div id="c11" class="glass chip" style="left:30px;top:470px"><i>WhatsApp thread</i><b>Desk group</b></div>
+        <div id="c12" class="glass chip" style="left:40px;top:290px"><i>IR email</i><b>Narmada Finance</b></div>
+        <div id="c13" class="glass chip" style="left:300px;top:190px"><i>Excel model</i><b>Konkan FY28E</b></div>
+        <div id="c14" class="glass chip" style="left:720px;top:540px"><i>PM comment</i><b>Review queue</b></div>
+      </div>
+
+      <div id="record" class="clip" data-start="5.1" data-duration="2.9" data-track-index="3">
+        <div id="grid" class="glass">
+          <div class="row head" style="top:16px"><span>Coverage</span><span>Filings</span><span>Concall</span><span>AGM</span><span>Broker</span><span>1:1</span><span>Notes</span></div>
+          <div class="row" id="row-1" style="top:62px"><span class="name">Deccan Auto</span><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i></div>
+          <div class="row" id="row-2" style="top:128px"><span class="name">Narmada Finance</span><i class="cell on"></i><i class="cell on"></i><i class="cell gap"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i></div>
+          <div class="row" id="row-3" style="top:194px"><span class="name">Konkan Cables</span><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell gap"></i><i class="cell on"></i></div>
+          <div class="row" id="row-4" style="top:260px"><span class="name">Sahyadri Electronics</span><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i></div>
+          <div class="row" id="row-5" style="top:326px"><span class="name">Vindhya Cement</span><i class="cell on"></i><i class="cell gap"></i><i class="cell on"></i><i class="cell gap"></i><i class="cell gap"></i><i class="cell on"></i></div>
+          <div class="row" id="row-6" style="top:392px"><span class="name">Aravalli Pharma</span><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell on"></i><i class="cell gap"></i></div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const CX = 640, CY = 400;
+      const chips = [...document.querySelectorAll(".chip")];
+
+      // Phase 1, 0–2.6s: sources drift in from their nearest edge and hang, drifting slowly.
+      chips.forEach((el, i) => {
+        const x = el.offsetLeft + 136, y = el.offsetTop + 42;
+        const dx = x < CX ? -1 : 1, dy = y < CY ? -1 : 1;
+        // Already on screen at frame 0 (the page shows frame 0 before any scroll), settling in.
+        const t0 = (i % 7) * 0.12 + Math.floor(i / 7) * 0.06;
+        tl.fromTo(el, { opacity: 0.45, x: dx * 24, y: dy * 14, scale: 0.97 },
+          { opacity: 1, x: 0, y: 0, scale: 1, duration: 1.1, ease: "expo.out" }, t0);
+        // Slow parallax drift until the pull begins (depth by index).
+        const depth = 6 + (i % 3) * 6;
+        tl.to(el, { x: dx * -depth, y: dy * -depth * 0.6, duration: 2.6 - t0 - 1.1 + 0.25, ease: "sine.inOut" }, t0 + 1.0);
+
+        // Phase 2, 2.6–5.2s: pulled into the brain along a curve (x and y ease differently).
+        const start = 2.6 + (i % 7) * 0.12 + Math.floor(i / 7) * 0.06;
+        const toX = CX - x, toY = CY - y;
+        tl.to(el, { x: toX, duration: 1.55, ease: "power3.in" }, start);
+        tl.to(el, { y: toY, duration: 1.55, ease: "sine.in" }, start);
+        tl.to(el, { scale: 0.18, duration: 1.55, ease: "power2.in" }, start);
+        tl.to(el, { opacity: 0, duration: 0.35, ease: "none" }, start + 1.25);
+      });
+
+      // The brain: faint from the start, brightening as the sources arrive.
+      tl.fromTo("#brain", { opacity: 0.16, scale: 0.92 }, { opacity: 0.32, scale: 0.95, duration: 2.6, ease: "none" }, 0);
+      tl.to("#brain", { opacity: 1, scale: 1.04, duration: 1.8, ease: "power2.in" }, 2.8);
+      tl.fromTo("#flash", { opacity: 0, scale: 0.6 }, { opacity: 0.9, scale: 1.6, duration: 0.5, ease: "power2.out" }, 4.45);
+      tl.to("#flash", { opacity: 0, duration: 0.7, ease: "power1.in" }, 4.95);
+
+      // Phase 3, 5.2–8.0s: the brain settles small at the top; the record assembles beneath.
+      tl.to("#brain", { y: -268, scale: 0.34, duration: 1.0, ease: "power3.inOut" }, 5.1);
+      tl.fromTo("#grid", { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.7, ease: "expo.out" }, 5.35);
+      tl.fromTo(".row.head span", { opacity: 0, y: 8 }, { opacity: 1, y: 0, duration: 0.4, stagger: 0.03, ease: "power2.out" }, 5.45);
+      tl.fromTo(".row .name", { opacity: 0, x: -14 }, { opacity: 1, x: 0, duration: 0.4, stagger: 0.05, ease: "power2.out" }, 5.45);
+      // Cells fill in a wave across rows and columns.
+      document.querySelectorAll(".row:not(.head)").forEach((row, r) => {
+        row.querySelectorAll(".cell").forEach((cell, c) => {
+          tl.fromTo(cell, { opacity: 0, scale: 0.4 }, { opacity: 1, scale: 1, duration: 0.35, ease: "back.out(2.2)" }, 6.0 + (r + c) * 0.075);
+        });
+      });
+      tl.fromTo("#row-1", { boxShadow: "inset 0 0 0 1.5px rgba(230,196,126,0)" }, { boxShadow: "inset 0 0 0 1.5px rgba(230,196,126,1)", duration: 0.5, ease: "none" }, 6.7);
+      // Hold the finished record from 7.2s.
+      tl.set({}, {}, 8.0);
+
+      window.__timelines = window.__timelines || {};
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>

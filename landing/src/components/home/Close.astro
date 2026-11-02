@@ -1,0 +1,80 @@
+---
+/**
+ * CTA, "First step, already open": the demo request's first screen, already open on the
+ * ledger's red. Typing a firm and choosing its type carries both into /demo.
+ */
+interface Props { title?: string; text?: string; flush?: boolean }
+const {
+  title = 'Open your book.',
+  text = 'Thirty minutes with your own coverage list loaded. We show your Matrix, the Brain answering on your reports, and a note going from the Thinking Board to the log.',
+  flush = false,
+} = Astro.props;
+---
+<section class:list={['close', { flush }]} data-section="cta" aria-labelledby="close-title">
+  <div class="say" data-reveal>
+    <h2 id="close-title" class="type-wide">{title}</h2>
+    <p>{text}</p>
+  </div>
+
+  <form class="dlg" action="/demo" method="get" data-ui data-close-form>
+    <p class="dh">Book your demo</p>
+    <label class="fld">Firm
+      <input name="firm" autocomplete="organization" placeholder="Your firm’s name" required />
+    </label>
+    <fieldset class="choice">
+      <legend>Your firm is a</legend>
+      <div class="seg">
+        <label><input type="radio" name="firm_type" value="PMS" checked /><span>PMS</span></label>
+        <label><input type="radio" name="firm_type" value="AIF Category III" /><span>AIF</span></label>
+        <label><input type="radio" name="firm_type" value="Family office" /><span>Family office</span></label>
+        <label><input type="radio" name="firm_type" value="Private equity or venture" /><span>Venture capital</span></label>
+      </div>
+    </fieldset>
+    <button class="btn btn--ink" type="submit" data-track-cta="close">Continue to booking <span class="arrow" aria-hidden="true">→</span></button>
+  </form>
+</section>
+
+<style>
+  .close {
+    display: grid; grid-template-columns: repeat(12, 1fr); gap: var(--gap);
+    min-height: 90svh; padding: 40px var(--margin); margin-top: var(--section);
+    background: var(--field-red); color: var(--accent-ink);
+  }
+  .close.flush { margin-top: 0; }
+  .say { grid-column: 1 / 7; align-self: end; display: grid; gap: 20px; }
+  h2 { font-size: var(--s-5); overflow-wrap: anywhere; }
+  .say p { font-size: 17px; max-width: 42ch; }
+
+  .dlg {
+    grid-column: 8 / 13; align-self: center; justify-self: start; width: min(440px, 100%);
+    display: grid; gap: 18px; padding: 28px; border-radius: var(--ui-radius);
+    background: var(--card); color: var(--ink);
+    box-shadow: 0 30px 80px rgb(28 27 23 / 0.34); /* taste-skill-ignore: a dialog truly floats */
+  }
+  .dh { font-family: var(--display); font-size: 26px; letter-spacing: -0.015em; }
+  .fld { display: grid; gap: 6px; font-size: 14px; color: var(--ink-soft); }
+  .fld input {
+    font: inherit; font-size: 17px; color: var(--ink); padding: 14px 16px; border-radius: 8px;
+    border: 1px solid var(--ground-4); background: var(--ground); transition: border-color 200ms var(--ease);
+  }
+  .fld input:focus { outline: none; border-color: var(--accent); }
+  .choice { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 8px; }
+  .choice legend { padding: 0; margin-bottom: 8px; font-size: 14px; color: var(--ink-soft); }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 10px; background: var(--ground-2); }
+  .seg label { position: relative; cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+  .seg span { display: grid; place-items: center; min-height: 44px; padding: 0 12px; border-radius: 7px; font-size: 15px; white-space: nowrap; transition: background-color 200ms var(--ease), color 200ms var(--ease); }
+  .seg label:hover span { background: var(--ground-3); }
+  .seg input:checked + span { background: var(--ink); color: var(--paper-on-ink); }
+  .seg input:focus-visible + span { outline: 3px solid var(--ink); outline-offset: 2px; }
+  .dlg .btn { width: 100%; }
+
+  @media (max-width: 1023px) {
+    .close { grid-template-columns: 1fr; min-height: 84svh; padding: 56px var(--margin) 24px; align-content: space-between; }
+    .say, .dlg { grid-column: 1; }
+    .say { align-self: start; }
+    h2 { font-size: 13vw; }
+    .dlg { width: min(100%, 480px); padding: 20px; }
+    .dlg .btn { min-height: 52px; }
+  }
+</style>

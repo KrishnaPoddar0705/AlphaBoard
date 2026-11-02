@@ -1,0 +1,116 @@
+---
+/**
+ * The Matrix as the app draws it: rows of companies or analysts, a column per kind of
+ * work, a timeline in each cell. Rendered complete at build time, then live in the browser.
+ */
+import { renderMatrixBody, type Column, type Density, type Lens } from '../../lib/desk-render';
+import { TEAMS, NOTE } from '../../data/desk';
+
+interface Props { lens?: Lens; density?: Density; columns: Column[]; tools?: boolean; class?: string }
+const { lens = 'analyst', density = 2, columns, tools = true, class: cls = '' } = Astro.props;
+const body = renderMatrixBody({ lens, team: 'All teams', query: '', density, columns, published: NOTE.view });
+---
+<div class:list={['dx', cls]} data-ui data-matrix data-lens={lens} data-density={density} data-columns={JSON.stringify(columns)}>
+  {tools && (
+    <div class="dx-teams" role="group" aria-label="Filter by team">
+      <button type="button" data-mx-team="All teams" aria-pressed="true">All teams</button>
+      {TEAMS.map((t) => <button type="button" data-mx-team={t.name} aria-pressed="false">{t.name}</button>)}
+    </div>
+  )}
+  <div class="dx-main ui-card">
+    <div class="dx-bar">
+      <div class="dx-seg" role="group" aria-label="Lens">
+        <button type="button" data-mx-lens="company" aria-pressed={lens === 'company' ? 'true' : 'false'}>My Company</button>
+        <button type="button" data-mx-lens="analyst" aria-pressed={lens === 'analyst' ? 'true' : 'false'}>By Analyst</button>
+      </div>
+      {tools && <input class="dx-filter" type="search" data-mx-filter placeholder="Filter by name or ticker" aria-label="Filter by name or ticker" />}
+      {tools && (
+        <div class="dx-seg dx-dens" role="group" aria-label="Density">
+          <button type="button" data-mx-density="0" aria-pressed={density === 0 ? 'true' : 'false'}>Counts</button>
+          <button type="button" data-mx-density="2" aria-pressed={density === 2 ? 'true' : 'false'}>Timeline</button>
+          <button type="button" data-mx-density="4" aria-pressed={density === 4 ? 'true' : 'false'}>Excerpts</button>
+        </div>
+      )}
+    </div>
+    <div class="dx-scroll" data-mx-body data-lenis-prevent set:html={body}></div>
+  </div>
+</div>
+
+<script>
+  import { mountMatrix } from '../../lib/desk';
+  document.querySelectorAll<HTMLElement>('[data-matrix]').forEach(mountMatrix);
+</script>
+
+<style is:global>
+  .dx { font-size: 14px; line-height: 1.35; text-align: left; }
+  .dx button { font: inherit; cursor: pointer; border: 0; }
+  .dx-main { overflow: hidden; }
+
+  .dx-teams { display: grid; gap: 6px; align-content: start; }
+  .dx-teams button {
+    min-height: 56px; padding: 8px 14px; text-align: left; background: var(--ground-3); color: var(--ink);
+    font-size: 13px; transition: background-color 180ms var(--ease), color 180ms var(--ease);
+  }
+  .dx-teams button:hover { background: var(--ground-4); }
+  .dx-teams button[aria-pressed='true'] { background: var(--ink); color: var(--paper-on-ink); }
+
+  .dx-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 10px 12px; }
+  .dx-seg { display: inline-flex; padding: 3px; gap: 2px; border-radius: 8px; background: var(--ground-2); }
+  .dx-seg button { min-height: 36px; padding: 0 12px; border-radius: 6px; background: transparent; color: var(--ink-soft); transition: background-color 180ms var(--ease), color 180ms var(--ease); }
+  .dx-seg button:hover { color: var(--ink); }
+  .dx-seg button[aria-pressed='true'] { background: var(--card); color: var(--ink); }
+  .dx-dens { margin-left: auto; }
+  .dx-filter {
+    flex: 1 1 200px; max-width: 280px; min-height: 42px; padding: 0 12px; font: inherit; color: var(--ink);
+    background: var(--ground); border: 1px solid var(--ground-4); border-radius: 8px;
+  }
+  .dx-sum { padding: 0 14px 10px; font-size: 13px; color: var(--ink-soft); }
+  .dx-scroll { overflow: auto; max-height: 900px; }
+
+  .dx-table { --cols: 1; min-width: 100%; }
+  .dx-row { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(180px, 1fr); grid-template-columns: minmax(190px, 1.1fr); border-top: 1px solid var(--ground-3); } /* taste-skill-ignore: a real table's rows */
+  .dx-head { background: var(--ground); color: var(--ink-soft); font-size: 13px; }
+  .dx-head > div { padding: 10px 14px; white-space: nowrap; }
+  .dx-group { padding: 8px 14px; background: var(--ground-2); border-top: 1px solid var(--ground-3); font-size: 13px; font-weight: 500; } /* taste-skill-ignore: a real table's rows */
+  .dx-name { display: grid; grid-template-columns: 18px 1fr; gap: 8px; padding: 12px 14px; border-right: 1px solid var(--ground-3); } /* taste-skill-ignore: a real table's row header */
+  .dx-n { color: var(--ink-soft); font-size: 12px; padding-top: 2px; }
+  .dx-name b { display: block; font-weight: 500; }
+  .dx-name small { display: block; font-size: 13px; color: var(--ink-soft); }
+  .dx-cell { padding: 12px 14px; min-width: 0; }
+  .dx-cell.is-empty { color: var(--ink-soft); }
+  .dx-count { font-weight: 500; }
+  .dx-latest { color: var(--ink-soft); font-size: 13px; }
+
+  .dx-tl { position: relative; display: grid; gap: 10px; }
+  .dx-tl::before { content: ''; position: absolute; left: 3px; top: 8px; bottom: 8px; width: 1px; background: var(--ink); }
+  .dx-tl:has(> :only-child)::before { display: none; }
+  .dx-e { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 8px; padding-left: 16px; }
+  .dx-e::before { content: ''; position: absolute; left: 0; top: 6px; width: 7px; height: 7px; border-radius: 50%; background: var(--ink); }
+  .dx-who { font-weight: 500; min-width: 0; overflow-wrap: anywhere; }
+  .dx-who em { font-style: normal; color: var(--accent); }
+  .dx-date { font-size: 12px; color: var(--ink-soft); white-space: nowrap; padding-top: 2px; }
+  .dx-x { grid-column: 1 / -1; font-size: 13px; color: var(--ink-3); }
+  .dx-e.is-next::before { background: var(--card); border: 1.5px solid var(--accent); }
+  .dx-e.is-new::before { background: var(--accent); }
+  .dx-e.is-new .dx-who { color: var(--accent); }
+  .dx-e.is-new { animation: dx-land 900ms var(--ease-out); }
+  @keyframes dx-land { from { opacity: 0; transform: translateX(-10px); } }
+  .dx-more { display: block; margin-top: 8px; padding-left: 16px; font-size: 13px; color: var(--ink-soft); }
+  .dx-none { padding: 24px 14px; color: var(--ink-soft); }
+
+  @media (max-width: 760px) {
+    .dx-teams { grid-auto-flow: column; grid-auto-columns: max-content; overflow-x: auto; padding-bottom: 4px; }
+    .dx-teams button { min-height: 48px; }
+    .dx-dens { margin-left: 0; }
+    .dx-scroll { max-height: 680px; }
+    .dx-filter { max-width: none; flex-basis: 100%; }
+    .dx-row { display: block; }
+    .dx-row.dx-head { display: none; }
+    .dx-name { border-right: 0; padding-bottom: 4px; }
+    .dx-cell { padding: 6px 14px 6px 40px; }
+    .dx-cell.is-empty { display: none; }
+    .dx-cell::before { content: attr(data-label); display: block; margin-bottom: 6px; font-size: 13px; color: var(--ink-soft); }
+    .dx-row > :last-child { padding-bottom: 14px; }
+  }
+  @media (prefers-reduced-motion: reduce) { .dx-e.is-new { animation: none; } }
+</style>

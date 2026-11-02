@@ -1,0 +1,65 @@
+---
+/** Page masthead in the printed-annual manner: a gutterless band of picture and
+ * interface across the top, the title starting on the axis, the standfirst below. */
+import type { Visual as V } from '../../data/pages';
+import Visual from '../ui/Visual.astro';
+import Photo from '../ui/Photo.astro';
+import type { PageImage } from '../../data/pages';
+
+interface Props {
+  title: string;
+  lede: string;
+  kicker?: { href: string; label: string };
+  visual?: V;
+  image?: PageImage;
+  cta?: { href: string; label: string } | false;
+}
+const { title, lede, kicker, visual, image, cta = { href: '/demo', label: 'Book a demo' } } = Astro.props;
+---
+<header class="mast" data-section="masthead">
+  {(visual || image) && (
+    <div class:list={['band', { solo: !image || !visual }]}>
+      {image && (
+        <figure class="ph">
+          <Photo name={image.name} alt={image.alt} sizes="(max-width: 760px) 100vw, 58vw" eager />
+          <figcaption>{image.caption}</figcaption>
+        </figure>
+      )}
+      {!image && <div class="tile" aria-hidden="true"></div>}
+      {visual && <div class="ui"><Visual kind={visual} /></div>}
+    </div>
+  )}
+  <div class="txt wrap" data-reveal>
+    {kicker && <a class="crumb" href={kicker.href}>{kicker.label}</a>}
+    <h1>{title}</h1>
+    <p class="lede">{lede}</p>
+    {cta && <p><a class="btn" href={cta.href} data-track-cta="masthead">{cta.label} <span class="arrow" aria-hidden="true">→</span></a></p>}
+  </div>
+</header>
+
+<style>
+  .band { display: grid; grid-template-columns: 7fr 5fr; height: 45vh; min-height: 340px; }
+  .band.solo { grid-template-columns: 4fr 8fr; }
+  .ph { margin: 0; position: relative; overflow: hidden; }
+  .ph figcaption { position: absolute; left: var(--margin); bottom: 0; padding: 6px 10px; background: var(--ground); font-size: var(--s-0); }
+  .tile { background: var(--accent); }
+  .ui { background: var(--ground-3); display: grid; place-items: center; padding: 32px; overflow: hidden; }
+  .ui > :global(*) { width: min(100%, 520px); height: auto; }
+  .txt { display: grid; grid-template-columns: var(--axis) 1fr; column-gap: var(--gap); padding-block: 72px var(--section); }
+  .crumb { grid-column: 1; grid-row: 1 / span 2; align-self: start; font-size: 16px; color: var(--ink-soft); text-decoration: none; padding-top: 14px; }
+  .crumb:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 4px; }
+  h1 { grid-column: 2; font-size: var(--s-4); max-width: 11em; }
+  .lede { grid-column: 2; font-size: var(--s-2); line-height: 1.5; max-width: 40ch; margin-top: 28px; }
+  .txt > p:last-child { grid-column: 2; margin-top: 32px; }
+  @media (max-width: 760px) {
+    .band, .band.solo { grid-template-columns: 1fr; height: auto; min-height: 0; }
+    .ph { aspect-ratio: 16 / 10; }
+    .band:not(.solo) .ui { display: none; }
+    .ph figcaption { display: none; }
+    .tile { display: none; }
+    .ui { padding: 16px; }
+    .txt { grid-template-columns: 1fr; padding-block: 40px 96px; }
+    .crumb, h1, .lede, .txt > p:last-child { grid-column: 1; grid-row: auto; }
+    .crumb { display: none; }
+  }
+</style>

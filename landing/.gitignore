@@ -1,0 +1,10 @@
+node_modules
+dist
+.astro
+.wrangler
+.dev.vars
+
+# Re-renderable HyperFrames output
+film/*/renders
+film/*/.hyperframes
+film/*/.render

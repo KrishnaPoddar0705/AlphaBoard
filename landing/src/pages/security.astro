@@ -1,0 +1,18 @@
+---
+import Base from '../layouts/Base.astro';
+import Masthead from '../components/sections/Masthead.astro';
+import Points from '../components/sections/Points.astro';
+import Mosaic from '../components/sections/Mosaic.astro';
+import Faq from '../components/home/Faq.astro';
+import Close from '../components/home/Close.astro';
+import { SECURITY_POINTS, SECURITY_FAQ } from '../data/static';
+import { breadcrumbs, faqPage } from '../lib/schema';
+
+---
+<Base title="Security and data protection" description="How AlphaBoard protects a fund's research: per-firm isolation with row-level security, roles, an attributed research record for SEBI record-keeping, and honest status on certifications and India hosting." schema={[breadcrumbs([{ name: 'AlphaBoard', path: '/' }, { name: 'Security', path: '/security' }]), faqPage(SECURITY_FAQ)]}>
+  <Masthead title="Your research stays yours" lede="A fund’s research is its edge. AlphaBoard isolates each firm’s data, limits it by role and keeps an attributed record of every entry, and says plainly what is not done yet." image={{ name: 'bse-tower-2006', alt: 'The BSE tower seen from the street', caption: 'The BSE tower, 2006.' }} visual="needs" />
+  <Points title="How it is protected" points={SECURITY_POINTS} aside="Status as of October 2026. Certifications and India-region hosting are listed as roadmap, not claimed." />
+  <Mosaic start={3} />
+  <Faq items={SECURITY_FAQ} title="Security questions." />
+  <Close title="Send us your questionnaire." text="We answer security questionnaires from PMS and AIF compliance teams within a week." />
+</Base>

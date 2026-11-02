@@ -1,0 +1,47 @@
+---
+/** Stats, "Figure set by a slider": the size of the book, from the visitor's own coverage. */
+const START = 60;
+---
+<section class="fig chapter chapter--green" data-section="figures" data-figure aria-labelledby="fig-title">
+  <div class="ask" data-reveal>
+    <h2 id="fig-title">How many companies do you cover?</h2>
+    <label class="ctl" data-ui>
+      <span class="row"><span>Companies</span><output data-companies>{START}</output></span>
+      <input type="range" min="10" max="300" step="5" value={START} aria-label="Companies covered" />
+    </label>
+  </div>
+  <div class="gem" data-diamond="main" aria-hidden="true"></div>
+  <div class="out">
+    <p class="num big"><span data-records>{(START * 6).toLocaleString('en-IN')}</span> <span class="unit">records a year</span></p>
+    <p class="how">Four concalls, one annual report and one AGM for each company, before a single 1:1, plant visit or broker note. Companies × 6.</p>
+  </div>
+</section>
+
+<script>
+  import { mountFigure } from '../../lib/desk';
+  document.querySelectorAll<HTMLElement>('[data-figure]').forEach(mountFigure);
+</script>
+
+<style>
+  .fig { min-height: 88svh; padding: 88px var(--margin) 48px; display: grid; align-content: space-between; gap: 64px; }
+  h2 { font-size: var(--s-4); }
+  .ask { display: grid; gap: 28px; justify-items: start; }
+  .ctl { display: grid; gap: 10px; width: min(400px, 100%); padding: 16px; background: var(--card); border-radius: var(--ui-radius); font-size: 15px; }
+  .row { display: flex; justify-content: space-between; font-weight: 500; }
+  input[type='range'] { width: 100%; height: 32px; accent-color: var(--field-green); cursor: pointer; }
+  .gem { position: absolute; top: 160px; right: var(--margin); width: min(28vw, 400px); }
+  .out { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--gap); }
+  .big { font-family: var(--display); font-size: clamp(120px, 19vw, 300px); line-height: 0.8; letter-spacing: -0.04em; }
+  .unit { font-size: 0.16em; letter-spacing: -0.015em; }
+  .how { max-width: 34ch; font-size: 17px; }
+  @media (max-width: 960px) {
+    .gem { position: relative; top: auto; right: auto; width: 56vw; margin-inline: auto; }
+  }
+  @media (max-width: 760px) {
+    .fig { padding-block: 72px 40px; min-height: 84svh; }
+    .out { display: grid; }
+    .big { font-size: 30vw; }
+    .unit { display: block; margin-top: 14px; font-size: 22px; letter-spacing: -0.01em; }
+    .how { font-size: 16px; }
+  }
+</style>
