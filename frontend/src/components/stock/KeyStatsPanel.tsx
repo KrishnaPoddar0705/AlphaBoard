@@ -30,14 +30,14 @@ export function KeyStatsPanel({
   ]
 
   return (
-    <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5">
+    <div className="bg-paper-light border border-border-editorial p-5">
       <div className="space-y-3">
         {stats.map((stat) => (
           <div key={stat.label} className="flex justify-between items-start">
-            <span className="text-xs font-mono text-[#6F6A60] uppercase tracking-wider">
+            <span className="text-xs font-mono text-ink-muted uppercase tracking-wider">
               {stat.label}
             </span>
-            <span className="text-sm font-mono font-semibold text-[#1C1B17] tabular-nums text-right ml-4">
+            <span className="text-sm font-mono font-semibold text-ink tabular-nums text-right ml-4">
               {stat.value}
             </span>
           </div>

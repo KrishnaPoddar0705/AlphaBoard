@@ -50,7 +50,7 @@ const BoardCanvas = forwardRef<HTMLDivElement, Props>(function BoardCanvas(
       {withPending && pending.filter((p) => !p.replaceId).map(renderPending)}
       <AnimatePresence initial={false}>{list.map(renderCard)}</AnimatePresence>
       {hint && !list.length && !(withPending && pending.some((p) => !p.replaceId)) && (
-        <div className="tb-data mt-10 flex flex-col items-center gap-2 px-6 text-center text-[11px] leading-relaxed text-[#8B857A]">
+        <div className="tb-data mt-10 flex flex-col items-center gap-2 px-6 text-center text-[11px] leading-relaxed text-ink-faint">
           <MousePointerClick className="h-4 w-4" />
           Pull financials, concalls or filings from the rail. They land here, ready to drop into the note.
         </div>

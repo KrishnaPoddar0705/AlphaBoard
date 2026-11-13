@@ -20,8 +20,8 @@ function Toggle({ label, on, busy, compact, onClick }: {
         compact ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-[10px]'
       } ${
         on
-          ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F1EEE0]'
-          : 'border-[#D7D0C2] bg-[#FBF7ED] text-[#6F6A60] hover:border-[#8B857A] hover:text-[#1C1B17]'
+          ? 'border-ink bg-ink text-paper'
+          : 'border-border-editorial bg-paper-alt text-ink-muted hover:border-ink-faint hover:text-ink'
       }`}
     >
       {on ? '✓ ' : '+ '}{label}
@@ -58,7 +58,7 @@ export default function PushControl({ event, compact = false }: Props) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       {!compact && (
-        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-[#6F6A60]">
+        <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
           Push
         </span>
       )}

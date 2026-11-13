@@ -98,7 +98,7 @@ export default function PeriodTracker({ coverageId, kind, onOpenEvent, onLogPeri
       title={isConcall ? 'Concalls' : 'Annual reports'}
       action={
         <span className="flex items-center gap-2">
-          <span className="font-mono text-[10px] text-[#8B857A]">
+          <span className="font-mono text-[10px] text-ink-faint">
             {isPending ? '–' : loggedRecent}/{recent.length}
           </span>
           <button
@@ -107,7 +107,7 @@ export default function PeriodTracker({ coverageId, kind, onOpenEvent, onLogPeri
             // Until entries load, "which period is missing" is unknown.
             disabled={isPending}
             aria-label={isConcall ? 'Log or schedule a concall' : 'Log or schedule an annual report'}
-            className="rounded p-1 text-[#6F6A60] hover:bg-[rgba(28,27,23,0.06)] disabled:opacity-40"
+            className="rounded p-1 text-ink-muted hover:bg-[rgba(28,27,23,0.06)] disabled:opacity-40"
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
@@ -136,7 +136,7 @@ export default function PeriodTracker({ coverageId, kind, onOpenEvent, onLogPeri
           type="button"
           onClick={() => setExpanded((v) => !v)}
           aria-expanded={expanded}
-          className="flex items-center justify-center gap-1 rounded-lg py-1 font-mono text-[11px] text-[#6F6A60] hover:bg-[rgba(28,27,23,0.04)] hover:text-[#1C1B17]"
+          className="flex items-center justify-center gap-1 rounded-lg py-1 font-mono text-[11px] text-ink-muted hover:bg-[rgba(28,27,23,0.04)] hover:text-ink"
         >
           {expanded ? 'Show less' : `Show older${olderLogged ? ` (${olderLogged} logged)` : ''}`}
           <ChevronDown className={`h-3.5 w-3.5 transition-transform ${expanded ? 'rotate-180' : ''}`} />
@@ -150,7 +150,7 @@ export default function PeriodTracker({ coverageId, kind, onOpenEvent, onLogPeri
 function Group({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="font-mono text-[10px] uppercase tracking-wider text-[#8B857A]">{title}</span>
+      <span className="font-mono text-[10px] uppercase tracking-wider text-ink-faint">{title}</span>
       <div className="grid grid-cols-4 gap-1.5">{children}</div>
     </div>
   )

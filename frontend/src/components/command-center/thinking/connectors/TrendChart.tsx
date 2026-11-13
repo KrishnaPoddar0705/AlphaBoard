@@ -1,12 +1,15 @@
 import { ResponsiveBar } from '@nivo/bar'
 import { ResponsiveLine } from '@nivo/line'
 import { formatCell, shortPeriod, SERIES_COLORS, type ChartPlan } from '@/lib/commandCenter/boardFormat'
+import { useSkinColors, type SkinColors } from '@/hooks/useSkinColors'
 
-const THEME = {
-  text: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 10, fill: '#6F6A60' },
-  axis: { ticks: { line: { stroke: '#D7D0C2' }, text: { fill: '#8B857A', fontSize: 10 } } },
-  grid: { line: { stroke: '#E3DDCF', strokeDasharray: '2 3' } },
-  tooltip: { container: { fontFamily: 'IBM Plex Mono, monospace', fontSize: 11, background: '#FBF7ED', color: '#1C1B17', borderRadius: 8, boxShadow: '0 8px 24px -12px rgba(28,27,23,.4)' } },
+function chartTheme(sc: SkinColors) {
+  return {
+    text: { fontFamily: sc.fontFamily, fontSize: 10, fill: sc.inkMuted },
+    axis: { ticks: { line: { stroke: sc.border }, text: { fill: sc.inkFaint, fontSize: 10 } } },
+    grid: { line: { stroke: sc.grid, strokeDasharray: '2 3' } },
+    tooltip: { container: { fontFamily: sc.fontFamily, fontSize: 11, background: sc.surfaceAlt, color: sc.ink, borderRadius: 8, boxShadow: '0 8px 24px -12px rgba(28,27,23,.4)' } },
+  }
 }
 
 interface Props {
@@ -25,6 +28,8 @@ function thinTicks(labels: string[], max: number): string[] {
 
 /** Time on the x-axis, always: bars for amounts, a line for percentages. */
 export default function TrendChart({ plan, height = 200, maxTicks = 8 }: Props) {
+  const sc = useSkinColors()
+  const THEME = chartTheme(sc)
   const labels = plan.periods.map(shortPeriod)
   const ticks = thinTicks(labels, maxTicks)
   const yTick = (v: number | string) => (typeof v === 'number' ? formatCell(v) : v)
@@ -48,7 +53,7 @@ export default function TrendChart({ plan, height = 200, maxTicks = 8 }: Props) 
           enableGridX={false}
           pointSize={5}
           pointBorderWidth={1.5}
-          pointColor="#FBF7ED"
+          pointColor={sc.surfaceAlt}
           pointBorderColor={{ from: 'seriesColor' }}
           lineWidth={1.75}
           curve="monotoneX"

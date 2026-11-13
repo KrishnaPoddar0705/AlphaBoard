@@ -750,7 +750,7 @@ export default function Community() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
-        <div className="text-[#6F6A60]">Loading stocks...</div>
+        <div className="text-ink-muted">Loading stocks...</div>
       </div>
     )
   }
@@ -758,7 +758,7 @@ export default function Community() {
   if (isError) {
     return (
       <div className="flex items-center justify-center h-full min-h-[400px]">
-        <div className="text-[#B23B2A]">
+        <div className="text-negative">
           Error loading feed: {error?.message || 'Unknown error'}
         </div>
       </div>
@@ -768,12 +768,12 @@ export default function Community() {
   return (
     <div className="p-5 md:p-7 space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-[28px] font-bold text-[#1C1B17] tracking-tight">Community</h1>
+        <h1 className="text-[28px] font-bold text-ink tracking-tight">Community</h1>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <Globe className="h-4 w-4 text-[#6F6A60]" />
+            <Globe className="h-4 w-4 text-ink-muted" />
             <Select value={country} onValueChange={(value: 'USA' | 'India') => setCountry(value)}>
-              <SelectTrigger className="w-[120px] bg-[#F7F2E6]">
+              <SelectTrigger className="w-[120px] bg-paper-light">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -818,7 +818,7 @@ export default function Community() {
                       }
                     }}
                   />
-                  <p className="text-xs text-[#6F6A60]">
+                  <p className="text-xs text-ink-muted">
                     {country === 'India'
                       ? 'Use .NS suffix for NSE stocks (e.g., RELIANCE.NS)'
                       : 'Enter ticker symbol (e.g., AAPL, MSFT)'}
@@ -838,7 +838,7 @@ export default function Community() {
       {filteredStocks.length === 0 && !isLoading && (
         <Card>
           <CardContent className="py-8 text-center space-y-4">
-            <p className="text-[#6F6A60]">
+            <p className="text-ink-muted">
               {debouncedSearchQuery.trim() ? "No stocks found matching your search." : "No stocks available."}
             </p>
             {!debouncedSearchQuery.trim() && (
@@ -887,16 +887,16 @@ export default function Community() {
       {hasNextPage && (
         <div ref={observerTarget} className="h-20 flex items-center justify-center py-4">
           {isFetchingNextPage && (
-            <div className="text-[#6F6A60] text-sm font-mono">Loading more stocks... ({feedItems.length} loaded)</div>
+            <div className="text-ink-muted text-sm font-mono">Loading more stocks... ({feedItems.length} loaded)</div>
           )}
           {!isFetchingNextPage && (
-            <div className="text-[#6F6A60] text-xs font-mono">Loading more...</div>
+            <div className="text-ink-muted text-xs font-mono">Loading more...</div>
           )}
         </div>
       )}
       {!hasNextPage && !isFetchingNextPage && filteredStocks.length > 0 && (
         <div className="h-10 flex items-center justify-center py-4">
-          <div className="text-[#6F6A60] text-sm font-mono">All stocks loaded ({filteredStocks.length} total)</div>
+          <div className="text-ink-muted text-sm font-mono">All stocks loaded ({filteredStocks.length} total)</div>
         </div>
       )}
     </div>

@@ -34,12 +34,12 @@ export default function TeamPicker({
 
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-medium text-[#1C1B17] font-mono">{label}</label>
-      <div className="max-h-48 overflow-y-auto rounded-md border border-[#D7D0C2] bg-[#FBF7ED] divide-y divide-[#E5DFD1]">
+      <label className="block text-sm font-medium text-ink font-mono">{label}</label>
+      <div className="max-h-48 overflow-y-auto rounded-md border border-border-editorial bg-paper-alt divide-y divide-[#E5DFD1]">
         {teams.map((team) => (
           <label
             key={team.id}
-            className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-[#F1EEE0] transition-colors ${
+            className={`flex items-center gap-3 px-3 py-2 cursor-pointer hover:bg-paper transition-colors ${
               disabled ? 'opacity-50 cursor-not-allowed' : ''
             }`}
           >
@@ -48,14 +48,14 @@ export default function TeamPicker({
               checked={selected.includes(team.id)}
               onChange={() => toggle(team.id)}
               disabled={disabled}
-              className="h-4 w-4 rounded border-[#D7D0C2] accent-[#1C1B17]"
+              className="h-4 w-4 rounded border-border-editorial accent-ink"
             />
-            <span className="text-sm text-[#1C1B17] font-mono">{team.name}</span>
+            <span className="text-sm text-ink font-mono">{team.name}</span>
           </label>
         ))}
       </div>
       {/* An empty selection is legal, so say what it means rather than blocking it. */}
-      <p className="text-xs text-[#6F6A60] font-mono">
+      <p className="text-xs text-ink-muted font-mono">
         {hint ??
           (selected.length === 0
             ? 'No team selected — this will be visible to all of your teams.'

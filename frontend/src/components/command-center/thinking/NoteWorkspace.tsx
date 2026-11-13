@@ -44,7 +44,7 @@ export default function NoteWorkspace(props: Props) {
   }
   if (error || !board) {
     return (
-      <div className="tb-canvas flex h-full flex-1 items-center justify-center p-6 font-mono text-xs text-[#6F6A60]">
+      <div className="tb-canvas flex h-full flex-1 items-center justify-center p-6 font-mono text-xs text-ink-muted">
         {error instanceof Error ? error.message : 'This note was deleted. Pick another from the list.'}
       </div>
     )
@@ -210,7 +210,7 @@ function LoadedNote({ board, coverage, folderName, compact, onOpenTree }: Props 
         </BoardCanvas>
 
         {!compact && (
-          <div className="tb-canvas flex min-h-0 flex-none flex-col border-l border-[#E3DDCF] py-3 pr-3">
+          <div className="tb-canvas flex min-h-0 flex-none flex-col border-l border-gridline py-3 pr-3">
             <ConnectorRail orientation="vertical" onPull={(id, o) => onPull(id, o)} busy={busy}
               quarter={quarter} onQuarter={setQuarter} disabled={!ticker} />
           </div>
@@ -218,7 +218,7 @@ function LoadedNote({ board, coverage, folderName, compact, onOpenTree }: Props 
       </div>
 
       {compact && (
-        <div className="flex-none border-t border-[#DDD6C7] bg-[#F1EEE0] p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div className="flex-none border-t border-border-strong bg-paper p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           <ConnectorRail orientation="horizontal" onPull={(id, o) => onPull(id, o)} busy={busy}
             quarter={quarter} onQuarter={setQuarter} disabled={!ticker} />
         </div>

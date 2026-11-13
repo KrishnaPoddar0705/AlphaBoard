@@ -15,9 +15,9 @@ interface Props {
 
 export default function DayAgenda({ day, rows, loading }: Props) {
   return (
-    <div className="rounded-xl border border-[#D7D0C2] bg-[#F7F2E6]">
-      <header className="border-b border-[#E3DDCF] px-4 py-2.5">
-        <h3 className="font-mono text-xs text-[#1C1B17]">{formatDay(day)}</h3>
+    <div className="rounded-xl border border-border-editorial bg-paper-light">
+      <header className="border-b border-gridline px-4 py-2.5">
+        <h3 className="font-mono text-xs text-ink">{formatDay(day)}</h3>
       </header>
 
       {loading ? (
@@ -25,7 +25,7 @@ export default function DayAgenda({ day, rows, loading }: Props) {
       ) : rows.length === 0 ? (
         <EmptyState icon={CalendarClock} title="Nothing on this day" />
       ) : (
-        <ul className="divide-y divide-[#E3DDCF]">
+        <ul className="divide-y divide-gridline">
           {rows.map((e) => (
             <li key={e.event_id}>
               <Link
@@ -34,16 +34,16 @@ export default function DayAgenda({ day, rows, loading }: Props) {
               >
                 <div className="flex flex-wrap items-center gap-2">
                   <EventKindBadge kind={e.kind} subtype={e.subtype} scheduled={e.is_scheduled} />
-                  <span className="font-mono text-[11px] text-[#6F6A60]">{e.ticker}</span>
+                  <span className="font-mono text-[11px] text-ink-muted">{e.ticker}</span>
                   {e.is_scheduled && (
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-[#D06030]">
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-chart-orange">
                       upcoming
                     </span>
                   )}
                 </div>
-                <p className="font-mono text-sm text-[#1C1B17]">{e.title}</p>
+                <p className="font-mono text-sm text-ink">{e.title}</p>
                 {e.analyst_username && (
-                  <p className="font-mono text-[11px] text-[#6F6A60]">{e.analyst_username}</p>
+                  <p className="font-mono text-[11px] text-ink-muted">{e.analyst_username}</p>
                 )}
               </Link>
             </li>

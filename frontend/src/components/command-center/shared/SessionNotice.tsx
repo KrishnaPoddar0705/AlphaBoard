@@ -39,15 +39,15 @@ export default function SessionNotice() {
   return (
     <div
       role="status"
-      className="mb-4 flex flex-col gap-2 rounded-xl border border-[#D06030] bg-[#FBF7ED] p-3 sm:flex-row sm:items-center sm:justify-between"
+      className="mb-4 flex flex-col gap-2 rounded-xl border border-chart-orange bg-paper-alt p-3 sm:flex-row sm:items-center sm:justify-between"
     >
       <div className="flex items-start gap-2">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#D06030]" />
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-chart-orange" />
         <div>
-          <p className="font-mono text-xs text-[#1C1B17]">
+          <p className="font-mono text-xs text-ink">
             Signed in to AlphaBoard, but not to the database yet.
           </p>
-          <p className="mt-0.5 font-mono text-[11px] text-[#6F6A60]">
+          <p className="mt-0.5 font-mono text-[11px] text-ink-muted">
             Command Center talks to Supabase directly, so it needs a Supabase session as
             well as a Clerk one. Until that arrives, coverage and entries cannot load or
             save. Reloading usually fixes it; signing out and back in always does.

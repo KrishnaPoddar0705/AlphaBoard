@@ -35,7 +35,7 @@ const EMPTY_DETAILS: DetailValues = {
   pushToPm: false, pushToAdmin: false, reviewNote: '',
 }
 
-const labelClass = 'font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]'
+const labelClass = 'font-mono text-[11px] uppercase tracking-wider text-ink-muted'
 
 interface Props {
   open: boolean
@@ -277,7 +277,7 @@ export default function LogEventSheet({
         // scrolls, so the title and the Save bar stay put.
         className="flex h-[100dvh] max-h-[100dvh] max-w-none flex-col gap-0 overflow-hidden rounded-none p-0 sm:h-auto sm:max-h-[90vh] sm:max-w-2xl sm:rounded-xl"
       >
-        <DialogHeader className="border-b border-[#E3DDCF] px-5 py-4 text-left">
+        <DialogHeader className="border-b border-gridline px-5 py-4 text-left">
           <DialogTitle className="font-mono text-base">Log an interaction</DialogTitle>
           <DialogDescription className="sr-only">
             Record a meeting, call or report against a stock.
@@ -315,8 +315,8 @@ export default function LogEventSheet({
                       className={[
                         'rounded-lg border px-2.5 py-1.5 font-mono text-[11px] transition-colors',
                         eventDate === d.value && !isScheduled
-                          ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6]'
-                          : 'border-[#D7D0C2] bg-[#FBF7ED] text-[#1C1B17] hover:bg-[rgba(28,27,23,0.04)]',
+                          ? 'border-ink bg-ink text-paper-light'
+                          : 'border-border-editorial bg-paper-alt text-ink hover:bg-[rgba(28,27,23,0.04)]',
                       ].join(' ')}
                     >
                       {d.label}
@@ -326,20 +326,20 @@ export default function LogEventSheet({
                     type="date"
                     value={eventDate}
                     onChange={(e) => setEventDate(e.target.value)}
-                    className="rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2 py-1.5 font-mono text-[11px] text-[#1C1B17] focus:outline-none"
+                    className="rounded-lg border border-border-editorial bg-paper-alt px-2 py-1.5 font-mono text-[11px] text-ink focus:outline-none"
                   />
-                  <label className="ml-auto inline-flex cursor-pointer items-center gap-1.5 font-mono text-[11px] text-[#6F6A60]">
+                  <label className="ml-auto inline-flex cursor-pointer items-center gap-1.5 font-mono text-[11px] text-ink-muted">
                     <input
                       type="checkbox"
                       checked={isScheduled}
                       onChange={(e) => setIsScheduled(e.target.checked)}
-                      className="h-3.5 w-3.5 accent-[#1C1B17]"
+                      className="h-3.5 w-3.5 accent-ink"
                     />
                     Upcoming
                   </label>
                 </div>
                 {isScheduled && (
-                  <p className="font-mono text-[10px] text-[#8B857A]">
+                  <p className="font-mono text-[10px] text-ink-faint">
                     Goes on the calendar for {formatDay(eventDate)} instead of the log.
                   </p>
                 )}
@@ -350,7 +350,7 @@ export default function LogEventSheet({
                 <input
                   value={title}
                   onChange={(e) => setTitleOverride(e.target.value)}
-                  className="w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2.5 py-2 font-mono text-sm text-[#1C1B17] focus:border-[#8B857A] focus:outline-none"
+                  className="w-full rounded-lg border border-border-editorial bg-paper-alt px-2.5 py-2 font-mono text-sm text-ink focus:border-ink-faint focus:outline-none"
                 />
               </div>
 
@@ -415,8 +415,8 @@ export default function LogEventSheet({
           )}
         </div>
 
-        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-[#D7D0C2] bg-[#FBF7ED] px-5 py-3">
-          <span className="font-mono text-[11px] text-[#6F6A60]">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border-editorial bg-paper-alt px-5 py-3">
+          <span className="font-mono text-[11px] text-ink-muted">
             {attachments.pendingCount > 0
               ? `Uploading ${attachments.pendingCount}...`
               : attachments.failedCount > 0

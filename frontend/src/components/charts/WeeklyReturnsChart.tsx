@@ -1,5 +1,6 @@
 import React from 'react';
 import { ResponsiveBar } from '@nivo/bar';
+import { useSkinColors } from '@/hooks/useSkinColors'
 
 interface WeeklyReturnsChartProps {
     data: Array<{ week: string; return: number; cumulativeReturn?: number; count?: number }>;
@@ -7,6 +8,7 @@ interface WeeklyReturnsChartProps {
 }
 
 export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, height = 200 }) => {
+  const sc = useSkinColors()
 
     if (!data || data.length === 0) {
         return (
@@ -88,7 +90,7 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                             <path
                                 d={path}
                                 fill="none"
-                                stroke="#1C1B17"
+                                stroke={sc.ink}
                                 strokeWidth={2}
                                 strokeDasharray="4 4"
                                 opacity={0.9}
@@ -99,8 +101,8 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                                     cx={point.x}
                                     cy={point.y}
                                     r={4}
-                                    fill="#1C1B17"
-                                    stroke="#F7F2E6"
+                                    fill={sc.ink}
+                                    stroke={sc.surface}
                                     strokeWidth={2}
                                     opacity={0.9}
                                 />
@@ -110,7 +112,7 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                 }]}
                 colors={(bar) => {
                     const returnValue = typeof bar.data.return === 'number' ? bar.data.return : 0;
-                    return returnValue >= 0 ? '#2F8F5B' : '#B23B2A';
+                    return returnValue >= 0 ? sc.positive : sc.negative;
                 }}
                 borderColor={{ from: 'color', modifiers: [['darker', 1.2]] }}
                 axisTop={null}
@@ -154,27 +156,27 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                     return (
                         <div style={{
                             padding: '8px 12px',
-                            background: '#F7F2E6', // card bg
-                            color: '#1C1B17', // ink text
+                            background: sc.surface, // card bg
+                            color: sc.ink, // ink text
                             borderRadius: '8px',
-                            border: '1px solid #D7D0C2', // border
+                            border: `1px solid ${sc.border}`, // border
                             fontSize: '12px',
                             fontWeight: '500',
-                            fontFamily: 'ui-monospace, monospace'
+                            fontFamily: sc.fontFamily
                         }}>
-                            <div style={{ marginBottom: '4px', color: '#1C1B17' }}>
+                            <div style={{ marginBottom: '4px', color: sc.ink }}>
                                 <strong>{indexValue}</strong>
                             </div>
-                            <div style={{ color: numValue >= 0 ? '#2F8F5B' : '#B23B2A', marginBottom: '4px' }}>
+                            <div style={{ color: numValue >= 0 ? sc.positive : sc.negative, marginBottom: '4px' }}>
                                 Period: {numValue >= 0 ? '+' : ''}{formattedValue}%
                             </div>
                             {cumulativeValue !== null && (
-                                <div style={{ color: '#1C1B17', marginBottom: item.count ? '4px' : '0' }}>
+                                <div style={{ color: sc.ink, marginBottom: item.count ? '4px' : '0' }}>
                                     Cumulative: {cumulativeValue}%
                                 </div>
                             )}
                             {item.count !== undefined && (
-                                <div style={{ color: '#6F6A60', fontSize: '11px', marginTop: '4px' }}>
+                                <div style={{ color: sc.inkMuted, fontSize: '11px', marginTop: '4px' }}>
                                     {item.count} {item.count === 1 ? 'recommendation' : 'recommendations'} added
                                 </div>
                             )}
@@ -187,25 +189,25 @@ export const WeeklyReturnsChart: React.FC<WeeklyReturnsChartProps> = ({ data, he
                     axis: {
                         domain: {
                             line: {
-                                stroke: '#D7D0C2', // border
+                                stroke: sc.border, // border
                                 strokeWidth: 1
                             }
                         },
                         ticks: {
                             line: {
-                                stroke: '#E3DDCF', // gridlines
+                                stroke: sc.grid, // gridlines
                                 strokeWidth: 1
                             },
                             text: {
-                                fill: '#6F6A60', // muted
+                                fill: sc.inkMuted, // muted
                                 fontSize: 11,
-                                fontFamily: 'ui-monospace, monospace'
+                                fontFamily: sc.fontFamily
                             }
                         }
                     },
                     grid: {
                         line: {
-                            stroke: '#E3DDCF', // gridlines
+                            stroke: sc.grid, // gridlines
                             strokeWidth: 1
                         }
                     }

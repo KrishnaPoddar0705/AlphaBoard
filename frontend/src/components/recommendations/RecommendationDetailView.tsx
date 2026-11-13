@@ -211,10 +211,10 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
 
   if (!recommendation) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#F1EEE0]">
+      <div className="flex-1 flex items-center justify-center bg-paper">
         <div className="text-center">
-          <p className="font-mono text-[#6F6A60] text-lg mb-2">Select a recommendation</p>
-          <p className="font-mono text-sm text-[#6F6A60]">Choose a stock from the sidebar to view details</p>
+          <p className="font-mono text-ink-muted text-lg mb-2">Select a recommendation</p>
+          <p className="font-mono text-sm text-ink-muted">Choose a stock from the sidebar to view details</p>
         </div>
       </div>
     )
@@ -371,7 +371,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
 
   return (
     <div
-      className="w-full max-w-full min-w-0 bg-[#F1EEE0] overflow-x-hidden md:flex-1 md:overflow-y-auto"
+      className="w-full max-w-full min-w-0 bg-paper overflow-x-hidden md:flex-1 md:overflow-y-auto"
       onPaste={handleRootPaste}
       // A drop landing outside the dropzone would otherwise navigate the
       // browser to file:/// and tear down the SPA.
@@ -396,7 +396,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
         <div className="flex flex-col gap-3 min-w-0 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 mb-2 min-w-0">
-              <h1 className="text-3xl sm:text-4xl font-mono font-bold text-[#1C1B17] break-words">
+              <h1 className="text-3xl sm:text-4xl font-mono font-bold text-ink break-words">
                 {recommendation.ticker}
               </h1>
               {recommendation.action && recommendation.action !== 'WATCH' && (
@@ -416,7 +416,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
               >
                 {recommendation.status}
               </Badge>
-              <span className="font-mono text-sm text-[#6F6A60] break-words">
+              <span className="font-mono text-sm text-ink-muted break-words">
                 Added{' '}
                 {new Date(recommendation.entry_date).toLocaleDateString('en-US', {
                   month: 'long',
@@ -434,8 +434,8 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
               className={cn(
                 "font-mono text-sm w-full md:w-auto shrink-0 whitespace-nowrap overflow-hidden text-ellipsis",
                 recommendation.action === 'SELL'
-                  ? "border-[#2A6B4F] text-[#2A6B4F] hover:bg-[#2A6B4F] hover:text-[#F7F2E6]"
-                  : "border-[#B23B2A] text-[#B23B2A] hover:bg-[#B23B2A] hover:text-[#F7F2E6]"
+                  ? "border-positive-strong text-positive-strong hover:bg-positive-strong hover:text-paper-light"
+                  : "border-negative text-negative hover:bg-negative hover:text-paper-light"
               )}
               title={
                 recommendation.action === 'SELL'
@@ -460,44 +460,44 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
         </div>
 
         {/* Price and Return Card */}
-        <Card className="bg-[#F7F2E6] border-[#D7D0C2] w-full max-w-full">
+        <Card className="bg-paper-light border-border-editorial w-full max-w-full">
           <CardContent className="p-6">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 min-w-0">
               <div>
-                <Label className="font-mono text-xs text-[#6F6A60] uppercase tracking-wider">Current Price</Label>
-                <div className="text-2xl font-mono font-bold text-[#1C1B17] tabular-nums mt-1">
+                <Label className="font-mono text-xs text-ink-muted uppercase tracking-wider">Current Price</Label>
+                <div className="text-2xl font-mono font-bold text-ink tabular-nums mt-1">
                   {formatCurrency(recommendation.current_price, recommendation.ticker)}
                 </div>
               </div>
               <div>
-                <Label className="font-mono text-xs text-[#6F6A60] uppercase tracking-wider">Entry Price</Label>
-                <div className="text-2xl font-mono font-bold text-[#1C1B17] tabular-nums mt-1">
+                <Label className="font-mono text-xs text-ink-muted uppercase tracking-wider">Entry Price</Label>
+                <div className="text-2xl font-mono font-bold text-ink tabular-nums mt-1">
                   {formatCurrency(recommendation.entry_price, recommendation.ticker)}
                 </div>
               </div>
               <div>
-                <Label className="font-mono text-xs text-[#6F6A60] uppercase tracking-wider">Gain/Loss</Label>
+                <Label className="font-mono text-xs text-ink-muted uppercase tracking-wider">Gain/Loss</Label>
                 <div className="flex items-center gap-2 mt-1">
                   {returnPct !== null ? (
                     <>
                       {isPositive ? (
-                        <TrendingUp className="h-5 w-5 text-[#2F8F5B]" />
+                        <TrendingUp className="h-5 w-5 text-positive" />
                       ) : (
-                        <TrendingDown className="h-5 w-5 text-[#B23B2A]" />
+                        <TrendingDown className="h-5 w-5 text-negative" />
                       )}
                       <div>
-                        <div className={`text-xl font-mono font-bold tabular-nums ${isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                        <div className={`text-xl font-mono font-bold tabular-nums ${isPositive ? 'text-positive' : 'text-negative'
                           }`}>
                           {isPositive ? '+' : ''}{formatCurrency(gainLoss, recommendation.ticker)}
                         </div>
-                        <div className={`text-sm font-mono tabular-nums ${isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                        <div className={`text-sm font-mono tabular-nums ${isPositive ? 'text-positive' : 'text-negative'
                           }`}>
                           {isPositive ? '+' : ''}{returnPct.toFixed(2)}%
                         </div>
                       </div>
                     </>
                   ) : (
-                    <span className="font-mono text-[#6F6A60]">N/A</span>
+                    <span className="font-mono text-ink-muted">N/A</span>
                   )}
                 </div>
               </div>
@@ -507,9 +507,9 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
 
         {/* Trading Activity */}
         {tradingActivity && (tradingActivity.trades.length > 0 || tradingActivity.position) && (
-          <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+          <Card className="bg-paper-light border-border-editorial">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-mono font-bold text-[#1C1B17] flex items-center gap-2">
+              <CardTitle className="font-mono font-bold text-ink flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Recent Activity
               </CardTitle>
@@ -517,30 +517,30 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
             <CardContent className="space-y-4">
               {/* Position Summary */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-3 rounded">
-                  <Label className="font-mono text-xs text-[#6F6A60]">Shares Held</Label>
-                  <p className="font-mono text-lg font-bold text-[#1C1B17] mt-1">
+                <div className="bg-paper-alt border border-gridline p-3 rounded">
+                  <Label className="font-mono text-xs text-ink-muted">Shares Held</Label>
+                  <p className="font-mono text-lg font-bold text-ink mt-1">
                     {tradingActivity.total_shares.toLocaleString()}
                   </p>
                 </div>
-                <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-3 rounded">
-                  <Label className="font-mono text-xs text-[#6F6A60]">Avg Cost</Label>
-                  <p className="font-mono text-lg font-bold text-[#1C1B17] mt-1">
+                <div className="bg-paper-alt border border-gridline p-3 rounded">
+                  <Label className="font-mono text-xs text-ink-muted">Avg Cost</Label>
+                  <p className="font-mono text-lg font-bold text-ink mt-1">
                     {tradingActivity.position?.avg_cost
                       ? formatCurrency(tradingActivity.position.avg_cost, recommendation.ticker)
                       : '-'}
                   </p>
                 </div>
-                <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-3 rounded">
-                  <Label className="font-mono text-xs text-[#6F6A60]">Unrealized P&L</Label>
-                  <p className={`font-mono text-lg font-bold mt-1 ${tradingActivity.unrealized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+                <div className="bg-paper-alt border border-gridline p-3 rounded">
+                  <Label className="font-mono text-xs text-ink-muted">Unrealized P&L</Label>
+                  <p className={`font-mono text-lg font-bold mt-1 ${tradingActivity.unrealized_pnl >= 0 ? 'text-positive' : 'text-negative'}`}>
                     {tradingActivity.unrealized_pnl >= 0 ? '+' : ''}
                     {formatCurrency(tradingActivity.unrealized_pnl, recommendation.ticker)}
                   </p>
                 </div>
-                <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-3 rounded">
-                  <Label className="font-mono text-xs text-[#6F6A60]">Realized P&L</Label>
-                  <p className={`font-mono text-lg font-bold mt-1 ${tradingActivity.realized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+                <div className="bg-paper-alt border border-gridline p-3 rounded">
+                  <Label className="font-mono text-xs text-ink-muted">Realized P&L</Label>
+                  <p className={`font-mono text-lg font-bold mt-1 ${tradingActivity.realized_pnl >= 0 ? 'text-positive' : 'text-negative'}`}>
                     {tradingActivity.realized_pnl >= 0 ? '+' : ''}
                     {formatCurrency(tradingActivity.realized_pnl, recommendation.ticker)}
                   </p>
@@ -553,26 +553,26 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
                   {tradingActivity.trades.slice(0, 5).map((trade) => (
                     <div
                       key={trade.id}
-                      className="flex items-center justify-between py-2 border-b border-[#E3DDCF] last:border-b-0"
+                      className="flex items-center justify-between py-2 border-b border-gridline last:border-b-0"
                     >
                       <div className="flex items-center gap-3">
                         <span
                           className={`px-2 py-0.5 rounded text-xs font-mono font-semibold ${trade.side === 'BUY'
-                              ? 'bg-[#E6F4ED] text-[#2F8F5B]'
-                              : 'bg-[#FDECEA] text-[#B23B2A]'
+                              ? 'bg-[#E6F4ED] text-positive'
+                              : 'bg-[#FDECEA] text-negative'
                             }`}
                         >
                           {trade.side}
                         </span>
-                        <span className="font-mono text-sm text-[#1C1B17]">
+                        <span className="font-mono text-sm text-ink">
                           {trade.quantity.toLocaleString()} shares @ {formatCurrency(trade.price, recommendation.ticker)}
                         </span>
                       </div>
                       <div className="text-right">
-                        <p className="font-mono text-sm font-semibold text-[#1C1B17] tabular-nums">
+                        <p className="font-mono text-sm font-semibold text-ink tabular-nums">
                           {formatCurrency(trade.notional, recommendation.ticker)}
                         </p>
-                        <p className="font-mono text-xs text-[#6F6A60]">
+                        <p className="font-mono text-xs text-ink-muted">
                           {new Date(trade.executed_at).toLocaleDateString('en-GB', {
                             day: '2-digit',
                             month: '2-digit',
@@ -580,7 +580,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
                           })}
                         </p>
                         {trade.realized_pnl !== null && trade.realized_pnl !== 0 && (
-                          <p className={`font-mono text-xs ${trade.realized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+                          <p className={`font-mono text-xs ${trade.realized_pnl >= 0 ? 'text-positive' : 'text-negative'}`}>
                             P&L: {trade.realized_pnl >= 0 ? '+' : ''}{formatCurrency(trade.realized_pnl, recommendation.ticker)}
                           </p>
                         )}
@@ -591,7 +591,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
               )}
 
               {loadingTradingActivity && (
-                <div className="text-center py-4 text-[#6F6A60] font-mono text-sm">
+                <div className="text-center py-4 text-ink-muted font-mono text-sm">
                   Loading trading activity...
                 </div>
               )}
@@ -600,15 +600,15 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
         )}
 
         {/* Investment Thesis */}
-        <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+        <Card className="bg-paper-light border-border-editorial">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="font-mono font-bold text-[#1C1B17]">Investment Thesis</CardTitle>
+            <CardTitle className="font-mono font-bold text-ink">Investment Thesis</CardTitle>
             {!isEditingThesis ? (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsEditingThesis(true)}
-                className="font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                className="font-mono text-xs bg-transparent border-border-editorial text-ink hover:bg-paper-alt"
               >
                 <Edit2 className="h-3 w-3 mr-1" />
                 Edit
@@ -622,14 +622,14 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
                     setIsEditingThesis(false)
                     setEditedThesis(recommendation.thesis || '')
                   }}
-                  className="font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                  className="font-mono text-xs bg-transparent border-border-editorial text-ink hover:bg-paper-alt"
                 >
                   Cancel
                 </Button>
                 <Button
                   size="sm"
                   onClick={handleSaveThesis}
-                  className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+                  className="font-mono text-xs bg-ink text-paper-light hover:bg-ink/90"
                 >
                   <Save className="h-3 w-3 mr-1" />
                   Save
@@ -649,11 +649,11 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
               // A <div>, not a <p>: markdown emits block elements, and a
               // <table> or <ul> inside a paragraph gets reparented by the
               // browser and trips React's validateDOMNesting warning.
-              <div className="font-mono text-sm text-[#1C1B17]">
+              <div className="font-mono text-sm text-ink">
                 <ThesisMarkdown content={recommendation.thesis} />
               </div>
             ) : (
-              <p className="font-mono text-sm text-[#6F6A60] leading-relaxed">
+              <p className="font-mono text-sm text-ink-muted leading-relaxed">
                 No thesis added yet. Click Edit to add one.
               </p>
             )}
@@ -664,15 +664,15 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
             viewing a team member's recommendation gets no edit affordance here,
             and set-recommendation-teams would refuse them anyway. */}
         {isOwnRecommendation && myTeams.length > 0 && (
-          <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+          <Card className="bg-paper-light border-border-editorial">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="font-mono font-bold text-[#1C1B17]">Teams</CardTitle>
+              <CardTitle className="font-mono font-bold text-ink">Teams</CardTitle>
               {!isEditingTeams ? (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setIsEditingTeams(true)}
-                  className="font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                  className="font-mono text-xs bg-transparent border-border-editorial text-ink hover:bg-paper-alt"
                 >
                   <Edit2 className="h-3 w-3 mr-1" />
                   Edit
@@ -687,7 +687,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
                       setIsEditingTeams(false)
                       setTeamIds(savedTeamIds.length > 0 ? savedTeamIds : myTeams.map((t) => t.id))
                     }}
-                    className="font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                    className="font-mono text-xs bg-transparent border-border-editorial text-ink hover:bg-paper-alt"
                   >
                     Cancel
                   </Button>
@@ -695,7 +695,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
                     size="sm"
                     onClick={handleSaveTeams}
                     disabled={savingTeams}
-                    className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+                    className="font-mono text-xs bg-ink text-paper-light hover:bg-ink/90"
                   >
                     <Save className="h-3 w-3 mr-1" />
                     {savingTeams ? 'Saving...' : 'Save'}
@@ -720,13 +720,13 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
                       .map((t) => (
                         <span
                           key={t.id}
-                          className="px-2 py-1 text-xs font-mono rounded-full border border-[#D7D0C2] bg-[#FBF7ED] text-[#1C1B17]"
+                          className="px-2 py-1 text-xs font-mono rounded-full border border-border-editorial bg-paper-alt text-ink"
                         >
                           {t.name}
                         </span>
                       ))
                   ) : (
-                    <p className="font-mono text-sm text-[#6F6A60] leading-relaxed">
+                    <p className="font-mono text-sm text-ink-muted leading-relaxed">
                       Not assigned to a team, so this is visible on every team dashboard you
                       belong to. Click Edit to narrow it.
                     </p>
@@ -738,9 +738,9 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
         )}
 
         {/* IRR Target Timeline */}
-        <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+        <Card className="bg-paper-light border-border-editorial">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="font-mono font-bold text-[#1C1B17] flex items-center gap-2">
+            <CardTitle className="font-mono font-bold text-ink flex items-center gap-2">
               <Target className="h-4 w-4" />
               IRR Target Timeline
             </CardTitle>
@@ -748,7 +748,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
               variant="outline"
               size="sm"
               onClick={() => setShowAddTargetModal(true)}
-              className="font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+              className="font-mono text-xs bg-transparent border-border-editorial text-ink hover:bg-paper-alt"
             >
               <Plus className="h-3 w-3 mr-1" />
               Add Target
@@ -760,9 +760,9 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
         </Card>
 
         {/* Documents & Images */}
-        <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+        <Card className="bg-paper-light border-border-editorial">
           <CardHeader>
-            <CardTitle className="font-mono font-bold text-[#1C1B17]">Documents & Images</CardTitle>
+            <CardTitle className="font-mono font-bold text-ink">Documents & Images</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Upload Section -- files upload as they arrive, so there is no
@@ -779,7 +779,7 @@ export function RecommendationDetailView({ recommendation, onUpdate, onBack }: R
             {/* Existing Images */}
             {recommendation.images && recommendation.images.length > 0 && (
               <div className="space-y-2">
-                <Label className="font-mono text-xs text-[#6F6A60] uppercase">Uploaded Files</Label>
+                <Label className="font-mono text-xs text-ink-muted uppercase">Uploaded Files</Label>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {recommendation.images.map((url, index) => (
                     <UploadedFileTile key={index} url={url} index={index} />

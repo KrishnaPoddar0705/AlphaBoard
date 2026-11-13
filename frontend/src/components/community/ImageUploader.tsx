@@ -96,12 +96,12 @@ export function ImageUploader({ images, onChange, disabled }: ImageUploaderProps
               <img
                 src={previews[index]}
                 alt={`Preview ${index + 1}`}
-                className="w-full h-32 object-cover rounded border border-[#D7D0C2] bg-[#FBF7ED]"
+                className="w-full h-32 object-cover rounded border border-border-editorial bg-paper-alt"
               />
               {!disabled && (
                 <button
                   onClick={() => removeImage(index)}
-                  className="absolute top-1 right-1 p-1 bg-[#1C1B17]/80 text-[#F7F2E6] rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="absolute top-1 right-1 p-1 bg-ink/80 text-paper-light rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                   aria-label="Remove image"
                 >
                   <X className="h-3 w-3" />
@@ -116,14 +116,14 @@ export function ImageUploader({ images, onChange, disabled }: ImageUploaderProps
         <div
           onDrop={handleDrop}
           onDragOver={handleDragOver}
-          className="border-2 border-dashed border-[#D7D0C2] rounded-lg p-4 text-center hover:border-[#1C1B17] transition-colors cursor-pointer"
+          className="border-2 border-dashed border-border-editorial rounded-lg p-4 text-center hover:border-ink transition-colors cursor-pointer"
           onClick={() => fileInputRef.current?.click()}
         >
-          <ImageIcon className="h-8 w-8 text-[#6F6A60] mx-auto mb-2" />
-          <p className="text-sm font-mono text-[#6F6A60]">
+          <ImageIcon className="h-8 w-8 text-ink-muted mx-auto mb-2" />
+          <p className="text-sm font-mono text-ink-muted">
             Click or drag to upload images (max {MAX_IMAGES - images.length} more)
           </p>
-          <p className="text-xs font-mono text-[#6F6A60] mt-1">
+          <p className="text-xs font-mono text-ink-muted mt-1">
             PNG or JPEG, max 5MB each
           </p>
           <input

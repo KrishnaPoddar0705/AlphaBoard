@@ -1,5 +1,6 @@
 import React from 'react';
 import { ResponsiveBar } from '@nivo/bar';
+import { useSkinColors } from '@/hooks/useSkinColors'
 
 interface IdeasAddedChartProps {
     data: Array<{ period: string; openRecommendations: number; watchlist: number; closed: number }>;
@@ -12,6 +13,7 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
     height = 200,
     periodType: _periodType = 'week'
 }) => {
+    const sc = useSkinColors()
     if (!data || data.length === 0) {
         return (
             <div className="flex items-center justify-center h-full text-[var(--text-secondary)] text-sm">
@@ -73,19 +75,19 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
                 tooltip={({ id, value, indexValue }) => (
                     <div style={{
                         padding: '8px 12px',
-                        background: '#F7F2E6', // card bg
-                        color: '#1C1B17', // ink text
+                        background: sc.surface, // card bg
+                        color: sc.ink, // ink text
                         borderRadius: '8px',
-                        border: '1px solid #D7D0C2', // border
+                        border: `1px solid ${sc.border}`, // border
                         fontSize: '12px',
                         fontWeight: '500',
-                        fontFamily: 'ui-monospace, monospace'
+                        fontFamily: sc.fontFamily
                     }}>
-                        <div style={{ marginBottom: '4px', color: '#1C1B17' }}>
+                        <div style={{ marginBottom: '4px', color: sc.ink }}>
                             <strong>{indexValue}</strong>
                         </div>
                         <div style={{
-                            color: id === 'Recommendations' ? '#2F8F5B' : id === 'Watchlist' ? '#1C1B17' : '#6F6A60'
+                            color: id === 'Recommendations' ? sc.positive : id === 'Watchlist' ? sc.ink : sc.inkMuted
                         }}>
                             {id}: {value}
                         </div>
@@ -122,34 +124,34 @@ export const IdeasAddedChart: React.FC<IdeasAddedChartProps> = ({
                     axis: {
                         domain: {
                             line: {
-                                stroke: '#D7D0C2', // border
+                                stroke: sc.border, // border
                                 strokeWidth: 1
                             }
                         },
                         ticks: {
                             line: {
-                                stroke: '#E3DDCF', // gridlines
+                                stroke: sc.grid, // gridlines
                                 strokeWidth: 1
                             },
                             text: {
-                                fill: '#6F6A60', // muted
+                                fill: sc.inkMuted, // muted
                                 fontSize: 11,
-                                fontFamily: 'ui-monospace, monospace'
+                                fontFamily: sc.fontFamily
                             }
                         }
                     },
                     grid: {
                         line: {
-                            stroke: '#E3DDCF', // gridlines
+                            stroke: sc.grid, // gridlines
                             strokeWidth: 1
                         }
                     },
                     legends: {
                         text: {
-                            fill: '#1C1B17', // ink text
+                            fill: sc.ink, // ink text
                             fontSize: 12,
                             fontWeight: 500,
-                            fontFamily: 'ui-monospace, monospace'
+                            fontFamily: sc.fontFamily
                         }
                     }
                 }}

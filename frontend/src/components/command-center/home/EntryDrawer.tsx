@@ -17,7 +17,7 @@ import { THESIS_IMPACTS } from '@/lib/commandCenter/constants'
 import { ownerName, relativeTime } from '@/lib/commandCenter/home'
 import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 
-const label = 'font-mono text-[10px] uppercase tracking-[0.12em] text-[#6F6A60]'
+const label = 'font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted'
 
 /**
  * The whole of one entry, opened from anywhere on the home screen: what was learned,
@@ -32,15 +32,15 @@ export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow
 
   return (
     <Sheet open={!!entry} onOpenChange={(v) => !v && onClose()}>
-      <SheetContent side="right" className="w-full overflow-y-auto bg-[#F7F2E6] sm:max-w-xl">
+      <SheetContent side="right" className="w-full overflow-y-auto bg-paper-light sm:max-w-xl">
         {entry && (
           <>
-            <SheetHeader className="border-b border-[#D7D0C2]">
+            <SheetHeader className="border-b border-border-editorial">
               <div className="flex flex-wrap items-center gap-2 pr-6">
                 <EventKindBadge kind={entry.kind} subtype={entry.subtype} scheduled={entry.is_scheduled} />
                 <Link
                   to={`/command-center/stock/${encodeURIComponent(entry.ticker)}?event=${entry.event_id}`}
-                  className="inline-flex items-center gap-0.5 font-mono text-xs font-semibold text-[#1C1B17] hover:underline"
+                  className="inline-flex items-center gap-0.5 font-mono text-xs font-semibold text-ink hover:underline"
                 >
                   {entry.ticker} <ArrowUpRight className="h-3 w-3" />
                 </Link>
@@ -48,8 +48,8 @@ export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow
                   <span className="font-mono text-[11px]" style={{ color: impact.color }}>● {impact.label}</span>
                 )}
               </div>
-              <SheetTitle className="font-mono text-base text-[#1C1B17]">{entry.title}</SheetTitle>
-              <p className="font-mono text-[11px] text-[#6F6A60]">
+              <SheetTitle className="font-mono text-base text-ink">{entry.title}</SheetTitle>
+              <p className="font-mono text-[11px] text-ink-muted">
                 {ownerName(entry)} · {formatDay(entry.event_date)} · logged {relativeTime(entry.created_at)}
                 {entry.broker_name ? ` · ${entry.broker_name}` : ''}
               </p>
@@ -65,18 +65,18 @@ export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow
                 <p className={label}>Key takeaways</p>
                 <BoardLink eventId={entry.event_id} className="mt-1" />
                 {entry.kta ? (
-                  <div className="mt-1 font-mono text-xs leading-relaxed text-[#1C1B17]">
+                  <div className="mt-1 font-mono text-xs leading-relaxed text-ink">
                     <ThesisMarkdown content={entry.kta} />
                   </div>
                 ) : (
-                  <p className="mt-1 font-mono text-[11px] text-[#8B857A]">None written.</p>
+                  <p className="mt-1 font-mono text-[11px] text-ink-faint">None written.</p>
                 )}
               </div>
 
               {entry.open_questions && (
                 <div>
                   <p className={label}>Open questions</p>
-                  <p className="mt-1 font-mono text-xs text-[#1C1B17]">{entry.open_questions}</p>
+                  <p className="mt-1 font-mono text-xs text-ink">{entry.open_questions}</p>
                 </div>
               )}
 
@@ -98,13 +98,13 @@ export default function EntryDrawer({ entry, onClose }: { entry: ActivityFeedRow
               )}
 
               {!entry.is_scheduled && (
-                <div className="border-t border-[#D7D0C2] pt-3">
+                <div className="border-t border-border-editorial pt-3">
                   <p className={`${label} mb-1.5`}>Push</p>
                   <PushControl event={entry} />
                 </div>
               )}
 
-              <div className="border-t border-[#D7D0C2] pt-3">
+              <div className="border-t border-border-editorial pt-3">
                 <p className={`${label} mb-1.5`}>Discussion</p>
                 <EventComments eventId={entry.event_id} />
               </div>

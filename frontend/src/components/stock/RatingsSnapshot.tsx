@@ -34,8 +34,8 @@ export function RatingsSnapshot({ ratings }: RatingsSnapshotProps) {
   ]
 
   return (
-    <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5">
-      <h3 className="text-sm font-mono font-bold text-[#1C1B17] mb-4">Ratings Snapshot</h3>
+    <div className="bg-paper-light border border-border-editorial p-5">
+      <h3 className="text-sm font-mono font-bold text-ink mb-4">Ratings Snapshot</h3>
       <div className="grid grid-cols-2 gap-4">
         {/* Radar chart */}
         <div className="col-span-1">
@@ -47,16 +47,16 @@ export function RatingsSnapshot({ ratings }: RatingsSnapshotProps) {
             <div
               key={item.label}
               className={`flex justify-between items-center ${
-                item.isTotal ? 'border-t border-[#D7D0C2] pt-2 mt-2' : ''
+                item.isTotal ? 'border-t border-border-editorial pt-2 mt-2' : ''
               }`}
             >
               <span className={`text-xs font-mono ${
-                item.isTotal ? 'font-bold text-[#1C1B17]' : 'text-[#6F6A60]'
+                item.isTotal ? 'font-bold text-ink' : 'text-ink-muted'
               }`}>
                 {item.label}
               </span>
               <span className={`text-xs font-mono tabular-nums font-semibold ${
-                item.isTotal ? 'text-[#1C1B17]' : 'text-[#1C1B17]'
+                item.isTotal ? 'text-ink' : 'text-ink'
               }`}>
                 {item.value}
               </span>

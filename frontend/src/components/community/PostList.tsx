@@ -59,12 +59,12 @@ export function PostList({ ticker, onCreatePost }: PostListProps) {
 
       {loading && posts.length === 0 ? (
         <div className="text-center py-12">
-          <p className="font-mono text-[#6F6A60]">Loading posts...</p>
+          <p className="font-mono text-ink-muted">Loading posts...</p>
         </div>
       ) : posts.length === 0 ? (
-        <div className="text-center py-12 border border-[#D7D0C2] rounded bg-[#F7F2E6]">
-          <p className="font-mono text-[#6F6A60] mb-2">No posts yet</p>
-          <p className="text-sm font-mono text-[#6F6A60]">Be the first to start a discussion!</p>
+        <div className="text-center py-12 border border-border-editorial rounded bg-paper-light">
+          <p className="font-mono text-ink-muted mb-2">No posts yet</p>
+          <p className="text-sm font-mono text-ink-muted">Be the first to start a discussion!</p>
         </div>
       ) : (
         <>
@@ -81,7 +81,7 @@ export function PostList({ ticker, onCreatePost }: PostListProps) {
               <button
                 onClick={() => loadPosts(false)}
                 disabled={loading}
-                className="px-4 py-2 font-mono text-sm border border-[#D7D0C2] rounded bg-[#F7F2E6] text-[#1C1B17] hover:bg-[#FBF7ED] transition-colors disabled:opacity-50"
+                className="px-4 py-2 font-mono text-sm border border-border-editorial rounded bg-paper-light text-ink hover:bg-paper-alt transition-colors disabled:opacity-50"
               >
                 {loading ? 'Loading...' : 'Load More'}
               </button>

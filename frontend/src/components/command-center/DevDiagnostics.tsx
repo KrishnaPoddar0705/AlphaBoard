@@ -273,11 +273,11 @@ export default function DevDiagnostics() {
   }
 
   return (
-    <section className="rounded-xl border border-[#D7D0C2] bg-[#F7F2E6]">
-      <header className="flex items-center justify-between gap-2 border-b border-[#E3DDCF] px-4 py-2.5">
+    <section className="rounded-xl border border-border-editorial bg-paper-light">
+      <header className="flex items-center justify-between gap-2 border-b border-gridline px-4 py-2.5">
         <div>
-          <h2 className="font-mono text-xs text-[#1C1B17]">Command Center diagnostics</h2>
-          <p className="font-mono text-[10px] text-[#8B857A]">Development build only.</p>
+          <h2 className="font-mono text-xs text-ink">Command Center diagnostics</h2>
+          <p className="font-mono text-[10px] text-ink-faint">Development build only.</p>
         </div>
         <div className="flex shrink-0 gap-2">
           <Button variant="outline" size="sm" onClick={retrySignIn} disabled={running}>
@@ -290,7 +290,7 @@ export default function DevDiagnostics() {
         </div>
       </header>
 
-      <ul className="divide-y divide-[#E3DDCF]">
+      <ul className="divide-y divide-gridline">
         {checks.map((c) => {
           const Icon = ICON[c.status]
           return (
@@ -300,8 +300,8 @@ export default function DevDiagnostics() {
                 style={{ color: COLOR[c.status] }}
               />
               <div className="min-w-0">
-                <p className="font-mono text-xs text-[#1C1B17]">{c.label}</p>
-                <p className="font-mono text-[11px] break-words text-[#6F6A60]">{c.detail}</p>
+                <p className="font-mono text-xs text-ink">{c.label}</p>
+                <p className="font-mono text-[11px] break-words text-ink-muted">{c.detail}</p>
                 {c.fix && c.status !== 'pass' && (
                   <p className="mt-1 whitespace-pre-wrap font-mono text-[11px]"
                      style={{ color: COLOR[c.status] }}>
@@ -313,7 +313,7 @@ export default function DevDiagnostics() {
           )
         })}
         {checks.length === 0 && (
-          <li className="px-4 py-6 text-center font-mono text-xs text-[#6F6A60]">Running checks...</li>
+          <li className="px-4 py-6 text-center font-mono text-xs text-ink-muted">Running checks...</li>
         )}
       </ul>
     </section>

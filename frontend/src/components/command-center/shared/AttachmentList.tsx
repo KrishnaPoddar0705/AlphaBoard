@@ -45,14 +45,14 @@ export default function AttachmentList({ items }: { items: EventAttachment[] }) 
               type="button"
               onClick={() => open(a)}
               disabled={opening === a.id}
-              className="inline-flex max-w-[240px] items-center gap-1.5 rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2 py-1 font-mono text-[11px] text-[#1C1B17] transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-60"
+              className="inline-flex max-w-[240px] items-center gap-1.5 rounded-lg border border-border-editorial bg-paper-alt px-2 py-1 font-mono text-[11px] text-ink transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-60"
             >
               {opening === a.id
                 ? <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                : <Icon className="h-3 w-3 shrink-0 text-[#6F6A60]" />}
+                : <Icon className="h-3 w-3 shrink-0 text-ink-muted" />}
               <span className="truncate">{a.file_name}</span>
               {a.size_bytes != null && (
-                <span className="shrink-0 text-[#8B857A]">{formatBytes(a.size_bytes)}</span>
+                <span className="shrink-0 text-ink-faint">{formatBytes(a.size_bytes)}</span>
               )}
             </button>
           </li>
@@ -65,7 +65,7 @@ export default function AttachmentList({ items }: { items: EventAttachment[] }) 
 export function AttachmentCount({ count }: { count: number }) {
   if (!count) return null
   return (
-    <span className="inline-flex items-center gap-1 font-mono text-[11px] text-[#6F6A60]">
+    <span className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-muted">
       <Paperclip className="h-3 w-3" />{count}
     </span>
   )

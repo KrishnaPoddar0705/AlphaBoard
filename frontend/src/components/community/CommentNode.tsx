@@ -71,7 +71,7 @@ export function CommentNode({
     return (
       <div className="flex gap-3 py-2" style={{ paddingLeft: `${depth * 24}px` }}>
         <div className="flex-1">
-          <p className="text-sm font-mono text-[#6F6A60] italic">[deleted]</p>
+          <p className="text-sm font-mono text-ink-muted italic">[deleted]</p>
         </div>
       </div>
     );
@@ -82,7 +82,7 @@ export function CommentNode({
       <div className="flex gap-3" style={{ paddingLeft: `${depth * 24}px` }}>
         {/* Vertical line for nesting */}
         {depth > 0 && (
-          <div className="absolute left-0 top-0 bottom-0 w-px bg-[#E3DDCF]" />
+          <div className="absolute left-0 top-0 bottom-0 w-px bg-gridline" />
         )}
 
         {/* Vote Rail */}
@@ -95,17 +95,17 @@ export function CommentNode({
         {/* Comment Content */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-mono font-semibold text-[#1C1B17]">
+            <span className="text-sm font-mono font-semibold text-ink">
               {comment.author_display || 'Anonymous'}
             </span>
-            <span className="text-xs font-mono text-[#6F6A60] flex items-center gap-1">
+            <span className="text-xs font-mono text-ink-muted flex items-center gap-1">
               <Clock className="h-3 w-3" />
               {timeAgo}
             </span>
             {hasReplies && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="text-xs font-mono text-[#6F6A60] hover:text-[#1C1B17] transition-colors flex items-center gap-1"
+                className="text-xs font-mono text-ink-muted hover:text-ink transition-colors flex items-center gap-1"
               >
                 {isExpanded ? (
                   <>
@@ -127,13 +127,13 @@ export function CommentNode({
               <textarea
                 value={editBody}
                 onChange={(e) => setEditBody(e.target.value)}
-                className="w-full p-2 font-mono text-sm border border-[#D7D0C2] rounded bg-[#FBF7ED] text-[#1C1B17] focus:outline-none focus:ring-2 focus:ring-[#1C1B17]/20"
+                className="w-full p-2 font-mono text-sm border border-border-editorial rounded bg-paper-alt text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
                 rows={4}
               />
               <div className="flex gap-2">
                 <button
                   onClick={handleEdit}
-                  className="px-3 py-1 text-xs font-mono bg-[#1C1B17] text-[#F7F2E6] rounded hover:bg-[#1C1B17]/90 transition-colors"
+                  className="px-3 py-1 text-xs font-mono bg-ink text-paper-light rounded hover:bg-ink/90 transition-colors"
                 >
                   Save
                 </button>
@@ -142,7 +142,7 @@ export function CommentNode({
                     setIsEditing(false);
                     setEditBody(comment.body);
                   }}
-                  className="px-3 py-1 text-xs font-mono border border-[#D7D0C2] rounded bg-[#F7F2E6] text-[#1C1B17] hover:bg-[#FBF7ED] transition-colors"
+                  className="px-3 py-1 text-xs font-mono border border-border-editorial rounded bg-paper-light text-ink hover:bg-paper-alt transition-colors"
                 >
                   Cancel
                 </button>
@@ -150,7 +150,7 @@ export function CommentNode({
             </div>
           ) : (
             <>
-              <p className="text-sm font-mono text-[#1C1B17] whitespace-pre-wrap mb-2">
+              <p className="text-sm font-mono text-ink whitespace-pre-wrap mb-2">
                 {comment.body}
               </p>
 
@@ -164,7 +164,7 @@ export function CommentNode({
                 {depth < maxDepth && (
                   <button
                     onClick={() => setIsReplying(!isReplying)}
-                    className="text-xs font-mono text-[#6F6A60] hover:text-[#1C1B17] transition-colors flex items-center gap-1"
+                    className="text-xs font-mono text-ink-muted hover:text-ink transition-colors flex items-center gap-1"
                   >
                     <MessageSquare className="h-3 w-3" />
                     Reply
@@ -174,14 +174,14 @@ export function CommentNode({
                   <>
                     <button
                       onClick={() => setIsEditing(true)}
-                      className="text-xs font-mono text-[#6F6A60] hover:text-[#1C1B17] transition-colors flex items-center gap-1"
+                      className="text-xs font-mono text-ink-muted hover:text-ink transition-colors flex items-center gap-1"
                     >
                       <Edit2 className="h-3 w-3" />
                       Edit
                     </button>
                     <button
                       onClick={handleDelete}
-                      className="text-xs font-mono text-[#B23B2A] hover:text-[#B23B2A]/80 transition-colors flex items-center gap-1"
+                      className="text-xs font-mono text-negative hover:text-negative/80 transition-colors flex items-center gap-1"
                     >
                       <Trash2 className="h-3 w-3" />
                       Delete

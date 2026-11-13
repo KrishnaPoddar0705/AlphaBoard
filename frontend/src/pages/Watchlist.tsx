@@ -281,30 +281,30 @@ export default function Watchlist() {
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
-      return <ChevronsUpDown className="w-3 h-3 text-[#6F6A60]" />
+      return <ChevronsUpDown className="w-3 h-3 text-ink-muted" />
     }
     if (sortDirection === 'asc') {
-      return <ChevronUp className="w-3 h-3 text-[#1C1B17]" />
+      return <ChevronUp className="w-3 h-3 text-ink" />
     }
-    return <ChevronDown className="w-3 h-3 text-[#1C1B17]" />
+    return <ChevronDown className="w-3 h-3 text-ink" />
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Loading watchlist...</div>
+      <div className="flex items-center justify-center h-full bg-paper">
+        <div className="text-ink-muted font-mono">Loading watchlist...</div>
       </div>
     )
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#F1EEE0]">
+    <div className="h-full flex flex-col bg-paper">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-[#D7D0C2] bg-[#F7F2E6]">
-        <h1 className="text-2xl font-mono font-bold text-[#1C1B17] tracking-tight">Watchlist</h1>
+      <div className="flex items-center justify-between p-6 border-b border-border-editorial bg-paper-light">
+        <h1 className="text-2xl font-mono font-bold text-ink tracking-tight">Watchlist</h1>
         <Button
           onClick={() => setShowAddModal(true)}
-          className="font-mono text-sm bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+          className="font-mono text-sm bg-ink text-paper-light hover:bg-ink/90"
         >
           <Plus className="h-4 w-4 mr-2" />
           Add to Watchlist
@@ -314,21 +314,21 @@ export default function Watchlist() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {watchlist.length === 0 ? (
-          <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+          <Card className="bg-paper-light border-border-editorial">
             <CardContent className="py-12 text-center">
-              <p className="font-mono text-[#6F6A60] text-lg mb-2">Your watchlist is empty.</p>
-              <p className="font-mono text-sm text-[#6F6A60]">Add stocks from the community page or use the button above!</p>
+              <p className="font-mono text-ink-muted text-lg mb-2">Your watchlist is empty.</p>
+              <p className="font-mono text-sm text-ink-muted">Add stocks from the community page or use the button above!</p>
             </CardContent>
           </Card>
         ) : (
           <div className="overflow-x-auto">
             {/* Desktop Table View */}
             <div className="hidden md:block">
-              <table className="w-full border-collapse bg-[#F7F2E6] rounded-lg overflow-hidden">
+              <table className="w-full border-collapse bg-paper-light rounded-lg overflow-hidden">
                 <thead>
-                  <tr className="border-b-2 border-[#D7D0C2] bg-[#FBF7ED]">
+                  <tr className="border-b-2 border-border-editorial bg-paper-alt">
                     <th
-                      className="px-4 py-3 text-left text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      className="px-4 py-3 text-left text-xs font-mono font-semibold text-ink uppercase tracking-wider cursor-pointer hover:bg-paper-light transition-colors select-none"
                       onClick={() => handleSort('companyName')}
                     >
                       <div className="flex items-center gap-1.5">
@@ -337,7 +337,7 @@ export default function Watchlist() {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-ink uppercase tracking-wider cursor-pointer hover:bg-paper-light transition-colors select-none"
                       onClick={() => handleSort('current_price')}
                     >
                       <div className="flex items-center justify-end gap-1.5">
@@ -346,7 +346,7 @@ export default function Watchlist() {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-ink uppercase tracking-wider cursor-pointer hover:bg-paper-light transition-colors select-none"
                       onClick={() => handleSort('oneDayReturn')}
                     >
                       <div className="flex items-center justify-end gap-1.5">
@@ -355,7 +355,7 @@ export default function Watchlist() {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-ink uppercase tracking-wider cursor-pointer hover:bg-paper-light transition-colors select-none"
                       onClick={() => handleSort('oneWeekReturn')}
                     >
                       <div className="flex items-center justify-end gap-1.5">
@@ -364,7 +364,7 @@ export default function Watchlist() {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-ink uppercase tracking-wider cursor-pointer hover:bg-paper-light transition-colors select-none"
                       onClick={() => handleSort('oneMonthReturn')}
                     >
                       <div className="flex items-center justify-end gap-1.5">
@@ -373,7 +373,7 @@ export default function Watchlist() {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      className="px-4 py-3 text-right text-xs font-mono font-semibold text-ink uppercase tracking-wider cursor-pointer hover:bg-paper-light transition-colors select-none"
                       onClick={() => handleSort('marketCap')}
                     >
                       <div className="flex items-center justify-end gap-1.5">
@@ -382,7 +382,7 @@ export default function Watchlist() {
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider cursor-pointer hover:bg-[#F7F2E6] transition-colors select-none"
+                      className="px-4 py-3 text-left text-xs font-mono font-semibold text-ink uppercase tracking-wider cursor-pointer hover:bg-paper-light transition-colors select-none"
                       onClick={() => handleSort('entry_date')}
                     >
                       <div className="flex items-center gap-1.5">
@@ -390,12 +390,12 @@ export default function Watchlist() {
                         {getSortIcon('entry_date')}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-center text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider">
+                    <th className="px-4 py-3 text-center text-xs font-mono font-semibold text-ink uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#D7D0C2]">
+                <tbody className="divide-y divide-border-editorial">
                   {sortedWatchlist.map((item) => {
                     const currencySymbol = getCurrencySymbol(item.ticker)
                     const isPositive1D = (item.oneDayReturn ?? 0) >= 0
@@ -411,7 +411,7 @@ export default function Watchlist() {
 
                     const renderReturn = (returnValue: number | undefined, isPositive: boolean) => {
                       if (returnValue === undefined) {
-                        return <span className="text-[#6F6A60]">N/A</span>
+                        return <span className="text-ink-muted">N/A</span>
                       }
                       return (
                         <div className={`flex items-center justify-end gap-1 ${isPositive ? 'text-green-700' : 'text-red-700'}`}>
@@ -430,14 +430,14 @@ export default function Watchlist() {
                     return (
                       <tr
                         key={item.id}
-                        className="hover:bg-[#FBF7ED] transition-colors cursor-pointer"
+                        className="hover:bg-paper-alt transition-colors cursor-pointer"
                         onClick={() => navigate(`/stock/${item.ticker}`)}
                       >
-                        <td className="px-4 py-3 text-sm font-mono text-[#1C1B17]">
+                        <td className="px-4 py-3 text-sm font-mono text-ink">
                           <div className="font-semibold">{item.companyName || item.ticker}</div>
-                          <div className="text-xs text-[#6F6A60] mt-0.5">{item.ticker}</div>
+                          <div className="text-xs text-ink-muted mt-0.5">{item.ticker}</div>
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono text-right text-[#1C1B17] tabular-nums font-semibold">
+                        <td className="px-4 py-3 text-sm font-mono text-right text-ink tabular-nums font-semibold">
                           {formatCurrency(item.current_price, item.ticker)}
                         </td>
                         <td className="px-4 py-3 text-sm font-mono text-right tabular-nums">
@@ -449,10 +449,10 @@ export default function Watchlist() {
                         <td className="px-4 py-3 text-sm font-mono text-right tabular-nums">
                           {renderReturn(item.oneMonthReturn, isPositive1M)}
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono text-right text-[#1C1B17] tabular-nums">
+                        <td className="px-4 py-3 text-sm font-mono text-right text-ink tabular-nums">
                           {formatMarketCap(item.marketCap)}
                         </td>
-                        <td className="px-4 py-3 text-sm font-mono text-[#6F6A60]">
+                        <td className="px-4 py-3 text-sm font-mono text-ink-muted">
                           {new Date(item.entry_date).toLocaleDateString('en-US', {
                             month: 'short',
                             day: 'numeric',
@@ -470,7 +470,7 @@ export default function Watchlist() {
                                 setPromoteEntryPrice(item.current_price?.toFixed(2) || '')
                                 setShowPromoteModal(true)
                               }}
-                              className="font-mono text-xs border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED] h-7 px-2"
+                              className="font-mono text-xs border-border-editorial text-ink hover:bg-paper-alt h-7 px-2"
                             >
                               Promote
                             </Button>
@@ -478,7 +478,7 @@ export default function Watchlist() {
                               variant="ghost"
                               size="icon"
                               onClick={(e) => handleRemove(item, e)}
-                              className="h-7 w-7 text-[#6F6A60] hover:text-[#B23B2A]"
+                              className="h-7 w-7 text-ink-muted hover:text-negative"
                             >
                               <X className="h-4 w-4" />
                             </Button>
@@ -508,7 +508,7 @@ export default function Watchlist() {
 
                 const renderReturnMobile = (returnValue: number | undefined, isPositive: boolean) => {
                   if (returnValue === undefined) {
-                    return <div className="font-mono text-[#6F6A60]">N/A</div>
+                    return <div className="font-mono text-ink-muted">N/A</div>
                   }
                   return (
                     <div className={`font-mono font-semibold tabular-nums flex items-center gap-1 ${isPositive ? 'text-green-700' : 'text-red-700'}`}>
@@ -525,22 +525,22 @@ export default function Watchlist() {
                 return (
                   <Card
                     key={item.id}
-                    className="bg-[#F7F2E6] border-[#D7D0C2]"
+                    className="bg-paper-light border-border-editorial"
                     onClick={() => navigate(`/stock/${item.ticker}`)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
-                          <div className="font-mono font-bold text-[#1C1B17] text-base">
+                          <div className="font-mono font-bold text-ink text-base">
                             {item.companyName || item.ticker}
                           </div>
-                          <div className="font-mono text-xs text-[#6F6A60] mt-0.5">{item.ticker}</div>
+                          <div className="font-mono text-xs text-ink-muted mt-0.5">{item.ticker}</div>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={(e) => handleRemove(item, e)}
-                          className="h-8 w-8 text-[#6F6A60] hover:text-[#B23B2A] flex-shrink-0"
+                          className="h-8 w-8 text-ink-muted hover:text-negative flex-shrink-0"
                         >
                           <X className="h-4 w-4" />
                         </Button>
@@ -548,32 +548,32 @@ export default function Watchlist() {
 
                       <div className="grid grid-cols-2 gap-3 mb-3">
                         <div>
-                          <div className="font-mono text-xs text-[#6F6A60] mb-1">Current Price</div>
-                          <div className="font-mono font-bold text-[#1C1B17] tabular-nums">
+                          <div className="font-mono text-xs text-ink-muted mb-1">Current Price</div>
+                          <div className="font-mono font-bold text-ink tabular-nums">
                             {formatCurrency(item.current_price, item.ticker)}
                           </div>
                         </div>
                         <div>
-                          <div className="font-mono text-xs text-[#6F6A60] mb-1">1D Return</div>
+                          <div className="font-mono text-xs text-ink-muted mb-1">1D Return</div>
                           {renderReturnMobile(item.oneDayReturn, isPositive1D)}
                         </div>
                         <div>
-                          <div className="font-mono text-xs text-[#6F6A60] mb-1">1W Return</div>
+                          <div className="font-mono text-xs text-ink-muted mb-1">1W Return</div>
                           {renderReturnMobile(item.oneWeekReturn, isPositive1W)}
                         </div>
                         <div>
-                          <div className="font-mono text-xs text-[#6F6A60] mb-1">1M Return</div>
+                          <div className="font-mono text-xs text-ink-muted mb-1">1M Return</div>
                           {renderReturnMobile(item.oneMonthReturn, isPositive1M)}
                         </div>
                         <div>
-                          <div className="font-mono text-xs text-[#6F6A60] mb-1">Market Cap</div>
-                          <div className="font-mono text-[#1C1B17] tabular-nums">
+                          <div className="font-mono text-xs text-ink-muted mb-1">Market Cap</div>
+                          <div className="font-mono text-ink tabular-nums">
                             {formatMarketCap(item.marketCap)}
                           </div>
                         </div>
                         <div>
-                          <div className="font-mono text-xs text-[#6F6A60] mb-1">Date Added</div>
-                          <div className="font-mono text-[#1C1B17] text-xs">
+                          <div className="font-mono text-xs text-ink-muted mb-1">Date Added</div>
+                          <div className="font-mono text-ink text-xs">
                             {new Date(item.entry_date).toLocaleDateString('en-US', {
                               month: 'short',
                               day: 'numeric',
@@ -592,7 +592,7 @@ export default function Watchlist() {
                           setPromoteEntryPrice(item.current_price?.toFixed(2) || '')
                           setShowPromoteModal(true)
                         }}
-                        className="w-full font-mono text-xs border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                        className="w-full font-mono text-xs border-border-editorial text-ink hover:bg-paper-alt"
                       >
                         Promote to BUY/SELL
                       </Button>
@@ -617,20 +617,20 @@ export default function Watchlist() {
 
       {/* Promote Modal */}
       <Dialog open={showPromoteModal} onOpenChange={setShowPromoteModal}>
-        <DialogContent className="bg-[#F7F2E6] border-[#D7D0C2] max-w-md">
+        <DialogContent className="bg-paper-light border-border-editorial max-w-md">
           <DialogHeader>
-            <DialogTitle className="font-mono text-xl font-bold text-[#1C1B17]">
+            <DialogTitle className="font-mono text-xl font-bold text-ink">
               Promote to Recommendation
             </DialogTitle>
-            <DialogDescription className="font-mono text-sm text-[#6F6A60]">
+            <DialogDescription className="font-mono text-sm text-ink-muted">
               Convert {selectedItem?.ticker} from watchlist to a BUY or SELL recommendation
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="space-y-2">
-              <Label className="font-mono text-sm text-[#1C1B17]">Action</Label>
+              <Label className="font-mono text-sm text-ink">Action</Label>
               <Select value={promoteAction} onValueChange={(value: 'BUY' | 'SELL') => setPromoteAction(value)}>
-                <SelectTrigger className="bg-[#FBF7ED] border-[#D7D0C2] font-mono">
+                <SelectTrigger className="bg-paper-alt border-border-editorial font-mono">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -640,14 +640,14 @@ export default function Watchlist() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label className="font-mono text-sm text-[#1C1B17]">Entry Price *</Label>
+              <Label className="font-mono text-sm text-ink">Entry Price *</Label>
               <Input
                 type="number"
                 step="0.01"
                 value={promoteEntryPrice}
                 onChange={(e) => setPromoteEntryPrice(e.target.value)}
                 placeholder="0.00"
-                className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums"
+                className="bg-paper-alt border-border-editorial font-mono tabular-nums"
               />
             </div>
             <div className="flex justify-end gap-3 pt-4">
@@ -658,14 +658,14 @@ export default function Watchlist() {
                   setSelectedItem(null)
                   setPromoteEntryPrice('')
                 }}
-                className="font-mono text-sm border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+                className="font-mono text-sm border-border-editorial text-ink hover:bg-paper-alt"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handlePromote}
                 disabled={!promoteEntryPrice || parseFloat(promoteEntryPrice) <= 0}
-                className="font-mono text-sm bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+                className="font-mono text-sm bg-ink text-paper-light hover:bg-ink/90"
               >
                 Promote
               </Button>

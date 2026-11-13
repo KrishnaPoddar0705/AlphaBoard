@@ -88,17 +88,17 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
 
   if (selected) {
     return (
-      <div className="flex items-center justify-between gap-2 rounded-lg border border-[#1C1B17] bg-[#F1EEE0] px-3 py-2">
+      <div className="flex items-center justify-between gap-2 rounded-lg border border-ink bg-paper px-3 py-2">
         <span className="min-w-0">
-          <span className="block truncate font-mono text-sm text-[#1C1B17]">
+          <span className="block truncate font-mono text-sm text-ink">
             {selected.name}
           </span>
-          <span className="block font-mono text-[11px] text-[#6F6A60]">{selected.ticker}</span>
+          <span className="block font-mono text-[11px] text-ink-muted">{selected.ticker}</span>
         </span>
         <button
           type="button"
           onClick={() => { onChange(''); setQuery('') }}
-          className="shrink-0 font-mono text-[11px] text-[#6F6A60] underline-offset-2 hover:underline"
+          className="shrink-0 font-mono text-[11px] text-ink-muted underline-offset-2 hover:underline"
         >
           Change
         </button>
@@ -115,7 +115,7 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
               key={c.id}
               type="button"
               onClick={() => onChange(c.id)}
-              className="rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2.5 py-1.5 font-mono text-[11px] text-[#1C1B17] transition-colors hover:border-[#8B857A] hover:bg-[rgba(28,27,23,0.04)]"
+              className="rounded-lg border border-border-editorial bg-paper-alt px-2.5 py-1.5 font-mono text-[11px] text-ink transition-colors hover:border-ink-faint hover:bg-[rgba(28,27,23,0.04)]"
             >
               {c.ticker}
             </button>
@@ -124,17 +124,17 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
       )}
 
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8B857A]" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-faint" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search coverage, or type a new ticker"
-          className="w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] py-2 pl-8 pr-3 font-mono text-sm text-[#1C1B17] placeholder:text-[#8B857A] focus:border-[#8B857A] focus:outline-none"
+          className="w-full rounded-lg border border-border-editorial bg-paper-alt py-2 pl-8 pr-3 font-mono text-sm text-ink placeholder:text-ink-faint focus:border-ink-faint focus:outline-none"
         />
       </div>
 
       {matches.length > 0 && (
-        <ul className="max-h-40 overflow-y-auto rounded-lg border border-[#D7D0C2] bg-[#FBF7ED]">
+        <ul className="max-h-40 overflow-y-auto rounded-lg border border-border-editorial bg-paper-alt">
           {matches.map((c) => (
             <li key={c.id}>
               <button
@@ -142,10 +142,10 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
                 onClick={() => { onChange(c.id); setQuery('') }}
                 className="w-full px-3 py-2 text-left transition-colors hover:bg-[rgba(28,27,23,0.04)]"
               >
-                <span className="block truncate font-mono text-sm text-[#1C1B17]">
+                <span className="block truncate font-mono text-sm text-ink">
                   {c.company_name || c.ticker}
                 </span>
-                <span className="block font-mono text-[11px] text-[#6F6A60]">{c.ticker}</span>
+                <span className="block font-mono text-[11px] text-ink-muted">{c.ticker}</span>
               </button>
             </li>
           ))}
@@ -154,8 +154,8 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
 
       {query.trim() && matches.length === 0 && (
         candidate && askingSector ? (
-          <div className="flex flex-col gap-2 rounded-lg border border-dashed border-[#1C1B17] bg-[#FBF7ED] p-3">
-            <p className="font-mono text-[11px] text-[#1C1B17]">
+          <div className="flex flex-col gap-2 rounded-lg border border-dashed border-ink bg-paper-alt p-3">
+            <p className="font-mono text-[11px] text-ink">
               Which sector is <span className="font-semibold">{candidate}</span> in?
             </p>
             <SectorPicker value={sector} onChange={setSector} />
@@ -163,7 +163,7 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
               type="button"
               onClick={addAndSelect}
               disabled={!sector || addCoverage.isPending}
-              className="self-start rounded-lg border border-[#1C1B17] bg-[#1C1B17] px-2.5 py-1 font-mono text-[11px] text-[#F7F2E6] disabled:opacity-40"
+              className="self-start rounded-lg border border-ink bg-ink px-2.5 py-1 font-mono text-[11px] text-paper-light disabled:opacity-40"
             >
               {addCoverage.isPending ? `Adding ${candidate}…` : `Add ${candidate} and log against it`}
             </button>
@@ -173,7 +173,7 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
             type="button"
             onClick={() => setAskingSector(true)}
             disabled={addCoverage.isPending}
-            className="flex items-center gap-2 rounded-lg border border-dashed border-[#1C1B17] bg-[#FBF7ED] px-3 py-2 text-left font-mono text-[11px] text-[#1C1B17] transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg border border-dashed border-ink bg-paper-alt px-3 py-2 text-left font-mono text-[11px] text-ink transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-50"
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
             <span>
@@ -181,7 +181,7 @@ export default function CoveragePicker({ coverage, value, onChange }: Props) {
             </span>
           </button>
         ) : (
-          <p className="font-mono text-[11px] text-[#6F6A60]">
+          <p className="font-mono text-[11px] text-ink-muted">
             No match. Type a ticker to add a new name.
           </p>
         )

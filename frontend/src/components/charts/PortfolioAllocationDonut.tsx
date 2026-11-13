@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ResponsivePie } from '@nivo/pie';
+import { useSkinColors } from '@/hooks/useSkinColors'
 
 interface PortfolioAllocationDonutProps {
     data: Array<{ ticker: string; buyCount: number; sellCount: number }>;
@@ -7,6 +8,7 @@ interface PortfolioAllocationDonutProps {
 }
 
 export const PortfolioAllocationDonut: React.FC<PortfolioAllocationDonutProps> = ({ data, height = 200 }) => {
+    const sc = useSkinColors()
     const [hoveredId, setHoveredId] = useState<string | null>(null);
     if (!data || data.length === 0) {
         return (
@@ -76,18 +78,18 @@ export const PortfolioAllocationDonut: React.FC<PortfolioAllocationDonutProps> =
                     return (
                         <div style={{
                             padding: '8px 12px',
-                            background: '#F7F2E6', // card bg
-                            color: '#1C1B17', // ink text
+                            background: sc.surface, // card bg
+                            color: sc.ink, // ink text
                             borderRadius: '8px',
-                            border: '1px solid #D7D0C2', // border
+                            border: `1px solid ${sc.border}`, // border
                             fontSize: '12px',
                             fontWeight: '500',
-                            fontFamily: 'ui-monospace, monospace'
+                            fontFamily: sc.fontFamily
                         }}>
-                            <div style={{ marginBottom: '6px', color: '#1C1B17' }}>
+                            <div style={{ marginBottom: '6px', color: sc.ink }}>
                                 <strong>{datum.label}</strong>
                             </div>
-                            <div style={{ color: '#6F6A60', lineHeight: '1.6' }}>
+                            <div style={{ color: sc.inkMuted, lineHeight: '1.6' }}>
                                 <div>BUY: {buyCount} {buyCount === 1 ? 'time' : 'times'}</div>
                                 <div>SELL: {sellCount} {sellCount === 1 ? 'time' : 'times'}</div>
                             </div>
@@ -99,9 +101,9 @@ export const PortfolioAllocationDonut: React.FC<PortfolioAllocationDonutProps> =
                 theme={{
                     labels: {
                         text: {
-                            fill: '#6F6A60', // muted
+                            fill: sc.inkMuted, // muted
                             fontSize: 11,
-                            fontFamily: 'ui-monospace, monospace'
+                            fontFamily: sc.fontFamily
                         }
                     }
                 }}

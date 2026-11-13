@@ -50,7 +50,7 @@ export default function GhostCursor({ pull }: { pull: PendingPull | null }) {
             <path d="M1.5 1.5 L16 10 L9.2 11.4 L6 18.2 Z" fill="#1C1B17" stroke="#FBF7ED" strokeWidth="1.4" strokeLinejoin="round" />
           </svg>
           <motion.span
-            className="tb-data absolute left-4 top-4 whitespace-nowrap rounded-full bg-[#1C1B17] px-2 py-[3px] text-[10.5px] text-[#F7F2E6]"
+            className="tb-data absolute left-4 top-4 whitespace-nowrap rounded-full bg-ink px-2 py-[3px] text-[10.5px] text-paper-light"
             animate={{ opacity: [0.75, 1, 0.75] }}
             transition={{ duration: 1.6, repeat: Infinity }}
           >

@@ -444,7 +444,7 @@ export function AddRecommendationModal({
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent
-        className="bg-[#F7F2E6] border-[#D7D0C2] max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-paper-light border-border-editorial max-w-2xl max-h-[90vh] overflow-y-auto"
         // Radix focuses this container on open and it is a React ancestor of
         // the form, so a paste before the user clicks a field only lands here.
         onPaste={handleDialogPaste}
@@ -454,74 +454,74 @@ export function AddRecommendationModal({
         onDrop={(e) => e.preventDefault()}
       >
         <DialogHeader>
-          <DialogTitle className="font-mono text-xl font-bold text-[#1C1B17]">Add Recommendation</DialogTitle>
-          <DialogDescription className="font-mono text-sm text-[#6F6A60]">
+          <DialogTitle className="font-mono text-xl font-bold text-ink">Add Recommendation</DialogTitle>
+          <DialogDescription className="font-mono text-sm text-ink-muted">
             Create a new stock recommendation
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           {error && (
-            <div className="p-3 bg-[#B23B2A]/10 border border-[#B23B2A] rounded text-sm font-mono text-[#B23B2A]">
+            <div className="p-3 bg-negative/10 border border-negative rounded text-sm font-mono text-negative">
               {error}
             </div>
           )}
 
           {/* Market Selection */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">Market</Label>
+            <Label className="font-mono text-sm text-ink">Market</Label>
             <Select value={selectedMarket} onValueChange={(value: 'US' | 'IN') => setSelectedMarket(value)}>
-              <SelectTrigger className="bg-[#FBF7ED] border-[#D7D0C2] font-mono">
+              <SelectTrigger className="bg-paper-alt border-border-editorial font-mono">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17]">
-                <SelectItem value="US" className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]">USA</SelectItem>
-                <SelectItem value="IN" className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]">India</SelectItem>
+              <SelectContent className="bg-paper-alt border-border-editorial text-ink">
+                <SelectItem value="US" className="font-mono focus:bg-paper focus:text-ink">USA</SelectItem>
+                <SelectItem value="IN" className="font-mono focus:bg-paper focus:text-ink">India</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Stock Search */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">Stock Ticker *</Label>
+            <Label className="font-mono text-sm text-ink">Stock Ticker *</Label>
             <div className="relative">
               <Input
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search for a stock..."
-                className="bg-[#FBF7ED] border-[#D7D0C2] font-mono"
+                className="bg-paper-alt border-border-editorial font-mono"
               />
               {isSearching && (
-                <span className="pointer-events-none absolute right-3 top-2.5 font-mono text-xs text-[#6F6A60]">
+                <span className="pointer-events-none absolute right-3 top-2.5 font-mono text-xs text-ink-muted">
                   Searching...
                 </span>
               )}
               {ticker && (
-                <div className="mt-2 p-2 bg-[#FBF7ED] border border-[#D7D0C2] rounded">
-                  <span className="font-mono text-sm text-[#1C1B17]">Selected: {ticker}</span>
+                <div className="mt-2 p-2 bg-paper-alt border border-border-editorial rounded">
+                  <span className="font-mono text-sm text-ink">Selected: {ticker}</span>
                 </div>
               )}
               {searchError && (
-                <div className="absolute z-10 mt-1 w-full rounded border border-[#B23B2A] bg-[#FBF7ED] p-3 shadow-lg">
-                  <span className="font-mono text-xs text-[#B23B2A]">{searchError}</span>
+                <div className="absolute z-10 mt-1 w-full rounded border border-negative bg-paper-alt p-3 shadow-lg">
+                  <span className="font-mono text-xs text-negative">{searchError}</span>
                 </div>
               )}
               {!searchError && !isSearching && searchQuery.trim().length >= 2 && searchResults.length === 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-[#FBF7ED] border border-[#D7D0C2] rounded shadow-lg p-3">
-                  <span className="font-mono text-xs text-[#6F6A60]">No matches for "{searchQuery.trim()}"</span>
+                <div className="absolute z-10 w-full mt-1 bg-paper-alt border border-border-editorial rounded shadow-lg p-3">
+                  <span className="font-mono text-xs text-ink-muted">No matches for "{searchQuery.trim()}"</span>
                 </div>
               )}
               {searchResults.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-[#FBF7ED] border border-[#D7D0C2] rounded shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-paper-alt border border-border-editorial rounded shadow-lg max-h-60 overflow-y-auto">
                   {searchResults.map((result, index) => (
                     <div
                       key={`${result.symbol}-${index}-${result.exchange || ''}`}
                       onClick={() => handleSelectTicker(result.symbol)}
-                      className="p-3 hover:bg-[#F7F2E6] cursor-pointer border-b border-[#E3DDCF] last:border-0"
+                      className="p-3 hover:bg-paper-light cursor-pointer border-b border-gridline last:border-0"
                     >
-                      <div className="font-mono font-semibold text-[#1C1B17]">{result.symbol}</div>
+                      <div className="font-mono font-semibold text-ink">{result.symbol}</div>
                       {result.name && (
-                        <div className="font-mono text-xs text-[#6F6A60]">{result.name}</div>
+                        <div className="font-mono text-xs text-ink-muted">{result.name}</div>
                       )}
                     </div>
                   ))}
@@ -533,14 +533,14 @@ export function AddRecommendationModal({
           {/* Action - Only show for recommendations, not watchlist */}
           {!watchlistMode && (
             <div className="space-y-2">
-              <Label className="font-mono text-sm text-[#1C1B17]">Action *</Label>
+              <Label className="font-mono text-sm text-ink">Action *</Label>
               <Select value={action} onValueChange={(value: 'BUY' | 'SELL') => setAction(value)}>
-                <SelectTrigger className="bg-[#FBF7ED] border-[#D7D0C2] font-mono">
+                <SelectTrigger className="bg-paper-alt border-border-editorial font-mono">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17]">
-                  <SelectItem value="BUY" className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]">BUY</SelectItem>
-                  <SelectItem value="SELL" className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]">SELL</SelectItem>
+                <SelectContent className="bg-paper-alt border-border-editorial text-ink">
+                  <SelectItem value="BUY" className="font-mono focus:bg-paper focus:text-ink">BUY</SelectItem>
+                  <SelectItem value="SELL" className="font-mono focus:bg-paper focus:text-ink">SELL</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -548,7 +548,7 @@ export function AddRecommendationModal({
 
           {/* Entry Price - Only required for recommendations, optional for watchlist */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">
+            <Label className="font-mono text-sm text-ink">
               Entry Price {watchlistMode ? '(Optional)' : '*'}
             </Label>
             <Input
@@ -558,10 +558,10 @@ export function AddRecommendationModal({
               onChange={(e) => setEntryPrice(e.target.value)}
               placeholder="0.00"
               required={!watchlistMode}
-              className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums"
+              className="bg-paper-alt border-border-editorial font-mono tabular-nums"
             />
             {currentPrice && (
-              <p className="font-mono text-xs text-[#6F6A60]">
+              <p className="font-mono text-xs text-ink-muted">
                 Current price: {currencySymbol}{currentPrice.toFixed(2)}
               </p>
             )}
@@ -573,10 +573,10 @@ export function AddRecommendationModal({
             <div className="space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label className="font-mono text-sm text-[#1C1B17]">
-                    Quantity (Shares) {action === 'SELL' && <span className="text-[#6F6A60]">- Short Sell</span>}
+                  <Label className="font-mono text-sm text-ink">
+                    Quantity (Shares) {action === 'SELL' && <span className="text-ink-muted">- Short Sell</span>}
                   </Label>
-                  <div className="flex items-center gap-3 text-xs font-mono text-[#6F6A60]">
+                  <div className="flex items-center gap-3 text-xs font-mono text-ink-muted">
                     {portfolioNav !== null && (
                       <span className="whitespace-nowrap">
                         NAV: {currencySymbol}
@@ -599,11 +599,11 @@ export function AddRecommendationModal({
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
                   placeholder="Enter number of shares"
-                  className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums"
+                  className="bg-paper-alt border-border-editorial font-mono tabular-nums"
                 />
                 {/* Quick sizing based on NAV */}
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-mono text-[#6F6A60] mr-1">Quick size:</span>
+                  <span className="text-xs font-mono text-ink-muted mr-1">Quick size:</span>
                   {navQuickPercents.map((p) => (
                     <Button
                       key={p}
@@ -612,7 +612,7 @@ export function AddRecommendationModal({
                       size="sm"
                       onClick={() => applyNavPercent(p)}
                       disabled={!portfolioNav || portfolioNav <= 0 || !numericPrice || numericPrice <= 0}
-                      className="h-8 px-3 font-mono text-xs bg-[#FBF7ED] border-[#D7D0C2]"
+                      className="h-8 px-3 font-mono text-xs bg-paper-alt border-border-editorial"
                       title={
                         portfolioNav && portfolioNav > 0 && numericPrice > 0
                           ? `≈ ${Math.floor(((portfolioNav * p) / 100) / numericPrice).toLocaleString()} shares`
@@ -623,7 +623,7 @@ export function AddRecommendationModal({
                     </Button>
                   ))}
                   {pctOfNav !== null && (
-                    <span className="text-xs font-mono text-[#6F6A60]">
+                    <span className="text-xs font-mono text-ink-muted">
                       ≈ {pctOfNav.toFixed(pctOfNav < 1 ? 2 : 1)}% NAV
                     </span>
                   )}
@@ -635,15 +635,15 @@ export function AddRecommendationModal({
                 <div className={cn(
                   "p-3 rounded-lg border font-mono text-sm",
                   action === 'BUY' && hasInsufficientCash 
-                    ? "bg-[#B23B2A]/10 border-[#B23B2A]/30 text-[#B23B2A]"
-                    : "bg-[#2A6B4F]/10 border-[#2A6B4F]/30 text-[#2A6B4F]"
+                    ? "bg-negative/10 border-negative/30 text-negative"
+                    : "bg-positive-strong/10 border-positive-strong/30 text-positive-strong"
                 )}>
                   <div className="flex justify-between">
                     <span>{action === 'BUY' ? 'Required Cash:' : 'Cash Proceeds:'}</span>
                     <span className="font-semibold">{currencySymbol}{requiredCash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                   </div>
                   {pctOfNav !== null && (
-                    <div className="mt-1 text-xs text-[#6F6A60]">
+                    <div className="mt-1 text-xs text-ink-muted">
                       ≈ {pctOfNav.toFixed(pctOfNav < 1 ? 2 : 1)}% of NAV
                     </div>
                   )}
@@ -654,14 +654,14 @@ export function AddRecommendationModal({
                     </div>
                   )}
                   {action === 'SELL' && (
-                    <div className="text-xs mt-1 text-[#6F6A60]">
+                    <div className="text-xs mt-1 text-ink-muted">
                       This will create a short position. Buy back to close.
                     </div>
                   )}
                 </div>
               )}
               
-              <p className="font-mono text-xs text-[#6F6A60]">
+              <p className="font-mono text-xs text-ink-muted">
                 {action === 'BUY' 
                   ? 'Optional: Enter quantity to track as a paper trade in your portfolio'
                   : 'Optional: Enter quantity to short sell in your paper portfolio'
@@ -672,7 +672,7 @@ export function AddRecommendationModal({
 
           {/* Thesis */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">Investment Thesis</Label>
+            <Label className="font-mono text-sm text-ink">Investment Thesis</Label>
             <ThesisEditor
               value={thesis}
               onChange={setThesis}
@@ -684,7 +684,7 @@ export function AddRecommendationModal({
           {/* IRR Target */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div className="space-y-2">
-              <Label className="font-mono text-sm text-[#1C1B17]">IRR Target (%)</Label>
+              <Label className="font-mono text-sm text-ink">IRR Target (%)</Label>
               <div className="relative">
                 <Input
                   type="number"
@@ -692,33 +692,33 @@ export function AddRecommendationModal({
                   value={irrTarget}
                   onChange={(e) => setIrrTarget(e.target.value)}
                   placeholder="0.0"
-                  className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums pr-7"
+                  className="bg-paper-alt border-border-editorial font-mono tabular-nums pr-7"
                 />
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-sm text-[#6F6A60]">
+                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 font-mono text-sm text-ink-muted">
                   %
                 </span>
               </div>
-              <p className="font-mono text-xs text-[#6F6A60]">Expected annualised return</p>
+              <p className="font-mono text-xs text-ink-muted">Expected annualised return</p>
             </div>
             <div className="space-y-2">
-              <Label className="font-mono text-sm text-[#1C1B17]">Timeframe</Label>
+              <Label className="font-mono text-sm text-ink">Timeframe</Label>
               <Select value={timeframe} onValueChange={setTimeframe}>
-                <SelectTrigger className="bg-[#FBF7ED] border-[#D7D0C2] font-mono">
+                <SelectTrigger className="bg-paper-alt border-border-editorial font-mono">
                   <SelectValue placeholder="Select timeframe" />
                 </SelectTrigger>
-                <SelectContent className="max-h-60 bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17]">
+                <SelectContent className="max-h-60 bg-paper-alt border-border-editorial text-ink">
                   {IRR_TIMEFRAMES.map((tf) => (
                     <SelectItem
                       key={tf.value}
                       value={tf.value}
-                      className="font-mono focus:bg-[#F1EEE0] focus:text-[#1C1B17]"
+                      className="font-mono focus:bg-paper focus:text-ink"
                     >
                       {tf.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <p className="font-mono text-xs text-[#6F6A60]">Horizon to achieve the IRR</p>
+              <p className="font-mono text-xs text-ink-muted">Horizon to achieve the IRR</p>
             </div>
           </div>
 
@@ -732,7 +732,7 @@ export function AddRecommendationModal({
 
           {/* File Upload */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">Documents &amp; Images</Label>
+            <Label className="font-mono text-sm text-ink">Documents &amp; Images</Label>
             <FileDropzone
               items={attachments.items}
               onFiles={attachments.addFiles}
@@ -742,7 +742,7 @@ export function AddRecommendationModal({
               inputId="file-upload-modal"
             />
             {attachments.failedCount > 0 && attachments.pendingCount === 0 && (
-              <p className="font-mono text-xs text-[#B23B2A]">
+              <p className="font-mono text-xs text-negative">
                 {attachments.failedCount} file{attachments.failedCount > 1 ? 's' : ''} failed to
                 upload. Retry or remove {attachments.failedCount > 1 ? 'them' : 'it'} -- creating
                 now saves the recommendation without {attachments.failedCount > 1 ? 'them' : 'it'}.
@@ -751,12 +751,12 @@ export function AddRecommendationModal({
           </div>
 
           {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#D7D0C2]">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border-editorial">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+              className="font-mono text-xs bg-transparent border-border-editorial text-ink hover:bg-paper-alt"
             >
               Cancel
             </Button>
@@ -768,7 +768,7 @@ export function AddRecommendationModal({
                 attachments.pendingCount > 0 ||
                 (paperPortfolioEnabled && numericQty > 0 && hasInsufficientCash)
               }
-              className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+              className="font-mono text-xs bg-ink text-paper-light hover:bg-ink/90"
             >
               {attachments.pendingCount > 0
                 ? `Uploading ${attachments.pendingCount}...`

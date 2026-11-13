@@ -22,7 +22,7 @@ interface Props {
 }
 
 const fieldClass =
-  'rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2 py-1 font-mono text-xs text-[#1C1B17] focus:outline-none'
+  'rounded-lg border border-border-editorial bg-paper-alt px-2 py-1 font-mono text-xs text-ink focus:outline-none'
 
 /**
  * Logs research from several brokers in one pass.
@@ -108,7 +108,7 @@ export default function BrokerBulkUploadDialog({ open, onClose, coverage }: Prop
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-mono text-base">Broker research</DialogTitle>
-          <DialogDescription className="font-mono text-xs text-[#6F6A60]">
+          <DialogDescription className="font-mono text-xs text-ink-muted">
             Tick every broker whose note you are logging. Each becomes its own entry.
           </DialogDescription>
         </DialogHeader>
@@ -126,8 +126,8 @@ export default function BrokerBulkUploadDialog({ open, onClose, coverage }: Prop
                   className={[
                     'rounded-lg border px-2.5 py-1.5 font-mono text-[11px] transition-colors',
                     on
-                      ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6]'
-                      : 'border-[#D7D0C2] bg-[#FBF7ED] text-[#1C1B17] hover:bg-[rgba(28,27,23,0.04)]',
+                      ? 'border-ink bg-ink text-paper-light'
+                      : 'border-border-editorial bg-paper-alt text-ink hover:bg-[rgba(28,27,23,0.04)]',
                   ].join(' ')}
                 >
                   {b.name}
@@ -138,12 +138,12 @@ export default function BrokerBulkUploadDialog({ open, onClose, coverage }: Prop
 
           <div className="flex flex-wrap gap-2">
             <label className="flex flex-col gap-1">
-              <span className="font-mono text-[11px] text-[#6F6A60]">Date</span>
+              <span className="font-mono text-[11px] text-ink-muted">Date</span>
               <input type="date" value={date} onChange={(e) => setDate(e.target.value)}
                      className={fieldClass} />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="font-mono text-[11px] text-[#6F6A60]">Period</span>
+              <span className="font-mono text-[11px] text-ink-muted">Period</span>
               <select value={period} onChange={(e) => setPeriod(e.target.value)} className={fieldClass}>
                 <option value="">Not specified</option>
                 {periods.map((p) => <option key={p} value={p}>{p}</option>)}
@@ -172,7 +172,7 @@ export default function BrokerBulkUploadDialog({ open, onClose, coverage }: Prop
           })}
 
           <div className="flex flex-col gap-1.5">
-            <span className="font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]">
+            <span className="font-mono text-[11px] uppercase tracking-wider text-ink-muted">
               Key takeaways
             </span>
             <ThesisEditor

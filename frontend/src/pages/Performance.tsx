@@ -375,32 +375,32 @@ export default function Performance() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Loading performance...</div>
+      <div className="flex items-center justify-center h-full bg-paper">
+        <div className="text-ink-muted font-mono">Loading performance...</div>
       </div>
     )
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#F1EEE0] overflow-y-auto">
+    <div className="h-full flex flex-col bg-paper overflow-y-auto">
       <div className="p-6 space-y-6 max-w-[1600px] mx-auto w-full">
         {/* Header */}
       <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-mono font-bold text-[#1C1B17] tracking-tight">My Performance</h1>
+          <h1 className="text-2xl font-mono font-bold text-ink tracking-tight">My Performance</h1>
       </div>
 
         {/* Summary Metrics */}
         {performance && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+            <Card className="bg-paper-light border-border-editorial">
               <CardHeader>
-                <CardTitle className="text-base font-mono font-semibold text-[#1C1B17]">Total Return</CardTitle>
+                <CardTitle className="text-base font-mono font-semibold text-ink">Total Return</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className={`text-3xl font-mono font-bold tabular-nums ${
                   (portfolioReturns.length > 0 && portfolioReturns[portfolioReturns.length - 1]?.cumulativeReturn !== null 
                     ? portfolioReturns[portfolioReturns.length - 1].cumulativeReturn! >= 0 
-                    : performance.total_return_pct >= 0) ? "text-[#2F8F5B]" : "text-[#B23B2A]"
+                    : performance.total_return_pct >= 0) ? "text-positive" : "text-negative"
                 }`}>
                   {portfolioReturns.length > 0 && portfolioReturns[portfolioReturns.length - 1]?.cumulativeReturn !== null
                     ? `${portfolioReturns[portfolioReturns.length - 1].cumulativeReturn! >= 0 ? "+" : ""}${portfolioReturns[portfolioReturns.length - 1].cumulativeReturn!.toFixed(2)}%`
@@ -410,24 +410,24 @@ export default function Performance() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+            <Card className="bg-paper-light border-border-editorial">
               <CardHeader>
-                <CardTitle className="text-base font-mono font-semibold text-[#1C1B17]">Sharpe Ratio</CardTitle>
+                <CardTitle className="text-base font-mono font-semibold text-ink">Sharpe Ratio</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-mono font-bold text-[#1C1B17] tabular-nums">
+                <div className="text-3xl font-mono font-bold text-ink tabular-nums">
                   {performance.sharpe_ratio
                     ? performance.sharpe_ratio.toFixed(2)
                     : "N/A"}
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+            <Card className="bg-paper-light border-border-editorial">
             <CardHeader>
-                <CardTitle className="text-base font-mono font-semibold text-[#1C1B17]">Win Rate</CardTitle>
+                <CardTitle className="text-base font-mono font-semibold text-ink">Win Rate</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-mono font-bold text-[#1C1B17] tabular-nums">
+                <div className="text-3xl font-mono font-bold text-ink tabular-nums">
                   {performance.win_rate ? `${performance.win_rate.toFixed(1)}%` : "N/A"}
                 </div>
               </CardContent>
@@ -436,11 +436,11 @@ export default function Performance() {
         )}
 
         {/* Portfolio Returns Chart */}
-        <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+        <Card className="bg-paper-light border-border-editorial">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-mono font-bold text-[#1C1B17]">Portfolio Returns</CardTitle>
+            <CardTitle className="text-lg font-mono font-bold text-ink">Portfolio Returns</CardTitle>
             <Select value={portfolioReturnsPeriod} onValueChange={(value: 'day' | 'week' | 'month') => setPortfolioReturnsPeriod(value)}>
-              <SelectTrigger className="w-[120px] bg-[#FBF7ED] border-[#D7D0C2] font-mono text-sm">
+              <SelectTrigger className="w-[120px] bg-paper-alt border-border-editorial font-mono text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -452,7 +452,7 @@ export default function Performance() {
           </CardHeader>
           <CardContent>
             {portfolioReturnsLoading ? (
-              <div className="flex items-center justify-center h-[300px] text-[#6F6A60] font-mono">
+              <div className="flex items-center justify-center h-[300px] text-ink-muted font-mono">
                 Loading...
               </div>
             ) : portfolioReturns.length > 0 ? (
@@ -460,7 +460,7 @@ export default function Performance() {
                 <WeeklyReturnsChart data={portfolioReturns} height={300} />
               </div>
             ) : (
-              <div className="flex items-center justify-center h-[300px] text-[#6F6A60] font-mono">
+              <div className="flex items-center justify-center h-[300px] text-ink-muted font-mono">
                 No data available
               </div>
             )}
@@ -469,11 +469,11 @@ export default function Performance() {
 
         {/* Ideas Added Chart */}
         {ideasAddedData.length > 0 && (
-          <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+          <Card className="bg-paper-light border-border-editorial">
             <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="text-lg font-mono font-bold text-[#1C1B17]">Ideas Added</CardTitle>
+              <CardTitle className="text-lg font-mono font-bold text-ink">Ideas Added</CardTitle>
               <Select value={ideasAddedPeriod} onValueChange={(value: 'day' | 'week' | 'month') => setIdeasAddedPeriod(value)}>
-                <SelectTrigger className="w-[120px] bg-[#FBF7ED] border-[#D7D0C2] font-mono text-sm">
+                <SelectTrigger className="w-[120px] bg-paper-alt border-border-editorial font-mono text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -493,9 +493,9 @@ export default function Performance() {
 
         {/* Portfolio Allocation Chart */}
         {portfolioAllocation.length > 0 && (
-          <Card className="bg-[#F7F2E6] border-[#D7D0C2] overflow-visible">
+          <Card className="bg-paper-light border-border-editorial overflow-visible">
             <CardHeader>
-              <CardTitle className="text-lg font-mono font-bold text-[#1C1B17]">Portfolio Allocation</CardTitle>
+              <CardTitle className="text-lg font-mono font-bold text-ink">Portfolio Allocation</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-[300px] -mx-2 overflow-visible">
@@ -506,11 +506,11 @@ export default function Performance() {
         )}
 
         {/* Returns Matrix - Heatmap */}
-        <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+        <Card className="bg-paper-light border-border-editorial">
           <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg font-mono font-bold text-[#1C1B17]">Returns Matrix</CardTitle>
+            <CardTitle className="text-lg font-mono font-bold text-ink">Returns Matrix</CardTitle>
             <Select value={returnsMatrixPeriod} onValueChange={(value: 'day' | 'week' | 'month') => setReturnsMatrixPeriod(value)}>
-              <SelectTrigger className="w-[120px] bg-[#FBF7ED] border-[#D7D0C2] font-mono text-sm">
+              <SelectTrigger className="w-[120px] bg-paper-alt border-border-editorial font-mono text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -525,12 +525,12 @@ export default function Performance() {
               calendarData.length > 0 ? (
                 <DailyReturnsCalendar data={calendarData} />
               ) : (
-                <div className="text-[#6F6A60] font-mono text-center py-8">No daily returns data available</div>
+                <div className="text-ink-muted font-mono text-center py-8">No daily returns data available</div>
               )
             ) : returnsMatrixData.length > 0 ? (
               <MonthlyReturnsHeatmap data={returnsMatrixData} />
             ) : (
-              <div className="text-[#6F6A60] font-mono text-center py-8">No returns matrix data available</div>
+              <div className="text-ink-muted font-mono text-center py-8">No returns matrix data available</div>
             )}
           </CardContent>
         </Card>

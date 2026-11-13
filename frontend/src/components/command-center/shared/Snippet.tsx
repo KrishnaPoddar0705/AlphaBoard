@@ -31,7 +31,7 @@ export default function Snippet({ text, className = '' }: { text: string; classN
         if (stop === -1) return <Fragment key={i}>{part}</Fragment>
         return (
           <Fragment key={i}>
-            <mark className="bg-[#F09070] text-[#1C1B17]">{part.slice(0, stop)}</mark>
+            <mark className="bg-[#F09070] text-ink">{part.slice(0, stop)}</mark>
             {part.slice(stop + 1)}
           </Fragment>
         )

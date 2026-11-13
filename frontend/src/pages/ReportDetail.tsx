@@ -115,7 +115,7 @@ export default function ReportDetail() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 text-[#1D4ED8] animate-spin" />
+        <Loader2 className="w-8 h-8 text-link animate-spin" />
       </div>
     );
   }
@@ -125,8 +125,8 @@ export default function ReportDetail() {
       <div className="p-5 md:p-7">
         <Card>
           <CardContent className="py-12 text-center space-y-4">
-            <FileText className="w-12 h-12 text-[#8B857A] mx-auto" />
-            <h3 className="text-xl font-semibold text-[#1C1B17]">Report not found</h3>
+            <FileText className="w-12 h-12 text-ink-faint mx-auto" />
+            <h3 className="text-xl font-semibold text-ink">Report not found</h3>
             <Button
               onClick={() => navigate('/research')}
               variant="outline"
@@ -159,18 +159,18 @@ export default function ReportDetail() {
           <Button
             variant="ghost"
             onClick={() => navigate('/research')}
-            className="flex items-center gap-2 text-[#6F6A60] hover:text-[#1C1B17] mb-4 p-0 h-auto"
+            className="flex items-center gap-2 text-ink-muted hover:text-ink mb-4 p-0 h-auto"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Library
           </Button>
-          <h1 className="text-[28px] font-bold text-[#1C1B17] tracking-tight mb-2 break-words">{report.title}</h1>
-          <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm text-[#6F6A60]">
+          <h1 className="text-[28px] font-bold text-ink tracking-tight mb-2 break-words">{report.title}</h1>
+          <div className="flex flex-wrap items-center gap-3 md:gap-4 text-sm text-ink-muted">
             {report.sector && <span>{report.sector}</span>}
             {report.tickers && report.tickers.length > 0 && (
               <span className="flex flex-wrap gap-1">
                 {report.tickers.map((ticker, i) => (
-                  <span key={i} className="px-2 py-0.5 bg-[#FBF7ED] border border-[#D7D0C2] rounded text-xs font-medium">
+                  <span key={i} className="px-2 py-0.5 bg-paper-alt border border-border-editorial rounded text-xs font-medium">
                     {ticker}
                   </span>
                 ))}
@@ -206,10 +206,10 @@ export default function ReportDetail() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 md:gap-6">
         {/* Left: PDF Viewer */}
         <Card className="overflow-hidden">
-          <CardHeader className="p-4 border-b border-[#D7D0C2]">
-            <h3 className="text-[#1C1B17] font-semibold text-sm md:text-base">PDF Preview</h3>
+          <CardHeader className="p-4 border-b border-border-editorial">
+            <h3 className="text-ink font-semibold text-sm md:text-base">PDF Preview</h3>
           </CardHeader>
-          <div className="aspect-[3/4] bg-[#FBF7ED]">
+          <div className="aspect-[3/4] bg-paper-alt">
             {pdfUrl ? (
               <iframe
                 src={pdfUrl}
@@ -218,7 +218,7 @@ export default function ReportDetail() {
               />
             ) : (
               <div className="flex items-center justify-center h-full">
-                <p className="text-[#6F6A60]">PDF not available</p>
+                <p className="text-ink-muted">PDF not available</p>
               </div>
             )}
           </div>
@@ -237,8 +237,8 @@ export default function ReportDetail() {
                     onClick={() => setActiveTab(tab.id as any)}
                     className={`flex-1 px-3 md:px-4 py-2.5 md:py-3 text-xs md:text-sm font-medium transition-colors border-b-2 flex items-center justify-center gap-1.5 md:gap-2 whitespace-nowrap ${
                       activeTab === tab.id
-                        ? 'border-[#1D4ED8] text-[#1C1B17] bg-[#1D4ED8]/10'
-                        : 'border-transparent text-[#6F6A60] hover:text-[#1C1B17] hover:bg-[#FBF7ED]'
+                        ? 'border-link text-ink bg-link/10'
+                        : 'border-transparent text-ink-muted hover:text-ink hover:bg-paper-alt'
                     }`}
                   >
                     <Icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -255,8 +255,8 @@ export default function ReportDetail() {
             <CardContent className="p-4 md:p-6 max-h-[600px] overflow-y-auto">
               {!isParsed ? (
                 <div className="text-center py-8">
-                  <Loader2 className="w-8 h-8 text-[#1D4ED8] animate-spin mx-auto mb-3" />
-                  <p className="text-[#6F6A60]">Parsing in progress...</p>
+                  <Loader2 className="w-8 h-8 text-link animate-spin mx-auto mb-3" />
+                  <p className="text-ink-muted">Parsing in progress...</p>
                 </div>
               ) : (
               <>
@@ -265,26 +265,26 @@ export default function ReportDetail() {
                   <div className="space-y-5">
                     {parsed.summary_sentence && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-2 text-sm md:text-base">Key Takeaway</h3>
-                        <p className="text-[#6F6A60] text-sm md:text-base leading-relaxed">{parsed.summary_sentence}</p>
+                        <h3 className="text-ink font-semibold mb-2 text-sm md:text-base">Key Takeaway</h3>
+                        <p className="text-ink-muted text-sm md:text-base leading-relaxed">{parsed.summary_sentence}</p>
                       </div>
                     )}
                     {parsed.one_paragraph_thesis && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-2 text-sm md:text-base">Investment Thesis</h3>
-                        <p className="text-[#6F6A60] whitespace-pre-wrap text-sm md:text-base leading-relaxed">{parsed.one_paragraph_thesis}</p>
+                        <h3 className="text-ink font-semibold mb-2 text-sm md:text-base">Investment Thesis</h3>
+                        <p className="text-ink-muted whitespace-pre-wrap text-sm md:text-base leading-relaxed">{parsed.one_paragraph_thesis}</p>
                       </div>
                     )}
                     {parsed.sector_outlook && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-2 text-sm md:text-base">Sector Outlook</h3>
-                        <p className="text-[#6F6A60] text-sm md:text-base leading-relaxed">{parsed.sector_outlook}</p>
+                        <h3 className="text-ink font-semibold mb-2 text-sm md:text-base">Sector Outlook</h3>
+                        <p className="text-ink-muted text-sm md:text-base leading-relaxed">{parsed.sector_outlook}</p>
                       </div>
                     )}
                     {parsed.valuation_summary && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-2 text-sm md:text-base">Valuation Summary</h3>
-                        <p className="text-[#6F6A60] text-sm md:text-base leading-relaxed">{parsed.valuation_summary}</p>
+                        <h3 className="text-ink font-semibold mb-2 text-sm md:text-base">Valuation Summary</h3>
+                        <p className="text-ink-muted text-sm md:text-base leading-relaxed">{parsed.valuation_summary}</p>
                       </div>
                     )}
                   </div>
@@ -295,12 +295,12 @@ export default function ReportDetail() {
                   <div className="space-y-5">
                     {parsed.three_key_insights && parsed.three_key_insights.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">Key Insights</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">Key Insights</h3>
                         <ul className="space-y-2.5">
                           {parsed.three_key_insights.map((insight, i) => (
                             <li key={i} className="flex gap-3">
-                              <span className="text-[#1D4ED8] font-semibold flex-shrink-0">{i + 1}.</span>
-                              <span className="text-[#6F6A60] text-sm md:text-base">{insight}</span>
+                              <span className="text-link font-semibold flex-shrink-0">{i + 1}.</span>
+                              <span className="text-ink-muted text-sm md:text-base">{insight}</span>
                             </li>
                           ))}
                         </ul>
@@ -308,11 +308,11 @@ export default function ReportDetail() {
                     )}
                     {parsed.key_drivers && parsed.key_drivers.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">Key Drivers</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">Key Drivers</h3>
                         <ul className="space-y-2">
                           {parsed.key_drivers.map((driver, i) => (
-                            <li key={i} className="flex gap-2 text-[#6F6A60] text-sm md:text-base">
-                              <span className="text-[#1D4ED8]">•</span>
+                            <li key={i} className="flex gap-2 text-ink-muted text-sm md:text-base">
+                              <span className="text-link">•</span>
                               <span>{driver}</span>
                             </li>
                           ))}
@@ -321,12 +321,12 @@ export default function ReportDetail() {
                     )}
                     {parsed.three_actionables && parsed.three_actionables.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">Actionables</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">Actionables</h3>
                         <ul className="space-y-2.5">
                           {parsed.three_actionables.map((action, i) => (
                             <li key={i} className="flex gap-3">
-                              <span className="text-[#2F8F5B] font-semibold flex-shrink-0">{i + 1}.</span>
-                              <span className="text-[#6F6A60] text-sm md:text-base">{action}</span>
+                              <span className="text-positive font-semibold flex-shrink-0">{i + 1}.</span>
+                              <span className="text-ink-muted text-sm md:text-base">{action}</span>
                             </li>
                           ))}
                         </ul>
@@ -340,13 +340,13 @@ export default function ReportDetail() {
                   <div className="space-y-5">
                     {parsed.three_risks && parsed.three_risks.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">Top Risks</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">Top Risks</h3>
                         <ul className="space-y-3">
                           {parsed.three_risks.map((risk, i) => (
-                            <li key={i} className="p-3 bg-[#B23B2A]/10 border border-[#B23B2A]/20 rounded-lg">
+                            <li key={i} className="p-3 bg-negative/10 border border-negative/20 rounded-lg">
                               <div className="flex gap-3">
-                                <span className="text-[#B23B2A] font-semibold flex-shrink-0">{i + 1}.</span>
-                                <span className="text-[#6F6A60] text-sm md:text-base">{risk}</span>
+                                <span className="text-negative font-semibold flex-shrink-0">{i + 1}.</span>
+                                <span className="text-ink-muted text-sm md:text-base">{risk}</span>
                               </div>
                             </li>
                           ))}
@@ -355,11 +355,11 @@ export default function ReportDetail() {
                     )}
                     {parsed.risks && parsed.risks.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">All Risks</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">All Risks</h3>
                         <ul className="space-y-2">
                           {parsed.risks.map((risk, i) => (
-                            <li key={i} className="flex gap-2 text-[#6F6A60] text-sm md:text-base">
-                              <span className="text-[#B23B2A]">•</span>
+                            <li key={i} className="flex gap-2 text-ink-muted text-sm md:text-base">
+                              <span className="text-negative">•</span>
                               <span>{risk}</span>
                             </li>
                           ))}
@@ -374,13 +374,13 @@ export default function ReportDetail() {
                   <div className="space-y-5">
                     {parsed.three_catalysts && parsed.three_catalysts.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">Top Catalysts</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">Top Catalysts</h3>
                         <ul className="space-y-3">
                           {parsed.three_catalysts.map((catalyst, i) => (
-                            <li key={i} className="p-3 bg-[#2F8F5B]/10 border border-[#2F8F5B]/20 rounded-lg">
+                            <li key={i} className="p-3 bg-positive/10 border border-positive/20 rounded-lg">
                               <div className="flex gap-3">
-                                <span className="text-[#2F8F5B] font-semibold flex-shrink-0">{i + 1}.</span>
-                                <span className="text-[#6F6A60] text-sm md:text-base">{catalyst}</span>
+                                <span className="text-positive font-semibold flex-shrink-0">{i + 1}.</span>
+                                <span className="text-ink-muted text-sm md:text-base">{catalyst}</span>
                               </div>
                             </li>
                           ))}
@@ -389,11 +389,11 @@ export default function ReportDetail() {
                     )}
                     {parsed.catalysts && parsed.catalysts.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">All Catalysts</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">All Catalysts</h3>
                         <ul className="space-y-2">
                           {parsed.catalysts.map((catalyst, i) => (
-                            <li key={i} className="flex gap-2 text-[#6F6A60] text-sm md:text-base">
-                              <span className="text-[#2F8F5B]">•</span>
+                            <li key={i} className="flex gap-2 text-ink-muted text-sm md:text-base">
+                              <span className="text-positive">•</span>
                               <span>{catalyst}</span>
                             </li>
                           ))}
@@ -402,12 +402,12 @@ export default function ReportDetail() {
                     )}
                     {parsed.price_forecasts && parsed.price_forecasts.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">Price Forecasts</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">Price Forecasts</h3>
                         <div className="space-y-2">
                           {parsed.price_forecasts.map((forecast, i) => (
-                            <div key={i} className="p-3 bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg">
-                              <div className="font-medium text-[#1C1B17] text-sm md:text-base">{forecast.asset}</div>
-                              <div className="text-xs md:text-sm text-[#6F6A60] mt-1">
+                            <div key={i} className="p-3 bg-paper-alt border border-border-editorial rounded-lg">
+                              <div className="font-medium text-ink text-sm md:text-base">{forecast.asset}</div>
+                              <div className="text-xs md:text-sm text-ink-muted mt-1">
                                 {forecast.forecast} • {forecast.timeframe}
                               </div>
                             </div>
@@ -423,14 +423,14 @@ export default function ReportDetail() {
                   <div className="space-y-5">
                     {parsed.financial_tables && parsed.financial_tables.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">Financial Tables</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">Financial Tables</h3>
                         <div className="space-y-3">
                           {parsed.financial_tables.map((table, i) => (
-                            <div key={i} className="p-4 bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg">
-                              <div className="font-medium text-[#1C1B17] mb-2 text-sm md:text-base">{table.description}</div>
-                              <div className="text-xs md:text-sm text-[#6F6A60]">Page {table.page}</div>
+                            <div key={i} className="p-4 bg-paper-alt border border-border-editorial rounded-lg">
+                              <div className="font-medium text-ink mb-2 text-sm md:text-base">{table.description}</div>
+                              <div className="text-xs md:text-sm text-ink-muted">Page {table.page}</div>
                               {table.data && (
-                                <div className="mt-2 text-xs md:text-sm text-[#6F6A60] font-mono break-all">{JSON.stringify(table.data, null, 2)}</div>
+                                <div className="mt-2 text-xs md:text-sm text-ink-muted font-mono break-all">{JSON.stringify(table.data, null, 2)}</div>
                               )}
                             </div>
                           ))}
@@ -439,17 +439,17 @@ export default function ReportDetail() {
                     )}
                     {parsed.company_ratings && parsed.company_ratings.length > 0 && (
                       <div>
-                        <h3 className="text-[#1C1B17] font-semibold mb-3 text-sm md:text-base">Company Ratings</h3>
+                        <h3 className="text-ink font-semibold mb-3 text-sm md:text-base">Company Ratings</h3>
                         <div className="space-y-2">
                           {parsed.company_ratings.map((rating, i) => (
-                            <div key={i} className="p-3 bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg">
+                            <div key={i} className="p-3 bg-paper-alt border border-border-editorial rounded-lg">
                               <div className="flex items-center justify-between mb-1 flex-wrap gap-2">
-                                <span className="font-medium text-[#1C1B17] text-sm md:text-base">{rating.company}</span>
-                                <span className="px-2 py-1 bg-[#1D4ED8]/10 text-[#1D4ED8] rounded text-xs md:text-sm font-medium border border-[#1D4ED8]/20">
+                                <span className="font-medium text-ink text-sm md:text-base">{rating.company}</span>
+                                <span className="px-2 py-1 bg-link/10 text-link rounded text-xs md:text-sm font-medium border border-link/20">
                                   {rating.rating}
                                 </span>
                               </div>
-                              <p className="text-xs md:text-sm text-[#6F6A60] mt-1">{rating.rationale}</p>
+                              <p className="text-xs md:text-sm text-ink-muted mt-1">{rating.rationale}</p>
                             </div>
                           ))}
                         </div>
@@ -463,16 +463,16 @@ export default function ReportDetail() {
                   <div className="space-y-3">
                     {parsed.citations && parsed.citations.length > 0 ? (
                       parsed.citations.map((citation, i) => (
-                        <div key={i} className="p-4 bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg">
-                          <p className="text-[#6F6A60] italic mb-2 text-sm md:text-base">"{citation.text}"</p>
-                          <div className="flex items-center gap-3 text-xs md:text-sm text-[#6F6A60] flex-wrap">
+                        <div key={i} className="p-4 bg-paper-alt border border-border-editorial rounded-lg">
+                          <p className="text-ink-muted italic mb-2 text-sm md:text-base">"{citation.text}"</p>
+                          <div className="flex items-center gap-3 text-xs md:text-sm text-ink-muted flex-wrap">
                             <span>Page {citation.page}</span>
                             {citation.source && <span>• {citation.source}</span>}
                           </div>
                         </div>
                       ))
                     ) : (
-                      <p className="text-[#6F6A60] text-center py-8">No citations available</p>
+                      <p className="text-ink-muted text-center py-8">No citations available</p>
                     )}
                   </div>
                 )}

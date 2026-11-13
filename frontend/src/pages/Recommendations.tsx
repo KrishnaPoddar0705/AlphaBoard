@@ -89,25 +89,25 @@ export default function Recommendations() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Loading recommendations...</div>
+      <div className="flex items-center justify-center h-full bg-paper">
+        <div className="text-ink-muted font-mono">Loading recommendations...</div>
       </div>
     )
   }
 
   return (
-    <div className="h-full w-full max-w-full overflow-x-hidden flex flex-col bg-[#F1EEE0]">
+    <div className="h-full w-full max-w-full overflow-x-hidden flex flex-col bg-paper">
       {/* Header */}
-      <div className="w-full max-w-full border-b border-[#D7D0C2] bg-[#F7F2E6]">
+      <div className="w-full max-w-full border-b border-border-editorial bg-paper-light">
         <div className="mx-auto w-full max-w-6xl px-3 sm:px-4 md:max-w-none md:mx-0 md:px-4 min-w-0 py-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between min-w-0">
             {/* Match other page headers (e.g. Community) */}
-            <h1 className="text-[28px] font-bold text-[#1C1B17] tracking-tight leading-tight">
+            <h1 className="text-[28px] font-bold text-ink tracking-tight leading-tight">
               Recommendations
             </h1>
             <Button
               onClick={() => setShowAddModal(true)}
-              className="w-full sm:w-auto shrink-0 whitespace-nowrap font-mono text-sm bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+              className="w-full sm:w-auto shrink-0 whitespace-nowrap font-mono text-sm bg-ink text-paper-light hover:bg-ink/90"
             >
               <Plus className="h-4 w-4 mr-2" />
               Add Recommendation

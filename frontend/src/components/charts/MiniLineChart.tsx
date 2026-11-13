@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react'
 import Highcharts from 'highcharts'
 import HighchartsReact from 'highcharts-react-official'
+import { useSkinColors } from '@/hooks/useSkinColors'
 
 interface MiniLineChartProps {
   data: Array<{ timestamp: number; price: number }>
@@ -13,12 +14,13 @@ export const MiniLineChart: React.FC<MiniLineChartProps> = ({
   isPositive,
   height = 80,
 }) => {
+  const sc = useSkinColors()
   const chartOptions = useMemo(() => {
     if (!data || data.length === 0) {
       return null
     }
 
-    const lineColor = isPositive ? '#2F8F5B' : '#B23B2A'
+    const lineColor = isPositive ? sc.positive : sc.negative
     const fillColor = isPositive ? 'rgba(47, 143, 91, 0.1)' : 'rgba(178, 59, 42, 0.1)'
 
     return {
@@ -79,15 +81,15 @@ export const MiniLineChart: React.FC<MiniLineChartProps> = ({
         },
       ],
     } as Highcharts.Options
-  }, [data, isPositive, height])
+  }, [data, isPositive, height, sc])
 
   if (!chartOptions || !data || data.length === 0) {
     return (
       <div
-        className="w-full rounded-lg flex items-center justify-center border border-[#E3DDCF] bg-[#FBF7ED]"
+        className="w-full rounded-lg flex items-center justify-center border border-gridline bg-paper-alt"
         style={{ height }}
       >
-        <div className="text-[#6F6A60] text-xs">No data</div>
+        <div className="text-ink-muted text-xs">No data</div>
       </div>
     )
   }

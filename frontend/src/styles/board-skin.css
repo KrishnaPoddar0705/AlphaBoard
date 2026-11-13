@@ -1,0 +1,296 @@
+/* ---------------------------------------------------------------------------
+ * Board skin: BoardUI's look (boardui.com), toggled from the top nav.
+ *
+ * Mechanism: components colour themselves through tokens (`text-ink`,
+ * `bg-paper-light`, `border-border-editorial`, `var(--text-primary)`, ...).
+ * Paper defines them in src/index.css; this file redefines the same names
+ * under `[data-skin="board"]` on <html> (set by contexts/SkinContext.tsx and
+ * the pre-hydration script in index.html). No component knows which skin is on.
+ *
+ * Values are BoardUI's light/dark semantic tokens resolved to hex (its
+ * theme.css references Tailwind primitives; neutral-100/200 and blue-400 are
+ * its own overrides).
+ *
+ * Specificity: index.css sets the legacy variables under
+ * `:root[data-theme="light"]` (0,2,0). `html:root[data-skin]` is (0,2,1), so
+ * the skin wins regardless of import order.
+ * ------------------------------------------------------------------------- */
+
+/* `board:` variant: style a primitive for Board without touching Paper,
+ * e.g. `rounded-md board:rounded-xl board:shadow-card`. */
+@custom-variant board (&:where([data-skin="board"], [data-skin="board"] *));
+
+@theme {
+  /* BoardUI accent ramp (blue, with BoardUI's #3392ff at 400). */
+  --color-brand-50: #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-300: #93c5fd;
+  --color-brand-400: #3392ff;
+  --color-brand-500: #2b7fff;
+  --color-brand-600: #155dfc;
+  --color-brand-700: #1447e6;
+  --color-brand-800: #193cb8;
+  --color-brand-900: #1c398e;
+  --color-brand-950: #162456;
+
+  --radius-2lg: 10px;
+
+  /* BoardUI elevation recipes, copied 1:1 from its theme.css. */
+  --shadow-card: 0 1px 1px 0 rgb(0 0 0 / 0.05);
+  --shadow-dropdown: 0 1px 1px 0 rgb(0 0 0 / 0.04), 0 4px 4px 0 rgb(0 0 0 / 0.02);
+  --shadow-sidebar: 0 1px 0 0 rgb(0 0 0 / 0.0196), 0 1px 12px 0 rgb(0 0 0 / 0.0588), 0 0 1px 0 rgb(0 0 0 / 0.3216);
+  --shadow-nav-selected: 0 0 0 1px var(--color-brand-500), inset 0 1px 0 0 rgb(255 255 255 / 0.251);
+  --shadow-button-primary: 0 0 0 1px var(--color-brand-600), inset 0 1px 0 0 rgb(255 255 255 / 0.25);
+}
+
+/* ---- Light ---------------------------------------------------------------- */
+html:root[data-skin="board"] {
+  /* Paper tokens (Tailwind utilities) */
+  --color-paper: #ffffff;          /* page: BoardUI background/primary */
+  --color-paper-light: #ffffff;    /* cards: background/primary */
+  --color-paper-alt: #f7f7f7;      /* panels: BoardUI background/secondary (stat & chart cards) */
+  --color-paper-sunk: #f5f5f5;     /* table heads, wells */
+  --color-ink: #0a0a0a;
+  --color-ink-soft: #404040;
+  --color-ink-muted: #737373;
+  --color-ink-faint: #a1a1a1;
+  --color-border-editorial: #ebebeb;
+  --color-border-strong: #d4d4d4;
+  --color-gridline: #ebebeb;
+  --color-positive: #00a63e;
+  --color-positive-strong: #008236;
+  --color-negative: #e7000b;
+  --color-link: #155dfc;
+  --color-chart-orange: #ff6900;
+  --color-chart-salmon: #ff8904;
+
+  /* shadcn semantic tokens */
+  --color-background: #ffffff;
+  --color-foreground: #0a0a0a;
+  --color-border: #ebebeb;
+  --color-muted: #f7f7f7;
+  --color-muted-foreground: #737373;
+  --color-accent: #f7f7f7;
+  --color-accent-foreground: #0a0a0a;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #0a0a0a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0a0a0a;
+  --color-primary: #155dfc;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f7f7f7;
+  --color-secondary-foreground: #0a0a0a;
+  --color-destructive: #e7000b;
+  --color-destructive-foreground: #ffffff;
+  --color-input: #ebebeb;
+  --color-ring: #2b7fff;
+
+  --color-sidebar-background: #f7f7f7;
+  --color-sidebar-foreground: #0a0a0a;
+  --color-sidebar-accent: #ebebeb;
+  --color-sidebar-accent-foreground: #0a0a0a;
+  --color-sidebar-border: #ebebeb;
+
+  /* Legacy variables read through var() in components and index.css */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f7f7f7;
+  --card-bg: #ffffff;
+  --border-color: #ebebeb;
+  --gridline-color: #ebebeb;
+  --text-primary: #0a0a0a;
+  --text-secondary: #737373;
+  --text-tertiary: #a1a1a1;
+  --positive: #00a63e;
+  --positive-soft: #7bf1a8;
+  --negative: #e7000b;
+  --chart-orange: #ff6900;
+  --chart-salmon: #ff8904;
+  --link: #155dfc;
+  --hover-surface: rgba(0, 0, 0, 0.04);
+  --selected-surface: rgba(0, 0, 0, 0.06);
+  --focus-ring: rgba(43, 127, 255, 0.35);
+  --sidebar-background: #f7f7f7;
+  --sidebar-foreground: #0a0a0a;
+  --sidebar-accent: #ebebeb;
+  --sidebar-accent-foreground: #0a0a0a;
+  --sidebar-border: #ebebeb;
+  --sidebar-ring: rgba(43, 127, 255, 0.35);
+  --glass-bg: #ffffff;
+  --glass-border: #ebebeb;
+  --list-item-bg: #f7f7f7;
+  --list-item-hover: rgba(0, 0, 0, 0.04);
+
+  /* styles/paper-theme.css */
+  --paper-bg: #ffffff;
+  --paper-bg-alt: #f7f7f7;
+  --paper-ink: #0a0a0a;
+  --paper-muted: #525252;
+  --paper-subtle: #737373;
+  --paper-rule: #ebebeb;
+  --paper-rule-light: #f2f2f2;
+  --pos-green: #00a63e;
+  --neg-red: #e7000b;
+  --paper-link: #155dfc;
+  --paper-link-hover: #1447e6;
+  --paper-border: #ebebeb;
+  --paper-border-light: #f2f2f2;
+
+  /* Board-only surfaces */
+  --board-segment-track: #f5f5f5;
+  --gradient-button-primary-default: linear-gradient(180deg, var(--color-brand-500) 0%, var(--color-brand-600) 100%);
+  --gradient-button-primary-hover: linear-gradient(180deg, var(--color-brand-400) 0%, var(--color-brand-500) 100%);
+  --gradient-button-primary-active: linear-gradient(180deg, var(--color-brand-600) 0%, var(--color-brand-700) 100%);
+
+  /* Type: Inter everywhere, including the 895 `font-mono` numerals. */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-serif: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  color-scheme: light;
+}
+
+/* ---- Dark (Board + the existing data-theme="dark") ----------------------- */
+html:root[data-skin="board"][data-theme="dark"] {
+  --color-paper: #171717;
+  --color-paper-light: #262626;
+  --color-paper-alt: #262626;
+  --color-paper-sunk: #1f1f1f;
+  --color-ink: #fafafa;
+  --color-ink-soft: #d4d4d4;
+  --color-ink-muted: #a1a1a1;
+  --color-ink-faint: #737373;
+  --color-border-editorial: #333333;
+  --color-border-strong: #404040;
+  --color-gridline: #2e2e2e;
+  --color-positive: #05df72;
+  --color-positive-strong: #00c950;
+  --color-negative: #ff6467;
+  --color-link: #51a2ff;
+
+  --color-background: #171717;
+  --color-foreground: #fafafa;
+  --color-border: #333333;
+  --color-muted: #262626;
+  --color-muted-foreground: #a1a1a1;
+  --color-accent: #262626;
+  --color-accent-foreground: #fafafa;
+  --color-popover: #262626;
+  --color-popover-foreground: #fafafa;
+  --color-card: #262626;
+  --color-card-foreground: #fafafa;
+  --color-secondary: #262626;
+  --color-secondary-foreground: #fafafa;
+  --color-input: #404040;
+
+  --color-sidebar-background: #121212;
+  --color-sidebar-foreground: #fafafa;
+  --color-sidebar-accent: #262626;
+  --color-sidebar-accent-foreground: #fafafa;
+  --color-sidebar-border: #262626;
+
+  --bg-primary: #171717;
+  --bg-secondary: #262626;
+  --card-bg: #262626;
+  --border-color: #333333;
+  --gridline-color: #2e2e2e;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1a1;
+  --text-tertiary: #737373;
+  --positive: #05df72;
+  --negative: #ff6467;
+  --link: #51a2ff;
+  --hover-surface: rgba(255, 255, 255, 0.05);
+  --selected-surface: rgba(255, 255, 255, 0.08);
+  --sidebar-background: #121212;
+  --sidebar-foreground: #fafafa;
+  --sidebar-accent: #262626;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #262626;
+  --glass-bg: #262626;
+  --glass-border: #333333;
+  --list-item-bg: #262626;
+  --list-item-hover: rgba(255, 255, 255, 0.05);
+  --paper-bg: #171717;
+  --paper-bg-alt: #262626;
+  --paper-ink: #fafafa;
+  --paper-muted: #a1a1a1;
+  --paper-subtle: #737373;
+  --paper-rule: #333333;
+  --paper-rule-light: #2e2e2e;
+  --paper-border: #333333;
+  --paper-border-light: #2e2e2e;
+
+  --board-segment-track: #262626;
+  --shadow-card: 0 1px 1px 0 rgb(0 0 0 / 0.14);
+  --shadow-dropdown: 0 1px 1px 0 rgb(0 0 0 / 0.14), 0 4px 4px 0 rgb(0 0 0 / 0.10);
+  --shadow-sidebar: 0 1px 0 0 rgb(0 0 0 / 0.10), 0 1px 12px 0 rgb(0 0 0 / 0.16), 0 0 1px 0 rgb(0 0 0 / 0.42);
+
+  color-scheme: dark;
+}
+
+/* ---- Base ------------------------------------------------------------------
+ * index.css sets `* { font-family: 'IBM Plex Mono' }` in @layer base. This
+ * outranks it inside the same layer (attribute selector beats `*`) and still
+ * loses to utilities, so `font-mono` / `font-serif` resolve through the
+ * variables above. */
+@layer base {
+  [data-skin="board"] body,
+  [data-skin="board"] * {
+    font-family: var(--font-sans);
+    font-optical-sizing: auto;
+  }
+
+  [data-skin="board"] body {
+    font-feature-settings: "cv11", "tnum";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  [data-skin="board"] ::selection {
+    background-color: rgb(43 127 255 / 0.18);
+  }
+
+  /* BoardUI table recipe (.bui-table): quiet header, hairline row rules.
+   * Base layer, so any bg/text utility on a cell still wins. */
+  [data-skin="board"] th {
+    color: var(--color-ink-muted);
+    font-weight: 500;
+  }
+  [data-skin="board"] tbody tr {
+    border-color: var(--color-border-editorial);
+  }
+}
+
+/* index.css forces IBM Plex Mono on Highcharts with !important (unlayered). */
+[data-skin="board"] .highcharts-container,
+[data-skin="board"] .highcharts-root {
+  font-family: var(--font-sans) !important;
+}
+
+/* BoardUI primary button surface: the default gradient on the element with
+ * the hover gradient faded in on ::before (gradients can't transition). */
+@utility bg-button-primary {
+  position: relative;
+  isolation: isolate;
+  background-image: var(--gradient-button-primary-default);
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    border-radius: inherit;
+    background-image: var(--gradient-button-primary-hover);
+    opacity: 0;
+    transition: opacity 150ms ease;
+  }
+  &:hover:not(:disabled)::before {
+    opacity: 1;
+  }
+  &:active:not(:disabled) {
+    background-image: var(--gradient-button-primary-active);
+  }
+  &:active:not(:disabled)::before {
+    opacity: 0;
+  }
+}

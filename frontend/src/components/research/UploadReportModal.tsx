@@ -189,8 +189,8 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-lg p-6 md:p-8 text-center cursor-pointer transition-all ${
               file
-                ? 'border-[#2F8F5B] bg-[#2F8F5B]/5'
-                : 'border-[#D7D0C2] hover:border-[#1D4ED8] hover:bg-[#1D4ED8]/5'
+                ? 'border-positive bg-positive/5'
+                : 'border-border-editorial hover:border-link hover:bg-link/5'
             }`}
           >
             <input
@@ -203,28 +203,28 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
             />
             {file ? (
               <div className="flex items-center justify-center gap-3">
-                <FileText className="w-6 h-6 md:w-8 md:h-8 text-[#2F8F5B]" />
+                <FileText className="w-6 h-6 md:w-8 md:h-8 text-positive" />
                 <div className="text-left">
-                  <p className="text-[#1C1B17] font-medium text-sm md:text-base">{file.name}</p>
-                  <p className="text-xs md:text-sm text-[#6F6A60]">
+                  <p className="text-ink font-medium text-sm md:text-base">{file.name}</p>
+                  <p className="text-xs md:text-sm text-ink-muted">
                     {(file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
               </div>
             ) : (
               <div>
-                <Upload className="w-10 h-10 md:w-12 md:h-12 text-[#6F6A60] mx-auto mb-3" />
-                <p className="text-[#1C1B17] font-medium mb-1 text-sm md:text-base">
+                <Upload className="w-10 h-10 md:w-12 md:h-12 text-ink-muted mx-auto mb-3" />
+                <p className="text-ink font-medium mb-1 text-sm md:text-base">
                   Drop your PDF here or click to browse
                 </p>
-                <p className="text-xs md:text-sm text-[#6F6A60]">Maximum file size: 50MB</p>
+                <p className="text-xs md:text-sm text-ink-muted">Maximum file size: 50MB</p>
               </div>
             )}
           </div>
 
           {/* Title */}
           <div className="space-y-2">
-            <Label htmlFor="title" className="text-[#1C1B17]">
+            <Label htmlFor="title" className="text-ink">
               Report Title *
             </Label>
             <Input
@@ -239,7 +239,7 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
 
           {/* Sector */}
           <div className="space-y-2">
-            <Label className="text-[#1C1B17]">Sector</Label>
+            <Label className="text-ink">Sector</Label>
             <SectorDropdown
               value={sector}
               onChange={setSector}
@@ -251,14 +251,14 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
 
           {/* Tickers */}
           <div className="space-y-2">
-            <Label className="text-[#1C1B17]">Tickers</Label>
+            <Label className="text-ink">Tickers</Label>
             <TickerInput
               value={tickers}
               onChange={setTickers}
               disabled={uploading}
               placeholder="e.g., AAPL, MSFT, GOOGL"
             />
-            <p className="text-xs text-[#6F6A60]">
+            <p className="text-xs text-ink-muted">
               Enter ticker symbols separated by commas or search
             </p>
           </div>
@@ -267,22 +267,22 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
           {uploadStatus && (
             <div className={`flex items-center gap-3 p-4 rounded-lg border ${
               uploading
-                ? 'bg-[#1D4ED8]/10 border-[#1D4ED8]/20'
-                : 'bg-[#2F8F5B]/10 border-[#2F8F5B]/20'
+                ? 'bg-link/10 border-link/20'
+                : 'bg-positive/10 border-positive/20'
             }`}>
               {uploading ? (
-                <Loader2 className="w-5 h-5 text-[#1D4ED8] animate-spin" />
+                <Loader2 className="w-5 h-5 text-link animate-spin" />
               ) : (
-                <CheckCircle className="w-5 h-5 text-[#2F8F5B]" />
+                <CheckCircle className="w-5 h-5 text-positive" />
               )}
-              <p className="text-sm text-[#1C1B17] font-medium">{uploadStatus}</p>
+              <p className="text-sm text-ink font-medium">{uploadStatus}</p>
             </div>
           )}
 
           {/* Error */}
           {error && (
-            <div className="p-4 bg-[#B23B2A]/10 border border-[#B23B2A]/20 rounded-lg">
-              <p className="text-sm text-[#B23B2A] font-medium">{error}</p>
+            <div className="p-4 bg-negative/10 border border-negative/20 rounded-lg">
+              <p className="text-sm text-negative font-medium">{error}</p>
             </div>
           )}
         </div>
@@ -292,7 +292,7 @@ export default function UploadReportModal({ isOpen, onClose, onSuccess }: Upload
             variant="outline"
             onClick={handleClose}
             disabled={uploading}
-            className="text-[#1C1B17] border-[#D7D0C2] hover:bg-[#F7F2E6]"
+            className="text-ink border-border-editorial hover:bg-paper-light"
           >
             Cancel
           </Button>

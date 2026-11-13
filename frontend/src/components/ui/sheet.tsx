@@ -73,7 +73,7 @@ function SheetContent({
         data-slot="sheet-content"
         className={cn(
           // Content: ensure panel itself is opaque; blur belongs on the overlay.
-          "bg-background/98 supports-[backdrop-filter]:bg-background/96 text-foreground backdrop-blur-none data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-[60] flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
+          "bg-background/98 supports-[backdrop-filter]:bg-background/96 text-foreground backdrop-blur-none data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-[60] flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500 board:shadow-sidebar",
           side === "right" &&
           "data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right inset-y-0 right-0 h-full w-3/4 border-l sm:max-w-sm",
           side === "left" &&

@@ -1,0 +1,201 @@
+/* ---------------------------------------------------------------------------
+ * Board skin, part 2: the editorial idioms and the self-themed surfaces.
+ *
+ * board-skin.css swaps the colour tokens. That is not enough on its own,
+ * because the paper look is also a set of habits the components bake in:
+ * uppercase letter-spaced labels, ink-black frames and fills, and two
+ * surfaces (the Matrix and the Thinking Board) that carry their own palettes.
+ * Everything here is scoped to [data-skin="board"]; Paper never matches it.
+ * ------------------------------------------------------------------------- */
+
+/* ---- Editorial habits -> BoardUI habits -----------------------------------
+ * In the utilities layer with one extra attribute of specificity, so these
+ * beat the utility they neutralise. That extra specificity would also beat a
+ * component's own `board:` override (a single class inside :where()), so each
+ * rule skips elements that carry one for the same property. */
+@layer utilities {
+  /* BoardUI labels are sentence case with near-zero tracking (Caption 1: 0.15px). */
+  [data-skin="board"] .uppercase {
+    text-transform: none;
+  }
+  [data-skin="board"] .tracking-wide,
+  [data-skin="board"] .tracking-wider,
+  [data-skin="board"] .tracking-widest,
+  [data-skin="board"] [class*="tracking-[0."] {
+    letter-spacing: 0.01em;
+  }
+
+  /* 10-11px mono was legible in IBM Plex Mono; Inter needs BoardUI's caption sizes. */
+  [data-skin="board"] .text-\[10px\]:not([class*="board:text-xs"], [class*="board:text-sm"], [class*="board:text-base"], [class*="board:text-["]) {
+    font-size: 11px;
+  }
+  [data-skin="board"] .text-\[11px\]:not([class*="board:text-xs"], [class*="board:text-sm"], [class*="board:text-base"], [class*="board:text-["]) {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  /* Ink frames were the paper's ruled boxes. BoardUI frames with a hairline. */
+  [data-skin="board"] .border-ink:not([class*="board:border-"]) {
+    border-color: var(--color-border-strong);
+  }
+
+  /* A solid ink fill is paper's "primary / selected". In BoardUI that is the accent. */
+  [data-skin="board"] .bg-ink:not([class*="board:bg-"]) {
+    background-color: var(--color-brand-600);
+    background-image: var(--gradient-button-primary-default);
+  }
+  [data-skin="board"] [class*="hover:bg-ink/"]:not([class*="board:bg-"]):hover {
+    background-color: var(--color-brand-700);
+    background-image: var(--gradient-button-primary-hover);
+  }
+
+  /* Paper's bordered panels become BoardUI cards: grey `background-secondary`
+   * panels with no frame (stat / chart cards), white surfaces with a hairline
+   * and the 1px contact shadow (table / list cards). */
+  [data-skin="board"] .rounded-md.border.bg-paper-alt,
+  [data-skin="board"] .rounded-lg.border.bg-paper-alt,
+  [data-skin="board"] .rounded-xl.border.bg-paper-alt {
+    border-radius: 1rem;
+    border-color: transparent;
+  }
+  [data-skin="board"] .rounded-md.border.bg-paper-light,
+  [data-skin="board"] .rounded-lg.border.bg-paper-light,
+  [data-skin="board"] .rounded-xl.border.bg-paper-light {
+    border-radius: 0.875rem;
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Gentle hover on table rows, BoardUI's interactive-row recipe. */
+  [data-skin="board"] tbody tr {
+    transition: background-color 150ms ease;
+  }
+}
+
+/* ---- Matrix (components/command-center/matrix/matrix.css) ----------------
+ * It already reads everything from --mx-*; this is just a third direction. */
+[data-skin="board"] .mx {
+  --mx-canvas: #f7f7f7;
+  --mx-surface: #ffffff;
+  --mx-sunken: #fafafa;
+  --mx-raised: #ffffff;
+  --mx-text: #0a0a0a;
+  --mx-text-2: #525252;
+  --mx-text-3: #a1a1a1;
+  --mx-text-inverse: #ffffff;
+  --mx-line: #f0f0f0;
+  --mx-line-strong: #e5e5e5;
+  --mx-accent: #155dfc;
+  --mx-primary: #155dfc;
+  --mx-primary-text: #ffffff;
+  --mx-shadow: 0 1px 1px 0 rgb(0 0 0 / 0.05);
+  --mx-shadow-pop: 0 1px 0 0 rgb(0 0 0 / 0.02), 0 1px 12px 0 rgb(0 0 0 / 0.06), 0 0 1px 0 rgb(0 0 0 / 0.32), 0 24px 48px -12px rgb(0 0 0 / 0.18);
+  --mx-radius-sm: 6px;
+  --mx-radius: 8px;
+  --mx-radius-lg: 14px;
+}
+[data-skin="board"][data-theme="dark"] .mx {
+  --mx-canvas: #171717;
+  --mx-surface: #262626;
+  --mx-sunken: #1f1f1f;
+  --mx-raised: #2e2e2e;
+  --mx-text: #fafafa;
+  --mx-text-2: #a1a1a1;
+  --mx-text-3: #737373;
+  --mx-text-inverse: #0a0a0a;
+  --mx-line: #2e2e2e;
+  --mx-line-strong: #404040;
+  --mx-accent: #51a2ff;
+  --mx-primary: #2b7fff;
+}
+@layer base {
+  [data-skin="board"] .mx,
+  [data-skin="board"] .mx *,
+  [data-skin="board"] .mx .font-mono {
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ---- Thinking Board (components/command-center/thinking/thinking.css) --- */
+[data-skin="board"] .tb-canvas {
+  background-color: #f7f7f7;
+  background-image: radial-gradient(circle at 1px 1px, #dcdcdc 1px, transparent 0);
+}
+[data-skin="board"] .tb-sheet,
+[data-skin="board"] .tb-card {
+  background: #ffffff;
+  border-color: #ebebeb;
+  border-radius: 20px;
+  box-shadow: var(--shadow-sidebar);
+}
+[data-skin="board"] .tb-prose,
+[data-skin="board"] .tb-prose *,
+[data-skin="board"] .tb-title {
+  font-family: var(--font-sans) !important;
+  color: inherit;
+}
+[data-skin="board"] .tb-prose {
+  color: #0a0a0a;
+}
+[data-skin="board"] .tb-title {
+  color: #0a0a0a;
+  letter-spacing: -0.02em;
+}
+[data-skin="board"] .tb-title::placeholder,
+[data-skin="board"] .tb-prose .is-empty::before {
+  color: #a1a1a1;
+}
+[data-skin="board"] .tb-prose a { color: #155dfc; text-decoration-color: #93c5fd; }
+[data-skin="board"] .tb-prose mark { background: #dbeafe; }
+[data-skin="board"] .tb-prose code { background: #f5f5f5; }
+[data-skin="board"] .tb-prose pre { background: #0a0a0a; color: #fafafa; border-radius: 12px; }
+[data-skin="board"] .tb-prose blockquote { border-left-color: #155dfc; color: #404040; }
+[data-skin="board"] .tb-prose hr { border-top-color: #ebebeb; }
+[data-skin="board"] .tb-prose li::marker { color: #a1a1a1; }
+[data-skin="board"] .tb-prose ul[data-type='taskList'] input[type='checkbox'] { accent-color: #155dfc; }
+[data-skin="board"] .tb-prose table:not(.tb-datatable) th,
+[data-skin="board"] .tb-prose table:not(.tb-datatable) td { border-color: #ebebeb; }
+[data-skin="board"] .tb-prose table:not(.tb-datatable) th { background: #f7f7f7; }
+[data-skin="board"] .tb-prose .column-resize-handle { background: #2b7fff; }
+[data-skin="board"] .tb-prose .ProseMirror-selectednode { outline-color: #2b7fff; }
+[data-skin="board"] .tb-datatable th,
+[data-skin="board"] .tb-datatable td { border-bottom-color: #f0f0f0; }
+[data-skin="board"] .tb-datatable thead th { border-bottom-color: #ebebeb; }
+[data-skin="board"] .tb-datatable { --tb-pin-bg: #ffffff; }
+[data-skin="board"] .tb-shimmer {
+  background: linear-gradient(90deg, #f0f0f0 0%, #fafafa 45%, #f0f0f0 90%);
+  background-size: 220% 100%;
+}
+[data-skin="board"] .tb-data,
+[data-skin="board"] .tb-data * {
+  font-family: var(--font-sans);
+}
+
+/* ---- One-off paper hexes the codemod left as literals (fewer than 5 uses each) */
+@layer utilities {
+  [data-skin="board"] .text-\[\#2C4F7C\] { color: var(--color-link); }
+  [data-skin="board"] .border-\[\#2C4F7C\] { border-color: var(--color-link); }
+  [data-skin="board"] .text-\[\#B04E22\] { color: #c2410c; }
+  [data-skin="board"] .text-\[\#A39D90\] { color: var(--color-ink-faint); }
+  [data-skin="board"] .text-\[\#4A463E\] { color: var(--color-ink-soft); }
+  [data-skin="board"] .text-\[\#3A3830\] { color: var(--color-ink-muted); }
+  [data-skin="board"] .text-\[\#E9E3D3\] { color: var(--color-ink-muted); }
+  [data-skin="board"] .text-\[\#CFC8B8\] { color: var(--color-ink-muted); }
+  [data-skin="board"] .text-\[\#C9C3B4\] { color: var(--color-ink-faint); }
+  [data-skin="board"] .text-\[\#C9C1AF\] { color: var(--color-ink-faint); }
+  [data-skin="board"] .text-\[\#A9A395\] { color: var(--color-ink-faint); }
+  [data-skin="board"] .bg-\[\#FFFDF7\] { background-color: #ffffff; }
+  [data-skin="board"] .bg-\[\#F4F0E3\] { background-color: var(--color-paper-alt); }
+  [data-skin="board"] .bg-\[\#F3EEE1\] { background-color: var(--color-paper-alt); }
+  [data-skin="board"] .bg-\[\#FDECEA\] { background-color: #ffe4e6; }
+  [data-skin="board"] .bg-\[\#E6F4ED\] { background-color: #dcfce7; }
+  [data-skin="board"] .border-\[\#ECE6D6\] { border-color: var(--color-border-editorial); }
+  [data-skin="board"] .border-\[\#E6E0D2\] { border-color: var(--color-border-editorial); }
+  [data-skin="board"] .border-\[\#B8B0A0\] { border-color: var(--color-border-strong); }
+  /* Hovers: paper darkened toward the page colour; on a white page that is no change. */
+  [data-skin="board"] .hover\:bg-\[\#EAE4D5\]:hover { background-color: #f0f0f0; }
+  [data-skin="board"] .hover\:bg-\[\#E6E0D2\]:hover { background-color: #f0f0f0; }
+  [data-skin="board"] .hover\:bg-\[\#F3EEE1\]:hover { background-color: #f5f5f5; }
+  [data-skin="board"] .hover\:bg-\[\#33312B\]:hover { background-color: var(--color-brand-700); }
+  [data-skin="board"] .hover\:bg-paper:hover { background-color: var(--color-paper-sunk); }
+}

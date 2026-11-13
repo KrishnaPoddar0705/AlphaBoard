@@ -145,7 +145,7 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-mono text-base">Add to coverage</DialogTitle>
-          <DialogDescription className="font-mono text-xs text-[#6F6A60]">
+          <DialogDescription className="font-mono text-xs text-ink-muted">
             Stocks your desk tracks and researches.
           </DialogDescription>
         </DialogHeader>
@@ -163,18 +163,18 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
             {pending ? (
               <div className="flex flex-col gap-2">
                 <div>
-                  <p className="truncate font-mono text-sm text-[#1C1B17]">{pending.name}</p>
-                  <p className="font-mono text-[11px] text-[#6F6A60]">{pending.symbol} · {pending.market}</p>
+                  <p className="truncate font-mono text-sm text-ink">{pending.name}</p>
+                  <p className="font-mono text-[11px] text-ink-muted">{pending.symbol} · {pending.market}</p>
                 </div>
-                <p className="font-mono text-[11px] text-[#6F6A60]">
-                  Sector <span className="text-[#B23B2A]">· required</span>
+                <p className="font-mono text-[11px] text-ink-muted">
+                  Sector <span className="text-negative">· required</span>
                 </p>
                 <SectorPicker value={sector} onChange={setSector} />
                 <div className="mt-1 flex items-center justify-between gap-2">
                   <button
                     type="button"
                     onClick={() => { setPending(null); setSector('') }}
-                    className="font-mono text-[11px] text-[#6F6A60] underline-offset-2 hover:underline"
+                    className="font-mono text-[11px] text-ink-muted underline-offset-2 hover:underline"
                   >
                     Back to search
                   </button>
@@ -187,16 +187,16 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
             ) : (
             <>
             <div className="relative">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#8B857A]" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-faint" />
               {searching && (
-                <Loader2 className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-[#8B857A]" />
+                <Loader2 className="absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-ink-faint" />
               )}
               <input
                 autoFocus
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search a company or ticker"
-                className="w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] py-2 pl-9 pr-9 font-mono text-sm text-[#1C1B17] placeholder:text-[#8B857A] focus:border-[#8B857A] focus:outline-none"
+                className="w-full rounded-lg border border-border-editorial bg-paper-alt py-2 pl-9 pr-9 font-mono text-sm text-ink placeholder:text-ink-faint focus:border-ink-faint focus:outline-none"
               />
             </div>
 
@@ -209,18 +209,18 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
                     className="flex w-full items-center justify-between gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-60"
                   >
                     <span className="min-w-0">
-                      <span className="block truncate font-mono text-sm text-[#1C1B17]">{s.name}</span>
-                      <span className="block font-mono text-[11px] text-[#6F6A60]">
+                      <span className="block truncate font-mono text-sm text-ink">{s.name}</span>
+                      <span className="block font-mono text-[11px] text-ink-muted">
                         {s.symbol} · {s.market}
                       </span>
                     </span>
-                    <Plus className="h-4 w-4 shrink-0 text-[#6F6A60]" />
+                    <Plus className="h-4 w-4 shrink-0 text-ink-muted" />
                   </button>
                 </li>
               ))}
               {searchError && (
-                <li className="rounded-lg border border-[#B23B2A] bg-[#FBF7ED] px-3 py-2">
-                  <p className="font-mono text-[11px] text-[#B23B2A]">{searchError}</p>
+                <li className="rounded-lg border border-negative bg-paper-alt px-3 py-2">
+                  <p className="font-mono text-[11px] text-negative">{searchError}</p>
                 </li>
               )}
               {!searchError && query.trim().length >= 2 && !searching && results.length === 0 && (
@@ -234,7 +234,7 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
           <TabsContent value="watchlist" className="mt-3">
             {candidates === null ? (
               <div className="flex justify-center py-8">
-                <Loader2 className="h-5 w-5 animate-spin text-[#8B857A]" />
+                <Loader2 className="h-5 w-5 animate-spin text-ink-faint" />
               </div>
             ) : importable.length === 0 ? (
               <EmptyState
@@ -252,18 +252,18 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
                           type="checkbox"
                           checked={picked.has(c.ticker)}
                           onChange={() => toggle(c.ticker)}
-                          className="h-3.5 w-3.5 accent-[#1C1B17]"
+                          className="h-3.5 w-3.5 accent-ink"
                         />
-                        <span className="font-mono text-sm text-[#1C1B17]">{c.ticker}</span>
+                        <span className="font-mono text-sm text-ink">{c.ticker}</span>
                       </label>
                     </li>
                   ))}
                 </ul>
                 {picked.size > 0 && (
                   <div className="mt-3 flex flex-col gap-1.5">
-                    <p className="font-mono text-[11px] text-[#6F6A60]">
+                    <p className="font-mono text-[11px] text-ink-muted">
                       Sector for {picked.size === 1 ? 'this stock' : `these ${picked.size} stocks`}{' '}
-                      <span className="text-[#B23B2A]">· required</span>
+                      <span className="text-negative">· required</span>
                     </p>
                     <SectorPicker value={sector} onChange={setSector} />
                   </div>
@@ -272,7 +272,7 @@ export default function AddCoverageDialog({ open, onClose }: Props) {
                   <button
                     type="button"
                     onClick={() => setPicked(new Set(importable.map((c) => c.ticker)))}
-                    className="font-mono text-[11px] text-[#6F6A60] underline-offset-2 hover:underline"
+                    className="font-mono text-[11px] text-ink-muted underline-offset-2 hover:underline"
                   >
                     Select all {importable.length}
                   </button>

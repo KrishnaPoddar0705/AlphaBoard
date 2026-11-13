@@ -16,20 +16,20 @@ export default function AttachmentRow({ item, onRemove, onRetry }: AttachmentRow
   return (
     <div
       className={`flex items-center gap-2 rounded border p-2 ${
-        failed ? 'border-red-300 bg-red-50' : 'border-[#D7D0C2] bg-[#FBF7ED]'
+        failed ? 'border-red-300 bg-red-50' : 'border-border-editorial bg-paper-alt'
       }`}
     >
       {item.status === 'uploading' && (
-        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-[#6F6A60]" aria-hidden />
+        <Loader2 className="h-4 w-4 shrink-0 animate-spin text-ink-muted" aria-hidden />
       )}
       {item.status === 'done' && <Check className="h-4 w-4 shrink-0 text-green-700" aria-hidden />}
       {failed && <AlertCircle className="h-4 w-4 shrink-0 text-red-600" aria-hidden />}
 
       <div className="min-w-0 flex-1">
-        <p className="truncate font-mono text-xs text-[#1C1B17]" title={item.name}>
+        <p className="truncate font-mono text-xs text-ink" title={item.name}>
           {item.name}
         </p>
-        <p className={`font-mono text-[10px] ${failed ? 'text-red-600' : 'text-[#6F6A60]'}`}>
+        <p className={`font-mono text-[10px] ${failed ? 'text-red-600' : 'text-ink-muted'}`}>
           {failed
             ? item.error || 'Upload failed'
             : item.status === 'uploading'
@@ -44,7 +44,7 @@ export default function AttachmentRow({ item, onRemove, onRetry }: AttachmentRow
           variant="ghost"
           size="sm"
           onClick={() => onRetry(item.id)}
-          className="h-6 gap-1 px-2 font-mono text-[10px] text-[#1C1B17]"
+          className="h-6 gap-1 px-2 font-mono text-[10px] text-ink"
         >
           <RotateCw className="h-3 w-3" />
           Retry

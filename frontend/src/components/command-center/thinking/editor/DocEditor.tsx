@@ -30,7 +30,7 @@ function BubbleBtn({ on, label, icon: Icon, run }: {
   return (
     <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={run} aria-label={label} title={label}
       className={['flex h-7 w-7 items-center justify-center rounded-md',
-        on ? 'bg-[#F7F2E6] text-[#1C1B17]' : 'text-[#E9E3D3] hover:bg-white/10'].join(' ')}>
+        on ? 'bg-paper-light text-ink' : 'text-[#E9E3D3] hover:bg-white/10'].join(' ')}>
       <Icon className="h-[14px] w-[14px]" strokeWidth={2} />
     </button>
   )
@@ -111,7 +111,7 @@ export default function DocEditor({ initialDoc, onChange, onPull, onReady, title
 
   return (
     <div className="flex flex-col">
-      <div className="tb-no-print sticky top-0 z-10 rounded-t-[14px] border-b border-[#E6E0D2] bg-[#FBF7ED]/95 backdrop-blur">
+      <div className="tb-no-print sticky top-0 z-10 rounded-t-[14px] border-b border-[#E6E0D2] bg-paper-alt/95 backdrop-blur">
         <EditorToolbar editor={editor} />
       </div>
 
@@ -122,7 +122,7 @@ export default function DocEditor({ initialDoc, onChange, onPull, onReady, title
 
       <BubbleMenu editor={editor}
         shouldShow={({ editor: e, state }) => !state.selection.empty && !e.isActive('sourceData') && !e.isActive('codeBlock')}
-        className="flex items-center gap-0.5 rounded-lg bg-[#1C1B17] p-1 shadow-xl">
+        className="flex items-center gap-0.5 rounded-lg bg-ink p-1 shadow-xl">
         <BubbleMarks editor={editor} />
         <span className="[&_button]:text-[#E9E3D3]"><LinkControl editor={editor} compact /></span>
       </BubbleMenu>

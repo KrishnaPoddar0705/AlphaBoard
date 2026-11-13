@@ -78,7 +78,7 @@ export default function AttachmentPreview({ items }: { items: EventAttachment[] 
             )}
           </div>
           {isError ? (
-            <p className="p-4 text-[12px] text-[#B23B2A]">Could not open this file. Try "New tab" or reopen the entry.</p>
+            <p className="p-4 text-[12px] text-negative">Could not open this file. Try "New tab" or reopen the entry.</p>
           ) : loading || !url ? (
             <div className="flex h-64 items-center justify-center"><Loader2 className="size-4 animate-spin text-(--mx-text-3)" /></div>
           ) : active.mime_type?.startsWith('image/') ? (

@@ -9,6 +9,8 @@
  */
 
 @import "tailwindcss";
+@import "./styles/board-skin.css";
+@import "./styles/board-skin-pages.css";
 
 @theme {
   --color-slate-100: #f1f5f9;
@@ -34,6 +36,13 @@
   --color-negative: #B23B2A;
   --color-chart-orange: #D06030;
   --color-chart-salmon: #F09070;
+  /* Tokenised from hex classes that were hardcoded across components. Same values,
+     so paper renders identically; src/styles/board-skin.css redefines them. */
+  --color-link: #1D4ED8;
+  --color-positive-strong: #2A6B4F;
+  --color-paper-sunk: #EFE9DA;
+  --color-border-strong: #DDD6C7;
+  --color-ink-soft: #3F3C35;
   
   /* Sidebar colors */
   --color-sidebar-background: #F1EEE0;

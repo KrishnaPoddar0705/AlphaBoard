@@ -96,29 +96,29 @@ export default function BoardTree({ folders, boards, coverage, activeId, actions
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex flex-col gap-2 border-b border-[#DDD6C7] p-3">
+      <div className="flex flex-col gap-2 border-b border-border-strong p-3">
         <div className="flex gap-2">
           <button type="button" onClick={actions.pickStock}
-            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#1C1B17] font-mono text-[11.5px] text-[#F7F2E6] hover:bg-[#33312B]">
+            className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-ink font-mono text-[11.5px] text-paper-light hover:bg-[#33312B]">
             <Plus className="h-3.5 w-3.5" /> New board
           </button>
           {onCollapse && (
             <button type="button" onClick={onCollapse} aria-label="Hide notes panel" title="Hide notes panel"
-              className="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-[#DDD6C7] text-[#6F6A60] hover:bg-[#EAE4D5] hover:text-[#1C1B17]">
+              className="flex h-9 w-9 flex-none items-center justify-center rounded-lg border border-border-strong text-ink-muted hover:bg-[#EAE4D5] hover:text-ink">
               <PanelLeftClose className="h-4 w-4" />
             </button>
           )}
         </div>
-        <label className="flex h-8 items-center gap-1.5 rounded-lg border border-[#DDD6C7] bg-[#FBF7ED] px-2">
-          <Search className="h-3.5 w-3.5 flex-none text-[#8B857A]" />
+        <label className="flex h-8 items-center gap-1.5 rounded-lg border border-border-strong bg-paper-alt px-2">
+          <Search className="h-3.5 w-3.5 flex-none text-ink-faint" />
           <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find a note or stock"
-            className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-[#1C1B17] placeholder:text-[#A39D90] focus:outline-none" />
+            className="min-w-0 flex-1 bg-transparent font-mono text-[11.5px] text-ink placeholder:text-[#A39D90] focus:outline-none" />
         </label>
       </div>
 
       <div role="tree" aria-label="Research notes" className="flex-1 overflow-y-auto p-2">
         {visibleRoots.length === 0 && (
-          <p className="px-3 py-8 text-center font-mono text-[11px] leading-relaxed text-[#8B857A]">
+          <p className="px-3 py-8 text-center font-mono text-[11px] leading-relaxed text-ink-faint">
             {q ? 'No notes match.' : 'Start a board for a stock you cover. Notes, folders and pulled data live under it.'}
           </p>
         )}
@@ -131,18 +131,18 @@ export default function BoardTree({ folders, boards, coverage, activeId, actions
               <div className="group flex h-9 items-center gap-1 rounded-md pr-1 hover:bg-[#EAE4D5]">
                 <button type="button" onClick={() => toggle(key)} aria-expanded={isOpen(key)}
                   className="flex min-w-0 flex-1 items-center gap-2 px-2 text-left">
-                  <span className="flex-none rounded bg-[#E3DDCF] px-1 py-[1px] font-mono text-[10px] font-medium text-[#1C1B17]">
+                  <span className="flex-none rounded bg-gridline px-1 py-[1px] font-mono text-[10px] font-medium text-ink">
                     {c?.ticker.replace(/\.(NS|BO)$/, '') ?? '—'}
                   </span>
-                  <span className="min-w-0 truncate font-mono text-[11.5px] text-[#3F3C35]">{c?.company_name ?? 'Stock no longer covered'}</span>
+                  <span className="min-w-0 truncate font-mono text-[11.5px] text-ink-soft">{c?.company_name ?? 'Stock no longer covered'}</span>
                 </button>
                 <button type="button" title="New note" aria-label="New note" onClick={() => actions.newNote(id, null)}
-                  className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-[#8B857A] opacity-0 hover:bg-[#E6E0D2] hover:text-[#1C1B17] focus:opacity-100 group-hover:opacity-100">
+                  className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-ink-faint opacity-0 hover:bg-[#E6E0D2] hover:text-ink focus:opacity-100 group-hover:opacity-100">
                   <FilePlus2 className="h-3.5 w-3.5" />
                 </button>
                 <button type="button" title="New folder" aria-label="New folder"
                   onClick={async () => { const fid = await actions.newFolder(id, null); if (fid) setRenaming(fid) }}
-                  className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-[#8B857A] opacity-0 hover:bg-[#E6E0D2] hover:text-[#1C1B17] focus:opacity-100 group-hover:opacity-100">
+                  className="flex h-6 w-6 flex-none items-center justify-center rounded-md text-ink-faint opacity-0 hover:bg-[#E6E0D2] hover:text-ink focus:opacity-100 group-hover:opacity-100">
                   <FolderPlus className="h-3.5 w-3.5" />
                 </button>
               </div>

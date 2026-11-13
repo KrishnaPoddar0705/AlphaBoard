@@ -24,13 +24,13 @@ export default function SvanView({ event, className = '' }: Props) {
       <p className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color }}>
         Svan View
         {rating && (
-          <span className="rounded px-1.5 py-0.5 text-[#F7F2E6]" style={{ backgroundColor: color }}>
+          <span className="rounded px-1.5 py-0.5 text-paper-light" style={{ backgroundColor: color }}>
             {rating.label}
           </span>
         )}
       </p>
       {event.svan_view && (
-        <p className="mt-1 whitespace-pre-wrap font-mono text-xs leading-relaxed text-[#1C1B17]">{event.svan_view}</p>
+        <p className="mt-1 whitespace-pre-wrap font-mono text-xs leading-relaxed text-ink">{event.svan_view}</p>
       )}
     </div>
   )

@@ -20,30 +20,30 @@ export function VolumeChart({ data, height = 150 }: VolumeChartProps) {
   const config = {
     volume: {
       label: 'Volume (M)',
-      color: '#6F6A60',
+      color: 'var(--color-ink-muted)',
     },
   }
 
   return (
     <ChartContainer config={config} className="w-full" style={{ height: `${height}px`, width: '100%' }}>
       <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E3DDCF" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-gridline)" />
         <XAxis
           dataKey="date"
-          stroke="#6F6A60"
+          stroke="var(--color-ink-muted)"
           fontSize={10}
-          tick={{ fill: '#6F6A60' }}
+          tick={{ fill: 'var(--color-ink-muted)' }}
           fontFamily="ui-monospace, monospace"
         />
         <YAxis
-          stroke="#6F6A60"
+          stroke="var(--color-ink-muted)"
           fontSize={10}
-          tick={{ fill: '#6F6A60' }}
+          tick={{ fill: 'var(--color-ink-muted)' }}
           fontFamily="ui-monospace, monospace"
           tickFormatter={(value) => `${value}M`}
         />
         <ChartTooltip content={<ChartTooltipContent />} />
-        <Bar dataKey="volume" fill="#6F6A60" radius={[2, 2, 0, 0]} />
+        <Bar dataKey="volume" fill="var(--color-ink-muted)" radius={[2, 2, 0, 0]} />
       </BarChart>
     </ChartContainer>
   )

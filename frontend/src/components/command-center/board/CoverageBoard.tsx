@@ -37,8 +37,8 @@ export default function CoverageBoard({ onAdd }: { onAdd: () => void }) {
 
   return (
     <CoverageLayout onAdd={onAdd}>
-      <div className="flex min-h-[40vh] items-center justify-center rounded-xl border border-dashed border-[#D7D0C2] p-8">
-        <p className="max-w-xs text-center font-mono text-[11px] leading-relaxed text-[#8B857A]">
+      <div className="flex min-h-[40vh] items-center justify-center rounded-xl border border-dashed border-border-editorial p-8">
+        <p className="max-w-xs text-center font-mono text-[11px] leading-relaxed text-ink-faint">
           Pick a stock to read everything the desk knows about it — the timeline,
           contacts, concall and annual-report tracking, and broker coverage.
         </p>

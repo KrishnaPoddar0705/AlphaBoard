@@ -21,8 +21,8 @@ export default function SvanViewField({ values, onChange }: Props) {
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]">Svan View</span>
-      <div className="grid grid-cols-5 overflow-hidden rounded-lg border border-[#D7D0C2]" role="group" aria-label="Svan rating">
+      <span className="font-mono text-[11px] uppercase tracking-wider text-ink-muted">Svan View</span>
+      <div className="grid grid-cols-5 overflow-hidden rounded-lg border border-border-editorial" role="group" aria-label="Svan rating">
         {SVAN_RATINGS.map((r, i) => {
           const on = values.rating === r.value
           return (
@@ -31,7 +31,7 @@ export default function SvanViewField({ values, onChange }: Props) {
               type="button"
               aria-pressed={on}
               onClick={() => onChange({ ...values, rating: on ? null : r.value })}
-              className={`px-1 py-1.5 font-mono text-[10px] leading-tight transition-colors sm:text-[11px] ${i ? 'border-l border-[#D7D0C2]' : ''} ${on ? 'text-[#F7F2E6]' : 'bg-[#FBF7ED] hover:bg-[rgba(28,27,23,0.04)]'}`}
+              className={`px-1 py-1.5 font-mono text-[10px] leading-tight transition-colors sm:text-[11px] ${i ? 'border-l border-border-editorial' : ''} ${on ? 'text-paper-light' : 'bg-paper-alt hover:bg-[rgba(28,27,23,0.04)]'}`}
               style={on ? { backgroundColor: r.color } : { color: r.color }}
             >
               {r.label}
@@ -44,7 +44,7 @@ export default function SvanViewField({ values, onChange }: Props) {
         onChange={(e) => onChange({ ...values, view: e.target.value })}
         rows={3}
         placeholder="Your view: what do you make of this, and where do you stand on the stock?"
-        className="w-full rounded-lg border bg-[#FBF7ED] px-2.5 py-2 font-mono text-sm text-[#1C1B17] placeholder:text-[#8B857A] focus:outline-none"
+        className="w-full rounded-lg border bg-paper-alt px-2.5 py-2 font-mono text-sm text-ink placeholder:text-ink-faint focus:outline-none"
         style={{ borderColor: color ?? '#D7D0C2', borderLeftWidth: color ? 4 : 1 }}
       />
     </div>

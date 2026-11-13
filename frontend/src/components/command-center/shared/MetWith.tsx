@@ -22,14 +22,14 @@ export default function MetWith({ contacts, count, loading, className = '' }: Pr
   }
   if (!contacts?.length) return null
   return (
-    <span className={`inline-flex min-w-0 items-center gap-1 font-mono text-[11px] text-[#6F6A60] ${className}`}>
+    <span className={`inline-flex min-w-0 items-center gap-1 font-mono text-[11px] text-ink-muted ${className}`}>
       <Users className="h-3 w-3 shrink-0" />
       <span className="truncate">
         Met{' '}
         {contacts.map((c, i) => (
           <span key={c.id}>
             {i > 0 && ', '}
-            <span className="text-[#1C1B17]">{c.name}</span> · {role(c)}
+            <span className="text-ink">{c.name}</span> · {role(c)}
           </span>
         ))}
       </span>

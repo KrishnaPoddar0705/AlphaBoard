@@ -82,8 +82,8 @@ export default function BrokerUploadRow({
   }, [])
 
   return (
-    <div className="rounded-lg border border-[#E3DDCF] bg-[#FBF7ED] p-3">
-      <p className="mb-2 font-mono text-xs text-[#1C1B17]">{brokerName}</p>
+    <div className="rounded-lg border border-gridline bg-paper-alt p-3">
+      <p className="mb-2 font-mono text-xs text-ink">{brokerName}</p>
       <FileDropzone
         items={uploads.items}
         onFiles={uploads.addFiles}

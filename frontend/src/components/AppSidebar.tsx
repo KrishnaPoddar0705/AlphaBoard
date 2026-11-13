@@ -206,14 +206,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const userInitials = user?.firstName?.[0] || user?.emailAddresses[0]?.emailAddress[0] || "U"
 
   return (
-    <Sidebar {...props} className="border-r border-[#D7D0C2] bg-[#F1EEE0]">
+    <Sidebar {...props} className="border-r border-border-editorial bg-paper">
       <SidebarHeader className="p-4">
         <div className="flex items-center gap-2 px-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#1C1B17] text-[#F7F2E6]">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-ink text-paper-light board:bg-button-primary board:text-white board:shadow-button-primary">
             <TrendingUp className="h-4 w-4" />
           </div>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold text-[#1C1B17]">AlphaBoard</span>
+            <span className="text-sm font-semibold text-ink">AlphaBoard</span>
           </div>
         </div>
       </SidebarHeader>
@@ -279,37 +279,37 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 px-2 w-full rounded-lg hover:bg-[#F7F2E6] transition-colors"
+              className="flex items-center gap-2 px-2 w-full rounded-lg hover:bg-paper-light transition-colors"
             >
-              <Avatar className="h-8 w-8 border border-[#D7D0C2]">
+              <Avatar className="h-8 w-8 border border-border-editorial">
                 <AvatarImage src={user.imageUrl} alt={user.fullName || "User"} />
-                <AvatarFallback className="bg-[#FBF7ED] text-[#1C1B17] font-mono border border-[#D7D0C2]">
+                <AvatarFallback className="bg-paper-alt text-ink font-mono border border-border-editorial">
                   {userInitials}
                 </AvatarFallback>
               </Avatar>
               <div className="flex flex-1 flex-col min-w-0">
-                <span className="text-sm font-mono font-medium truncate text-[#1C1B17]">
+                <span className="text-sm font-mono font-medium truncate text-ink">
                   {user.fullName || user.emailAddresses[0]?.emailAddress || "User"}
                 </span>
               </div>
-              <ChevronDown className={`h-4 w-4 text-[#6F6A60] transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`h-4 w-4 text-ink-muted transition-transform ${showUserMenu ? 'rotate-180' : ''}`} />
             </button>
 
             {/* User Dropdown Menu */}
             {showUserMenu && (
-              <div className="absolute bottom-full left-0 right-0 mb-2 bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg shadow-lg z-50 overflow-hidden">
+              <div className="absolute bottom-full left-0 right-0 mb-2 bg-paper-alt border border-border-editorial rounded-lg shadow-lg z-50 overflow-hidden">
                 <div className="py-1">
                   <Link
                     to="/profile"
                     onClick={() => setShowUserMenu(false)}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-mono text-[#1C1B17] hover:bg-[#F7F2E6] transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-mono text-ink hover:bg-paper-light transition-colors"
                   >
                     <User className="h-4 w-4" />
                     <span>Profile</span>
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-mono text-[#1C1B17] hover:bg-[#F7F2E6] transition-colors w-full text-left"
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-mono text-ink hover:bg-paper-light transition-colors w-full text-left"
                   >
                     <LogOut className="h-4 w-4" />
                     <span>Logout</span>
@@ -325,14 +325,14 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
                 <>
                   <button
                     onClick={() => navigate("/login")}
-                    className="flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90 transition-colors font-mono text-sm"
+                    className="flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-ink text-paper-light hover:bg-ink/90 transition-colors font-mono text-sm"
                   >
                     <LogIn className="h-4 w-4" />
                     <span>Sign In</span>
                   </button>
                   <button
                     onClick={() => navigate("/sign-up")}
-                    className="flex items-center gap-2 px-3 py-2 w-full rounded-lg border border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6] transition-colors font-mono text-sm"
+                    className="flex items-center gap-2 px-3 py-2 w-full rounded-lg border border-border-editorial text-ink hover:bg-paper-light transition-colors font-mono text-sm"
                   >
                     <UserPlus className="h-4 w-4" />
                     <span>Create Account</span>
@@ -341,13 +341,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
               ) : (
                 <>
                   <SignInButton mode="modal">
-                    <button className="flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90 transition-colors font-mono text-sm">
+                    <button className="flex items-center gap-2 px-3 py-2 w-full rounded-lg bg-ink text-paper-light hover:bg-ink/90 transition-colors font-mono text-sm">
                       <LogIn className="h-4 w-4" />
                       <span>Sign In</span>
                     </button>
                   </SignInButton>
                   <SignUpButton mode="modal">
-                    <button className="flex items-center gap-2 px-3 py-2 w-full rounded-lg border border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6] transition-colors font-mono text-sm">
+                    <button className="flex items-center gap-2 px-3 py-2 w-full rounded-lg border border-border-editorial text-ink hover:bg-paper-light transition-colors font-mono text-sm">
                       <UserPlus className="h-4 w-4" />
                       <span>Create Account</span>
                     </button>

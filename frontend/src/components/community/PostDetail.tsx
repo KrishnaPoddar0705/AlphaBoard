@@ -102,7 +102,7 @@ export function PostDetail() {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="font-mono text-[#6F6A60]">Loading post...</p>
+        <p className="font-mono text-ink-muted">Loading post...</p>
       </div>
     );
   }
@@ -110,7 +110,7 @@ export function PostDetail() {
   if (!post) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="font-mono text-[#6F6A60]">Post not found</p>
+        <p className="font-mono text-ink-muted">Post not found</p>
       </div>
     );
   }
@@ -123,14 +123,14 @@ export function PostDetail() {
         {/* Breadcrumb */}
         <button
           onClick={() => navigate(`/stock/${ticker}/community`)}
-          className="inline-flex items-center gap-2 text-sm font-mono text-[#6F6A60] hover:text-[#1C1B17] transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-mono text-ink-muted hover:text-ink transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to {ticker} Community
         </button>
 
         {/* Post */}
-        <div className="flex gap-4 border border-[#D7D0C2] rounded bg-[#F7F2E6] p-6">
+        <div className="flex gap-4 border border-border-editorial rounded bg-paper-light p-6">
           <VoteRail
             score={post.score}
             userVote={post.user_vote}
@@ -143,19 +143,19 @@ export function PostDetail() {
                 <input
                   value={editTitle}
                   onChange={(e) => setEditTitle(e.target.value)}
-                  className="w-full p-2 font-mono font-semibold text-lg border border-[#D7D0C2] rounded bg-[#FBF7ED] text-[#1C1B17] focus:outline-none focus:ring-2 focus:ring-[#1C1B17]/20"
+                  className="w-full p-2 font-mono font-semibold text-lg border border-border-editorial rounded bg-paper-alt text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
                   maxLength={120}
                 />
                 <textarea
                   value={editBody}
                   onChange={(e) => setEditBody(e.target.value)}
-                  className="w-full p-2 font-mono text-sm border border-[#D7D0C2] rounded bg-[#FBF7ED] text-[#1C1B17] focus:outline-none focus:ring-2 focus:ring-[#1C1B17]/20"
+                  className="w-full p-2 font-mono text-sm border border-border-editorial rounded bg-paper-alt text-ink focus:outline-none focus:ring-2 focus:ring-ink/20"
                   rows={10}
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={handleEdit}
-                    className="px-4 py-2 text-sm font-mono bg-[#1C1B17] text-[#F7F2E6] rounded hover:bg-[#1C1B17]/90 transition-colors"
+                    className="px-4 py-2 text-sm font-mono bg-ink text-paper-light rounded hover:bg-ink/90 transition-colors"
                   >
                     Save
                   </button>
@@ -165,7 +165,7 @@ export function PostDetail() {
                       setEditTitle(post.title);
                       setEditBody(post.body);
                     }}
-                    className="px-4 py-2 text-sm font-mono border border-[#D7D0C2] rounded bg-[#F7F2E6] text-[#1C1B17] hover:bg-[#FBF7ED] transition-colors"
+                    className="px-4 py-2 text-sm font-mono border border-border-editorial rounded bg-paper-light text-ink hover:bg-paper-alt transition-colors"
                   >
                     Cancel
                   </button>
@@ -173,11 +173,11 @@ export function PostDetail() {
               </div>
             ) : (
               <>
-                <h1 className="font-mono font-bold text-2xl text-[#1C1B17] mb-3">
+                <h1 className="font-mono font-bold text-2xl text-ink mb-3">
                   {post.title}
                 </h1>
 
-                <div className="flex items-center gap-2 mb-4 text-sm font-mono text-[#6F6A60]">
+                <div className="flex items-center gap-2 mb-4 text-sm font-mono text-ink-muted">
                   <span>by {post.author_display || 'Anonymous'}</span>
                   <span>•</span>
                   <span className="flex items-center gap-1">
@@ -194,7 +194,7 @@ export function PostDetail() {
                       <span>•</span>
                       <button
                         onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-1 hover:text-[#1C1B17] transition-colors"
+                        className="flex items-center gap-1 hover:text-ink transition-colors"
                       >
                         <Edit2 className="h-3 w-3" />
                         Edit
@@ -202,7 +202,7 @@ export function PostDetail() {
                       <span>•</span>
                       <button
                         onClick={handleDelete}
-                        className="flex items-center gap-1 text-[#B23B2A] hover:text-[#B23B2A]/80 transition-colors"
+                        className="flex items-center gap-1 text-negative hover:text-negative/80 transition-colors"
                       >
                         <Trash2 className="h-3 w-3" />
                         Delete
@@ -212,7 +212,7 @@ export function PostDetail() {
                 </div>
 
                 <div className="prose prose-sm max-w-none mb-4">
-                  <p className="font-mono text-[#1C1B17] whitespace-pre-wrap">
+                  <p className="font-mono text-ink whitespace-pre-wrap">
                     {post.body}
                   </p>
                 </div>

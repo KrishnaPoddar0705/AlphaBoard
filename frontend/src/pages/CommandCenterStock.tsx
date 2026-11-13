@@ -123,7 +123,7 @@ export default function CommandCenterStock() {
       <SessionNotice />
 
       {/* Mobile: tabs. */}
-      <nav className="mt-4 flex gap-1 overflow-x-auto border-b border-[#D7D0C2] lg:hidden">
+      <nav className="mt-4 flex gap-1 overflow-x-auto border-b border-border-editorial lg:hidden">
         {TABS.map((t) => (
           <button
             key={t.id}
@@ -133,8 +133,8 @@ export default function CommandCenterStock() {
             className={[
               '-mb-px shrink-0 border-b-2 px-3 py-2 font-mono text-xs transition-colors',
               tab === t.id
-                ? 'border-[#1C1B17] text-[#1C1B17]'
-                : 'border-transparent text-[#6F6A60] hover:text-[#1C1B17]',
+                ? 'border-ink text-ink'
+                : 'border-transparent text-ink-muted hover:text-ink',
             ].join(' ')}
           >
             {t.label}
@@ -165,7 +165,7 @@ export default function CommandCenterStock() {
         type="button"
         onClick={openLog}
         aria-label="Log an interaction"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-[#1C1B17] bg-[#1C1B17] text-2xl text-[#F7F2E6] shadow-lg transition-transform active:scale-95 sm:hidden"
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-ink bg-ink text-2xl text-paper-light shadow-lg transition-transform active:scale-95 sm:hidden"
       >
         +
       </button>

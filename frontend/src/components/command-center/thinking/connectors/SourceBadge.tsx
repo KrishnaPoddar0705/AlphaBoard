@@ -12,7 +12,7 @@ export default function SourceBadge({ payload }: { payload: SourcePayload }) {
       title={`Pulled from ${SOURCE_LABELS[payload.source]} on ${formatFetched(payload.fetched_at)}`}>
       <BadgeCheck className="h-3 w-3" />
       {SOURCE_LABELS[payload.source]}
-      <span className="min-w-0 truncate text-[#8B857A]">{formatFetched(payload.fetched_at)}</span>
+      <span className="min-w-0 truncate text-ink-faint">{formatFetched(payload.fetched_at)}</span>
     </span>
   )
 }

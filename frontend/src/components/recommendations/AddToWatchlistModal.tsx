@@ -126,26 +126,26 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="bg-[#F7F2E6] border-[#D7D0C2] max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-paper-light border-border-editorial max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-mono text-xl font-bold text-[#1C1B17]">Add to Watchlist</DialogTitle>
-          <DialogDescription className="font-mono text-sm text-[#6F6A60]">
+          <DialogTitle className="font-mono text-xl font-bold text-ink">Add to Watchlist</DialogTitle>
+          <DialogDescription className="font-mono text-sm text-ink-muted">
             Add a stock to your watchlist to track it
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           {error && (
-            <div className="p-3 bg-[#B23B2A]/10 border border-[#B23B2A] rounded text-sm font-mono text-[#B23B2A]">
+            <div className="p-3 bg-negative/10 border border-negative rounded text-sm font-mono text-negative">
               {error}
             </div>
           )}
 
           {/* Market Selection */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">Market</Label>
+            <Label className="font-mono text-sm text-ink">Market</Label>
             <Select value={selectedMarket} onValueChange={(value: 'US' | 'IN') => setSelectedMarket(value)}>
-              <SelectTrigger className="bg-[#FBF7ED] border-[#D7D0C2] font-mono">
+              <SelectTrigger className="bg-paper-alt border-border-editorial font-mono">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -157,25 +157,25 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
 
           {/* Stock Search */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">Stock Ticker *</Label>
+            <Label className="font-mono text-sm text-ink">Stock Ticker *</Label>
             <div className="relative">
               <Input
                 value={searchQuery}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search for a stock..."
-                className="bg-[#FBF7ED] border-[#D7D0C2] font-mono"
+                className="bg-paper-alt border-border-editorial font-mono"
               />
               {searchResults.length > 0 && (
-                <div className="absolute z-10 w-full mt-1 bg-[#FBF7ED] border border-[#D7D0C2] rounded shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-10 w-full mt-1 bg-paper-alt border border-border-editorial rounded shadow-lg max-h-60 overflow-y-auto">
                   {searchResults.map((result, index) => (
                     <div
                       key={`${result.symbol}-${index}-${result.exchange || ''}`}
                       onClick={() => handleSelectTicker(result.symbol)}
-                      className="p-3 hover:bg-[#F7F2E6] cursor-pointer border-b border-[#E3DDCF] last:border-0"
+                      className="p-3 hover:bg-paper-light cursor-pointer border-b border-gridline last:border-0"
                     >
-                      <div className="font-mono font-semibold text-[#1C1B17]">{result.symbol}</div>
+                      <div className="font-mono font-semibold text-ink">{result.symbol}</div>
                       {result.name && (
-                        <div className="font-mono text-xs text-[#6F6A60]">{result.name}</div>
+                        <div className="font-mono text-xs text-ink-muted">{result.name}</div>
                       )}
                     </div>
                   ))}
@@ -183,44 +183,44 @@ export function AddToWatchlistModal({ open, onClose, onSuccess }: AddToWatchlist
               )}
             </div>
             {ticker && (
-              <p className="font-mono text-xs text-[#6F6A60]">
-                Selected: <span className="font-semibold text-[#1C1B17]">{ticker}</span>
+              <p className="font-mono text-xs text-ink-muted">
+                Selected: <span className="font-semibold text-ink">{ticker}</span>
               </p>
             )}
           </div>
 
           {/* Entry Price - Optional */}
           <div className="space-y-2">
-            <Label className="font-mono text-sm text-[#1C1B17]">Entry Price (Optional)</Label>
+            <Label className="font-mono text-sm text-ink">Entry Price (Optional)</Label>
             <Input
               type="number"
               step="0.01"
               value={entryPrice}
               onChange={(e) => setEntryPrice(e.target.value)}
               placeholder="0.00"
-              className="bg-[#FBF7ED] border-[#D7D0C2] font-mono tabular-nums"
+              className="bg-paper-alt border-border-editorial font-mono tabular-nums"
             />
             {currentPrice && (
-              <p className="font-mono text-xs text-[#6F6A60]">
-                Current price: <span className="font-semibold text-[#1C1B17]">${currentPrice.toFixed(2)}</span>
+              <p className="font-mono text-xs text-ink-muted">
+                Current price: <span className="font-semibold text-ink">${currentPrice.toFixed(2)}</span>
               </p>
             )}
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#D7D0C2]">
+          <div className="flex justify-end gap-3 pt-4 border-t border-border-editorial">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
-              className="font-mono text-sm border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+              className="font-mono text-sm border-border-editorial text-ink hover:bg-paper-alt"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading || !ticker}
-              className="font-mono text-sm bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+              className="font-mono text-sm bg-ink text-paper-light hover:bg-ink/90"
             >
               {loading ? 'Adding...' : 'Add to Watchlist'}
             </Button>

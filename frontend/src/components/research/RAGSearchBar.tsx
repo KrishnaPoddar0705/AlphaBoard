@@ -125,7 +125,7 @@ export default function RAGSearchBar() {
         <CardContent className="p-4 md:p-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[#6F6A60]" />
+              <Search className="absolute left-3 md:left-4 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-ink-muted" />
               <input
                 type="text"
                 value={query}
@@ -133,7 +133,7 @@ export default function RAGSearchBar() {
                 onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                 placeholder="Ask a question about your research reports..."
                 disabled={searching}
-                className="w-full bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg pl-9 md:pl-12 pr-4 py-2.5 md:py-3 text-[#1C1B17] placeholder-[#8B857A] focus:outline-none focus:ring-2 focus:ring-[#1D4ED8]/20 focus:border-[#1D4ED8] disabled:opacity-50 transition-all text-sm md:text-base"
+                className="w-full bg-paper-alt border border-border-editorial rounded-lg pl-9 md:pl-12 pr-4 py-2.5 md:py-3 text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-link/20 focus:border-link disabled:opacity-50 transition-all text-sm md:text-base"
               />
             </div>
             <Button
@@ -159,13 +159,13 @@ export default function RAGSearchBar() {
           {/* Example Queries */}
           {!result && !searching && (
             <div className="mt-4">
-              <p className="text-sm text-[#6F6A60] mb-2 font-medium">Try asking:</p>
+              <p className="text-sm text-ink-muted mb-2 font-medium">Try asking:</p>
               <div className="flex flex-wrap gap-2">
                 {EXAMPLE_QUERIES.map((example, index) => (
                   <button
                     key={index}
                     onClick={() => handleExampleQuery(example)}
-                    className="text-xs px-3 py-1.5 bg-[#FBF7ED] hover:bg-[#F7F2E6] border border-[#D7D0C2] rounded-full text-[#1C1B17] transition-colors font-medium"
+                    className="text-xs px-3 py-1.5 bg-paper-alt hover:bg-paper-light border border-border-editorial rounded-full text-ink transition-colors font-medium"
                   >
                     {example}
                   </button>
@@ -178,9 +178,9 @@ export default function RAGSearchBar() {
 
       {/* Error */}
       {error && (
-        <Card className="border-[#B23B2A]/30 bg-[#B23B2A]/5">
+        <Card className="border-negative/30 bg-negative/5">
           <CardContent className="p-4">
-            <p className="text-[#B23B2A] text-sm">{error}</p>
+            <p className="text-negative text-sm">{error}</p>
           </CardContent>
         </Card>
       )}
@@ -192,8 +192,8 @@ export default function RAGSearchBar() {
           <Card>
             <CardContent className="p-4 md:p-6">
               <div className="flex items-start justify-between mb-4 gap-4 flex-wrap">
-                <h3 className="text-lg font-semibold text-[#1C1B17]">Answer</h3>
-                <span className="text-xs md:text-sm text-[#6F6A60] font-mono">
+                <h3 className="text-lg font-semibold text-ink">Answer</h3>
+                <span className="text-xs md:text-sm text-ink-muted font-mono">
                   {result.total_reports_searched} reports searched in {result.query_time_ms}ms
                 </span>
               </div>
@@ -221,10 +221,10 @@ export default function RAGSearchBar() {
             <Card>
               <CardContent className="p-4 md:p-6">
                 <div className="flex items-center justify-between mb-4 gap-4 flex-wrap">
-                  <h3 className="text-lg font-semibold text-[#1C1B17]">
+                  <h3 className="text-lg font-semibold text-ink">
                     References
                   </h3>
-                  <span className="text-xs md:text-sm text-[#6F6A60]">
+                  <span className="text-xs md:text-sm text-ink-muted">
                     {result.citations.length} citation{result.citations.length !== 1 ? 's' : ''}
                   </span>
                 </div>
@@ -235,43 +235,43 @@ export default function RAGSearchBar() {
                       <div
                         key={index}
                         id={`citation-ref-${citationNumber}`}
-                        className="bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg p-4 hover:border-[#1D4ED8]/30 transition-colors"
+                        className="bg-paper-alt border border-border-editorial rounded-lg p-4 hover:border-link/30 transition-colors"
                       >
                         <div className="flex items-start gap-3">
                           {/* Citation Number */}
                           <div className="flex-shrink-0">
-                            <div className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-[#1D4ED8]/10 text-[#1D4ED8] font-semibold text-xs md:text-sm">
+                            <div className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center rounded-full bg-link/10 text-link font-semibold text-xs md:text-sm">
                               {citationNumber}
                             </div>
                           </div>
                           
                           {/* Citation Content */}
                           <div className="flex-1 min-w-0">
-                            <p className="text-[#1C1B17] text-sm leading-relaxed mb-2">
+                            <p className="text-ink text-sm leading-relaxed mb-2">
                               {citation.excerpt}
                             </p>
                             <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                               {citation.page && (
-                                <span className="inline-flex items-center gap-1 text-xs text-[#6F6A60]">
-                                  <span className="px-2 py-1 bg-[#1D4ED8]/10 text-[#1D4ED8] rounded border border-[#1D4ED8]/20 font-medium">
+                                <span className="inline-flex items-center gap-1 text-xs text-ink-muted">
+                                  <span className="px-2 py-1 bg-link/10 text-link rounded border border-link/20 font-medium">
                                     Page {citation.page}
                                   </span>
                                 </span>
                               )}
                               {citation.title && (
-                                <span className="text-xs text-[#6F6A60] font-medium">
+                                <span className="text-xs text-ink-muted font-medium">
                                   {citation.title}
                                 </span>
                               )}
                               {citation.source && !citation.title && (
-                                <span className="text-xs text-[#6F6A60]">
+                                <span className="text-xs text-ink-muted">
                                   {citation.source}
                                 </span>
                               )}
                               {citation.report_id && (
                                 <button
                                   onClick={() => navigate(`/research/${citation.report_id}`)}
-                                  className="inline-flex items-center gap-1 text-xs text-[#1D4ED8] hover:text-[#1D4ED8]/80 transition-colors font-medium"
+                                  className="inline-flex items-center gap-1 text-xs text-link hover:text-link/80 transition-colors font-medium"
                                 >
                                   View Report
                                   <ExternalLink className="w-3 h-3" />
@@ -292,22 +292,22 @@ export default function RAGSearchBar() {
           {result.relevant_reports && result.relevant_reports.length > 0 && (
             <Card>
               <CardContent className="p-4 md:p-6">
-                <h3 className="text-lg font-semibold text-[#1C1B17] mb-4">Relevant Reports</h3>
+                <h3 className="text-lg font-semibold text-ink mb-4">Relevant Reports</h3>
                 <div className="grid gap-3">
                   {result.relevant_reports.map((report) => (
                     <div
                       key={report.id}
                       onClick={() => navigate(`/research/${report.id}`)}
-                      className="p-4 bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg hover:border-[#1D4ED8]/30 transition-colors cursor-pointer group"
+                      className="p-4 bg-paper-alt border border-border-editorial rounded-lg hover:border-link/30 transition-colors cursor-pointer group"
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-start gap-3">
-                          <FileText className="w-4 h-4 md:w-5 md:h-5 text-[#1D4ED8] mt-0.5 flex-shrink-0" />
+                          <FileText className="w-4 h-4 md:w-5 md:h-5 text-link mt-0.5 flex-shrink-0" />
                           <div className="min-w-0 flex-1">
-                            <h4 className="text-[#1C1B17] font-medium group-hover:text-[#1D4ED8] transition-colors text-sm md:text-base">
+                            <h4 className="text-ink font-medium group-hover:text-link transition-colors text-sm md:text-base">
                               {report.title}
                             </h4>
-                            <div className="flex items-center gap-2 md:gap-3 mt-1 text-xs text-[#6F6A60] flex-wrap">
+                            <div className="flex items-center gap-2 md:gap-3 mt-1 text-xs text-ink-muted flex-wrap">
                               {report.sector && <span>{report.sector}</span>}
                               {report.tickers && report.tickers.length > 0 && (
                                 <span>{report.tickers.slice(0, 3).join(', ')}</span>

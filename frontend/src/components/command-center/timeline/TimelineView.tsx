@@ -86,8 +86,8 @@ export default function TimelineView({ coverageId, focusEventId, focusKey }: Pro
             className={[
               'rounded-lg border px-2.5 py-1 font-mono text-[11px] transition-colors',
               kind === k
-                ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6]'
-                : 'border-[#D7D0C2] bg-[#F7F2E6] text-[#1C1B17] hover:bg-[rgba(28,27,23,0.04)]',
+                ? 'border-ink bg-ink text-paper-light'
+                : 'border-border-editorial bg-paper-light text-ink hover:bg-[rgba(28,27,23,0.04)]',
             ].join(' ')}
           >
             {k === 'all' ? 'Everything' : KIND_LABELS[k]}
@@ -100,7 +100,7 @@ export default function TimelineView({ coverageId, focusEventId, focusKey }: Pro
       ) : (
         groupByMonth(filtered).map((group) => (
           <section key={group.key} className="flex flex-col gap-2">
-            <h3 className="font-mono text-[11px] uppercase tracking-wider text-[#8B857A]">
+            <h3 className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">
               {group.label}
             </h3>
             {group.rows.map((e) => (

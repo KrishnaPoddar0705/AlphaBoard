@@ -149,10 +149,10 @@ export default function ResearchLibrary() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
-          <h1 className="text-[28px] font-bold text-[#1C1B17] tracking-tight">
+          <h1 className="text-[28px] font-bold text-ink tracking-tight">
             Institutional Memory
           </h1>
-          <p className="text-[#6F6A60] mt-1 text-sm md:text-base">
+          <p className="text-ink-muted mt-1 text-sm md:text-base">
             Upload, search, and analyze research reports with AI-powered insights
           </p>
         </div>
@@ -176,7 +176,7 @@ export default function ResearchLibrary() {
       {/* Toggle RAG Search */}
       <button
         onClick={() => setShowRAGSearch(!showRAGSearch)}
-        className="text-sm text-[#1D4ED8] hover:text-[#1D4ED8]/80 transition-colors font-medium"
+        className="text-sm text-link hover:text-link/80 transition-colors font-medium"
       >
         {showRAGSearch ? 'Hide' : 'Show'} AI Search
       </button>
@@ -187,13 +187,13 @@ export default function ResearchLibrary() {
           <div className="space-y-4">
             {/* First Row: Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-[#6F6A60]" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-ink-muted" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search reports by title, ticker..."
-                className="w-full bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg pl-9 md:pl-10 pr-4 py-2 text-[#1C1B17] placeholder-[#8B857A] focus:outline-none focus:ring-2 focus:ring-[#1D4ED8]/20 focus:border-[#1D4ED8] transition-all text-sm md:text-base"
+                className="w-full bg-paper-alt border border-border-editorial rounded-lg pl-9 md:pl-10 pr-4 py-2 text-ink placeholder-ink-faint focus:outline-none focus:ring-2 focus:ring-link/20 focus:border-link transition-all text-sm md:text-base"
               />
             </div>
 
@@ -201,7 +201,7 @@ export default function ResearchLibrary() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* Sector Filter */}
               <div className="relative">
-                <label className="block text-xs font-medium text-[#1C1B17] mb-2">
+                <label className="block text-xs font-medium text-ink mb-2">
                   Sector
                 </label>
                 <SectorDropdown
@@ -214,7 +214,7 @@ export default function ResearchLibrary() {
 
               {/* Status Filter */}
               <div className="relative">
-                <label className="block text-xs font-medium text-[#1C1B17] mb-2">
+                <label className="block text-xs font-medium text-ink mb-2">
                   Status
                 </label>
                 <SectorDropdown
@@ -227,7 +227,7 @@ export default function ResearchLibrary() {
 
               {/* Ticker Filter */}
               <div className="relative">
-                <label className="block text-xs font-medium text-[#1C1B17] mb-2">
+                <label className="block text-xs font-medium text-ink mb-2">
                   Tickers
                 </label>
                 <TickerFilter
@@ -244,7 +244,7 @@ export default function ResearchLibrary() {
               <div className="flex justify-end">
                 <button
                   onClick={clearAllFilters}
-                  className="px-4 py-2 text-sm text-[#6F6A60] hover:text-[#1C1B17] transition-colors flex items-center gap-2 font-medium"
+                  className="px-4 py-2 text-sm text-ink-muted hover:text-ink transition-colors flex items-center gap-2 font-medium"
                 >
                   <X className="w-4 h-4" />
                   Clear All Filters
@@ -254,27 +254,27 @@ export default function ResearchLibrary() {
           </div>
 
           {/* Stats */}
-          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-[#D7D0C2]">
+          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border-editorial">
             <div className="text-sm">
-              <span className="text-[#6F6A60]">Showing </span>
-              <span className="text-[#1C1B17] font-semibold">{filteredReports.length}</span>
-              <span className="text-[#6F6A60]"> of {reports.length} reports</span>
+              <span className="text-ink-muted">Showing </span>
+              <span className="text-ink font-semibold">{filteredReports.length}</span>
+              <span className="text-ink-muted"> of {reports.length} reports</span>
             </div>
             {hasActiveFilters && (
-              <div className="flex flex-wrap items-center gap-2 text-sm text-[#6F6A60]">
+              <div className="flex flex-wrap items-center gap-2 text-sm text-ink-muted">
                 <span>Filters:</span>
                 {sectorFilter && (
-                  <span className="px-2 py-1 bg-[#1D4ED8]/10 rounded text-[#1C1B17] text-xs font-medium border border-[#1D4ED8]/20">
+                  <span className="px-2 py-1 bg-link/10 rounded text-ink text-xs font-medium border border-link/20">
                     Sector: {sectorFilter}
                   </span>
                 )}
                 {statusFilter && (
-                  <span className="px-2 py-1 bg-[#1D4ED8]/10 rounded text-[#1C1B17] text-xs font-medium border border-[#1D4ED8]/20">
+                  <span className="px-2 py-1 bg-link/10 rounded text-ink text-xs font-medium border border-link/20">
                     Status: {statusFilter}
                   </span>
                 )}
                 {tickerFilter.length > 0 && (
-                  <span className="px-2 py-1 bg-[#1D4ED8]/10 rounded text-[#1C1B17] text-xs font-medium border border-[#1D4ED8]/20">
+                  <span className="px-2 py-1 bg-link/10 rounded text-ink text-xs font-medium border border-link/20">
                     Tickers: {tickerFilter.length}
                   </span>
                 )}
@@ -287,7 +287,7 @@ export default function ResearchLibrary() {
       {/* Reports Grid */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="w-8 h-8 text-[#1D4ED8] animate-spin" />
+          <Loader2 className="w-8 h-8 text-link animate-spin" />
         </div>
       ) : filteredReports.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -298,9 +298,9 @@ export default function ResearchLibrary() {
       ) : (
         <Card>
           <CardContent className="py-12 text-center space-y-4">
-            <Filter className="w-12 h-12 text-[#8B857A] mx-auto" />
-            <h3 className="text-xl font-semibold text-[#1C1B17]">No reports found</h3>
-            <p className="text-[#6F6A60]">
+            <Filter className="w-12 h-12 text-ink-faint mx-auto" />
+            <h3 className="text-xl font-semibold text-ink">No reports found</h3>
+            <p className="text-ink-muted">
               {reports.length === 0
                 ? 'Upload your first research report to get started'
                 : 'Try adjusting your filters or search terms'}

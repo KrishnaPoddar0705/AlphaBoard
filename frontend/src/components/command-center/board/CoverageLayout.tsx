@@ -28,7 +28,7 @@ export default function CoverageLayout({ selectedTicker, onAdd, children }: Prop
           type="button"
           onClick={() => setBrowseOpen((v) => !v)}
           aria-expanded={browseOpen}
-          className="mb-3 inline-flex w-full items-center gap-1.5 rounded-lg border border-[#D7D0C2] bg-[#F7F2E6] px-3 py-2 font-mono text-[11px] text-[#1C1B17]"
+          className="mb-3 inline-flex w-full items-center gap-1.5 rounded-lg border border-border-editorial bg-paper-light px-3 py-2 font-mono text-[11px] text-ink"
         >
           {browseOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
           <List className="h-3.5 w-3.5" />

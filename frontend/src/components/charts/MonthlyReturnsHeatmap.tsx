@@ -20,7 +20,7 @@ export const MonthlyReturnsHeatmap: React.FC<MonthlyReturnsHeatmapProps> = ({ da
 
     const getCellColor = (value: number) => {
         if (value === 0) {
-            return '#FBF7ED'; // alt bg for zero/no data
+            return 'var(--color-paper-alt)'; // alt bg for zero/no data
         }
         
         // Calculate absolute value and determine intensity
@@ -29,16 +29,16 @@ export const MonthlyReturnsHeatmap: React.FC<MonthlyReturnsHeatmapProps> = ({ da
         
         if (value > 0) {
             // Positive returns: light green for small, solid green for large
-            return absValue >= threshold ? '#2F8F5B' : '#86EFAC'; // solid green or light green
+            return absValue >= threshold ? 'var(--color-positive)' : '#86EFAC'; // solid green or light green
         } else {
             // Negative returns: light red for small, solid red for large
-            return absValue >= threshold ? '#B23B2A' : '#F09070'; // solid red or light red
+            return absValue >= threshold ? 'var(--color-negative)' : 'var(--color-chart-salmon)'; // solid red or light red
         }
     };
 
     const getTextColor = (value: number) => {
-        if (value === 0) return '#6F6A60'; // muted
-        return '#1C1B17'; // ink text
+        if (value === 0) return 'var(--color-ink-muted)'; // muted
+        return 'var(--color-ink)'; // ink text
     };
 
     return (
@@ -46,13 +46,13 @@ export const MonthlyReturnsHeatmap: React.FC<MonthlyReturnsHeatmapProps> = ({ da
             <table className="w-full border-collapse font-mono">
                 <thead>
                     <tr>
-                        <th className="px-3 py-2 text-left text-xs font-medium text-[#6F6A60] uppercase border-b border-[#D7D0C2] bg-[#F7F2E6]">Year</th>
+                        <th className="px-3 py-2 text-left text-xs font-medium text-ink-muted uppercase border-b border-border-editorial bg-paper-light">Year</th>
                         {months.map(month => (
-                            <th key={month} className="px-2 py-2 text-center text-xs font-medium text-[#6F6A60] uppercase border-b border-[#D7D0C2] bg-[#F7F2E6]">
+                            <th key={month} className="px-2 py-2 text-center text-xs font-medium text-ink-muted uppercase border-b border-border-editorial bg-paper-light">
                                 {month}
                             </th>
                         ))}
-                        <th className="px-3 py-2 text-right text-xs font-medium text-[#6F6A60] uppercase border-b border-[#D7D0C2] bg-[#F7F2E6]">Total</th>
+                        <th className="px-3 py-2 text-right text-xs font-medium text-ink-muted uppercase border-b border-border-editorial bg-paper-light">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -65,15 +65,15 @@ export const MonthlyReturnsHeatmap: React.FC<MonthlyReturnsHeatmapProps> = ({ da
                         const totalPct = total * 100;
 
                         return (
-                            <tr key={year} className="hover:bg-[#FBF7ED] transition-colors">
-                                <td className="px-3 py-2 text-sm font-medium text-[#1C1B17] border-b border-[#E3DDCF]">{year}</td>
+                            <tr key={year} className="hover:bg-paper-alt transition-colors">
+                                <td className="px-3 py-2 text-sm font-medium text-ink border-b border-gridline">{year}</td>
                                 {months.map((_, monthIdx) => {
                                     const month = monthIdx + 1;
                                     const value = yearData[month] || 0;
                                     return (
                                         <td
                                             key={month}
-                                            className="px-2 py-2 text-center text-xs border-b border-[#E3DDCF] tabular-nums"
+                                            className="px-2 py-2 text-center text-xs border-b border-gridline tabular-nums"
                                             style={{
                                                 backgroundColor: getCellColor(value),
                                                 color: getTextColor(value)
@@ -84,9 +84,9 @@ export const MonthlyReturnsHeatmap: React.FC<MonthlyReturnsHeatmapProps> = ({ da
                                     );
                                 })}
                                 <td
-                                    className="px-3 py-2 text-right text-sm font-medium border-b border-[#E3DDCF] tabular-nums"
+                                    className="px-3 py-2 text-right text-sm font-medium border-b border-gridline tabular-nums"
                                     style={{
-                                        color: totalPct >= 0 ? '#2F8F5B' : '#B23B2A'
+                                        color: totalPct >= 0 ? 'var(--color-positive)' : 'var(--color-negative)'
                                     }}
                                 >
                                     {totalPct >= 0 ? '+' : ''}{totalPct.toFixed(2)}%

@@ -116,7 +116,7 @@ export function CommunityActionStrip({
     <TooltipProvider>
       <div
         className={`
-          flex items-center gap-0 border border-[#D7D0C2] rounded-md bg-[#F7F2E6] overflow-hidden
+          flex items-center gap-0 border border-border-editorial rounded-md bg-paper-light overflow-hidden
           h-[34px] px-0
           ${className}
         `}
@@ -124,7 +124,7 @@ export function CommunityActionStrip({
         {/* Section 1: Vote Control */}
         <div
           className={`
-            flex items-center gap-0 border-r border-[#D7D0C2] last:border-r-0
+            flex items-center gap-0 border-r border-border-editorial last:border-r-0
             ${isUpvoted ? 'bg-[rgba(47,143,91,0.12)]' : ''}
             ${isDownvoted ? 'bg-[rgba(178,59,42,0.12)]' : ''}
           `}
@@ -144,7 +144,7 @@ export function CommunityActionStrip({
               >
                 <ArrowUp
                   className={`h-[16px] w-[16px] ${
-                    isUpvoted ? 'text-[#2F8F5B]' : 'text-[#6F6A60]'
+                    isUpvoted ? 'text-positive' : 'text-ink-muted'
                   }`}
                 />
               </button>
@@ -157,7 +157,7 @@ export function CommunityActionStrip({
           <span
             className={`
               text-xs font-mono tabular-nums px-2 min-w-[32px] text-center
-              ${currentScore > 0 ? 'text-[#2F8F5B]' : currentScore < 0 ? 'text-[#B23B2A]' : 'text-[#1C1B17]'}
+              ${currentScore > 0 ? 'text-positive' : currentScore < 0 ? 'text-negative' : 'text-ink'}
             `}
           >
             {currentScore}
@@ -178,7 +178,7 @@ export function CommunityActionStrip({
               >
                 <ArrowDown
                   className={`h-[16px] w-[16px] ${
-                    isDownvoted ? 'text-[#B23B2A]' : 'text-[#6F6A60]'
+                    isDownvoted ? 'text-negative' : 'text-ink-muted'
                   }`}
                 />
               </button>
@@ -194,10 +194,10 @@ export function CommunityActionStrip({
           <TooltipTrigger asChild>
             <button
               onClick={handleCommentClick}
-              className="h-[34px] px-2 flex items-center gap-1.5 hover:bg-[rgba(28,27,23,0.04)] transition-colors border-r border-[#D7D0C2] last:border-r-0"
+              className="h-[34px] px-2 flex items-center gap-1.5 hover:bg-[rgba(28,27,23,0.04)] transition-colors border-r border-border-editorial last:border-r-0"
             >
-              <MessageSquare className="h-[16px] w-[16px] text-[#6F6A60]" />
-              <span className="text-xs font-mono tabular-nums text-[#1C1B17]">
+              <MessageSquare className="h-[16px] w-[16px] text-ink-muted" />
+              <span className="text-xs font-mono tabular-nums text-ink">
                 {commentCount}
               </span>
             </button>
@@ -215,8 +215,8 @@ export function CommunityActionStrip({
                 onClick={handleThreadClick}
                 className="h-[34px] px-2 flex items-center gap-1.5 hover:bg-[rgba(28,27,23,0.04)] transition-colors"
               >
-                <ThreadIcon className="h-[16px] w-[16px] text-[#6F6A60]" />
-                <span className="text-xs font-mono tabular-nums text-[#1C1B17]">
+                <ThreadIcon className="h-[16px] w-[16px] text-ink-muted" />
+                <span className="text-xs font-mono tabular-nums text-ink">
                   {threadCount}
                 </span>
               </button>
@@ -235,7 +235,7 @@ export function CommunityActionStrip({
                 onClick={handleCommentClick}
                 className="h-[34px] px-2 flex items-center gap-1.5 hover:bg-[rgba(28,27,23,0.04)] transition-colors"
               >
-                <ThreadIcon className="h-[16px] w-[16px] text-[#6F6A60]" />
+                <ThreadIcon className="h-[16px] w-[16px] text-ink-muted" />
               </button>
             </TooltipTrigger>
             <TooltipContent>

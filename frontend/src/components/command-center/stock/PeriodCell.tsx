@@ -13,10 +13,10 @@ interface Props {
 }
 
 const STYLE: Record<CellState, string> = {
-  logged: 'border-[#2F8F5B] bg-[#2F8F5B] text-[#F7F2E6] hover:bg-[#287A4E]',
-  upcoming: 'border-dashed border-[#D06030] bg-[rgba(208,96,48,0.06)] text-[#B04E22] hover:bg-[rgba(208,96,48,0.12)]',
-  next: 'border-dashed border-[#B8B0A0] bg-transparent text-[#6F6A60] hover:border-[#1C1B17] hover:text-[#1C1B17]',
-  empty: 'border-[#D7D0C2] bg-[#FBF7ED] text-[#8B857A] hover:border-[#8B857A] hover:text-[#1C1B17]',
+  logged: 'border-positive bg-positive text-paper-light hover:bg-[#287A4E]',
+  upcoming: 'border-dashed border-chart-orange bg-[rgba(208,96,48,0.06)] text-[#B04E22] hover:bg-[rgba(208,96,48,0.12)]',
+  next: 'border-dashed border-[#B8B0A0] bg-transparent text-ink-muted hover:border-ink hover:text-ink',
+  empty: 'border-border-editorial bg-paper-alt text-ink-faint hover:border-ink-faint hover:text-ink',
 }
 
 /** One period in the tracker: green once logged, dashed while booked, a "+" when missing. */

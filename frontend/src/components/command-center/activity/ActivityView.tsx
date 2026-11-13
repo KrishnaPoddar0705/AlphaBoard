@@ -66,8 +66,8 @@ function ActivityViewLoaded() {
             className={[
               'rounded-lg border px-3 py-1.5 font-mono text-[11px] transition-colors',
               pane === p
-                ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6]'
-                : 'border-[#D7D0C2] bg-[#F7F2E6] text-[#1C1B17] hover:bg-[rgba(28,27,23,0.04)]',
+                ? 'border-ink bg-ink text-paper-light'
+                : 'border-border-editorial bg-paper-light text-ink hover:bg-[rgba(28,27,23,0.04)]',
             ].join(' ')}
           >
             {p === 'stream' ? 'Activity' : 'Gaps'}

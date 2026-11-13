@@ -18,8 +18,8 @@ export function TimeRangeChips({ value, onChange }: TimeRangeChipsProps) {
           onClick={() => onChange(range)}
           className={`font-mono text-xs px-3 py-1.5 h-auto ${
             value === range
-              ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17] hover:bg-[#1C1B17]/90'
-              : 'bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#F7F2E6]'
+              ? 'bg-ink text-paper-light border-ink hover:bg-ink/90'
+              : 'bg-transparent border-border-editorial text-ink hover:bg-paper-light'
           }`}
         >
           {range}

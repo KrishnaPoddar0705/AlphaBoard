@@ -77,7 +77,7 @@ const ChartContainer = React.forwardRef<
       data-chart={chartId}
       ref={combinedRef}
       className={cn(
-        "relative w-full min-w-[200px] min-h-[200px] text-xs [&_.recharts-cartesian-axis-tick_text]:fill-[#6F6A60] [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-[#E3DDCF] [&_.recharts-curve.recharts-tooltip-cursor]:stroke-[#D7D0C2] [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-[#E3DDCF] [&_.recharts-radial-bar-background-sector]:fill-[#F7F2E6] [&_.recharts-reference-line-line]:stroke-[#D7D0C2] [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
+        "relative w-full min-w-[200px] min-h-[200px] text-xs [&_.recharts-cartesian-axis-tick_text]:fill-ink-muted [&_.recharts-cartesian-grid_line[stroke='#ccc']]:stroke-gridline [&_.recharts-curve.recharts-tooltip-cursor]:stroke-border-editorial [&_.recharts-dot[stroke='#fff']]:stroke-transparent [&_.recharts-layer]:outline-none [&_.recharts-polar-grid_[stroke='#ccc']]:stroke-gridline [&_.recharts-radial-bar-background-sector]:fill-paper-light [&_.recharts-reference-line-line]:stroke-border-editorial [&_.recharts-sector[stroke='#fff']]:stroke-transparent [&_.recharts-sector]:outline-none [&_.recharts-surface]:outline-none",
         className
       )}
       style={{ width: '100%', minWidth: '200px', minHeight: '200px', ...props.style }}
@@ -186,7 +186,7 @@ const ChartTooltipContent = React.forwardRef<
       <div
         ref={ref}
         className={cn(
-          "grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2.5 py-1.5 text-xs shadow-md",
+          "grid min-w-[8rem] items-start gap-1.5 rounded-lg border border-border-editorial bg-paper-alt px-2.5 py-1.5 text-xs shadow-md",
           className
         )}
       >
@@ -201,7 +201,7 @@ const ChartTooltipContent = React.forwardRef<
               <div
                 key={item.dataKey}
                 className={cn(
-                  "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-[#6F6A60]",
+                  "flex w-full flex-wrap items-stretch gap-2 [&>svg]:h-2.5 [&>svg]:w-2.5 [&>svg]:text-ink-muted",
                   indicator === "dot" && "items-center"
                 )}
               >
@@ -235,11 +235,11 @@ const ChartTooltipContent = React.forwardRef<
                         "gap-2"
                       )}
                     >
-                      <div className={cn("text-[#6F6A60]")}>
+                      <div className={cn("text-ink-muted")}>
                         {itemConfig?.label || item.name}
                       </div>
                       {item.value && (
-                        <div className={cn("font-mono tabular-nums font-medium text-[#1C1B17]")}>
+                        <div className={cn("font-mono tabular-nums font-medium text-ink")}>
                           {typeof item.value === "number" ? item.value.toLocaleString() : item.value}
                         </div>
                       )}
@@ -285,7 +285,7 @@ const ChartLegendContent = React.forwardRef<
           <div
             key={item.dataKey}
             className={cn(
-              "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-[#6F6A60]"
+              "flex items-center gap-1.5 [&>svg]:h-3 [&>svg]:w-3 [&>svg]:text-ink-muted"
             )}
           >
             {!hideIcon && (

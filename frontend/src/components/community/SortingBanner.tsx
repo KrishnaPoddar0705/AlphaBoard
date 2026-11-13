@@ -19,8 +19,8 @@ export const SortingBanner: React.FC<SortingBannerProps> = ({ sortBy, onSortChan
   ]
 
   return (
-    <div className="flex items-center gap-2 flex-wrap pb-4 border-b border-[#D7D0C2]">
-      <span className="text-sm font-medium text-[#6F6A60] mr-2">Sort by:</span>
+    <div className="flex items-center gap-2 flex-wrap pb-4 border-b border-border-editorial">
+      <span className="text-sm font-medium text-ink-muted mr-2">Sort by:</span>
       {sortOptions.map((option) => (
         <Button
           key={option.value}

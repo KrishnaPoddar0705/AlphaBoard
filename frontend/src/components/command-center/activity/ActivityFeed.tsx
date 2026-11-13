@@ -53,18 +53,18 @@ export default function ActivityFeed({ filters }: { filters: ActivityFilters }) 
           <li key={h.event_id}>
             <Link
               to={`/command-center/stock/${encodeURIComponent(h.ticker)}?event=${h.event_id}`}
-              className="flex flex-col gap-1.5 rounded-xl border border-[#D7D0C2] bg-[#F7F2E6] p-3 transition-colors hover:border-[#8B857A]"
+              className="flex flex-col gap-1.5 rounded-xl border border-border-editorial bg-paper-light p-3 transition-colors hover:border-ink-faint"
             >
               <div className="flex flex-wrap items-center gap-2">
                 <EventKindBadge kind={h.kind} />
-                <span className="font-mono text-[11px] text-[#6F6A60]">
+                <span className="font-mono text-[11px] text-ink-muted">
                   {h.ticker} · {formatDay(h.event_date)}
                   {h.analyst_username ? ` · ${h.analyst_username}` : ''}
                 </span>
               </div>
-              <p className="font-mono text-sm text-[#1C1B17]">{h.title}</p>
+              <p className="font-mono text-sm text-ink">{h.title}</p>
               {h.snippet && (
-                <p className="font-mono text-[11px] leading-relaxed text-[#6F6A60]">
+                <p className="font-mono text-[11px] leading-relaxed text-ink-muted">
                   <Snippet text={h.snippet} />
                 </p>
               )}
@@ -90,7 +90,7 @@ export default function ActivityFeed({ filters }: { filters: ActivityFilters }) 
     <div className="flex flex-col gap-5">
       {groupByMonth(rows).map((group) => (
         <section key={group.key}>
-          <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wider text-[#8B857A]">
+          <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wider text-ink-faint">
             {group.label}
           </h3>
           <ul className="flex flex-col gap-1.5">
@@ -98,38 +98,38 @@ export default function ActivityFeed({ filters }: { filters: ActivityFilters }) 
               <li key={e.event_id}>
                 <Link
                   to={`/command-center/stock/${encodeURIComponent(e.ticker)}?event=${e.event_id}`}
-                  className="flex flex-col gap-1.5 rounded-xl border border-[#D7D0C2] bg-[#F7F2E6] p-3 transition-colors hover:border-[#8B857A]"
+                  className="flex flex-col gap-1.5 rounded-xl border border-border-editorial bg-paper-light p-3 transition-colors hover:border-ink-faint"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <EventKindBadge kind={e.kind} subtype={e.subtype} />
-                    <span className="font-mono text-[11px] text-[#6F6A60]">
+                    <span className="font-mono text-[11px] text-ink-muted">
                       {e.ticker} · {formatDay(e.event_date)}
                     </span>
                     <ImpactDot impact={e.thesis_impact} />
                     <span className="ml-auto flex items-center gap-2">
                       {e.review_requested && (
-                        <span className="rounded border border-dashed border-[#D06030] px-1 font-mono text-[10px] text-[#B04E22]">
+                        <span className="rounded border border-dashed border-chart-orange px-1 font-mono text-[10px] text-[#B04E22]">
                           pushed
                         </span>
                       )}
                       {(e.comment_count ?? 0) > 0 && (
-                        <span className="font-mono text-[10px] text-[#6F6A60]">{e.comment_count} comments</span>
+                        <span className="font-mono text-[10px] text-ink-muted">{e.comment_count} comments</span>
                       )}
                       <AttachmentCount count={e.attachment_count} />
-                      <span className="font-mono text-[11px] text-[#6F6A60]">
+                      <span className="font-mono text-[11px] text-ink-muted">
                         {e.analyst_username ?? e.created_by_username ?? ''}
                       </span>
                     </span>
                   </div>
-                  <p className="font-mono text-sm text-[#1C1B17]">{e.title}</p>
+                  <p className="font-mono text-sm text-ink">{e.title}</p>
                   <MetWith contacts={met.byEvent.get(e.event_id)} count={e.contact_count} loading={met.loading} />
                   {e.kta && (
-                    <p className="line-clamp-2 font-mono text-[11px] leading-relaxed text-[#6F6A60]">
+                    <p className="line-clamp-2 font-mono text-[11px] leading-relaxed text-ink-muted">
                       {e.kta}
                     </p>
                   )}
                   {e.open_questions && (
-                    <p className="font-mono text-[11px] text-[#D06030]">
+                    <p className="font-mono text-[11px] text-chart-orange">
                       Open: {e.open_questions}
                     </p>
                   )}

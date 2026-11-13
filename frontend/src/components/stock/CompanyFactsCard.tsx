@@ -24,15 +24,15 @@ export function CompanyFactsCard({
   ]
 
   return (
-    <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5">
-      <h3 className="text-sm font-mono font-bold text-[#1C1B17] mb-4">Company Facts</h3>
+    <div className="bg-paper-light border border-border-editorial p-5">
+      <h3 className="text-sm font-mono font-bold text-ink mb-4">Company Facts</h3>
       <div className="space-y-2">
         {facts.map((fact) => (
           <div key={fact.label} className="flex justify-between items-start">
-            <span className="text-xs font-mono text-[#6F6A60] uppercase tracking-wider">
+            <span className="text-xs font-mono text-ink-muted uppercase tracking-wider">
               {fact.label}
             </span>
-            <span className="text-xs font-mono text-[#1C1B17] text-right ml-4">
+            <span className="text-xs font-mono text-ink text-right ml-4">
               {fact.value}
             </span>
           </div>

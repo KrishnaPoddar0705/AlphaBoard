@@ -14,13 +14,13 @@ const LEVEL_COLOR: Record<UnderstandingLevel, string> = {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2 py-1 font-mono text-xs text-[#1C1B17] focus:border-[#8B857A] focus:outline-none'
+  'w-full rounded-lg border border-border-editorial bg-paper-alt px-2 py-1 font-mono text-xs text-ink focus:border-ink-faint focus:outline-none'
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5">
-      <span className="shrink-0 font-mono text-[11px] text-[#6F6A60]">{label}</span>
-      <span className="min-w-0 text-right font-mono text-xs text-[#1C1B17]">{children}</span>
+      <span className="shrink-0 font-mono text-[11px] text-ink-muted">{label}</span>
+      <span className="min-w-0 text-right font-mono text-xs text-ink">{children}</span>
     </div>
   )
 }
@@ -66,17 +66,17 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
           <span className="flex gap-1">
             <button type="button" onClick={save} aria-label="Save" disabled={sectorMissing}
                     title={sectorMissing ? 'Pick a sector first' : undefined}
-                    className="rounded p-1 text-[#2F8F5B] hover:bg-[rgba(47,143,91,0.1)] disabled:opacity-40">
+                    className="rounded p-1 text-positive hover:bg-[rgba(47,143,91,0.1)] disabled:opacity-40">
               <Check className="h-3.5 w-3.5" />
             </button>
             <button type="button" onClick={() => setEditing(false)} aria-label="Cancel"
-                    className="rounded p-1 text-[#6F6A60] hover:bg-[rgba(28,27,23,0.06)]">
+                    className="rounded p-1 text-ink-muted hover:bg-[rgba(28,27,23,0.06)]">
               <X className="h-3.5 w-3.5" />
             </button>
           </span>
         ) : (
           <button type="button" onClick={() => setEditing(true)} aria-label="Edit details"
-                  className="rounded p-1 text-[#6F6A60] hover:bg-[rgba(28,27,23,0.06)]">
+                  className="rounded p-1 text-ink-muted hover:bg-[rgba(28,27,23,0.06)]">
             <Pencil className="h-3.5 w-3.5" />
           </button>
         )
@@ -85,7 +85,7 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
       {editing ? (
         <div className="flex flex-col gap-2">
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Level of understanding</span>
+            <span className="font-mono text-[11px] text-ink-muted">Level of understanding</span>
             <select className={inputClass} value={draft.understanding_level ?? ''}
                     onChange={(e) => setDraft({ ...draft, understanding_level: e.target.value as UnderstandingLevel })}>
               <option value="">Not set</option>
@@ -94,7 +94,7 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Model</span>
+            <span className="font-mono text-[11px] text-ink-muted">Model</span>
             <select className={inputClass} value={draft.model_status}
                     onChange={(e) => setDraft({ ...draft, model_status: e.target.value as ModelStatus })}>
               {MODEL_STATUSES.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
@@ -102,7 +102,7 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Lead analyst</span>
+            <span className="font-mono text-[11px] text-ink-muted">Lead analyst</span>
             <select className={inputClass} value={draft.lead_analyst_id} disabled={rosterPending}
                     onChange={(e) => setDraft({ ...draft, lead_analyst_id: e.target.value })}>
               {rosterPending && <option value={draft.lead_analyst_id}>Loading team...</option>}
@@ -115,41 +115,41 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
                 </option>
               ))}
             </select>
-            <span className="font-mono text-[10px] text-[#8B857A]">
+            <span className="font-mono text-[10px] text-ink-faint">
               Whoever added the stock, or an analyst or PM on their team.
             </span>
           </label>
 
           <div className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">
-              Sector <span className="text-[#B23B2A]">· required</span>
+            <span className="font-mono text-[11px] text-ink-muted">
+              Sector <span className="text-negative">· required</span>
             </span>
             <SectorPicker value={draft.sector} onChange={(sector) => setDraft({ ...draft, sector })} />
           </div>
 
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Corporate address</span>
+            <span className="font-mono text-[11px] text-ink-muted">Corporate address</span>
             <textarea className={inputClass} rows={3} value={draft.corporate_address}
                       onChange={(e) => setDraft({ ...draft, corporate_address: e.target.value })} />
           </label>
         </div>
       ) : (
-        <div className="divide-y divide-[#E3DDCF]">
+        <div className="divide-y divide-gridline">
           <Row label="Understanding">
             {coverage.understanding_level ? (
               <span style={{ color: LEVEL_COLOR[coverage.understanding_level] }}>
                 {coverage.understanding_level}
               </span>
-            ) : <span className="text-[#8B857A]">not set</span>}
+            ) : <span className="text-ink-faint">not set</span>}
           </Row>
           <Row label="Model">{coverage.model_status}</Row>
           <Row label="Lead analyst">
-            {coverage.lead_analyst_username ?? <span className="text-[#8B857A]">unassigned</span>}
+            {coverage.lead_analyst_username ?? <span className="text-ink-faint">unassigned</span>}
           </Row>
           <Row label="Sector">
             {coverage.sector ?? (
               <button type="button" onClick={() => setEditing(true)}
-                      className="text-[#B23B2A] underline-offset-2 hover:underline">
+                      className="text-negative underline-offset-2 hover:underline">
                 required · set sector
               </button>
             )}
@@ -157,7 +157,7 @@ export default function CorporateDetailsPanel({ coverage }: { coverage: Coverage
           <Row label="Address">
             {coverage.corporate_address
               ? <span className="whitespace-pre-line">{coverage.corporate_address}</span>
-              : <span className="text-[#8B857A]">not set</span>}
+              : <span className="text-ink-faint">not set</span>}
           </Row>
         </div>
       )}

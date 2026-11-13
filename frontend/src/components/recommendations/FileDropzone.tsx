@@ -106,20 +106,20 @@ export default function FileDropzone({
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onPaste={handlePaste}
-        className={`rounded-lg border border-dashed p-4 transition-colors focus:outline-none focus:ring-2 focus:ring-[#6F6A60] ${
+        className={`rounded-lg border border-dashed p-4 transition-colors focus:outline-none focus:ring-2 focus:ring-ink-muted ${
           disabled
-            ? 'cursor-not-allowed border-[#D7D0C2] opacity-60'
+            ? 'cursor-not-allowed border-border-editorial opacity-60'
             : isDragActive
-              ? 'cursor-pointer border-[#1C1B17] bg-[#E8E3D3]'
-              : 'cursor-pointer border-[#D7D0C2] hover:border-[#1C1B17]'
+              ? 'cursor-pointer border-ink bg-[#E8E3D3]'
+              : 'cursor-pointer border-border-editorial hover:border-ink'
         }`}
       >
         <div className="flex flex-col items-center justify-center py-2 text-center">
-          <Upload className="mb-2 h-6 w-6 text-[#6F6A60]" aria-hidden />
-          <p className="font-mono text-xs text-[#1C1B17]">
+          <Upload className="mb-2 h-6 w-6 text-ink-muted" aria-hidden />
+          <p className="font-mono text-xs text-ink">
             {isDragActive ? 'Drop to attach' : 'Click, drag, or paste files here'}
           </p>
-          <p className="mt-1 font-mono text-[10px] text-[#6F6A60]">
+          <p className="mt-1 font-mono text-[10px] text-ink-muted">
             {hint ?? `Any file type, up to ${formatBytes(MAX_FILE_BYTES)} each, ${MAX_FILES} files max`}
           </p>
         </div>

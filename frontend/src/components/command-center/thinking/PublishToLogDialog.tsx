@@ -33,8 +33,8 @@ interface Props {
   onPublished: (eventId: string) => void
 }
 
-const label = 'font-mono text-[11px] text-[#6F6A60]'
-const input = 'w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2.5 py-1.5 font-mono text-xs text-[#1C1B17] focus:border-[#8B857A] focus:outline-none'
+const label = 'font-mono text-[11px] text-ink-muted'
+const input = 'w-full rounded-lg border border-border-editorial bg-paper-alt px-2.5 py-1.5 font-mono text-xs text-ink focus:border-ink-faint focus:outline-none'
 
 /**
  * Turns the note into an entry on the stock's log. The analyst picks what kind of work
@@ -135,19 +135,19 @@ export default function PublishToLogDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto border-[#D7D0C2] bg-[#F7F2E6] sm:max-w-xl [&>*]:min-w-0">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto border-border-editorial bg-paper-light sm:max-w-xl [&>*]:min-w-0">
         <DialogHeader>
-          <DialogTitle className="font-mono text-base text-[#1C1B17]">
+          <DialogTitle className="font-mono text-base text-ink">
             {republish ? 'Update the log entry' : `Publish to the ${ticker} log`}
           </DialogTitle>
-          <DialogDescription className="font-mono text-[11px] text-[#6F6A60]">
+          <DialogDescription className="font-mono text-[11px] text-ink-muted">
             The note becomes the entry's key takeaways: {words.toLocaleString('en-IN')} words
             {blocks > 0 ? ` and ${blocks} data ${blocks === 1 ? 'block' : 'blocks'}, as tables with their sources` : ''}.
           </DialogDescription>
         </DialogHeader>
 
         {loadingEntry ? (
-          <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-[#8B857A]" /></div>
+          <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-ink-faint" /></div>
         ) : (
           <div className="flex flex-col gap-4">
             <div className="flex flex-col gap-1.5">

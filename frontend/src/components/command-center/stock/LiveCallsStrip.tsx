@@ -42,7 +42,7 @@ export default function LiveCallsStrip({ ticker }: { ticker: string }) {
           type="button"
           onClick={() => { setSession((n) => n + 1); setModalOpen(true) }}
           aria-label="Raise a recommendation"
-          className="rounded p-1 text-[#6F6A60] hover:bg-[rgba(28,27,23,0.06)]"
+          className="rounded p-1 text-ink-muted hover:bg-[rgba(28,27,23,0.06)]"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
@@ -50,23 +50,23 @@ export default function LiveCallsStrip({ ticker }: { ticker: string }) {
     >
       {calls.length === 0 ? (
         <div className="flex flex-col items-start gap-2">
-          <p className="font-mono text-xs text-[#6F6A60]">Nobody has a live call on this name.</p>
+          <p className="font-mono text-xs text-ink-muted">Nobody has a live call on this name.</p>
           <Button variant="outline" size="sm"
                   onClick={() => { setSession((n) => n + 1); setModalOpen(true) }}>
             <TrendingUp className="h-3.5 w-3.5" /> Raise a recommendation
           </Button>
         </div>
       ) : (
-        <ul className="divide-y divide-[#E3DDCF]">
+        <ul className="divide-y divide-gridline">
           {calls.map((c) => {
             const ret = returnPct(c)
             return (
               <li key={c.id} className="flex items-center justify-between gap-2 py-1.5">
                 <span className="min-w-0">
-                  <span className="block truncate font-mono text-xs text-[#1C1B17]">
+                  <span className="block truncate font-mono text-xs text-ink">
                     {c.username ?? 'Analyst'} · {c.action}
                   </span>
-                  <span className="block font-mono text-[10px] text-[#6F6A60]">
+                  <span className="block font-mono text-[10px] text-ink-muted">
                     {c.entry_price != null ? `entry ${c.entry_price.toFixed(2)}` : ''}
                     {c.target_irr != null ? ` · IRR ${c.target_irr}%` : ''}
                     {c.entry_date ? ` · ${formatDayShort(c.entry_date)}` : ''}

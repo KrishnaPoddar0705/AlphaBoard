@@ -25,7 +25,7 @@ export default function LinkControl({ editor, compact }: { editor: Editor; compa
       <form onSubmit={(e) => { e.preventDefault(); apply() }} className="flex flex-none items-center gap-1">
         <input autoFocus value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Paste a link"
           onKeyDown={(e) => { if (e.key === 'Escape') setOpen(false) }} onBlur={() => setOpen(false)}
-          className="tb-data h-7 w-44 rounded-md border border-[#D7D0C2] bg-[#FFFDF7] px-2 text-[11px] focus:border-[#1C1B17] focus:outline-none" />
+          className="tb-data h-7 w-44 rounded-md border border-border-editorial bg-[#FFFDF7] px-2 text-[11px] focus:border-ink focus:outline-none" />
       </form>
     )
   }
@@ -36,7 +36,7 @@ export default function LinkControl({ editor, compact }: { editor: Editor; compa
         className={[
           'flex flex-none items-center justify-center rounded-md transition-colors',
           compact ? 'h-7 w-7' : 'h-7 w-7',
-          active ? 'bg-[#1C1B17] text-[#F7F2E6]' : 'text-[#4A463E] hover:bg-[#EFE9DA]',
+          active ? 'bg-ink text-paper-light' : 'text-[#4A463E] hover:bg-paper-sunk',
         ].join(' ')}>
         <Link2 className="h-[15px] w-[15px]" strokeWidth={1.8} />
       </button>
@@ -44,7 +44,7 @@ export default function LinkControl({ editor, compact }: { editor: Editor; compa
         <button type="button" onMouseDown={(e) => e.preventDefault()}
           onClick={() => editor.chain().focus().extendMarkRange('link').unsetLink().run()}
           aria-label="Remove link" title="Remove link"
-          className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-[#4A463E] hover:bg-[#EFE9DA]">
+          className="flex h-7 w-7 flex-none items-center justify-center rounded-md text-[#4A463E] hover:bg-paper-sunk">
           <Unlink className="h-[15px] w-[15px]" strokeWidth={1.8} />
         </button>
       )}

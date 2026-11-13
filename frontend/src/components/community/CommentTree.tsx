@@ -104,8 +104,8 @@ export function CommentTree({ postId }: CommentTreeProps) {
 
   return (
     <div className="space-y-4">
-      <div className="border-b border-[#D7D0C2] pb-4">
-        <h3 className="font-mono font-semibold text-[#1C1B17] mb-3">
+      <div className="border-b border-border-editorial pb-4">
+        <h3 className="font-mono font-semibold text-ink mb-3">
           Comments ({comments.reduce((acc, c) => acc + 1 + (c.replies?.length || 0), 0)})
         </h3>
         <CommentComposer
@@ -116,11 +116,11 @@ export function CommentTree({ postId }: CommentTreeProps) {
 
       {loading ? (
         <div className="text-center py-8">
-          <p className="font-mono text-[#6F6A60]">Loading comments...</p>
+          <p className="font-mono text-ink-muted">Loading comments...</p>
         </div>
       ) : comments.length === 0 ? (
-        <div className="text-center py-8 border border-[#D7D0C2] rounded bg-[#F7F2E6]">
-          <p className="font-mono text-[#6F6A60]">No comments yet. Be the first to comment!</p>
+        <div className="text-center py-8 border border-border-editorial rounded bg-paper-light">
+          <p className="font-mono text-ink-muted">No comments yet. Be the first to comment!</p>
         </div>
       ) : (
         <div className="space-y-2">

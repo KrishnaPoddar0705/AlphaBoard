@@ -27,8 +27,8 @@ export function CommentComposer({
 
   if (!user) {
     return (
-      <div className="p-4 border border-[#D7D0C2] rounded bg-[#F7F2E6] text-center">
-        <p className="font-mono text-sm text-[#6F6A60]">
+      <div className="p-4 border border-border-editorial rounded bg-paper-light text-center">
+        <p className="font-mono text-sm text-ink-muted">
           Please sign in to comment
         </p>
       </div>
@@ -64,7 +64,7 @@ export function CommentComposer({
         value={body}
         onChange={(e) => setBody(e.target.value)}
         placeholder={placeholder}
-        className="font-mono text-sm border-[#D7D0C2] bg-[#FBF7ED] text-[#1C1B17] focus:ring-2 focus:ring-[#1C1B17]/20"
+        className="font-mono text-sm border-border-editorial bg-paper-alt text-ink focus:ring-2 focus:ring-ink/20"
         rows={4}
         disabled={submitting}
       />
@@ -79,7 +79,7 @@ export function CommentComposer({
         <Button
           type="submit"
           disabled={!body.trim() || submitting}
-          className="font-mono text-sm bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90 disabled:opacity-50"
+          className="font-mono text-sm bg-ink text-paper-light hover:bg-ink/90 disabled:opacity-50"
         >
           {submitting ? 'Posting...' : 'Post Comment'}
         </Button>
@@ -89,7 +89,7 @@ export function CommentComposer({
             onClick={onCancel}
             disabled={submitting}
             variant="outline"
-            className="font-mono text-sm border-[#D7D0C2] bg-transparent text-[#1C1B17] hover:bg-[#FBF7ED]"
+            className="font-mono text-sm border-border-editorial bg-transparent text-ink hover:bg-paper-alt"
           >
             Cancel
           </Button>

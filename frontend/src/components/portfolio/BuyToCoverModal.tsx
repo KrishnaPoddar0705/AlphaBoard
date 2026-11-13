@@ -77,37 +77,37 @@ export function BuyToCoverModal({ open, onClose, onSuccess, position, currency }
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-[#F7F2E6] border-[#D7D0C2]">
+      <DialogContent className="sm:max-w-md bg-paper-light border-border-editorial">
         <DialogHeader>
-          <DialogTitle className="text-[#1C1B17] font-mono flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-[#2A6B4F]" />
+          <DialogTitle className="text-ink font-mono flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-positive-strong" />
             Buy to Cover {position.symbol}
           </DialogTitle>
-          <DialogDescription className="text-[#6F6A60] font-mono">
+          <DialogDescription className="text-ink-muted font-mono">
             Close your short position by buying back shares
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-5 py-4">
           {/* Position Info */}
-          <div className="bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg p-4 space-y-2">
+          <div className="bg-paper-alt border border-border-editorial rounded-lg p-4 space-y-2">
             <div className="flex justify-between text-sm font-mono">
-              <span className="text-[#6F6A60]">Short Position</span>
-              <span className="text-[#B23B2A] font-medium">{shortQty} shares</span>
+              <span className="text-ink-muted">Short Position</span>
+              <span className="text-negative font-medium">{shortQty} shares</span>
             </div>
             <div className="flex justify-between text-sm font-mono">
-              <span className="text-[#6F6A60]">Avg Sell Price</span>
-              <span className="text-[#1C1B17]">{currencySymbol}{position.avg_cost.toFixed(2)}</span>
+              <span className="text-ink-muted">Avg Sell Price</span>
+              <span className="text-ink">{currencySymbol}{position.avg_cost.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm font-mono">
-              <span className="text-[#6F6A60]">Current Price</span>
-              <span className="text-[#1C1B17]">{currencySymbol}{position.current_price.toFixed(2)}</span>
+              <span className="text-ink-muted">Current Price</span>
+              <span className="text-ink">{currencySymbol}{position.current_price.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm font-mono">
-              <span className="text-[#6F6A60]">Unrealized P&L</span>
+              <span className="text-ink-muted">Unrealized P&L</span>
               <span className={cn(
                 "font-medium",
-                position.unrealized_pnl >= 0 ? "text-[#2A6B4F]" : "text-[#B23B2A]"
+                position.unrealized_pnl >= 0 ? "text-positive-strong" : "text-negative"
               )}>
                 {position.unrealized_pnl >= 0 ? '+' : ''}{currencySymbol}{position.unrealized_pnl.toFixed(2)}
                 <span className="text-xs ml-1">
@@ -120,12 +120,12 @@ export function BuyToCoverModal({ open, onClose, onSuccess, position, currency }
           {/* Quantity Input */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label htmlFor="quantity" className="text-[#1C1B17] font-mono text-sm">Quantity to Cover</Label>
+              <Label htmlFor="quantity" className="text-ink font-mono text-sm">Quantity to Cover</Label>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 onClick={handleCoverAll}
-                className="text-xs text-[#6F6A60] hover:text-[#1C1B17] font-mono h-auto py-1 px-2"
+                className="text-xs text-ink-muted hover:text-ink font-mono h-auto py-1 px-2"
               >
                 Cover All
               </Button>
@@ -139,7 +139,7 @@ export function BuyToCoverModal({ open, onClose, onSuccess, position, currency }
               min={0}
               max={shortQty}
               step={1}
-              className="bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17] font-mono text-lg"
+              className="bg-paper-alt border-border-editorial text-ink font-mono text-lg"
             />
             
             {/* Quick percentage buttons */}
@@ -155,10 +155,10 @@ export function BuyToCoverModal({ open, onClose, onSuccess, position, currency }
                     setQuantity(qty.toString())
                   }}
                   className={cn(
-                    "flex-1 text-xs font-mono border-[#D7D0C2]",
+                    "flex-1 text-xs font-mono border-border-editorial",
                     Math.abs(percentageOfPosition - pct) < 1 
-                      ? "bg-[#1C1B17] border-[#1C1B17] text-[#F7F2E6]" 
-                      : "bg-[#FBF7ED] text-[#6F6A60] hover:bg-[#F7F2E6]"
+                      ? "bg-ink border-ink text-paper-light" 
+                      : "bg-paper-alt text-ink-muted hover:bg-paper-light"
                   )}
                 >
                   {pct}%
@@ -169,18 +169,18 @@ export function BuyToCoverModal({ open, onClose, onSuccess, position, currency }
 
           {/* Estimated Results */}
           {numericQty > 0 && (
-            <div className="bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg p-4 space-y-2">
+            <div className="bg-paper-alt border border-border-editorial rounded-lg p-4 space-y-2">
               <div className="flex justify-between text-sm font-mono">
-                <span className="text-[#6F6A60]">Cost to Cover</span>
-                <span className="text-[#1C1B17] font-medium">
+                <span className="text-ink-muted">Cost to Cover</span>
+                <span className="text-ink font-medium">
                   {currencySymbol}{estimatedCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </span>
               </div>
               <div className="flex justify-between text-sm font-mono">
-                <span className="text-[#6F6A60]">Realized P&L</span>
+                <span className="text-ink-muted">Realized P&L</span>
                 <span className={cn(
                   "font-medium",
-                  estimatedPnl >= 0 ? "text-[#2A6B4F]" : "text-[#B23B2A]"
+                  estimatedPnl >= 0 ? "text-positive-strong" : "text-negative"
                 )}>
                   {estimatedPnl >= 0 ? '+' : ''}
                   {currencySymbol}{estimatedPnl.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -191,7 +191,7 @@ export function BuyToCoverModal({ open, onClose, onSuccess, position, currency }
 
           {/* Error Message */}
           {error && (
-            <div className="flex items-start gap-2 p-3 rounded-lg bg-[#B23B2A]/10 border border-[#B23B2A]/30 text-[#B23B2A] text-sm font-mono">
+            <div className="flex items-start gap-2 p-3 rounded-lg bg-negative/10 border border-negative/30 text-negative text-sm font-mono">
               <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -211,7 +211,7 @@ export function BuyToCoverModal({ open, onClose, onSuccess, position, currency }
           <Button
             variant="outline"
             onClick={onClose}
-            className="flex-1 border-[#D7D0C2] font-mono text-xs bg-transparent text-[#1C1B17] hover:bg-[#FBF7ED]"
+            className="flex-1 border-border-editorial font-mono text-xs bg-transparent text-ink hover:bg-paper-alt"
             disabled={loading}
           >
             Cancel
@@ -219,7 +219,7 @@ export function BuyToCoverModal({ open, onClose, onSuccess, position, currency }
           <Button
             onClick={handleBuyToCover}
             disabled={!isValidQty || loading}
-            className="flex-1 bg-[#2A6B4F] hover:bg-[#2A6B4F]/90 text-white font-mono text-xs"
+            className="flex-1 bg-positive-strong hover:bg-positive-strong/90 text-white font-mono text-xs"
           >
             {loading ? (
               <>

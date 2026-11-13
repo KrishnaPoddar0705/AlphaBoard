@@ -22,7 +22,7 @@ export function ImageGrid({ images, maxDisplay = 2 }: ImageGridProps) {
           <button
             key={img.id}
             onClick={() => img.url && setLightboxImage(img.url)}
-            className="relative aspect-video overflow-hidden rounded border border-[#D7D0C2] bg-[#FBF7ED] hover:border-[#1C1B17] transition-colors"
+            className="relative aspect-video overflow-hidden rounded border border-border-editorial bg-paper-alt hover:border-ink transition-colors"
           >
             <img
               src={img.url}
@@ -30,8 +30,8 @@ export function ImageGrid({ images, maxDisplay = 2 }: ImageGridProps) {
               className="w-full h-full object-cover"
             />
             {remainingCount > 0 && index === displayImages.length - 1 && (
-              <div className="absolute inset-0 bg-[#1C1B17]/60 flex items-center justify-center">
-                <span className="font-mono text-sm text-[#F7F2E6]">
+              <div className="absolute inset-0 bg-ink/60 flex items-center justify-center">
+                <span className="font-mono text-sm text-paper-light">
                   +{remainingCount} more
                 </span>
               </div>
@@ -43,12 +43,12 @@ export function ImageGrid({ images, maxDisplay = 2 }: ImageGridProps) {
       {/* Lightbox */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-50 bg-[#1C1B17]/90 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-ink/90 flex items-center justify-center p-4"
           onClick={() => setLightboxImage(null)}
         >
           <button
             onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 p-2 bg-[#F7F2E6] text-[#1C1B17] rounded-full hover:bg-[#FBF7ED] transition-colors"
+            className="absolute top-4 right-4 p-2 bg-paper-light text-ink rounded-full hover:bg-paper-alt transition-colors"
             aria-label="Close"
           >
             <X className="h-5 w-5" />

@@ -28,8 +28,8 @@ function isMine(r: CoverageBoardRow, userId: string | null): boolean {
 }
 
 const selectClass =
-  'w-full rounded-md border border-[#D7D0C2] bg-[#FBF7ED] px-2 py-1.5 font-mono text-[11px] ' +
-  'text-[#1C1B17] focus:border-[#8B857A] focus:outline-none'
+  'w-full rounded-md border border-border-editorial bg-paper-alt px-2 py-1.5 font-mono text-[11px] ' +
+  'text-ink focus:border-ink-faint focus:outline-none'
 
 /**
  * A scope count, or a dash holding its place.
@@ -39,7 +39,7 @@ const selectClass =
 function Count({ n, pending, active }: { n: number; pending: boolean; active: boolean }) {
   return (
     <span className={`inline-block min-w-[1.6em] text-center tabular-nums ${
-      active ? 'text-[#C9C3B4]' : 'text-[#8B857A]'
+      active ? 'text-[#C9C3B4]' : 'text-ink-faint'
     }`}>
       ({pending ? '–' : n})
     </span>
@@ -109,26 +109,26 @@ export default function StockSidebar({ selectedTicker, onAdd, className }: Props
     [
       'flex-1 rounded-md border px-2 py-1 font-mono text-[10px] transition-colors',
       active
-        ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6]'
-        : 'border-[#D7D0C2] bg-[#FBF7ED] text-[#6F6A60] hover:text-[#1C1B17]',
+        ? 'border-ink bg-ink text-paper-light'
+        : 'border-border-editorial bg-paper-alt text-ink-muted hover:text-ink',
     ].join(' ')
 
   return (
     <aside
-      className={`flex min-h-0 flex-col overflow-hidden rounded-xl border border-[#D7D0C2] bg-[#F7F2E6] ${className ?? ''}`}
+      className={`flex min-h-0 flex-col overflow-hidden rounded-xl border border-border-editorial bg-paper-light ${className ?? ''}`}
     >
       {/* Head: identity, count, and the filters. Visually separated from the list by a
           full-width rule so the rail reads as two zones, not one long column. */}
-      <div className="flex flex-col gap-2.5 border-b border-[#D7D0C2] bg-[#F1EEE0] px-3 py-3">
+      <div className="flex flex-col gap-2.5 border-b border-border-editorial bg-paper px-3 py-3">
         <div className="flex items-baseline justify-between gap-2">
-          <h2 className="font-mono text-[10px] uppercase tracking-[0.14em] text-[#6F6A60]">
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-muted">
             Coverage
           </h2>
           <div className="flex items-center gap-2">
             {isPending ? (
               <Bone className="h-3 w-8 rounded" />
             ) : (
-              <span className="font-mono text-[10px] tabular-nums text-[#8B857A]">
+              <span className="font-mono text-[10px] tabular-nums text-ink-faint">
                 {visible.length}{visible.length !== counts.all ? ` / ${counts.all}` : ''}
               </span>
             )}
@@ -136,7 +136,7 @@ export default function StockSidebar({ selectedTicker, onAdd, className }: Props
               <button
                 type="button"
                 onClick={onAdd}
-                className="inline-flex items-center gap-0.5 rounded-md border border-[#D7D0C2] bg-[#FBF7ED] px-1.5 py-0.5 font-mono text-[10px] text-[#6F6A60] transition-colors hover:border-[#8B857A] hover:text-[#1C1B17]"
+                className="inline-flex items-center gap-0.5 rounded-md border border-border-editorial bg-paper-alt px-1.5 py-0.5 font-mono text-[10px] text-ink-muted transition-colors hover:border-ink-faint hover:text-ink"
               >
                 <Plus className="h-3 w-3" /> Add
               </button>
@@ -145,12 +145,12 @@ export default function StockSidebar({ selectedTicker, onAdd, className }: Props
         </div>
 
         <div className="relative">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8B857A]" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-faint" />
           <input
             value={query}
             onChange={(e) => setFilters({ query: e.target.value })}
             placeholder="Name or ticker"
-            className="w-full rounded-md border border-[#D7D0C2] bg-[#FBF7ED] py-1.5 pl-8 pr-2.5 font-mono text-[11px] text-[#1C1B17] placeholder:text-[#8B857A] focus:border-[#8B857A] focus:outline-none"
+            className="w-full rounded-md border border-border-editorial bg-paper-alt py-1.5 pl-8 pr-2.5 font-mono text-[11px] text-ink placeholder:text-ink-faint focus:border-ink-faint focus:outline-none"
           />
         </div>
 
@@ -201,7 +201,7 @@ export default function StockSidebar({ selectedTicker, onAdd, className }: Props
             {Array.from({ length: 7 }, (_, i) => <Bone key={i} className="h-12 w-full rounded-lg" />)}
           </Loading>
         ) : visible.length === 0 ? (
-          <p className="px-2 py-4 font-mono text-[11px] leading-relaxed text-[#8B857A]">
+          <p className="px-2 py-4 font-mono text-[11px] leading-relaxed text-ink-faint">
             {rows.length === 0
               ? 'No stocks tracked yet.'
               : scope === 'mine'
@@ -221,8 +221,8 @@ export default function StockSidebar({ selectedTicker, onAdd, className }: Props
                     className={[
                       'group flex items-center gap-2.5 rounded-lg border px-2.5 py-2 transition-colors',
                       active
-                        ? 'border-[#1C1B17] bg-[#1C1B17]'
-                        : 'border-transparent hover:border-[#D7D0C2] hover:bg-[#FBF7ED]',
+                        ? 'border-ink bg-ink'
+                        : 'border-transparent hover:border-border-editorial hover:bg-paper-alt',
                     ].join(' ')}
                   >
                     <span className="mt-0.5 inline-block h-2 w-2 shrink-0 self-start rounded-full"
@@ -230,18 +230,18 @@ export default function StockSidebar({ selectedTicker, onAdd, className }: Props
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline justify-between gap-2">
                         <span className={`truncate font-mono text-xs font-semibold ${
-                          active ? 'text-[#F7F2E6]' : 'text-[#1C1B17]'
+                          active ? 'text-paper-light' : 'text-ink'
                         }`}>
                           {r.ticker}
                         </span>
                         <span className={`shrink-0 font-mono text-[10px] tabular-nums ${
-                          active ? 'text-[#A9A395]' : 'text-[#8B857A]'
+                          active ? 'text-[#A9A395]' : 'text-ink-faint'
                         }`}>
                           {r.last_interaction_on ? relativeDays(r.last_interaction_on) : '—'}
                         </span>
                       </span>
                       <span className={`mt-0.5 block truncate font-mono text-[10px] ${
-                        active ? 'text-[#C9C3B4]' : 'text-[#6F6A60]'
+                        active ? 'text-[#C9C3B4]' : 'text-ink-muted'
                       }`}>
                         {r.company_name ?? '—'}{r.sector ? ` · ${r.sector}` : ''}
                       </span>

@@ -84,8 +84,8 @@ export default function CoverageGapsPanel() {
     return (
       <Loading label="Checking coverage gaps" className="grid gap-2.5 sm:grid-cols-2">
         {Array.from({ length: 4 }, (_, i) => (
-          <section key={i} className="rounded-xl border border-[#D7D0C2] bg-[#F7F2E6]">
-            <header className="flex items-center gap-2 border-b border-[#E3DDCF] px-3 py-2">
+          <section key={i} className="rounded-xl border border-border-editorial bg-paper-light">
+            <header className="flex items-center gap-2 border-b border-gridline px-3 py-2">
               <Bone className="h-3 w-40" />
               <Bone className="ml-auto h-3 w-5" />
             </header>
@@ -100,9 +100,9 @@ export default function CoverageGapsPanel() {
 
   if (gaps.length === 0) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-[#D7D0C2] bg-[#F7F2E6] px-4 py-3">
-        <CheckCircle2 className="h-4 w-4 text-[#2F8F5B]" />
-        <p className="font-mono text-xs text-[#1C1B17]">No gaps -- every name is current.</p>
+      <div className="flex items-center gap-2 rounded-xl border border-border-editorial bg-paper-light px-4 py-3">
+        <CheckCircle2 className="h-4 w-4 text-positive" />
+        <p className="font-mono text-xs text-ink">No gaps -- every name is current.</p>
       </div>
     )
   }
@@ -112,27 +112,27 @@ export default function CoverageGapsPanel() {
       {gaps.map((gap) => {
         const Icon = gap.icon
         return (
-          <section key={gap.key} className="rounded-xl border border-[#D7D0C2] bg-[#F7F2E6]">
-            <header className="flex items-center gap-2 border-b border-[#E3DDCF] px-3 py-2">
-              <Icon className="h-3.5 w-3.5 text-[#D06030]" />
-              <h3 className="font-mono text-[11px] text-[#1C1B17]">{gap.title}</h3>
-              <span className="ml-auto font-mono text-[11px] text-[#6F6A60]">{gap.rows.length}</span>
+          <section key={gap.key} className="rounded-xl border border-border-editorial bg-paper-light">
+            <header className="flex items-center gap-2 border-b border-gridline px-3 py-2">
+              <Icon className="h-3.5 w-3.5 text-chart-orange" />
+              <h3 className="font-mono text-[11px] text-ink">{gap.title}</h3>
+              <span className="ml-auto font-mono text-[11px] text-ink-muted">{gap.rows.length}</span>
             </header>
-            <ul className="max-h-44 divide-y divide-[#E3DDCF] overflow-y-auto">
+            <ul className="max-h-44 divide-y divide-gridline overflow-y-auto">
               {gap.rows.slice(0, 12).map((r) => (
                 <li key={r.id}>
                   {gap.key === 'quiet' ? (
                     <span className="flex items-center justify-between gap-2 px-3 py-1.5">
-                      <span className="font-mono text-xs text-[#1C1B17]">{r.ticker}</span>
-                      <span className="font-mono text-[10px] text-[#6F6A60]">{r.detail}</span>
+                      <span className="font-mono text-xs text-ink">{r.ticker}</span>
+                      <span className="font-mono text-[10px] text-ink-muted">{r.detail}</span>
                     </span>
                   ) : (
                     <Link
                       to={coverageLink(r)}
                       className="flex items-center justify-between gap-2 px-3 py-1.5 transition-colors hover:bg-[rgba(28,27,23,0.04)]"
                     >
-                      <span className="font-mono text-xs text-[#1C1B17]">{r.ticker}</span>
-                      <span className="font-mono text-[10px] text-[#6F6A60]">{r.detail}</span>
+                      <span className="font-mono text-xs text-ink">{r.ticker}</span>
+                      <span className="font-mono text-[10px] text-ink-muted">{r.detail}</span>
                     </Link>
                   )}
                 </li>

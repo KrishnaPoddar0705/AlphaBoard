@@ -32,17 +32,17 @@ function SourceBlockView({ node, deleteNode, selected }: ReactNodeViewProps) {
   return (
     <NodeViewWrapper
       className={['tb-source my-6 rounded-xl border bg-[#FFFDF7] [--tb-pin-bg:#FFFDF7]',
-        selected ? 'border-[#2C4F7C]' : 'border-[#DDD6C7]'].join(' ')}
+        selected ? 'border-[#2C4F7C]' : 'border-border-strong'].join(' ')}
     >
       <div contentEditable={false}
         className="flex select-none items-center justify-between gap-2 border-b border-[#ECE6D6] px-4 py-2">
-        <span className="tb-data flex items-center gap-1.5 text-[10.5px] text-[#8B857A]">
+        <span className="tb-data flex items-center gap-1.5 text-[10.5px] text-ink-faint">
           {Icon && <Icon className="h-3.5 w-3.5" />}{def?.label ?? 'Data'}
         </span>
         <span className="flex items-center gap-1">
           {node.attrs.source && <SourceBadge payload={badge} />}
           <button type="button" onClick={deleteNode}
-            className="rounded-md p-1 text-[#8B857A] hover:bg-[#EFE9DA] hover:text-[#B23B2A]"
+            className="rounded-md p-1 text-ink-faint hover:bg-paper-sunk hover:text-negative"
             aria-label="Remove from note" title="Remove from note">
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -63,7 +63,7 @@ function SourceDataView({ node, updateAttributes }: ReactNodeViewProps) {
     <NodeViewWrapper contentEditable={false} className="relative my-3">
       {canChart && (
         <button type="button" onClick={() => updateAttributes({ mode: mode === 'chart' ? 'table' : 'chart' })}
-          className="absolute right-0 top-0 z-[2] rounded-md p-1 text-[#8B857A] hover:bg-[#EFE9DA] hover:text-[#1C1B17]"
+          className="absolute right-0 top-0 z-[2] rounded-md p-1 text-ink-faint hover:bg-paper-sunk hover:text-ink"
           aria-label={mode === 'chart' ? 'Show as table' : 'Show as chart'}
           title={mode === 'chart' ? 'Show as table' : 'Show as chart'}>
           {mode === 'chart' ? <Table2 className="h-3.5 w-3.5" /> : <BarChart3 className="h-3.5 w-3.5" />}
@@ -89,7 +89,7 @@ function AnalysisFoldView({ node, updateAttributes }: ReactNodeViewProps) {
         {node.attrs.title || 'Full analysis'}
       </button>
       <NodeViewContent
-        className={['tb-fold-body mt-1.5 rounded-lg border border-[#ECE6D6] bg-[#FBF7ED] px-3 py-2',
+        className={['tb-fold-body mt-1.5 rounded-lg border border-[#ECE6D6] bg-paper-alt px-3 py-2',
           open ? '' : 'hidden'].join(' ')} />
     </NodeViewWrapper>
   )

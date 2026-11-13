@@ -14,14 +14,14 @@ function Btn({ icon: Icon, label, active, onClick, disabled }: {
       aria-label={label} title={label} aria-pressed={active}
       className={[
         'flex h-7 w-7 flex-none items-center justify-center rounded-md transition-colors disabled:opacity-30',
-        active ? 'bg-[#1C1B17] text-[#F7F2E6]' : 'text-[#4A463E] hover:bg-[#EFE9DA]',
+        active ? 'bg-ink text-paper-light' : 'text-[#4A463E] hover:bg-paper-sunk',
       ].join(' ')}>
       <Icon className="h-[15px] w-[15px]" strokeWidth={1.8} />
     </button>
   )
 }
 
-const Sep = () => <span className="mx-1 h-4 w-px flex-none bg-[#DDD6C7]" />
+const Sep = () => <span className="mx-1 h-4 w-px flex-none bg-border-strong" />
 
 type Block = 'p' | 'h1' | 'h2' | 'h3'
 
@@ -54,7 +54,7 @@ export default function EditorToolbar({ editor }: { editor: Editor }) {
       <Btn icon={Redo2} label="Redo" onClick={() => c().redo().run()} disabled={!s.canRedo} />
       <Sep />
       <select value={s.block} onChange={(e) => setBlock(e.target.value as Block)} aria-label="Text style"
-        className="tb-data h-7 flex-none cursor-pointer rounded-md bg-transparent px-1.5 text-[11px] text-[#3F3C35] hover:bg-[#EFE9DA] focus:outline-none">
+        className="tb-data h-7 flex-none cursor-pointer rounded-md bg-transparent px-1.5 text-[11px] text-ink-soft hover:bg-paper-sunk focus:outline-none">
         <option value="p">Body</option>
         <option value="h1">Heading</option>
         <option value="h2">Subheading</option>
@@ -86,9 +86,9 @@ export default function EditorToolbar({ editor }: { editor: Editor }) {
           <Btn icon={Rows3} label="Add row below" onClick={() => c().addRowAfter().run()} />
           <Btn icon={Columns3} label="Add column right" onClick={() => c().addColumnAfter().run()} />
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => c().deleteRow().run()}
-            className="tb-data h-7 flex-none rounded-md px-1.5 text-[10.5px] text-[#4A463E] hover:bg-[#EFE9DA]">− row</button>
+            className="tb-data h-7 flex-none rounded-md px-1.5 text-[10.5px] text-[#4A463E] hover:bg-paper-sunk">− row</button>
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => c().deleteColumn().run()}
-            className="tb-data h-7 flex-none rounded-md px-1.5 text-[10.5px] text-[#4A463E] hover:bg-[#EFE9DA]">− col</button>
+            className="tb-data h-7 flex-none rounded-md px-1.5 text-[10.5px] text-[#4A463E] hover:bg-paper-sunk">− col</button>
           <Btn icon={Trash2} label="Delete table" onClick={() => c().deleteTable().run()} />
         </>
       )}

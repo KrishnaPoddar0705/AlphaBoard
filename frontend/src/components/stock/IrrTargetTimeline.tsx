@@ -128,19 +128,19 @@ export function IrrTargetTimeline({ ticker, userId }: IrrTargetTimelineProps) {
 
     return (
         <div className="mb-6">
-            <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+            <Card className="bg-paper-light border-border-editorial">
                 <CardContent className="p-5">
                     <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-2">
-                        <Target className="w-5 h-5 text-[#1C1B17]" />
-                        <h3 className="text-xs font-mono font-semibold text-[#1C1B17] uppercase tracking-wider">
+                        <Target className="w-5 h-5 text-ink" />
+                        <h3 className="text-xs font-mono font-semibold text-ink uppercase tracking-wider">
                             IRR Target Timeline
                         </h3>
                     </div>
                     {!userId && ( // Only show add button for current user
                         <button
                             onClick={() => setShowAddModal(true)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium text-[#1C1B17] bg-[#FBF7ED] hover:bg-[#F7F2E6] border border-[#D7D0C2] rounded-lg transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-medium text-ink bg-paper-alt hover:bg-paper-light border border-border-editorial rounded-lg transition-colors"
                         >
                             <Plus className="w-3.5 h-3.5" />
                             Add Target
@@ -149,14 +149,14 @@ export function IrrTargetTimeline({ ticker, userId }: IrrTargetTimelineProps) {
                     </div>
 
                     {loading ? (
-                    <div className="text-center py-6 text-[#6F6A60] font-mono text-sm">Loading IRR targets...</div>
+                    <div className="text-center py-6 text-ink-muted font-mono text-sm">Loading IRR targets...</div>
                 ) : irrTargets.length === 0 ? (
-                    <div className="text-center py-6 text-[#6F6A60] font-mono text-sm italic">
+                    <div className="text-center py-6 text-ink-muted font-mono text-sm italic">
                         No IRR targets set yet.
                         {!userId && (
                             <button
                                 onClick={() => setShowAddModal(true)}
-                                className="ml-2 text-[#2F8F5B] hover:text-[#1C1B17] underline"
+                                className="ml-2 text-positive hover:text-ink underline"
                             >
                                 Add one
                             </button>
@@ -185,31 +185,31 @@ export function IrrTargetTimeline({ ticker, userId }: IrrTargetTimelineProps) {
                                 <div
                                     key={target.id}
                                     className={`relative pl-6 pb-4 ${
-                                        index < irrTargets.length - 1 ? 'border-l-2 border-[#D7D0C2]' : ''
+                                        index < irrTargets.length - 1 ? 'border-l-2 border-border-editorial' : ''
                                     }`}
                                 >
                                     {/* Timeline dot */}
-                                    <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-[#1C1B17] border-2 border-[#F7F2E6] -translate-x-[7px]" />
+                                    <div className="absolute left-0 top-1.5 w-3 h-3 rounded-full bg-ink border-2 border-paper-light -translate-x-[7px]" />
 
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between">
                                             <div className="flex flex-wrap items-center gap-2">
                                                 {isLegacyPriceTarget ? (
                                                     <>
-                                                        <span className="text-lg font-mono font-bold text-[#1C1B17] tabular-nums">
+                                                        <span className="text-lg font-mono font-bold text-ink tabular-nums">
                                                             {getCurrencySymbol(ticker)}{(target.target_price ?? 0).toLocaleString(ticker.includes('.NS') || ticker.includes('.BO') ? 'en-IN' : 'en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                                         </span>
-                                                        <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-[#D7D0C2] text-[#6F6A60]">
+                                                        <span className="text-[10px] font-mono uppercase tracking-wider px-1.5 py-0.5 rounded bg-border-editorial text-ink-muted">
                                                             Price target
                                                         </span>
                                                     </>
                                                 ) : (
                                                     <>
-                                                        <span className="text-lg font-mono font-bold text-[#1C1B17] tabular-nums">
+                                                        <span className="text-lg font-mono font-bold text-ink tabular-nums">
                                                             {formatIrr(target.target_irr)} IRR
                                                         </span>
                                                         {timeframe && (
-                                                            <span className="text-xs font-mono px-2 py-0.5 rounded bg-[#1C1B17]/10 text-[#1C1B17]">
+                                                            <span className="text-xs font-mono px-2 py-0.5 rounded bg-ink/10 text-ink">
                                                                 {timeframe.label}
                                                             </span>
                                                         )}
@@ -218,8 +218,8 @@ export function IrrTargetTimeline({ ticker, userId }: IrrTargetTimelineProps) {
                                                 {isLatest && timeRemaining && (
                                                     <span className={`text-xs font-mono px-2 py-0.5 rounded ${
                                                         timeRemaining === 'Overdue'
-                                                            ? 'bg-[#B23B2A]/20 text-[#B23B2A]'
-                                                            : 'bg-[#2F8F5B]/20 text-[#2F8F5B]'
+                                                            ? 'bg-negative/20 text-negative'
+                                                            : 'bg-positive/20 text-positive'
                                                     }`}>
                                                         {timeRemaining}
                                                     </span>
@@ -227,7 +227,7 @@ export function IrrTargetTimeline({ ticker, userId }: IrrTargetTimelineProps) {
                                             </div>
                                         </div>
 
-                                        <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-[#6F6A60]">
+                                        <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-ink-muted">
                                             <div className="flex items-center gap-1">
                                                 <Calendar className="w-3.5 h-3.5" />
                                                 <span>Set on {formatDate(target.created_at)}</span>

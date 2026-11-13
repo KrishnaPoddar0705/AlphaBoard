@@ -13,8 +13,8 @@ export default function HomeSkeleton({ isManager }: { isManager: boolean }) {
   return (
     <Loading label="Loading the desk" className="flex flex-col gap-3">
       <header className="flex flex-col gap-3">
-        <div className="flex items-center justify-between gap-2 border-b border-[#1C1B17] pb-2">
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-[#1C1B17]">
+        <div className="flex items-center justify-between gap-2 border-b border-ink pb-2">
+          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-ink">
             Command Center
           </span>
           <Bone className="h-3 w-20" />
@@ -28,25 +28,25 @@ export default function HomeSkeleton({ isManager }: { isManager: boolean }) {
             <Bone className="h-7 w-32 rounded-md" />
           </div>
         </div>
-        <div className="grid grid-cols-2 overflow-hidden rounded-md border border-[#1C1B17] sm:grid-cols-4">
+        <div className="grid grid-cols-2 overflow-hidden rounded-md border border-ink sm:grid-cols-4">
           {KPI_LABELS.map((label, i) => (
             <div
               key={label}
               className={[
-                'bg-[#FBF7ED] px-3 py-2',
-                i % 2 === 1 ? 'border-l border-[#D7D0C2]' : '',
-                i >= 2 ? 'border-t border-[#D7D0C2] sm:border-t-0' : '',
+                'bg-paper-alt px-3 py-2',
+                i % 2 === 1 ? 'border-l border-border-editorial' : '',
+                i >= 2 ? 'border-t border-border-editorial sm:border-t-0' : '',
                 i === 2 ? 'sm:border-l' : '',
               ].join(' ')}
             >
-              <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-[#6F6A60]">{label}</span>
+              <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">{label}</span>
               <Bone className="mt-1.5 h-7 w-12 sm:h-8" />
             </div>
           ))}
         </div>
       </header>
 
-      <div className="h-[30px] rounded-md bg-[#1C1B17]" />
+      <div className="h-[30px] rounded-md bg-ink" />
 
       <div className="grid gap-3 lg:grid-cols-12">
         <TerminalPanel code="ATTN" title="Needs your attention" className="lg:col-span-5 lg:h-[440px]">

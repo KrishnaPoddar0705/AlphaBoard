@@ -43,7 +43,7 @@ export default function BrokerCoverageGrid({ coverage }: { coverage: CoverageBoa
         <span className="flex gap-1">
           {role === 'admin' && (
             <button type="button" onClick={promptForBroker} aria-label="Add a broker"
-                    className="rounded p-1 text-[#6F6A60] hover:bg-[rgba(28,27,23,0.06)]">
+                    className="rounded p-1 text-ink-muted hover:bg-[rgba(28,27,23,0.06)]">
               <Plus className="h-3.5 w-3.5" />
             </button>
           )}
@@ -51,7 +51,7 @@ export default function BrokerCoverageGrid({ coverage }: { coverage: CoverageBoa
             type="button"
             onClick={() => { setSession((n) => n + 1); setDialogOpen(true) }}
             aria-label="Upload broker research"
-            className="rounded p-1 text-[#6F6A60] hover:bg-[rgba(28,27,23,0.06)]"
+            className="rounded p-1 text-ink-muted hover:bg-[rgba(28,27,23,0.06)]"
           >
             <Upload className="h-3.5 w-3.5" />
           </button>
@@ -59,7 +59,7 @@ export default function BrokerCoverageGrid({ coverage }: { coverage: CoverageBoa
       }
     >
       {brokersPending || eventsPending ? <RowsSkeleton rows={5} /> : (
-      <ul className="divide-y divide-[#E3DDCF]">
+      <ul className="divide-y divide-gridline">
         {brokers.map((b) => {
           const latest = latestByBroker.get(b.id)
           return (
@@ -67,13 +67,13 @@ export default function BrokerCoverageGrid({ coverage }: { coverage: CoverageBoa
               <span className="flex items-center gap-2">
                 <span
                   className={`inline-block h-1.5 w-1.5 rounded-full ${
-                    latest ? 'bg-[#2F8F5B]' : 'bg-[#D7D0C2]'
+                    latest ? 'bg-positive' : 'bg-border-editorial'
                   }`}
                   aria-hidden
                 />
-                <span className="font-mono text-xs text-[#1C1B17]">{b.name}</span>
+                <span className="font-mono text-xs text-ink">{b.name}</span>
               </span>
-              <span className="font-mono text-[10px] text-[#6F6A60]">
+              <span className="font-mono text-[10px] text-ink-muted">
                 {latest
                   ? `${latest.period ? `${latest.period} · ` : ''}${formatDayShort(latest.date)} (${relativeDays(latest.date)})`
                   : 'nothing held'}

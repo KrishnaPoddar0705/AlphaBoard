@@ -17,18 +17,18 @@ export function PostCard({ post, ticker }: PostCardProps) {
     : post.body;
 
   return (
-    <div className="flex gap-3 p-4 border-b border-[#D7D0C2] bg-[#F7F2E6] hover:bg-[#FBF7ED] transition-colors">
+    <div className="flex gap-3 p-4 border-b border-border-editorial bg-paper-light hover:bg-paper-alt transition-colors">
       {/* Post Content */}
       <div className="flex-1 min-w-0">
           <Link
             to={`/stock/${ticker}/community/${post.id}`}
             className="block group"
           >
-          <h3 className="font-mono font-semibold text-[#1C1B17] mb-1 group-hover:text-[#1C1B17]/80 transition-colors">
+          <h3 className="font-mono font-semibold text-ink mb-1 group-hover:text-ink/80 transition-colors">
             {post.title}
           </h3>
           
-          <div className="text-sm font-mono text-[#6F6A60] mb-2 flex items-center gap-2">
+          <div className="text-sm font-mono text-ink-muted mb-2 flex items-center gap-2">
             <span>by {post.author_display || 'Anonymous'}</span>
             <span>•</span>
             <span className="flex items-center gap-1">
@@ -37,7 +37,7 @@ export function PostCard({ post, ticker }: PostCardProps) {
             </span>
           </div>
 
-          <p className="text-sm font-mono text-[#1C1B17] mb-2 whitespace-pre-wrap">
+          <p className="text-sm font-mono text-ink mb-2 whitespace-pre-wrap">
             {bodyPreview}
           </p>
         </Link>

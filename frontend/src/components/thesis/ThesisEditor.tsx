@@ -100,7 +100,7 @@ export default function ThesisEditor({
             Preview
           </TabsTrigger>
         </TabsList>
-        <span className="hidden font-mono text-[10px] text-[#6F6A60] sm:inline">
+        <span className="hidden font-mono text-[10px] text-ink-muted sm:inline">
           Paste a spreadsheet range to insert a table
         </span>
       </div>
@@ -113,19 +113,19 @@ export default function ThesisEditor({
           onPaste={handlePaste}
           placeholder={placeholder}
           rows={rows}
-          className="bg-[#FBF7ED] border-[#D7D0C2] font-mono text-sm"
+          className="bg-paper-alt border-border-editorial font-mono text-sm"
         />
       </TabsContent>
 
       <TabsContent value="preview">
         <div
-          className="min-h-[80px] rounded-[10px] border border-[#D7D0C2] bg-[#FBF7ED] p-3 font-mono text-sm text-[#1C1B17]"
+          className="min-h-[80px] rounded-[10px] border border-border-editorial bg-paper-alt p-3 font-mono text-sm text-ink"
           style={{ minHeight: `${Math.max(rows, 3) * 1.6}rem` }}
         >
           {value.trim() ? (
             <ThesisMarkdown content={value} />
           ) : (
-            <span className="text-[#6F6A60]">Nothing to preview yet.</span>
+            <span className="text-ink-muted">Nothing to preview yet.</span>
           )}
         </div>
       </TabsContent>

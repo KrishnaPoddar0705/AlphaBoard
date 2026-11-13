@@ -25,18 +25,18 @@ export default function TickerTape({ rows, now, onOpen }: Props) {
         tabIndex={copy === 0 ? 0 : -1}
         aria-hidden={copy === 1}
         onClick={() => onOpen(r)}
-        className="inline-flex shrink-0 items-center gap-1.5 px-4 font-mono text-[11px] text-[#F1EEE0] hover:text-white"
+        className="inline-flex shrink-0 items-center gap-1.5 px-4 font-mono text-[11px] text-paper hover:text-white board:text-ink board:hover:text-link"
       >
         <span className="font-semibold">{r.ticker}</span>
         <span style={{ color: s?.color ?? '#8B857A' }}>{s?.glyph ?? '·'}</span>
-        <span className="text-[#CFC8B8]">{eventTypeOf(r.kind, r.subtype).label}</span>
-        <span className="text-[#8B857A]">{ownerName(r)} · {relativeTime(r.created_at, now)}</span>
+        <span className="text-[#CFC8B8] board:text-ink-muted">{eventTypeOf(r.kind, r.subtype).label}</span>
+        <span className="text-ink-faint">{ownerName(r)} · {relativeTime(r.created_at, now)}</span>
       </button>
     )
   })
 
   return (
-    <div className="cc-tape group relative overflow-hidden rounded-md border border-[#1C1B17] bg-[#1C1B17] py-1.5">
+    <div className="cc-tape group relative overflow-hidden rounded-md border border-ink bg-ink py-1.5 board:rounded-xl board:border-border-editorial board:bg-none board:bg-paper-light board:py-2 board:shadow-card">
       <style>{`
         @keyframes cc-tape { from { transform: translateX(0) } to { transform: translateX(-50%) } }
         .cc-tape-track { animation: cc-tape ${duration}s linear infinite; }

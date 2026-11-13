@@ -40,7 +40,7 @@ export default function CalendarView() {
                   onClick={() => setMonth((m) => addMonths(m, -1))}>
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          <span className="min-w-[9rem] text-center font-mono text-sm text-[#1C1B17]">
+          <span className="min-w-[9rem] text-center font-mono text-sm text-ink">
             {formatMonth(month)}
           </span>
           <Button variant="ghost" size="icon-sm" aria-label="Next month"

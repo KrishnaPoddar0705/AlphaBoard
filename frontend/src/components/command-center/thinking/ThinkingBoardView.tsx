@@ -100,7 +100,7 @@ export default function ThinkingBoardView() {
   }
 
   const renderTree = (onCollapse?: () => void) => treeError ? (
-    <p className="p-4 font-mono text-[11px] leading-relaxed text-[#B23B2A]">{(treeError as Error).message}</p>
+    <p className="p-4 font-mono text-[11px] leading-relaxed text-negative">{(treeError as Error).message}</p>
   ) : treePending ? (
     <div className="flex flex-col gap-2 p-3">{[0, 1, 2, 3].map((i) => <div key={i} className="tb-shimmer h-7 rounded-md" />)}</div>
   ) : (
@@ -109,21 +109,21 @@ export default function ThinkingBoardView() {
   )
 
   return (
-    <div className="-mx-3 -mb-4 flex h-[calc(100dvh-11.5rem)] min-h-[520px] overflow-hidden border-y border-[#DDD6C7] bg-[#F7F2E6] sm:-mx-5 sm:-mb-6 sm:rounded-xl sm:border lg:mx-0 lg:mb-0">
+    <div className="-mx-3 -mb-4 flex h-[calc(100dvh-11.5rem)] min-h-[520px] overflow-hidden border-y border-border-strong bg-paper-light sm:-mx-5 sm:-mb-6 sm:rounded-xl sm:border lg:mx-0 lg:mb-0">
       {treeCollapsed ? (
         // Folded: a slim strip that keeps the two things you reach for -- reopen, new board.
-        <aside className="hidden w-12 flex-none flex-col items-center gap-2 border-r border-[#DDD6C7] bg-[#F4F0E3] py-3 lg:flex">
+        <aside className="hidden w-12 flex-none flex-col items-center gap-2 border-r border-border-strong bg-[#F4F0E3] py-3 lg:flex">
           <button type="button" onClick={() => setCollapsed(false)} aria-label="Show notes panel" title="Show notes panel"
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#DDD6C7] text-[#3F3C35] hover:bg-[#EAE4D5]">
+            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border-strong text-ink-soft hover:bg-[#EAE4D5]">
             <PanelLeftOpen className="h-4 w-4" />
           </button>
           <button type="button" onClick={() => setPickerOpen(true)} aria-label="New board" title="New board"
-            className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#33312B]">
+            className="flex h-9 w-9 items-center justify-center rounded-lg bg-ink text-paper-light hover:bg-[#33312B]">
             <Plus className="h-4 w-4" />
           </button>
         </aside>
       ) : (
-        <aside className="hidden w-[256px] flex-none border-r border-[#DDD6C7] bg-[#F4F0E3] lg:flex lg:flex-col">
+        <aside className="hidden w-[256px] flex-none border-r border-border-strong bg-[#F4F0E3] lg:flex lg:flex-col">
           {renderTree(() => setCollapsed(true))}
         </aside>
       )}
@@ -137,7 +137,7 @@ export default function ThinkingBoardView() {
       )}
 
       <Sheet open={treeOpen} onOpenChange={setTreeOpen}>
-        <SheetContent side="left" className="w-[300px] border-[#DDD6C7] bg-[#F4F0E3] p-0">
+        <SheetContent side="left" className="w-[300px] border-border-strong bg-[#F4F0E3] p-0">
           <SheetHeader className="sr-only">
             <SheetTitle>Research notes</SheetTitle>
             <SheetDescription>Your boards, folders and notes by stock</SheetDescription>
@@ -150,12 +150,12 @@ export default function ThinkingBoardView() {
         onPicked={(coverageId) => { setPickerOpen(false); void newNote(coverageId, null) }} />
 
       <Dialog open={!!confirm} onOpenChange={(o) => !o && setConfirm(null)}>
-        <DialogContent className="border-[#D7D0C2] bg-[#F7F2E6] sm:max-w-sm">
+        <DialogContent className="border-border-editorial bg-paper-light sm:max-w-sm">
           <DialogHeader>
-            <DialogTitle className="font-mono text-base text-[#1C1B17]">
+            <DialogTitle className="font-mono text-base text-ink">
               Delete {confirm?.kind === 'folder' ? 'folder' : 'note'}?
             </DialogTitle>
-            <DialogDescription className="font-mono text-[11px] leading-relaxed text-[#6F6A60]">
+            <DialogDescription className="font-mono text-[11px] leading-relaxed text-ink-muted">
               {confirm?.kind === 'folder'
                 ? `“${confirm?.name}” and the folders inside it go. Notes inside move to the stock's top level.`
                 : `“${confirm?.name}” is deleted for good. A log entry it was published as stays on the log.`}
@@ -163,7 +163,7 @@ export default function ThinkingBoardView() {
           </DialogHeader>
           <div className="flex justify-end gap-2">
             <Button variant="outline" size="sm" onClick={() => setConfirm(null)}>Keep it</Button>
-            <Button size="sm" className="bg-[#B23B2A] hover:bg-[#962F20]" onClick={runConfirm}>Delete</Button>
+            <Button size="sm" className="bg-negative hover:bg-[#962F20]" onClick={runConfirm}>Delete</Button>
           </div>
         </DialogContent>
       </Dialog>
@@ -179,7 +179,7 @@ function EmptyBoard({ recent, onOpen, onNew, onBrowse }: {
     <div className="tb-canvas flex flex-1 items-center justify-center overflow-y-auto p-6">
       <div className="tb-sheet w-full max-w-[560px] px-8 py-10 sm:px-12">
         <h2 className="tb-title !text-[1.7rem]">Write the report where the data is.</h2>
-        <p className="mt-3 max-w-[46ch] font-mono text-[12px] leading-relaxed text-[#6F6A60]">
+        <p className="mt-3 max-w-[46ch] font-mono text-[12px] leading-relaxed text-ink-muted">
           Pick a stock, pull its financials, concalls and filings beside the page, write the thesis,
           and publish it straight to the stock’s log.
         </p>
@@ -189,13 +189,13 @@ function EmptyBoard({ recent, onOpen, onNew, onBrowse }: {
         </div>
         {recent.length > 0 && (
           <div className="mt-8 border-t border-[#E6E0D2] pt-4">
-            <p className="mb-2 font-mono text-[10.5px] text-[#8B857A]">Pick up where you left off</p>
+            <p className="mb-2 font-mono text-[10.5px] text-ink-faint">Pick up where you left off</p>
             {recent.map((r) => (
               <button key={r.id} type="button" onClick={() => onOpen(r.id)}
-                className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-[#EFE9DA]">
-                <FileText className="h-3.5 w-3.5 flex-none text-[#8B857A]" />
-                <span className="w-20 flex-none truncate font-mono text-[11px] font-medium text-[#1C1B17]">{r.ticker.replace(/\.(NS|BO)$/, '')}</span>
-                <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-[#3F3C35]">{r.title}</span>
+                className="flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-left hover:bg-paper-sunk">
+                <FileText className="h-3.5 w-3.5 flex-none text-ink-faint" />
+                <span className="w-20 flex-none truncate font-mono text-[11px] font-medium text-ink">{r.ticker.replace(/\.(NS|BO)$/, '')}</span>
+                <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-ink-soft">{r.title}</span>
                 <span className="flex-none font-mono text-[10px] text-[#A39D90]">{relativeDays(r.updated_at.slice(0, 10))}</span>
               </button>
             ))}

@@ -5,18 +5,18 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const badgeVariants = cva(
-  "inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:ring-[3px] focus-visible:ring-[rgba(29,78,216,0.35)] transition-[color,box-shadow] overflow-hidden",
+  "inline-flex items-center justify-center rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:ring-[3px] focus-visible:ring-[rgba(29,78,216,0.35)] transition-[color,box-shadow] overflow-hidden board:rounded-md board:px-1.5",
   {
     variants: {
       variant: {
         default:
-          "border-transparent bg-[#1C1B17] text-[#F7F2E6] [a&]:hover:bg-[#1C1B17]/90",
+          "border-transparent bg-ink text-paper-light [a&]:hover:bg-ink/90 board:bg-brand-100 board:text-brand-700",
         secondary:
-          "border-transparent bg-[#FBF7ED] text-[#1C1B17] [a&]:hover:bg-[rgba(28,27,23,0.04)]",
+          "border-transparent bg-paper-alt text-ink [a&]:hover:bg-[rgba(28,27,23,0.04)] board:bg-border-editorial board:text-ink-soft",
         destructive:
-          "border-transparent bg-[#B23B2A] text-white [a&]:hover:bg-[#B23B2A]/90",
+          "border-transparent bg-negative text-white [a&]:hover:bg-negative/90 board:bg-rose-100 board:text-rose-700",
         outline:
-          "text-[#1C1B17] border-[#D7D0C2] [a&]:hover:bg-[rgba(28,27,23,0.04)]",
+          "text-ink border-border-editorial [a&]:hover:bg-[rgba(28,27,23,0.04)]",
       },
     },
     defaultVariants: {

@@ -14,6 +14,7 @@ import { Search } from "lucide-react"
 import { useSearch } from "@/contexts/SearchContext"
 import { searchStocks, marketErrorMessage } from "@/lib/api"
 import { useDebounce } from "@/hooks/useDebounce"
+import { SkinToggle } from "@/components/SkinToggle"
 
 interface SearchResult {
     symbol: string
@@ -72,15 +73,15 @@ export default function LayoutV2() {
             {/* min-w-0: a flex item will not shrink below its content otherwise, so one
                 wide table (the Command Center Matrix) widened the whole page. */}
             <SidebarInset className="min-w-0">
-                <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 border-b border-[#D7D0C2] bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 md:px-6">
+                <header className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-2 border-b border-border-editorial bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 px-4 md:px-6">
                     <SidebarTrigger className="-ml-1" />
-                    <Separator orientation="vertical" className="mr-2 h-4 bg-[#D7D0C2]" />
+                    <Separator orientation="vertical" className="mr-2 h-4 bg-border-editorial" />
                     <div className="flex flex-1 items-center gap-4">
                         <div className="relative flex-1 max-w-md" ref={searchRef}>
-                            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6F6A60] z-10" />
+                            <Search className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted z-10" />
                             <Input
                                 placeholder="Search Stock"
-                                className="pl-8 bg-[#F7F2E6]"
+                                className="pl-8 bg-paper-light"
                                 value={searchQuery}
                                 onChange={(e) => {
                                     setSearchQuery(e.target.value)
@@ -97,17 +98,17 @@ export default function LayoutV2() {
                                 }}
                             />
                             {showSuggestions && searchResults.length > 0 && (
-                                <div className="absolute top-full left-0 right-0 mt-1 bg-[#FBF7ED] border border-[#D7D0C2] rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
+                                <div className="absolute top-full left-0 right-0 mt-1 bg-paper-alt border border-border-editorial rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto">
                                     {searchResults.map((result) => (
                                         <button
                                             key={result.symbol}
                                             onClick={() => handleSelectStock(result.symbol)}
-                                            className="w-full text-left px-4 py-3 hover:bg-[#F1EEE0] transition-colors border-b border-[#D7D0C2] last:border-b-0"
+                                            className="w-full text-left px-4 py-3 hover:bg-paper transition-colors border-b border-border-editorial last:border-b-0"
                                         >
-                                            <div className="font-semibold text-[#1C1B17]">{result.symbol}</div>
-                                            <div className="text-sm text-[#6F6A60] truncate">{result.name}</div>
+                                            <div className="font-semibold text-ink">{result.symbol}</div>
+                                            <div className="text-sm text-ink-muted truncate">{result.name}</div>
                                             {result.market && (
-                                                <div className="text-xs text-[#6F6A60] mt-1">{result.market}</div>
+                                                <div className="text-xs text-ink-muted mt-1">{result.market}</div>
                                             )}
                                         </button>
                                     ))}
@@ -115,6 +116,7 @@ export default function LayoutV2() {
                             )}
                         </div>
                     </div>
+                    <SkinToggle />
                 </header>
                 <div className="flex flex-1 flex-col overflow-auto">
                     <Outlet />

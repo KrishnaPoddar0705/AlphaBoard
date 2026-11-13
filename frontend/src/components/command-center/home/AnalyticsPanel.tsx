@@ -5,6 +5,7 @@ import { KIND_LABELS } from '@/lib/commandCenter/constants'
 import { formatDayShort } from '@/lib/commandCenter/format'
 import { weeklyCounts, type AnalystLensRow } from '@/lib/commandCenter/home'
 import type { ActivityFeedRow, EventKind, RosterMember, TeamOption } from '@/lib/commandCenter/types'
+import { useSkinColors } from '@/hooks/useSkinColors'
 
 const KIND_COLORS: Record<EventKind, string> = {
   management_meeting: '#1C1B17',
@@ -32,21 +33,22 @@ function Bars({ rows }: { rows: Array<{ label: string; value: number; sub?: stri
     <ul className="flex flex-col gap-1">
       {rows.map((r) => (
         <li key={r.label} className="grid grid-cols-[7rem_minmax(0,1fr)_2rem] items-center gap-2 font-mono text-[11px]">
-          <span className="truncate text-[#1C1B17]" title={r.label}>{r.label}</span>
-          <span className="h-2.5 bg-[#E3DDCF]">
-            <span className="block h-full bg-[#1C1B17]" style={{ width: `${(r.value / max) * 100}%` }} />
+          <span className="truncate text-ink" title={r.label}>{r.label}</span>
+          <span className="h-2.5 bg-gridline">
+            <span className="block h-full bg-ink" style={{ width: `${(r.value / max) * 100}%` }} />
           </span>
-          <span className="text-right tabular-nums text-[#1C1B17]">{r.value}</span>
+          <span className="text-right tabular-nums text-ink">{r.value}</span>
         </li>
       ))}
     </ul>
   )
 }
 
-const label = 'mb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6F6A60]'
+const label = 'mb-1.5 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted'
 
 /** Counts of what the desk logged. No projections, no scores. */
 export default function AnalyticsPanel({ entries, analysts, roster, teams, now, className }: Props) {
+  const sc = useSkinColors()
   const weekly = useMemo(() => weeklyCounts(entries, now, 5), [entries, now])
   const kindsPresent = KINDS.filter((k) => weekly.some((w) => (w[k] ?? 0) > 0))
   const totalWeeks = weekly.reduce((n, w) => n + KINDS.reduce((m, k) => m + (w[k] ?? 0), 0), 0)
@@ -83,15 +85,15 @@ export default function AnalyticsPanel({ entries, analysts, roster, teams, now, 
                 gridYValues={4}
                 tooltipLabel={(d) => `${KIND_LABELS[d.id as EventKind]} · ${d.indexValue}`}
                 theme={{
-                  text: { fontFamily: 'ui-monospace, monospace', fontSize: 10, fill: '#6F6A60' },
-                  grid: { line: { stroke: '#E3DDCF' } },
-                  tooltip: { container: { fontFamily: 'ui-monospace, monospace', fontSize: 11 } },
+                  text: { fontFamily: sc.fontFamily, fontSize: 10, fill: sc.inkMuted },
+                  grid: { line: { stroke: sc.grid } },
+                  tooltip: { container: { fontFamily: sc.fontFamily, fontSize: 11 } },
                 }}
               />
             </div>
             <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
               {kindsPresent.map((k) => (
-                <span key={k} className="inline-flex items-center gap-1 font-mono text-[10px] text-[#6F6A60]">
+                <span key={k} className="inline-flex items-center gap-1 font-mono text-[10px] text-ink-muted">
                   <span className="h-2 w-2" style={{ backgroundColor: KIND_COLORS[k] }} />{KIND_LABELS[k]}
                 </span>
               ))}

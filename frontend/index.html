@@ -2,6 +2,10 @@
 <html lang="en">
 
 <head>
+  <script>
+    // Apply the saved skin before first paint (see src/contexts/SkinContext.tsx).
+    try { if (localStorage.getItem('alphaboard-skin') === 'board') document.documentElement.setAttribute('data-skin', 'board'); } catch (e) {}
+  </script>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/x-icon" href="/favicon.ico" />
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
@@ -11,7 +15,7 @@
   <title>AlphaBoard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&display=swap"
+  <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,400;0,500;0,600;1,400&display=swap"
     rel="stylesheet">
   <script>
     // Immediate 404 handler - runs before React loads

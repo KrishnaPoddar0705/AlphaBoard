@@ -26,9 +26,9 @@ interface Props {
   periodOptions: string[]
 }
 
-const labelClass = 'font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]'
+const labelClass = 'font-mono text-[11px] uppercase tracking-wider text-ink-muted'
 const inputClass =
-  'w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2.5 py-1.5 font-mono text-xs text-[#1C1B17] focus:border-[#8B857A] focus:outline-none'
+  'w-full rounded-lg border border-border-editorial bg-paper-alt px-2.5 py-1.5 font-mono text-xs text-ink focus:border-ink-faint focus:outline-none'
 
 /** A two-state escalation target. `aria-pressed` carries the state to screen readers. */
 function PushToggle({ label, on, onClick }: { label: string; on: boolean; onClick: () => void }) {
@@ -39,8 +39,8 @@ function PushToggle({ label, on, onClick }: { label: string; on: boolean; onClic
       aria-pressed={on}
       className={`rounded-lg border px-2.5 py-1.5 font-mono text-[11px] transition-colors ${
         on
-          ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F1EEE0]'
-          : 'border-[#D7D0C2] bg-[#FBF7ED] text-[#6F6A60] hover:border-[#8B857A] hover:text-[#1C1B17]'
+          ? 'border-ink bg-ink text-paper'
+          : 'border-border-editorial bg-paper-alt text-ink-muted hover:border-ink-faint hover:text-ink'
       }`}
     >
       {on ? '✓ ' : '+ '}{label}
@@ -99,7 +99,7 @@ export default function EventDetailFields({
         PM's or an admin's queue. Collapsed, they were routinely missed -- so the 20-second log
         is now bought by keeping the fields terse, not by hiding them.
       */}
-      <div className="flex flex-col gap-3 rounded-lg border border-[#E3DDCF] bg-[#FBF7ED] p-3">
+      <div className="flex flex-col gap-3 rounded-lg border border-gridline bg-paper-alt p-3">
         <div className="flex flex-col gap-1.5">
           <label className={labelClass}>Impact on thesis</label>
           <div className="flex gap-1.5">
@@ -112,7 +112,7 @@ export default function EventDetailFields({
                   onClick={() => set({ thesisImpact: on ? null : t.value })}
                   className={[
                     'rounded-lg border px-2.5 py-1 font-mono text-[11px] transition-colors',
-                    on ? 'text-[#F7F2E6]' : 'bg-[#F7F2E6] hover:bg-[rgba(28,27,23,0.04)]',
+                    on ? 'text-paper-light' : 'bg-paper-light hover:bg-[rgba(28,27,23,0.04)]',
                   ].join(' ')}
                   style={on
                     ? { backgroundColor: t.color, borderColor: t.color }

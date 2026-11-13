@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
 import { ResponsiveCalendar } from '@nivo/calendar';
+import { useSkinColors } from '@/hooks/useSkinColors'
 
 interface DailyReturnsCalendarProps {
     data: Array<{ day: string; value: number }>;
 }
 
 export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data }) => {
+    const sc = useSkinColors()
     // Create a map for quick lookup in tooltip (includes all values including 0)
     const dataMap = useMemo(() => {
         const map = new Map<string, number>();
@@ -62,11 +64,11 @@ export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data
 
     // Theme with Editorial Paper Terminal colors
     const theme = {
-        textColor: '#1C1B17', // ink text
+        textColor: sc.ink, // ink text
         fontSize: 11,
         labels: {
             text: {
-                fill: '#6F6A60' // muted
+                fill: sc.inkMuted // muted
             }
         }
     };
@@ -77,15 +79,15 @@ export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data
                 data={filteredData}
                 from={from}
                 to={to}
-                emptyColor="#FBF7ED" // alt bg
+                emptyColor={sc.surfaceAlt} // alt bg
                 colors={['#B23B2A', '#F09070', '#86EFAC', '#2F8F5B']} // solid red, light red, light green, solid green
                 minValue={min}
                 maxValue={max}
                 margin={{ top: 40, right: 40, bottom: 40, left: 40 }}
                 yearSpacing={40}
-                monthBorderColor="#D7D0C2" // border
+                monthBorderColor={sc.border} // border
                 dayBorderWidth={1}
-                dayBorderColor="#E3DDCF" // gridlines
+                dayBorderColor={sc.grid} // gridlines
                 theme={theme}
                 legends={[
                     {
@@ -105,10 +107,10 @@ export const DailyReturnsCalendar: React.FC<DailyReturnsCalendarProps> = ({ data
                     const numValue = Number(returnValue);
 
                     return (
-                        <div className="bg-[#F7F2E6] border border-[#D7D0C2] rounded-lg px-3 py-2 text-sm font-mono">
-                            <strong className="text-[#1C1B17]">{day}</strong>
-                            <div className="text-[#6F6A60] mt-1">Daily Return:</div>
-                            <div className={`font-semibold tabular-nums ${numValue >= 0 ? 'text-[#2F8F5B]' : numValue < 0 ? 'text-[#B23B2A]' : 'text-[#6F6A60]'}`}>
+                        <div className="bg-paper-light border border-border-editorial rounded-lg px-3 py-2 text-sm font-mono">
+                            <strong className="text-ink">{day}</strong>
+                            <div className="text-ink-muted mt-1">Daily Return:</div>
+                            <div className={`font-semibold tabular-nums ${numValue >= 0 ? 'text-positive' : numValue < 0 ? 'text-negative' : 'text-ink-muted'}`}>
                                 {numValue >= 0 ? '+' : ''}{numValue.toFixed(2)}%
                             </div>
                         </div>

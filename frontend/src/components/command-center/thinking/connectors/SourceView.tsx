@@ -21,7 +21,7 @@ interface Props {
   onTrim?: (next: Trim) => void
 }
 
-const hideBtn = 'flex h-5 w-5 flex-none items-center justify-center rounded text-[#A39D90] opacity-0 transition-opacity hover:bg-[#EFE9DA] hover:text-[#B23B2A] focus:opacity-100 group-hover/hide:opacity-100'
+const hideBtn = 'flex h-5 w-5 flex-none items-center justify-center rounded text-[#A39D90] opacity-0 transition-opacity hover:bg-paper-sunk hover:text-negative focus:opacity-100 group-hover/hide:opacity-100'
 
 const SENTIMENT: Record<string, string> = { positive: '#2F8F5B', negative: '#B23B2A', neutral: '#8B857A' }
 
@@ -35,7 +35,7 @@ function DataTable({ table, dense, series }: { table: SourceTable; dense?: boole
           <tr>
             {t.columns.map((c, i) => (
               <th key={i} className={[
-                'whitespace-nowrap py-1.5 font-medium text-[#8B857A]',
+                'whitespace-nowrap py-1.5 font-medium text-ink-faint',
                 dense ? 'px-1.5' : 'px-2.5',
                 i === 0 ? 'tb-pin text-left' : 'text-right',
               ].join(' ')}>{i === 0 ? '' : c}</th>
@@ -51,10 +51,10 @@ function DataTable({ table, dense, series }: { table: SourceTable; dense?: boole
                   <td key={ci} className={[
                     dense ? 'px-1.5 py-[5px]' : 'px-2.5 py-1.5',
                     ci === 0
-                      ? ['tb-pin truncate text-left text-[#3F3C35]', dense ? 'max-w-[150px]' : 'min-w-[150px] max-w-[220px]'].join(' ')
-                      : 'whitespace-nowrap text-right text-[#1C1B17]',
+                      ? ['tb-pin truncate text-left text-ink-soft', dense ? 'max-w-[150px]' : 'min-w-[150px] max-w-[220px]'].join(' ')
+                      : 'whitespace-nowrap text-right text-ink',
                     ci === 0 && si >= 0 ? 'font-medium' : '',
-                    typeof cell === 'number' && cell < 0 ? 'text-[#B23B2A]' : '',
+                    typeof cell === 'number' && cell < 0 ? 'text-negative' : '',
                   ].join(' ')} title={ci === 0 ? String(cell) : undefined}>
                     {ci === 0 && si >= 0 && (
                       <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full align-middle"
@@ -74,7 +74,7 @@ function DataTable({ table, dense, series }: { table: SourceTable; dense?: boole
 
 function Legend({ plan }: { plan: ChartPlan }) {
   return (
-    <div className="tb-data flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-[#6F6A60]">
+    <div className="tb-data flex flex-wrap gap-x-3 gap-y-1 text-[10px] text-ink-muted">
       {plan.series.map((s, i) => (
         <span key={s.label} className="inline-flex items-center gap-1">
           <span className="h-2 w-2 rounded-[2px]" style={{ background: SERIES_COLORS[i] }} />{s.label}
@@ -99,20 +99,20 @@ function ItemList({ items, dense, onInsertItem, hidden, onHide }: {
               title={`${it.sentiment} sentiment`} />
           )}
           <div className="min-w-0 flex-1">
-            <p className="text-[12.5px] leading-snug text-[#1C1B17]">
+            <p className="text-[12.5px] leading-snug text-ink">
               {it.url ? (
                 <a href={it.url} target="_blank" rel="noopener noreferrer"
                   className="decoration-[#C9C1AF] underline-offset-2 hover:underline">{it.title}</a>
               ) : it.title}
             </p>
-            {it.summary && !dense && <p className="mt-0.5 text-[12px] leading-snug text-[#6F6A60]">{it.summary}</p>}
-            <p className="tb-data mt-0.5 text-[10px] text-[#8B857A]">
+            {it.summary && !dense && <p className="mt-0.5 text-[12px] leading-snug text-ink-muted">{it.summary}</p>}
+            <p className="tb-data mt-0.5 text-[10px] text-ink-faint">
               {[formatItemDate(it.date), it.tag].filter(Boolean).join('  /  ')}
             </p>
           </div>
           {onInsertItem && (
             <button type="button" onClick={() => onInsertItem(it)}
-              className="tb-data h-6 flex-none self-center rounded-md border border-[#D7D0C2] px-1.5 text-[10px] text-[#6F6A60] opacity-0 transition-opacity hover:border-[#1C1B17] hover:text-[#1C1B17] focus:opacity-100 group-hover:opacity-100">
+              className="tb-data h-6 flex-none self-center rounded-md border border-border-editorial px-1.5 text-[10px] text-ink-muted opacity-0 transition-opacity hover:border-ink hover:text-ink focus:opacity-100 group-hover:opacity-100">
               Cite
             </button>
           )}
@@ -140,8 +140,8 @@ function Bullet({ text, onEdit }: { text: string; onEdit?: (next: string) => voi
     if (next !== text) onEdit?.(next)
   }
   return (
-    <li className="flex gap-2 text-[12.5px] leading-snug text-[#1C1B17]">
-      <span className="mt-[8px] h-[3px] w-[3px] flex-none rounded-full bg-[#8B857A]" />
+    <li className="flex gap-2 text-[12.5px] leading-snug text-ink">
+      <span className="mt-[8px] h-[3px] w-[3px] flex-none rounded-full bg-ink-faint" />
       {onEdit ? (
         <span
           contentEditable="plaintext-only"
@@ -154,7 +154,7 @@ function Bullet({ text, onEdit }: { text: string; onEdit?: (next: string) => voi
             if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.blur() }
             if (e.key === 'Escape') { e.currentTarget.textContent = text; e.currentTarget.blur() }
           }}
-          className="-mx-1 min-w-0 flex-1 cursor-text rounded px-1 outline-none transition-colors hover:bg-[#F3EEE1] focus:bg-[#FBF7ED] focus:shadow-[inset_0_0_0_1px_#C9C1AF]"
+          className="-mx-1 min-w-0 flex-1 cursor-text rounded px-1 outline-none transition-colors hover:bg-[#F3EEE1] focus:bg-paper-alt focus:shadow-[inset_0_0_0_1px_#C9C1AF]"
         >{text}</span>
       ) : <span className="min-w-0 flex-1">{text}</span>}
     </li>
@@ -174,7 +174,7 @@ function Section({ s, dense, onHide, edits, onEdit }: {
   return (
     <div className="group/hide">
       <div className="mb-1 flex items-center gap-1">
-        <p className="tb-data text-[10.5px] font-medium text-[#6F6A60]">{s.heading}</p>
+        <p className="tb-data text-[10.5px] font-medium text-ink-muted">{s.heading}</p>
         {onHide && (
           <button type="button" onClick={onHide} className={hideBtn}
             aria-label={`Hide ${s.heading}`} title="Hide this section from the note">
@@ -194,7 +194,7 @@ function Section({ s, dense, onHide, edits, onEdit }: {
           <summary className="tb-data cursor-pointer select-none text-[10.5px] text-[#2C4F7C] hover:underline">
             Full analysis
           </summary>
-          <div className="mt-2 rounded-lg border border-[#ECE6D6] bg-[#FBF7ED] px-3 py-2 text-[13px] text-[#1C1B17]">
+          <div className="mt-2 rounded-lg border border-[#ECE6D6] bg-paper-alt px-3 py-2 text-[13px] text-ink">
             <ThesisMarkdown content={s.markdown} />
           </div>
         </details>
@@ -216,7 +216,7 @@ export default function SourceView({ payload, mode, dense, onInsertItem, trim, o
   return (
     <div className="flex flex-col gap-3">
       {payload.fallback_note && (
-        <p className="tb-data flex gap-1.5 rounded-md bg-[#F3EEE1] px-2 py-1.5 text-[10.5px] leading-snug text-[#6F6A60]">
+        <p className="tb-data flex gap-1.5 rounded-md bg-[#F3EEE1] px-2 py-1.5 text-[10.5px] leading-snug text-ink-muted">
           <Info className="mt-[1px] h-3 w-3 flex-none" />{payload.fallback_note}
         </p>
       )}

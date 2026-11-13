@@ -57,8 +57,8 @@ export default function CommandCenterChrome({ view, onLog, onAdd, onView }: Prop
       {view !== 'home' && (
         <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="font-mono text-lg font-semibold text-[#1C1B17]">Command Center</h1>
-            <p className="font-mono text-[11px] text-[#6F6A60]">
+            <h1 className="font-mono text-lg font-semibold text-ink board:text-2xl board:tracking-[-0.02em]">Command Center</h1>
+            <p className="font-mono text-[11px] text-ink-muted board:text-sm">
               Every stock, every meeting, every takeaway.
             </p>
           </div>
@@ -78,7 +78,7 @@ export default function CommandCenterChrome({ view, onLog, onAdd, onView }: Prop
         </header>
       )}
 
-      <nav className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-[#D7D0C2]">
+      <nav className="mb-4 flex items-center gap-1 overflow-x-auto border-b border-border-editorial">
         {VIEWS.map((v) => {
           const Icon = v.icon
           const active = view === v.id
@@ -89,10 +89,10 @@ export default function CommandCenterChrome({ view, onLog, onAdd, onView }: Prop
               onClick={() => go(v.id)}
               aria-current={active ? 'page' : undefined}
               className={[
-                '-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 font-mono text-xs transition-colors',
+                '-mb-px inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2 font-mono text-xs transition-colors board:px-2.5 board:py-2.5 board:text-sm',
                 active
-                  ? 'border-[#1C1B17] text-[#1C1B17]'
-                  : 'border-transparent text-[#6F6A60] hover:text-[#1C1B17]',
+                  ? 'border-ink text-ink board:border-brand-600 board:font-medium board:text-brand-600'
+                  : 'border-transparent text-ink-muted hover:text-ink',
               ].join(' ')}
             >
               <Icon className="h-3.5 w-3.5" />{v.label}

@@ -12,7 +12,7 @@ export function Bone({ className = '' }: { className?: string }) {
   return (
     <span
       aria-hidden
-      className={`block animate-pulse rounded bg-[#E3DDCF] motion-reduce:animate-none ${className}`}
+      className={`block animate-pulse rounded bg-gridline motion-reduce:animate-none ${className}`}
     />
   )
 }
@@ -32,7 +32,7 @@ export function Loading({ label = 'Loading', children, className = '' }: {
 /** A timeline / activity entry card. */
 export function EntrySkeleton() {
   return (
-    <div className="rounded-xl border border-[#D7D0C2] bg-[#F7F2E6] p-3">
+    <div className="rounded-xl border border-border-editorial bg-paper-light p-3">
       <div className="flex items-center gap-2">
         <Bone className="h-5 w-20 rounded-full" />
         <Bone className="h-3 w-16" />
@@ -56,7 +56,7 @@ export function EntryListSkeleton({ count = 3 }: { count?: number }) {
 /** Two-line list rows, for lists inside a SectionCard or TerminalPanel. */
 export function RowsSkeleton({ rows = 3, padded = false }: { rows?: number; padded?: boolean }) {
   return (
-    <Loading className={`flex flex-col divide-y divide-[#E3DDCF] ${padded ? 'px-3' : ''}`}>
+    <Loading className={`flex flex-col divide-y divide-gridline ${padded ? 'px-3' : ''}`}>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex flex-col gap-1.5 py-2">
           <div className="flex items-center gap-2">

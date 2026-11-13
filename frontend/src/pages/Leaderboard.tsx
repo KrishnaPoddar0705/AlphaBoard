@@ -363,7 +363,7 @@ export default function Leaderboard() {
     if (orgLoading || loading) {
         return (
             <div className="p-5 md:p-7">
-                <div className="text-center text-[#6F6A60]">Loading leaderboard...</div>
+                <div className="text-center text-ink-muted">Loading leaderboard...</div>
             </div>
         );
     }
@@ -372,12 +372,12 @@ export default function Leaderboard() {
         <div className="p-5 md:p-7 space-y-5">
             <div className="flex items-center justify-between flex-wrap gap-4">
                 <div>
-                    <h1 className="text-[28px] font-bold text-[#1C1B17] tracking-tight">
+                    <h1 className="text-[28px] font-bold text-ink tracking-tight">
                         {activeTab === 'organization' && organization
                             ? `${organization.name} Leaderboard`
                             : 'Public Leaderboard'}
                     </h1>
-                    <p className="mt-1 text-sm text-[#6F6A60]">
+                    <p className="mt-1 text-sm text-ink-muted">
                         {activeTab === 'organization' && organization
                             ? `Organization members ranked by Alpha generation`
                             : 'Top public performers ranked by Alpha generation'}
@@ -394,8 +394,8 @@ export default function Leaderboard() {
                             px-4 py-2 rounded-lg font-medium transition-all text-sm
                             flex items-center gap-2
                             ${activeTab === 'organization'
-                                ? 'bg-[#1C1B17] text-[#F7F2E6]'
-                                : 'bg-[#F7F2E6] text-[#1C1B17] border border-[#D7D0C2] hover:bg-[#F1EEE0]'}
+                                ? 'bg-ink text-paper-light'
+                                : 'bg-paper-light text-ink border border-border-editorial hover:bg-paper'}
                         `}
                     >
                         <Building2 className="w-4 h-4" />
@@ -407,8 +407,8 @@ export default function Leaderboard() {
                             px-4 py-2 rounded-lg font-medium transition-all text-sm
                             flex items-center gap-2
                             ${activeTab === 'public'
-                                ? 'bg-[#1C1B17] text-[#F7F2E6]'
-                                : 'bg-[#F7F2E6] text-[#1C1B17] border border-[#D7D0C2] hover:bg-[#F1EEE0]'}
+                                ? 'bg-ink text-paper-light'
+                                : 'bg-paper-light text-ink border border-border-editorial hover:bg-paper'}
                         `}
                     >
                         <Globe className="w-4 h-4" />
@@ -420,7 +420,7 @@ export default function Leaderboard() {
             {/* Mobile: Card view, Desktop: Table view */}
             <div className="space-y-3 md:hidden">
                 {analysts.length === 0 ? (
-                    <div className="p-8 text-center text-[#6F6A60]">
+                    <div className="p-8 text-center text-ink-muted">
                         {activeTab === 'organization' && organization
                             ? `No members found in ${organization.name}.`
                             : 'No public analysts found.'}
@@ -430,7 +430,7 @@ export default function Leaderboard() {
                         <div
                             key={analyst.user_id}
                             onClick={() => setSelectedAnalyst({ ...analyst, rank: index + 1 })}
-                            className="bg-[#F7F2E6] border border-[#D7D0C2] rounded-lg p-4 space-y-3 cursor-pointer hover:bg-[#F1EEE0] transition-colors"
+                            className="bg-paper-light border border-border-editorial rounded-lg p-4 space-y-3 cursor-pointer hover:bg-paper transition-colors"
                         >
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
@@ -439,16 +439,16 @@ export default function Leaderboard() {
                                         ${index === 0 ? 'bg-yellow-400/20 text-yellow-700 border-2 border-yellow-500' :
                                             index === 1 ? 'bg-slate-300/20 text-slate-700 border-2 border-slate-500' :
                                                 index === 2 ? 'bg-orange-400/20 text-orange-700 border-2 border-orange-500' :
-                                                    'bg-[#F1EEE0] text-[#1C1B17] border-2 border-[#D7D0C2]'}
+                                                    'bg-paper text-ink border-2 border-border-editorial'}
                                     `}>
                                         {index + 1}
                                     </div>
                                     {index === 0 && <Award className="w-4 h-4 text-yellow-600" />}
                                     <img src={analyst.avatar} alt={analyst.username} className="w-8 h-8 rounded-full" />
                                     <div>
-                                        <div className="font-medium text-[#1C1B17]">{analyst.username}</div>
+                                        <div className="font-medium text-ink">{analyst.username}</div>
                                         {activeTab === 'organization' && organization && analyst.role === 'admin' && (
-                                            <span className="text-xs text-[#6F6A60]">Admin</span>
+                                            <span className="text-xs text-ink-muted">Admin</span>
                                         )}
                                     </div>
                                 </div>
@@ -460,23 +460,23 @@ export default function Leaderboard() {
                             </div>
                             <div className="grid grid-cols-2 gap-3 text-sm">
                                 <div>
-                                    <div className="text-[#6F6A60] text-xs">Total Ideas</div>
-                                    <div className="text-[#1C1B17] font-medium">{analyst.total_ideas}</div>
+                                    <div className="text-ink-muted text-xs">Total Ideas</div>
+                                    <div className="text-ink font-medium">{analyst.total_ideas}</div>
                                 </div>
                                 <div>
-                                    <div className="text-[#6F6A60] text-xs">Win Rate</div>
-                                    <div className="text-[#1C1B17] font-medium">{analyst.win_rate?.toFixed(1)}%</div>
+                                    <div className="text-ink-muted text-xs">Win Rate</div>
+                                    <div className="text-ink font-medium">{analyst.win_rate?.toFixed(1)}%</div>
                                 </div>
                                 <div>
-                                    <div className="text-[#6F6A60] text-xs">Total Return</div>
+                                    <div className="text-ink-muted text-xs">Total Return</div>
                                     <div className={`font-medium flex items-center gap-1 ${analyst.total_return_pct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                         {analyst.total_return_pct >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                                         {analyst.total_return_pct?.toFixed(2)}%
                                     </div>
                                 </div>
                                 <div>
-                                    <div className="text-[#6F6A60] text-xs">Sharpe</div>
-                                    <div className="text-[#1C1B17] font-medium">{analyst.sharpe_ratio?.toFixed(2) || '-'}</div>
+                                    <div className="text-ink-muted text-xs">Sharpe</div>
+                                    <div className="text-ink font-medium">{analyst.sharpe_ratio?.toFixed(2) || '-'}</div>
                                 </div>
                             </div>
                         </div>
@@ -485,26 +485,26 @@ export default function Leaderboard() {
             </div>
 
             {/* Desktop: Table view */}
-            <div className="hidden md:block bg-[#F7F2E6] border border-[#D7D0C2] rounded-lg overflow-hidden">
+            <div className="hidden md:block bg-paper-light border border-border-editorial rounded-lg overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-[#D7D0C2]">
-                        <thead className="bg-[#F1EEE0] border-b border-[#D7D0C2]">
+                    <table className="min-w-full divide-y divide-border-editorial">
+                        <thead className="bg-paper border-b border-border-editorial">
                             <tr>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#1C1B17] uppercase tracking-wider">Rank</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#1C1B17] uppercase tracking-wider">Analyst</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#1C1B17] uppercase tracking-wider">Total Ideas</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#1C1B17] uppercase tracking-wider">Win Rate</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#1C1B17] uppercase tracking-wider">Total Return</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#1C1B17] uppercase tracking-wider">Alpha</th>
-                                <th className="px-6 py-4 text-left text-xs font-semibold text-[#1C1B17] uppercase tracking-wider">Sharpe</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-ink uppercase tracking-wider">Rank</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-ink uppercase tracking-wider">Analyst</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-ink uppercase tracking-wider">Total Ideas</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-ink uppercase tracking-wider">Win Rate</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-ink uppercase tracking-wider">Total Return</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-ink uppercase tracking-wider">Alpha</th>
+                                <th className="px-6 py-4 text-left text-xs font-semibold text-ink uppercase tracking-wider">Sharpe</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#D7D0C2] bg-[#F7F2E6]">
+                        <tbody className="divide-y divide-border-editorial bg-paper-light">
                             {analysts.map((analyst, index) => (
                                 <tr
                                     key={analyst.user_id}
                                     onClick={() => setSelectedAnalyst({ ...analyst, rank: index + 1 })}
-                                    className="hover:bg-[#F1EEE0] transition-colors cursor-pointer"
+                                    className="hover:bg-paper transition-colors cursor-pointer"
                                 >
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-2">
@@ -513,7 +513,7 @@ export default function Leaderboard() {
                                                 ${index === 0 ? 'bg-yellow-400/20 text-yellow-700 border-2 border-yellow-500' :
                                                     index === 1 ? 'bg-slate-300/20 text-slate-700 border-2 border-slate-500' :
                                                         index === 2 ? 'bg-orange-400/20 text-orange-700 border-2 border-orange-500' :
-                                                            'bg-[#F1EEE0] text-[#1C1B17] border-2 border-[#D7D0C2]'}
+                                                            'bg-paper text-ink border-2 border-border-editorial'}
                                             `}>
                                                 {index + 1}
                                             </div>
@@ -523,16 +523,16 @@ export default function Leaderboard() {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex items-center gap-3">
                                             <img src={analyst.avatar} alt={analyst.username} className="w-8 h-8 rounded-full" />
-                                            <div className="font-medium text-[#1C1B17]">{analyst.username}</div>
+                                            <div className="font-medium text-ink">{analyst.username}</div>
                                             {activeTab === 'organization' && organization && analyst.role === 'admin' && (
-                                                <span className="text-xs bg-[#1C1B17]/10 text-[#1C1B17] px-2 py-0.5 rounded">Admin</span>
+                                                <span className="text-xs bg-ink/10 text-ink px-2 py-0.5 rounded">Admin</span>
                                             )}
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#1C1B17]">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-ink">
                                         {analyst.total_ideas}
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#1C1B17]">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-ink">
                                         {analyst.win_rate?.toFixed(1)}%
                                     </td>
                                     <td className={`px-6 py-4 whitespace-nowrap text-sm font-medium flex items-center gap-1 ${analyst.total_return_pct >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
@@ -544,14 +544,14 @@ export default function Leaderboard() {
                                             {analyst.alpha_pct?.toFixed(2)}%
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-[#1C1B17]">
+                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-ink">
                                         {analyst.sharpe_ratio?.toFixed(2) || '-'}
                                     </td>
                                 </tr>
                             ))}
                             {analysts.length === 0 && (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-8 text-center text-[#6F6A60]">
+                                    <td colSpan={7} className="px-6 py-8 text-center text-ink-muted">
                                         {activeTab === 'organization' && organization
                                             ? `No members found in ${organization.name}.`
                                             : 'No public analysts found.'}

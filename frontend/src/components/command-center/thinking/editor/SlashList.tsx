@@ -23,7 +23,7 @@ const SlashList = forwardRef<ListHandle, ListProps>(({ items, command }, ref) =>
   }))
 
   if (!items.length) {
-    return <div className="tb-card tb-data w-64 px-3 py-2.5 text-[11px] text-[#8B857A]">Nothing matches</div>
+    return <div className="tb-card tb-data w-64 px-3 py-2.5 text-[11px] text-ink-faint">Nothing matches</div>
   }
   return (
     <div className="tb-card max-h-[340px] w-72 overflow-y-auto p-1.5" role="listbox">
@@ -32,20 +32,20 @@ const SlashList = forwardRef<ListHandle, ListProps>(({ items, command }, ref) =>
         const Icon = item.icon
         return (
           <div key={item.title}>
-            {header && <p className="tb-data px-2 pb-1 pt-2 text-[10px] text-[#8B857A]">{header}</p>}
+            {header && <p className="tb-data px-2 pb-1 pt-2 text-[10px] text-ink-faint">{header}</p>}
             <button type="button" role="option" aria-selected={i === index}
               onMouseEnter={() => setIndex(i)}
               onMouseDown={(e) => { e.preventDefault(); command(item) }}
               className={[
                 'flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left',
-                i === index ? 'bg-[#EFE9DA]' : '',
+                i === index ? 'bg-paper-sunk' : '',
               ].join(' ')}>
-              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-md border border-[#DDD6C7] bg-[#FBF7ED]">
-                <Icon className="h-3.5 w-3.5 text-[#3F3C35]" />
+              <span className="flex h-7 w-7 flex-none items-center justify-center rounded-md border border-border-strong bg-paper-alt">
+                <Icon className="h-3.5 w-3.5 text-ink-soft" />
               </span>
               <span className="min-w-0">
-                <span className="tb-data block text-[12px] text-[#1C1B17]">{item.title}</span>
-                <span className="tb-data block truncate text-[10.5px] text-[#8B857A]">{item.hint}</span>
+                <span className="tb-data block text-[12px] text-ink">{item.title}</span>
+                <span className="tb-data block truncate text-[10.5px] text-ink-faint">{item.hint}</span>
               </span>
             </button>
           </div>

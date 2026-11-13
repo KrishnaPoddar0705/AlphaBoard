@@ -48,8 +48,8 @@ export function VoteRail({ score, userVote, onVote, disabled }: VoteRailProps) {
         className={`
           p-1 rounded transition-colors
           ${upvoteActive 
-            ? 'text-[#2F8F5B] hover:text-[#2F8F5B]/80' 
-            : 'text-[#6F6A60] hover:text-[#1C1B17]'
+            ? 'text-positive hover:text-positive/80' 
+            : 'text-ink-muted hover:text-ink'
           }
           ${disabled || isVoting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}
@@ -60,7 +60,7 @@ export function VoteRail({ score, userVote, onVote, disabled }: VoteRailProps) {
       
       <span className={`
         font-mono text-sm font-semibold tabular-nums
-        ${score > 0 ? 'text-[#2F8F5B]' : score < 0 ? 'text-[#B23B2A]' : 'text-[#1C1B17]'}
+        ${score > 0 ? 'text-positive' : score < 0 ? 'text-negative' : 'text-ink'}
       `}>
         {score}
       </span>
@@ -71,8 +71,8 @@ export function VoteRail({ score, userVote, onVote, disabled }: VoteRailProps) {
         className={`
           p-1 rounded transition-colors
           ${downvoteActive 
-            ? 'text-[#B23B2A] hover:text-[#B23B2A]/80' 
-            : 'text-[#6F6A60] hover:text-[#1C1B17]'
+            ? 'text-negative hover:text-negative/80' 
+            : 'text-ink-muted hover:text-ink'
           }
           ${disabled || isVoting ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}
         `}

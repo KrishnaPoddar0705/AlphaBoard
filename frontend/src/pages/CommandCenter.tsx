@@ -65,7 +65,7 @@ export default function CommandCenter() {
       {view === 'board' && <CoverageBoard onAdd={() => setAddOpen(true)} />}
       {view === 'matrix' && <MatrixView onAdd={() => setAddOpen(true)} />}
       {view === 'thinking' && (
-        <Suspense fallback={<div className="h-[calc(100dvh-11.5rem)] animate-pulse rounded-xl bg-[#EFE9DA]" />}>
+        <Suspense fallback={<div className="h-[calc(100dvh-11.5rem)] animate-pulse rounded-xl bg-paper-sunk" />}>
           <ThinkingBoardView />
         </Suspense>
       )}
@@ -80,7 +80,7 @@ export default function CommandCenter() {
         type="button"
         onClick={openLog}
         aria-label="Log an interaction"
-        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6] shadow-lg transition-transform active:scale-95 sm:hidden"
+        className="fixed bottom-5 right-5 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-ink bg-ink text-paper-light shadow-lg transition-transform active:scale-95 sm:hidden"
       >
         <Plus className="h-6 w-6" />
       </button>}

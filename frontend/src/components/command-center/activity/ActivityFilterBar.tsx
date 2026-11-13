@@ -13,7 +13,7 @@ interface Props {
 const KINDS = Object.keys(KIND_LABELS) as EventKind[]
 
 const selectClass =
-  'rounded-lg border border-[#D7D0C2] bg-[#F7F2E6] px-2 py-1 font-mono text-[11px] text-[#1C1B17] focus:outline-none'
+  'rounded-lg border border-border-editorial bg-paper-light px-2 py-1 font-mono text-[11px] text-ink focus:outline-none'
 
 export default function ActivityFilterBar({ value, onChange, members, showAnalyst }: Props) {
   const set = (patch: Partial<ActivityFilters>) => onChange({ ...value, ...patch })
@@ -22,12 +22,12 @@ export default function ActivityFilterBar({ value, onChange, members, showAnalys
   return (
     <div className="flex flex-col gap-2">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#8B857A]" />
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-faint" />
         <input
           value={value.search ?? ''}
           onChange={(e) => set({ search: e.target.value })}
           placeholder="Search takeaways, questions and titles"
-          className="w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] py-1.5 pl-8 pr-3 font-mono text-xs text-[#1C1B17] placeholder:text-[#8B857A] focus:border-[#8B857A] focus:outline-none"
+          className="w-full rounded-lg border border-border-editorial bg-paper-alt py-1.5 pl-8 pr-3 font-mono text-xs text-ink placeholder:text-ink-faint focus:border-ink-faint focus:outline-none"
         />
       </div>
 
@@ -61,7 +61,7 @@ export default function ActivityFilterBar({ value, onChange, members, showAnalys
           aria-label="From date"
           className={selectClass}
         />
-        <span className="font-mono text-[11px] text-[#8B857A]">to</span>
+        <span className="font-mono text-[11px] text-ink-faint">to</span>
         <input
           type="date"
           value={value.to ?? ''}
@@ -74,7 +74,7 @@ export default function ActivityFilterBar({ value, onChange, members, showAnalys
           <button
             type="button"
             onClick={() => onChange({})}
-            className="inline-flex items-center gap-1 font-mono text-[11px] text-[#6F6A60] hover:text-[#1C1B17]"
+            className="inline-flex items-center gap-1 font-mono text-[11px] text-ink-muted hover:text-ink"
           >
             <X className="h-3 w-3" /> Clear
           </button>

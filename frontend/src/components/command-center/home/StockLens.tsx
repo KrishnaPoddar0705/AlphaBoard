@@ -16,7 +16,7 @@ interface Props {
   className?: string
 }
 
-const th = 'px-2 py-1 font-mono text-[10px] font-normal uppercase tracking-[0.12em] text-[#6F6A60] whitespace-nowrap'
+const th = 'px-2 py-1 font-mono text-[10px] font-normal uppercase tracking-[0.12em] text-ink-muted whitespace-nowrap'
 const td = 'px-2 py-1.5 font-mono text-[11px] align-top'
 const WEEK = 7 * 86_400_000
 
@@ -32,7 +32,7 @@ export default function StockLens({ rows, entries, now, onOpen, className }: Pro
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[520px] border-collapse">
-            <thead className="sticky top-0 z-10 bg-[#F1EEE0]">
+            <thead className="sticky top-0 z-10 bg-paper">
               <tr>
                 <th className={`${th} text-left`}>Stock</th>
                 <th className={`${th} text-right`}>New 7d</th>
@@ -51,7 +51,7 @@ export default function StockLens({ rows, entries, now, onOpen, className }: Pro
                   <Fragment key={s.coverageId}>
                     <tr
                       onClick={() => setOpen(isOpen ? null : s.coverageId)}
-                      className={`cursor-pointer border-t border-[#E3DDCF] ${isOpen ? 'bg-[#F1EEE0]' : 'hover:bg-[rgba(28,27,23,0.04)]'}`}
+                      className={`cursor-pointer border-t border-gridline ${isOpen ? 'bg-paper' : 'hover:bg-[rgba(28,27,23,0.04)]'}`}
                     >
                       <td className={td}>
                         <span className="inline-flex items-center gap-1">
@@ -61,36 +61,36 @@ export default function StockLens({ rows, entries, now, onOpen, className }: Pro
                           <Link
                             to={`/command-center/stock/${encodeURIComponent(s.ticker)}`}
                             onClick={(e) => e.stopPropagation()}
-                            className="font-semibold text-[#1C1B17] hover:underline"
+                            className="font-semibold text-ink hover:underline"
                           >
                             {s.ticker}
                           </Link>
                         </span>
-                        <span className="block pl-4 text-[10px] text-[#8B857A]">{s.leadAnalyst ?? 'No lead analyst'}</span>
+                        <span className="block pl-4 text-[10px] text-ink-faint">{s.leadAnalyst ?? 'No lead analyst'}</span>
                       </td>
-                      <td className={`${td} text-right text-xs tabular-nums ${s.new7d > 0 ? 'font-semibold text-[#1C1B17]' : 'text-[#8B857A]'}`}>
+                      <td className={`${td} text-right text-xs tabular-nums ${s.new7d > 0 ? 'font-semibold text-ink' : 'text-ink-faint'}`}>
                         {s.new7d}
                       </td>
                       <td className={`${td} max-w-[260px]`}>
                         {s.lastEntry ? (
                           <>
-                            <span className="block truncate text-[#1C1B17]">{s.lastEntry.title}</span>
-                            <span className="text-[10px] text-[#8B857A]">
+                            <span className="block truncate text-ink">{s.lastEntry.title}</span>
+                            <span className="text-[10px] text-ink-faint">
                               {eventTypeOf(s.lastEntry.kind, s.lastEntry.subtype).label} · {ownerName(s.lastEntry)} · {relativeTime(s.lastEntry.created_at, now)}
                             </span>
                           </>
-                        ) : <span className="text-[#8B857A]">Nothing in 35d</span>}
+                        ) : <span className="text-ink-faint">Nothing in 35d</span>}
                       </td>
                       <td className={`${td} text-right tabular-nums`}>
-                        {s.daysSincePrimary === undefined ? <span className="text-[#8B857A]">—</span>
-                          : s.daysSincePrimary === null ? <span className="text-[#B23B2A]">never</span>
-                          : <span className={s.daysSincePrimary > 30 ? 'text-[#B23B2A]' : 'text-[#1C1B17]'}>{s.daysSincePrimary}d</span>}
+                        {s.daysSincePrimary === undefined ? <span className="text-ink-faint">—</span>
+                          : s.daysSincePrimary === null ? <span className="text-negative">never</span>
+                          : <span className={s.daysSincePrimary > 30 ? 'text-negative' : 'text-ink'}>{s.daysSincePrimary}d</span>}
                       </td>
                     </tr>
                     {isOpen && fresh.length > 0 && (
-                      <tr className="bg-[#FBF7ED]">
-                        <td colSpan={4} className="border-t border-[#E3DDCF] p-0">
-                          <ul className="ml-6 border-l-2 border-[#1C1B17]">
+                      <tr className="bg-paper-alt">
+                        <td colSpan={4} className="border-t border-gridline p-0">
+                          <ul className="ml-6 border-l-2 border-ink">
                             {fresh.map((e) => (
                               <EntryLine key={e.event_id} row={e} now={now} onOpen={onOpen} />
                             ))}

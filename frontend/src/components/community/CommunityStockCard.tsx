@@ -72,18 +72,18 @@ export function CommunityStockCard({
 
   return (
     <Card 
-      className="border border-[#D7D0C2] bg-[#F7F2E6] rounded-xl shadow-none hover:border-[#1C1B17]/30 transition-colors cursor-pointer"
+      className="border border-border-editorial bg-paper-light rounded-xl shadow-none hover:border-ink/30 transition-colors cursor-pointer"
       onClick={handleCardClick}
     >
       <CardContent className="p-[16px] space-y-[12px]">
         {/* Header */}
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="text-xl font-semibold font-mono text-[#1C1B17] leading-tight">
+            <h3 className="text-xl font-semibold font-mono text-ink leading-tight">
               {displayTicker}
             </h3>
             {companyName && (
-              <p className="text-xs text-[#6F6A60] mt-0.5 line-clamp-1">
+              <p className="text-xs text-ink-muted mt-0.5 line-clamp-1">
                 {companyName}
               </p>
             )}
@@ -94,15 +94,15 @@ export function CommunityStockCard({
               <Badge
                 className={`text-xs font-mono tabular-nums px-2 py-0.5 ${
                   isPositive
-                    ? 'bg-[rgba(47,143,91,0.12)] text-[#2F8F5B] border-0'
-                    : 'bg-[rgba(178,59,42,0.12)] text-[#B23B2A] border-0'
+                    ? 'bg-[rgba(47,143,91,0.12)] text-positive border-0'
+                    : 'bg-[rgba(178,59,42,0.12)] text-negative border-0'
                 }`}
               >
                 {isPositive ? '+' : ''}
                 {changePercent.toFixed(2)}%
               </Badge>
             ) : (
-              <Badge className="text-xs font-mono tabular-nums px-2 py-0.5 bg-[rgba(111,106,96,0.12)] text-[#6F6A60] border-0">
+              <Badge className="text-xs font-mono tabular-nums px-2 py-0.5 bg-[rgba(111,106,96,0.12)] text-ink-muted border-0">
                 N/A
               </Badge>
             )}
@@ -112,21 +112,21 @@ export function CommunityStockCard({
         {/* Price and Sparkline */}
         <div className="grid grid-cols-[1fr,120px] gap-3 items-center">
           <div>
-            <div className="text-3xl font-bold font-mono tabular-nums text-[#1C1B17]">
+            <div className="text-3xl font-bold font-mono tabular-nums text-ink">
               {isLoading ? '...' : price !== null && price > 0 ? `$${price.toFixed(2)}` : 'N/A'}
             </div>
             {price !== null && price > 0 && change !== null && (
               <div className={`text-sm font-mono tabular-nums mt-0.5 ${
-                isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                isPositive ? 'text-positive' : 'text-negative'
               }`}>
                 {isPositive ? '+' : ''}${Math.abs(change).toFixed(2)} today
-                <span className="text-[#6F6A60] ml-1">from last day</span>
+                <span className="text-ink-muted ml-1">from last day</span>
               </div>
             )}
           </div>
-          <div className="h-14 border border-[#D7D0C2] rounded bg-[#FBF7ED] overflow-hidden flex items-center justify-center">
+          <div className="h-14 border border-border-editorial rounded bg-paper-alt overflow-hidden flex items-center justify-center">
             {isLoading || !sparklineData || sparklineData.length === 0 ? (
-              <span className="text-[10px] font-mono text-[#6F6A60]">No data</span>
+              <span className="text-[10px] font-mono text-ink-muted">No data</span>
             ) : (
               <MiniLineChart
                 data={sparklineData}
@@ -138,13 +138,13 @@ export function CommunityStockCard({
         </div>
 
         {/* Separator */}
-        <Separator className="bg-[#D7D0C2]" />
+        <Separator className="bg-border-editorial" />
 
         {/* Top Thread Preview */}
         {threadCount > 0 && top_thread_title && (
           <div className="flex items-start gap-1.5">
-            <MessageSquare className="h-3 w-3 text-[#6F6A60] mt-0.5 flex-shrink-0" />
-            <p className="text-xs font-mono text-[#6F6A60] line-clamp-1 flex-1">
+            <MessageSquare className="h-3 w-3 text-ink-muted mt-0.5 flex-shrink-0" />
+            <p className="text-xs font-mono text-ink-muted line-clamp-1 flex-1">
               {top_thread_title}
             </p>
           </div>
@@ -171,14 +171,14 @@ export function CommunityStockCard({
           <Button
             variant="outline"
             size="sm"
-            className={`h-[34px] px-2 font-mono border-[#D7D0C2] bg-[#F7F2E6] text-[#1C1B17] hover:bg-[rgba(28,27,23,0.04)] ${
-              isBookmarked ? 'bg-[rgba(47,143,91,0.12)] border-[#2F8F5B]' : ''
+            className={`h-[34px] px-2 font-mono border-border-editorial bg-paper-light text-ink hover:bg-[rgba(28,27,23,0.04)] ${
+              isBookmarked ? 'bg-[rgba(47,143,91,0.12)] border-positive' : ''
             }`}
             onClick={handleBookmark}
           >
             <Bookmark
               className={`h-[16px] w-[16px] ${
-                isBookmarked ? 'text-[#2F8F5B] fill-[#2F8F5B]' : 'text-[#6F6A60]'
+                isBookmarked ? 'text-positive fill-positive' : 'text-ink-muted'
               }`}
             />
           </Button>

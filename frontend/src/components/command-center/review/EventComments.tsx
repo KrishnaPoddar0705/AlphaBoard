@@ -23,26 +23,26 @@ export default function EventComments({ eventId }: { eventId: string }) {
       {isPending ? (
         <RowsSkeleton rows={2} />
       ) : comments.length === 0 ? (
-        <p className="font-mono text-[11px] text-[#8B857A]">No comments yet.</p>
+        <p className="font-mono text-[11px] text-ink-faint">No comments yet.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {comments.map((c) => (
-            <li key={c.id} className="group border-l-2 border-[#D7D0C2] pl-2">
-              <div className="flex items-center gap-2 font-mono text-[10px] text-[#6F6A60]">
-                <span className="text-[#1C1B17]">{c.author_username ?? 'Unknown'}</span>
+            <li key={c.id} className="group border-l-2 border-border-editorial pl-2">
+              <div className="flex items-center gap-2 font-mono text-[10px] text-ink-muted">
+                <span className="text-ink">{c.author_username ?? 'Unknown'}</span>
                 <span>{relativeTime(c.created_at)}</span>
                 {(c.author_id === userId || role === 'admin') && (
                   <button
                     type="button"
                     onClick={() => remove.mutate(c.id)}
                     aria-label="Delete comment"
-                    className="ml-auto hidden text-[#8B857A] hover:text-[#B23B2A] group-hover:block"
+                    className="ml-auto hidden text-ink-faint hover:text-negative group-hover:block"
                   >
                     <Trash2 className="h-3 w-3" />
                   </button>
                 )}
               </div>
-              <p className="whitespace-pre-wrap font-mono text-xs text-[#1C1B17]">{c.body}</p>
+              <p className="whitespace-pre-wrap font-mono text-xs text-ink">{c.body}</p>
             </li>
           ))}
         </ul>
@@ -55,13 +55,13 @@ export default function EventComments({ eventId }: { eventId: string }) {
           onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submit() }}
           rows={2}
           placeholder="Add a comment (Cmd+Enter to send)"
-          className="min-w-0 flex-1 rounded border border-[#D7D0C2] bg-[#FBF7ED] px-2 py-1 font-mono text-[11px] text-[#1C1B17] focus:border-[#8B857A] focus:outline-none"
+          className="min-w-0 flex-1 rounded border border-border-editorial bg-paper-alt px-2 py-1 font-mono text-[11px] text-ink focus:border-ink-faint focus:outline-none"
         />
         <button
           type="button"
           onClick={submit}
           disabled={!body.trim() || add.isPending}
-          className="rounded border border-[#1C1B17] bg-[#1C1B17] px-2.5 py-1 font-mono text-[11px] text-[#F7F2E6] disabled:opacity-40"
+          className="rounded border border-ink bg-ink px-2.5 py-1 font-mono text-[11px] text-paper-light disabled:opacity-40"
         >
           {add.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Post'}
         </button>

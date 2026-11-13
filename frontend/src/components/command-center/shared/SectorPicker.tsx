@@ -38,7 +38,7 @@ export default function SectorPicker({ value, onChange }: Props) {
         <ul
           role="group"
           aria-label="Sector"
-          className="max-h-36 overflow-y-auto rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] text-left"
+          className="max-h-36 overflow-y-auto rounded-lg border border-border-editorial bg-paper-alt text-left"
         >
           {options.map((s) => (
             <li key={s}>
@@ -47,15 +47,15 @@ export default function SectorPicker({ value, onChange }: Props) {
                   type="checkbox"
                   checked={value === s}
                   onChange={() => onChange(value === s ? '' : s)}
-                  className="h-3.5 w-3.5 shrink-0 accent-[#1C1B17]"
+                  className="h-3.5 w-3.5 shrink-0 accent-ink"
                 />
-                <span className="min-w-0 truncate font-mono text-xs text-[#1C1B17]">{s}</span>
+                <span className="min-w-0 truncate font-mono text-xs text-ink">{s}</span>
               </label>
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-left font-mono text-[11px] text-[#8B857A]">
+        <p className="text-left font-mono text-[11px] text-ink-faint">
           {isPending ? 'Loading sectors…' : 'No sectors yet. Add the first one below.'}
         </p>
       )}
@@ -67,13 +67,13 @@ export default function SectorPicker({ value, onChange }: Props) {
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
           placeholder="New sector"
           aria-label="New sector"
-          className="min-w-0 flex-1 rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2 py-1 font-mono text-xs text-[#1C1B17] placeholder:text-[#8B857A] focus:border-[#8B857A] focus:outline-none"
+          className="min-w-0 flex-1 rounded-lg border border-border-editorial bg-paper-alt px-2 py-1 font-mono text-xs text-ink placeholder:text-ink-faint focus:border-ink-faint focus:outline-none"
         />
         <button
           type="button"
           onClick={add}
           disabled={!draft.trim()}
-          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-[#1C1B17] px-2 py-1 font-mono text-[11px] text-[#1C1B17] transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-40"
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-ink px-2 py-1 font-mono text-[11px] text-ink transition-colors hover:bg-[rgba(28,27,23,0.04)] disabled:opacity-40"
         >
           <Plus className="h-3 w-3" /> Add
         </button>

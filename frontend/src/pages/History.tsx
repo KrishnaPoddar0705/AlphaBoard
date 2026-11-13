@@ -267,19 +267,19 @@ export default function History() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Loading trading history...</div>
+      <div className="flex items-center justify-center h-full bg-paper">
+        <div className="text-ink-muted font-mono">Loading trading history...</div>
       </div>
     )
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#F1EEE0]">
+    <div className="h-full flex flex-col bg-paper">
       {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-[#D7D0C2] bg-[#F7F2E6]">
+      <div className="flex items-center justify-between p-6 border-b border-border-editorial bg-paper-light">
         <div>
-          <h1 className="text-2xl font-mono font-bold text-[#1C1B17] tracking-tight">Trading Ledger</h1>
-          <p className="font-mono text-sm text-[#6F6A60] mt-1">
+          <h1 className="text-2xl font-mono font-bold text-ink tracking-tight">Trading Ledger</h1>
+          <p className="font-mono text-sm text-ink-muted mt-1">
             {tickerSummaries.length} stocks • {tickerSummaries.reduce((acc, s) => acc + s.trades.length, 0)} trades
           </p>
         </div>
@@ -288,25 +288,25 @@ export default function History() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
         {tickerSummaries.length === 0 ? (
-          <Card className="bg-[#F7F2E6] border-[#D7D0C2]">
+          <Card className="bg-paper-light border-border-editorial">
             <CardContent className="py-12 text-center">
-              <p className="font-mono text-[#6F6A60] text-lg mb-2">No trading activity yet.</p>
-              <p className="font-mono text-sm text-[#6F6A60]">Add a recommendation with quantity to start paper trading.</p>
+              <p className="font-mono text-ink-muted text-lg mb-2">No trading activity yet.</p>
+              <p className="font-mono text-sm text-ink-muted">Add a recommendation with quantity to start paper trading.</p>
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-0">
             {/* Table Header */}
-            <div className="hidden md:grid md:grid-cols-12 gap-4 px-4 py-3 bg-[#F7F2E6] border border-[#D7D0C2] rounded-t-lg font-mono text-xs font-semibold text-[#6F6A60] uppercase tracking-wider">
+            <div className="hidden md:grid md:grid-cols-12 gap-4 px-4 py-3 bg-paper-light border border-border-editorial rounded-t-lg font-mono text-xs font-semibold text-ink-muted uppercase tracking-wider">
               <div 
-                className="col-span-3 flex items-center cursor-pointer hover:text-[#1C1B17]"
+                className="col-span-3 flex items-center cursor-pointer hover:text-ink"
                 onClick={() => handleSort('ticker')}
               >
                 Stock
                 <SortIcon field="ticker" />
               </div>
               <div 
-                className="col-span-2 text-right flex items-center justify-end cursor-pointer hover:text-[#1C1B17]"
+                className="col-span-2 text-right flex items-center justify-end cursor-pointer hover:text-ink"
                 onClick={() => handleSort('position')}
               >
                 Position
@@ -316,14 +316,14 @@ export default function History() {
                 Avg Cost
               </div>
               <div 
-                className="col-span-2 text-right flex items-center justify-end cursor-pointer hover:text-[#1C1B17]"
+                className="col-span-2 text-right flex items-center justify-end cursor-pointer hover:text-ink"
                 onClick={() => handleSort('marketValue')}
               >
                 Market Value
                 <SortIcon field="marketValue" />
               </div>
               <div 
-                className="col-span-3 text-right flex items-center justify-end cursor-pointer hover:text-[#1C1B17]"
+                className="col-span-3 text-right flex items-center justify-end cursor-pointer hover:text-ink"
                 onClick={() => handleSort('pnl')}
               >
                 Total P&L
@@ -332,7 +332,7 @@ export default function History() {
             </div>
 
             {/* Table Body */}
-            <div className="border-x border-b border-[#D7D0C2] rounded-b-lg overflow-hidden">
+            <div className="border-x border-b border-border-editorial rounded-b-lg overflow-hidden">
               {sortedSummaries.map((summary, index) => {
                 const isExpanded = expandedTickers.has(summary.ticker)
                 const currencySymbol = getCurrencySymbol(summary.ticker)
@@ -343,11 +343,11 @@ export default function History() {
                 return (
                   <div 
                     key={summary.ticker}
-                    className={`bg-[#F7F2E6] ${!isLast && !isExpanded ? 'border-b border-[#E3DDCF]' : ''}`}
+                    className={`bg-paper-light ${!isLast && !isExpanded ? 'border-b border-gridline' : ''}`}
                   >
                     {/* Row */}
                     <div
-                      className="cursor-pointer hover:bg-[#FBF7ED] transition-colors"
+                      className="cursor-pointer hover:bg-paper-alt transition-colors"
                       onClick={() => toggleExpanded(summary.ticker)}
                     >
                       {/* Desktop View */}
@@ -355,13 +355,13 @@ export default function History() {
                         {/* Stock */}
                         <div className="col-span-3 flex items-center gap-3">
                           {isExpanded ? (
-                            <ChevronDown className="h-4 w-4 text-[#6F6A60] flex-shrink-0" />
+                            <ChevronDown className="h-4 w-4 text-ink-muted flex-shrink-0" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 text-[#6F6A60] flex-shrink-0" />
+                            <ChevronRight className="h-4 w-4 text-ink-muted flex-shrink-0" />
                           )}
                           <div>
                             <h3 
-                              className="font-mono font-bold text-[#1C1B17] hover:underline"
+                              className="font-mono font-bold text-ink hover:underline"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 navigate(`/stock/${summary.ticker}`)
@@ -369,7 +369,7 @@ export default function History() {
                             >
                               {summary.ticker}
                             </h3>
-                            <p className="font-mono text-xs text-[#6F6A60]">
+                            <p className="font-mono text-xs text-ink-muted">
                               {summary.trades.length} trade{summary.trades.length !== 1 ? 's' : ''}
                             </p>
                           </div>
@@ -379,26 +379,26 @@ export default function History() {
                         <div className="col-span-2 text-right">
                           {summary.totalShares !== 0 ? (
                             <p className={`font-mono font-semibold tabular-nums ${
-                              summary.totalShares < 0 ? 'text-[#B23B2A]' : 'text-[#1C1B17]'
+                              summary.totalShares < 0 ? 'text-negative' : 'text-ink'
                             }`}>
                               {summary.totalShares < 0 && <span className="text-[10px] mr-1">SHORT</span>}
                               {Math.abs(summary.totalShares).toLocaleString()}
                             </p>
                           ) : (
-                            <p className="font-mono text-[#6F6A60]">-</p>
+                            <p className="font-mono text-ink-muted">-</p>
                           )}
                         </div>
 
                         {/* Avg Cost */}
                         <div className="col-span-2 text-right">
-                          <p className="font-mono text-[#1C1B17] tabular-nums">
+                          <p className="font-mono text-ink tabular-nums">
                             {summary.avgCost > 0 ? `${currencySymbol}${summary.avgCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                           </p>
                         </div>
 
                         {/* Market Value */}
                         <div className="col-span-2 text-right">
-                          <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
+                          <p className="font-mono font-semibold text-ink tabular-nums">
                             {summary.marketValue > 0 ? `${currencySymbol}${summary.marketValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
                           </p>
                         </div>
@@ -407,12 +407,12 @@ export default function History() {
                         <div className="col-span-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {isPnlPositive ? (
-                              <TrendingUp className="h-4 w-4 text-[#2F8F5B]" />
+                              <TrendingUp className="h-4 w-4 text-positive" />
                             ) : (
-                              <TrendingDown className="h-4 w-4 text-[#B23B2A]" />
+                              <TrendingDown className="h-4 w-4 text-negative" />
                             )}
                             <p className={`font-mono font-bold tabular-nums ${
-                              isPnlPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                              isPnlPositive ? 'text-positive' : 'text-negative'
                             }`}>
                               {isPnlPositive ? '+' : ''}{currencySymbol}
                               {Math.abs(totalPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -421,14 +421,14 @@ export default function History() {
                           <div className="flex gap-2 justify-end mt-1">
                             {summary.realizedPnl !== 0 && (
                               <p className={`font-mono text-xs tabular-nums ${
-                                summary.realizedPnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                                summary.realizedPnl >= 0 ? 'text-positive' : 'text-negative'
                               }`}>
                                 R: {summary.realizedPnl >= 0 ? '+' : ''}{currencySymbol}{Math.abs(summary.realizedPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </p>
                             )}
                             {summary.unrealizedPnl !== 0 && (
                               <p className={`font-mono text-xs tabular-nums ${
-                                summary.unrealizedPnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                                summary.unrealizedPnl >= 0 ? 'text-positive' : 'text-negative'
                               }`}>
                                 U: {summary.unrealizedPnl >= 0 ? '+' : ''}{currencySymbol}{Math.abs(summary.unrealizedPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </p>
@@ -442,13 +442,13 @@ export default function History() {
                         <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center gap-2">
                             {isExpanded ? (
-                              <ChevronDown className="h-4 w-4 text-[#6F6A60]" />
+                              <ChevronDown className="h-4 w-4 text-ink-muted" />
                             ) : (
-                              <ChevronRight className="h-4 w-4 text-[#6F6A60]" />
+                              <ChevronRight className="h-4 w-4 text-ink-muted" />
                             )}
                             <div>
-                              <h3 className="font-mono font-bold text-[#1C1B17]">{summary.ticker}</h3>
-                              <p className="font-mono text-xs text-[#6F6A60]">
+                              <h3 className="font-mono font-bold text-ink">{summary.ticker}</h3>
+                              <p className="font-mono text-xs text-ink-muted">
                                 {summary.trades.length} trade{summary.trades.length !== 1 ? 's' : ''}
                               </p>
                             </div>
@@ -456,12 +456,12 @@ export default function History() {
                           <div className="text-right">
                             <div className="flex items-center gap-1 justify-end">
                               {isPnlPositive ? (
-                                <TrendingUp className="h-3 w-3 text-[#2F8F5B]" />
+                                <TrendingUp className="h-3 w-3 text-positive" />
                               ) : (
-                                <TrendingDown className="h-3 w-3 text-[#B23B2A]" />
+                                <TrendingDown className="h-3 w-3 text-negative" />
                               )}
                               <p className={`font-mono font-bold tabular-nums ${
-                                isPnlPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                                isPnlPositive ? 'text-positive' : 'text-negative'
                               }`}>
                                 {isPnlPositive ? '+' : ''}{currencySymbol}
                                 {Math.abs(totalPnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -471,26 +471,26 @@ export default function History() {
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-sm">
                           <div>
-                            <p className="font-mono text-xs text-[#6F6A60]">Position</p>
+                            <p className="font-mono text-xs text-ink-muted">Position</p>
                             {summary.totalShares !== 0 ? (
                               <p className={`font-mono font-semibold tabular-nums ${
-                                summary.totalShares < 0 ? 'text-[#B23B2A]' : 'text-[#1C1B17]'
+                                summary.totalShares < 0 ? 'text-negative' : 'text-ink'
                               }`}>
                                 {summary.totalShares < 0 ? `SHORT ${Math.abs(summary.totalShares).toLocaleString()}` : summary.totalShares.toLocaleString()}
                               </p>
                             ) : (
-                              <p className="font-mono text-[#6F6A60]">-</p>
+                              <p className="font-mono text-ink-muted">-</p>
                             )}
                           </div>
                           <div>
-                            <p className="font-mono text-xs text-[#6F6A60]">Avg Cost</p>
-                            <p className="font-mono text-[#1C1B17] tabular-nums">
+                            <p className="font-mono text-xs text-ink-muted">Avg Cost</p>
+                            <p className="font-mono text-ink tabular-nums">
                               {summary.avgCost > 0 ? `${currencySymbol}${summary.avgCost.toFixed(2)}` : '-'}
                             </p>
                           </div>
                           <div>
-                            <p className="font-mono text-xs text-[#6F6A60]">Market Val</p>
-                            <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
+                            <p className="font-mono text-xs text-ink-muted">Market Val</p>
+                            <p className="font-mono font-semibold text-ink tabular-nums">
                               {summary.marketValue > 0 ? `${currencySymbol}${summary.marketValue.toFixed(2)}` : '-'}
                             </p>
                           </div>
@@ -500,32 +500,32 @@ export default function History() {
 
                     {/* Expanded: Trade History */}
                     {isExpanded && (
-                      <div className="border-t border-[#D7D0C2] bg-[#FBF7ED]">
+                      <div className="border-t border-border-editorial bg-paper-alt">
                         <div className="p-4">
-                          <h4 className="font-mono text-sm font-semibold text-[#6F6A60] mb-3">
+                          <h4 className="font-mono text-sm font-semibold text-ink-muted mb-3">
                             Trade History
                           </h4>
                           <div className="space-y-2">
                             {summary.trades.map((trade) => (
                               <div
                                 key={trade.id}
-                                className="flex items-center justify-between py-3 px-4 bg-[#F7F2E6] border border-[#E3DDCF] rounded"
+                                className="flex items-center justify-between py-3 px-4 bg-paper-light border border-gridline rounded"
                               >
                                 <div className="flex items-center gap-3">
                                   <span
                                     className={`px-2 py-0.5 rounded text-xs font-mono font-semibold ${
                                       trade.side === 'BUY'
-                                        ? 'bg-[#E6F4ED] text-[#2F8F5B]'
-                                        : 'bg-[#FDECEA] text-[#B23B2A]'
+                                        ? 'bg-[#E6F4ED] text-positive'
+                                        : 'bg-[#FDECEA] text-negative'
                                     }`}
                                   >
                                     {trade.side}
                                   </span>
                                   <div>
-                                    <p className="font-mono text-sm text-[#1C1B17]">
+                                    <p className="font-mono text-sm text-ink">
                                       {trade.quantity.toLocaleString()} shares @ {currencySymbol}{trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </p>
-                                    <p className="font-mono text-xs text-[#6F6A60]">
+                                    <p className="font-mono text-xs text-ink-muted">
                                       {new Date(trade.executed_at).toLocaleDateString('en-GB', {
                                         day: '2-digit',
                                         month: '2-digit',
@@ -538,12 +538,12 @@ export default function History() {
                                   </div>
                                 </div>
                                 <div className="text-right">
-                                  <p className="font-mono font-semibold text-[#1C1B17] tabular-nums">
+                                  <p className="font-mono font-semibold text-ink tabular-nums">
                                     {currencySymbol}{trade.notional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                   </p>
                                   {trade.realized_pnl !== null && trade.realized_pnl !== 0 && (
                                     <p className={`font-mono text-xs tabular-nums ${
-                                      trade.realized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                                      trade.realized_pnl >= 0 ? 'text-positive' : 'text-negative'
                                     }`}>
                                       P&L: {trade.realized_pnl >= 0 ? '+' : ''}{currencySymbol}
                                       {Math.abs(trade.realized_pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}

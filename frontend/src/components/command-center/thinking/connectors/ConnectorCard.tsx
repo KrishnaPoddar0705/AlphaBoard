@@ -8,10 +8,10 @@ import SourceView, { type SourceMode } from './SourceView'
 import SourceBadge from './SourceBadge'
 import type { PendingPull } from './useConnectorPull'
 
-const iconBtn = 'flex h-6 w-6 items-center justify-center rounded-md text-[#8B857A] hover:bg-[#EFE9DA] hover:text-[#1C1B17]'
+const iconBtn = 'flex h-6 w-6 items-center justify-center rounded-md text-ink-faint hover:bg-paper-sunk hover:text-ink'
 
 /** A pull still running, or one that failed. Same footprint as the card it becomes. */
-const FLASH = 'ring-2 ring-[#2C4F7C] ring-offset-2 ring-offset-[#F1EEE0]'
+const FLASH = 'ring-2 ring-[#2C4F7C] ring-offset-2 ring-offset-paper'
 
 export function PendingCard({ pull, onRetry, onDismiss, flash }: {
   pull: PendingPull; onRetry: () => void; onDismiss: () => void; flash?: boolean
@@ -21,14 +21,14 @@ export function PendingCard({ pull, onRetry, onDismiss, flash }: {
   return (
     <div data-card={pull.id} className={['tb-card w-full p-3.5 transition-shadow', flash ? FLASH : ''].join(' ')}>
       <div className="flex items-center justify-between">
-        <p className="tb-data flex items-center gap-1.5 text-[12px] font-medium text-[#1C1B17]">
-          <Icon className="h-3.5 w-3.5 text-[#6F6A60]" />{def.label}
+        <p className="tb-data flex items-center gap-1.5 text-[12px] font-medium text-ink">
+          <Icon className="h-3.5 w-3.5 text-ink-muted" />{def.label}
         </p>
         <button type="button" onClick={onDismiss} className={iconBtn} aria-label="Dismiss"><X className="h-3.5 w-3.5" /></button>
       </div>
       {pull.status === 'loading' ? (
         <>
-          <p className="tb-data mt-1 text-[10.5px] text-[#8B857A]">
+          <p className="tb-data mt-1 text-[10.5px] text-ink-faint">
             Reading {def.sources.map((s) => SOURCE_LABELS[s]).join(', then ')}
           </p>
           <div className="mt-3 flex flex-col gap-1.5" aria-hidden>
@@ -39,9 +39,9 @@ export function PendingCard({ pull, onRetry, onDismiss, flash }: {
         </>
       ) : (
         <div className="mt-2">
-          <p className="text-[12.5px] leading-snug text-[#B23B2A]">{pull.error}</p>
+          <p className="text-[12.5px] leading-snug text-negative">{pull.error}</p>
           <button type="button" onClick={onRetry}
-            className="tb-data mt-2 inline-flex items-center gap-1 rounded-md border border-[#D7D0C2] px-2 py-1 text-[11px] text-[#1C1B17] hover:border-[#1C1B17]">
+            className="tb-data mt-2 inline-flex items-center gap-1 rounded-md border border-border-editorial px-2 py-1 text-[11px] text-ink hover:border-ink">
             <RotateCw className="h-3 w-3" /> Try again
           </button>
         </div>
@@ -85,13 +85,13 @@ export default function ConnectorCard({
       <div className="flex items-start justify-between gap-2 px-3.5 pb-2 pt-3">
         <button type="button" onClick={() => onChange({ ...card, collapsed: !card.collapsed })}
           className="min-w-0 text-left" aria-expanded={!card.collapsed}>
-          <span className="tb-data flex items-center gap-1.5 text-[12px] font-medium text-[#1C1B17]">
-            <Icon className="h-3.5 w-3.5 flex-none text-[#6F6A60]" />
+          <span className="tb-data flex items-center gap-1.5 text-[12px] font-medium text-ink">
+            <Icon className="h-3.5 w-3.5 flex-none text-ink-muted" />
             <span className="truncate">{payload.title}</span>
-            <ChevronDown className={['h-3 w-3 flex-none text-[#8B857A] transition-transform',
+            <ChevronDown className={['h-3 w-3 flex-none text-ink-faint transition-transform',
               card.collapsed ? '-rotate-90' : ''].join(' ')} />
           </span>
-          {payload.subtitle && <span className="tb-data mt-0.5 block truncate text-[10px] text-[#8B857A]">{payload.subtitle}</span>}
+          {payload.subtitle && <span className="tb-data mt-0.5 block truncate text-[10px] text-ink-faint">{payload.subtitle}</span>}
         </button>
         <div className="flex flex-none items-center">
           {canChart && !card.collapsed && (
@@ -129,7 +129,7 @@ export default function ConnectorCard({
       <div className="flex min-w-0 items-center justify-between gap-2 border-t border-[#E6E0D2] px-3.5 py-2">
         <span className="min-w-0 overflow-hidden"><SourceBadge payload={payload} /></span>
         <button type="button" onClick={onInsert} title="Insert in note"
-          className="tb-data inline-flex flex-none items-center gap-1.5 rounded-md bg-[#1C1B17] px-2.5 py-1 text-[11px] text-[#F7F2E6] hover:bg-[#33312B]">
+          className="tb-data inline-flex flex-none items-center gap-1.5 rounded-md bg-ink px-2.5 py-1 text-[11px] text-paper-light hover:bg-[#33312B]">
           <CornerDownLeft className="h-3 w-3" /> Insert
         </button>
       </div>

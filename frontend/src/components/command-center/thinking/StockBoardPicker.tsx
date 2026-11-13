@@ -16,7 +16,7 @@ interface Props {
 }
 
 const DEBOUNCE_MS = 250
-const rowClass = 'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-[#EFE9DA] focus:bg-[#EFE9DA] focus:outline-none'
+const rowClass = 'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-left hover:bg-paper-sunk focus:bg-paper-sunk focus:outline-none'
 
 /**
  * One search box for "which stock is this board about?". Names already in coverage come
@@ -76,12 +76,12 @@ export default function StockBoardPicker({ open, onClose, onPicked }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="border-[#D7D0C2] bg-[#F7F2E6] sm:max-w-lg [&>*]:min-w-0">
+      <DialogContent className="border-border-editorial bg-paper-light sm:max-w-lg [&>*]:min-w-0">
         <DialogHeader>
-          <DialogTitle className="font-mono text-base text-[#1C1B17]">
+          <DialogTitle className="font-mono text-base text-ink">
             {pending ? `Add ${pending.symbol} to coverage` : 'Start a board'}
           </DialogTitle>
-          <DialogDescription className="font-mono text-[11px] text-[#6F6A60]">
+          <DialogDescription className="font-mono text-[11px] text-ink-muted">
             {pending
               ? 'Pick its sector. The desk filters by it, and the board publishes to this stock’s log.'
               : 'Pick the stock this research is about.'}
@@ -103,41 +103,41 @@ export default function StockBoardPicker({ open, onClose, onPicked }: Props) {
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <label className="flex h-10 items-center gap-2 rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-3 focus-within:border-[#1C1B17]">
-              <Search className="h-4 w-4 text-[#8B857A]" />
+            <label className="flex h-10 items-center gap-2 rounded-lg border border-border-editorial bg-paper-alt px-3 focus-within:border-ink">
+              <Search className="h-4 w-4 text-ink-faint" />
               <input autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Ticker or company name"
-                className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-[#1C1B17] placeholder:text-[#A39D90] focus:outline-none focus-visible:shadow-none" />
-              {searching && <Loader2 className="h-3.5 w-3.5 animate-spin text-[#8B857A]" />}
+                className="min-w-0 flex-1 bg-transparent font-mono text-[13px] text-ink placeholder:text-[#A39D90] focus:outline-none focus-visible:shadow-none" />
+              {searching && <Loader2 className="h-3.5 w-3.5 animate-spin text-ink-faint" />}
             </label>
 
             <div className="max-h-[52vh] overflow-y-auto overflow-x-hidden">
               {covered.length > 0 && (
                 <>
-                  <p className="px-2.5 pb-1 font-mono text-[10.5px] text-[#8B857A]">In your coverage</p>
+                  <p className="px-2.5 pb-1 font-mono text-[10.5px] text-ink-faint">In your coverage</p>
                   {covered.map((c) => (
                     <button key={c.id} type="button" className={rowClass} onClick={() => onPicked(c.id)}>
-                      <span className="w-24 flex-none truncate font-mono text-[11.5px] font-medium text-[#1C1B17]">{c.ticker}</span>
-                      <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-[#3F3C35]">{c.company_name}</span>
-                      <span className="max-w-[30%] flex-none truncate text-right font-mono text-[10px] text-[#8B857A]">{c.sector}</span>
+                      <span className="w-24 flex-none truncate font-mono text-[11.5px] font-medium text-ink">{c.ticker}</span>
+                      <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-ink-soft">{c.company_name}</span>
+                      <span className="max-w-[30%] flex-none truncate text-right font-mono text-[10px] text-ink-faint">{c.sector}</span>
                     </button>
                   ))}
                 </>
               )}
               {results.length > 0 && (
                 <>
-                  <p className="px-2.5 pb-1 pt-3 font-mono text-[10.5px] text-[#8B857A]">Add to coverage</p>
+                  <p className="px-2.5 pb-1 pt-3 font-mono text-[10.5px] text-ink-faint">Add to coverage</p>
                   {results.map((r) => (
                     <button key={r.symbol} type="button" className={rowClass} onClick={() => setPending(r)}>
-                      <span className="w-24 flex-none truncate font-mono text-[11.5px] font-medium text-[#1C1B17]">{r.symbol}</span>
-                      <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-[#3F3C35]">{r.name}</span>
-                      <span className="w-9 flex-none text-right font-mono text-[10px] text-[#8B857A]">{r.market}</span>
+                      <span className="w-24 flex-none truncate font-mono text-[11.5px] font-medium text-ink">{r.symbol}</span>
+                      <span className="min-w-0 flex-1 truncate font-mono text-[11.5px] text-ink-soft">{r.name}</span>
+                      <span className="w-9 flex-none text-right font-mono text-[10px] text-ink-faint">{r.market}</span>
                     </button>
                   ))}
                 </>
               )}
-              {searchError && <p className="px-2.5 py-3 font-mono text-[11px] text-[#B23B2A]">{searchError}</p>}
+              {searchError && <p className="px-2.5 py-3 font-mono text-[11px] text-negative">{searchError}</p>}
               {!searching && !searchError && q.length >= 2 && !covered.length && !results.length && (
-                <p className="px-2.5 py-6 text-center font-mono text-[11px] text-[#8B857A]">No stock matches “{query.trim()}”.</p>
+                <p className="px-2.5 py-6 text-center font-mono text-[11px] text-ink-faint">No stock matches “{query.trim()}”.</p>
               )}
             </div>
           </div>

@@ -178,7 +178,7 @@ export default function MatrixView({ onAdd }: { onAdd: () => void }) {
         />
 
         {failed ? (
-          <p className="px-4 py-6 text-[12.5px] text-[#B23B2A]">{failed.message}</p>
+          <p className="px-4 py-6 text-[12.5px] text-negative">{failed.message}</p>
         ) : loading ? (
           <MatrixSkeleton />
         ) : groups.length === 0 ? (

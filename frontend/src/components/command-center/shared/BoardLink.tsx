@@ -12,7 +12,7 @@ export default function BoardLink({ eventId, className = '' }: { eventId: string
   return (
     <Link
       to={`/command-center?view=thinking&note=${boardId}`}
-      className={`inline-flex items-center gap-1.5 self-start rounded-md border border-[#D7D0C2] bg-[#FBF7ED] px-2 py-1 font-mono text-[11px] text-[#1C1B17] hover:border-[#1C1B17] ${className}`}
+      className={`inline-flex items-center gap-1.5 self-start rounded-md border border-border-editorial bg-paper-alt px-2 py-1 font-mono text-[11px] text-ink hover:border-ink ${className}`}
     >
       <PenLine className="h-3 w-3" /> Open in Thinking Board
     </Link>

@@ -27,7 +27,7 @@ export default function EntryLine({ row, now, onOpen, glyph, detail, cta }: Prop
   const type = eventTypeOf(row.kind, row.subtype)
 
   return (
-    <li className="border-b border-[#E3DDCF] last:border-b-0">
+    <li className="border-b border-gridline last:border-b-0">
       <div
         role="button"
         tabIndex={0}
@@ -40,12 +40,12 @@ export default function EntryLine({ row, now, onOpen, glyph, detail, cta }: Prop
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2">
-            <span className="shrink-0 font-mono text-xs font-semibold text-[#1C1B17]">{row.ticker}</span>
-            <span className="truncate font-mono text-xs text-[#1C1B17]">{row.title}</span>
+            <span className="shrink-0 font-mono text-xs font-semibold text-ink">{row.ticker}</span>
+            <span className="truncate font-mono text-xs text-ink">{row.title}</span>
           </div>
-          {detail && <div className="mt-0.5 font-mono text-[11px] text-[#6F6A60]">{detail}</div>}
+          {detail && <div className="mt-0.5 font-mono text-[11px] text-ink-muted">{detail}</div>}
           <MetWith contacts={met.contacts} count={row.contact_count} loading={met.loading} className="mt-0.5 max-w-full" />
-          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-[#8B857A]">
+          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[10px] text-ink-faint">
             <span>{type.label}</span>
             <span>{ownerName(row)}</span>
             <span>{relativeTime(row.created_at, now)}</span>
@@ -55,7 +55,7 @@ export default function EntryLine({ row, now, onOpen, glyph, detail, cta }: Prop
             {(row.comment_count ?? 0) > 0 && (
               <span className="inline-flex items-center gap-0.5"><MessageSquare className="h-2.5 w-2.5" />{row.comment_count}</span>
             )}
-            {cta && <span className="text-[#1C1B17] underline-offset-2 hover:underline">→ {cta}</span>}
+            {cta && <span className="text-ink underline-offset-2 hover:underline">→ {cta}</span>}
           </div>
         </div>
       </div>

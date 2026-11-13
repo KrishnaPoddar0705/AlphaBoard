@@ -61,20 +61,20 @@ export default function TimelineEntry({
     <article
       ref={ref}
       className={[
-        'relative scroll-mt-24 rounded-xl border bg-[#F7F2E6] p-3 transition-shadow',
-        focused ? 'border-[#1C1B17] ring-2 ring-[#1C1B17]/15' : 'border-[#D7D0C2]',
+        'relative scroll-mt-24 rounded-xl border bg-paper-light p-3 transition-shadow',
+        focused ? 'border-ink ring-2 ring-ink/15' : 'border-border-editorial',
       ].join(' ')}
     >
       <header className="flex flex-wrap items-center gap-2">
         <EventKindBadge kind={event.kind} subtype={event.subtype} scheduled={event.is_scheduled} />
-        <span className="font-mono text-[11px] text-[#6F6A60]">{formatDay(event.event_date)}</span>
+        <span className="font-mono text-[11px] text-ink-muted">{formatDay(event.event_date)}</span>
         {event.period_label && (
-          <span className="rounded border border-[#D7D0C2] px-1.5 font-mono text-[10px] text-[#6F6A60]">
+          <span className="rounded border border-border-editorial px-1.5 font-mono text-[10px] text-ink-muted">
             {event.period_label}
           </span>
         )}
         {event.broker_name && (
-          <span className="font-mono text-[11px] text-[#6F6A60]">{event.broker_name}</span>
+          <span className="font-mono text-[11px] text-ink-muted">{event.broker_name}</span>
         )}
         {impact && (
           <span className="inline-flex items-center gap-1 font-mono text-[10px]" style={{ color: impact.color }}>
@@ -83,11 +83,11 @@ export default function TimelineEntry({
           </span>
         )}
         {svan && (
-          <span className="rounded px-1.5 font-mono text-[10px] text-[#F7F2E6]" style={{ backgroundColor: svan.color }}>
+          <span className="rounded px-1.5 font-mono text-[10px] text-paper-light" style={{ backgroundColor: svan.color }}>
             {svan.label}
           </span>
         )}
-        <span className="ml-auto font-mono text-[11px] text-[#6F6A60]">
+        <span className="ml-auto font-mono text-[11px] text-ink-muted">
           {event.analyst_username ?? event.created_by_username ?? ''}
         </span>
       </header>
@@ -98,12 +98,12 @@ export default function TimelineEntry({
             type="button"
             onClick={() => setOpen((v) => !v)}
             aria-expanded={open}
-            className="mt-0.5 text-[#6F6A60] hover:text-[#1C1B17]"
+            className="mt-0.5 text-ink-muted hover:text-ink"
           >
             {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
           </button>
         )}
-        <h3 className="font-mono text-sm text-[#1C1B17]">{event.title}</h3>
+        <h3 className="font-mono text-sm text-ink">{event.title}</h3>
       </div>
       <MetWith contacts={metWith} count={event.contact_count} loading={metLoading} className="mt-1 pl-6" />
 
@@ -112,16 +112,16 @@ export default function TimelineEntry({
           <SvanView event={event} />
           <BoardLink eventId={event.event_id} />
           {event.kta && (
-            <div className="font-mono text-xs leading-relaxed text-[#1C1B17]">
+            <div className="font-mono text-xs leading-relaxed text-ink">
               <ThesisMarkdown content={event.kta} />
             </div>
           )}
           {event.open_questions && (
-            <div className="rounded-lg border border-dashed border-[#D06030] px-2.5 py-1.5">
-              <p className="font-mono text-[10px] uppercase tracking-wider text-[#D06030]">
+            <div className="rounded-lg border border-dashed border-chart-orange px-2.5 py-1.5">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-chart-orange">
                 Open questions
               </p>
-              <p className="font-mono text-xs text-[#1C1B17]">{event.open_questions}</p>
+              <p className="font-mono text-xs text-ink">{event.open_questions}</p>
             </div>
           )}
           <AttachmentList items={attachments} />
@@ -135,14 +135,14 @@ export default function TimelineEntry({
       )}
 
       {!event.is_scheduled && (
-        <footer className="mt-2 flex flex-col gap-2 border-t border-[#E3DDCF] pt-2">
+        <footer className="mt-2 flex flex-col gap-2 border-t border-gridline pt-2">
           <div className="flex flex-wrap items-center gap-2">
             <PushControl event={event} compact />
             <button
               type="button"
               onClick={() => setDiscussOpen((v) => !v)}
               aria-expanded={discussOpen}
-              className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] text-[#6F6A60] hover:text-[#1C1B17]"
+              className="ml-auto inline-flex items-center gap-1 font-mono text-[11px] text-ink-muted hover:text-ink"
             >
               <MessageSquare className="h-3 w-3" />
               {commentCount > 0 ? `${commentCount} comment${commentCount === 1 ? '' : 's'}` : 'Comment'}
@@ -161,7 +161,7 @@ export default function TimelineEntry({
             }
           }}
           aria-label="Delete entry"
-          className="absolute right-2 top-2 hidden rounded p-1 text-[#8B857A] hover:bg-[rgba(178,59,42,0.1)] hover:text-[#B23B2A] group-hover:block"
+          className="absolute right-2 top-2 hidden rounded p-1 text-ink-faint hover:bg-[rgba(178,59,42,0.1)] hover:text-negative group-hover:block"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

@@ -15,7 +15,7 @@ export default function StockPageSkeleton() {
     <Loading label="Loading stock" className="w-full">
       {/* If the database session never arrives, say so rather than shimmer forever. */}
       <SessionNotice />
-      <header className="flex flex-col gap-3 border-b border-[#D7D0C2] pb-4">
+      <header className="flex flex-col gap-3 border-b border-border-editorial pb-4">
         {/* Matches the real header's back button: mobile only. */}
         <Bone className="h-8 w-28 rounded-md lg:hidden" />
         <div className="flex items-start justify-between gap-3">
@@ -30,7 +30,7 @@ export default function StockPageSkeleton() {
         </div>
       </header>
 
-      <div className="mt-4 flex gap-3 border-b border-[#D7D0C2] pb-2 lg:hidden">
+      <div className="mt-4 flex gap-3 border-b border-border-editorial pb-2 lg:hidden">
         {[64, 52, 70, 56].map((w) => (
           <span key={w} style={{ width: w }}><Bone className="h-4" /></span>
         ))}

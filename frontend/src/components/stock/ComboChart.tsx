@@ -15,8 +15,8 @@ interface ComboChartProps {
 export function ComboChart({ data, height = 300 }: ComboChartProps) {
   if (!data || data.length === 0) {
     return (
-      <div className={`h-[${height}px] w-full bg-[#FBF7ED] border border-[#E3DDCF] flex items-center justify-center`}>
-        <p className="text-xs font-mono text-[#6F6A60]">No data available</p>
+      <div className={`h-[${height}px] w-full bg-paper-alt border border-gridline flex items-center justify-center`}>
+        <p className="text-xs font-mono text-ink-muted">No data available</p>
       </div>
     )
   }
@@ -31,57 +31,57 @@ export function ComboChart({ data, height = 300 }: ComboChartProps) {
   const config = {
     revenue: {
       label: 'Revenue',
-      color: '#D06030',
+      color: 'var(--color-chart-orange)',
     },
     netIncome: {
       label: 'Net Income',
-      color: '#F09070',
+      color: 'var(--color-chart-salmon)',
     },
     profitMargin: {
       label: 'Profit Margin %',
-      color: '#D06030',
+      color: 'var(--color-chart-orange)',
     },
   }
 
   return (
     <ChartContainer config={config} className="w-full" style={{ height: `${height}px`, width: '100%' }}>
       <ComposedChart data={chartData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#E3DDCF" />
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--color-gridline)" />
         <XAxis
           dataKey="period"
-          stroke="#6F6A60"
+          stroke="var(--color-ink-muted)"
           fontSize={10}
-          tick={{ fill: '#6F6A60' }}
+          tick={{ fill: 'var(--color-ink-muted)' }}
           fontFamily="ui-monospace, monospace"
         />
         <YAxis
           yAxisId="left"
-          stroke="#6F6A60"
+          stroke="var(--color-ink-muted)"
           fontSize={10}
-          tick={{ fill: '#6F6A60' }}
+          tick={{ fill: 'var(--color-ink-muted)' }}
           fontFamily="ui-monospace, monospace"
           tickFormatter={(value) => `$${value}M`}
         />
         <YAxis
           yAxisId="right"
           orientation="right"
-          stroke="#6F6A60"
+          stroke="var(--color-ink-muted)"
           fontSize={10}
-          tick={{ fill: '#6F6A60' }}
+          tick={{ fill: 'var(--color-ink-muted)' }}
           fontFamily="ui-monospace, monospace"
           tickFormatter={(value) => `${value}%`}
         />
         <ChartTooltip content={<ChartTooltipContent />} />
         <Legend />
-        <Bar yAxisId="left" dataKey="revenue" fill="#D06030" radius={[2, 2, 0, 0]} />
-        <Bar yAxisId="left" dataKey="netIncome" fill="#F09070" radius={[2, 2, 0, 0]} />
+        <Bar yAxisId="left" dataKey="revenue" fill="var(--color-chart-orange)" radius={[2, 2, 0, 0]} />
+        <Bar yAxisId="left" dataKey="netIncome" fill="var(--color-chart-salmon)" radius={[2, 2, 0, 0]} />
         <Line
           yAxisId="right"
           type="monotone"
           dataKey="profitMargin"
-          stroke="#D06030"
+          stroke="var(--color-chart-orange)"
           strokeWidth={2}
-          dot={{ fill: '#D06030', r: 4 }}
+          dot={{ fill: 'var(--color-chart-orange)', r: 4 }}
         />
       </ComposedChart>
     </ChartContainer>

@@ -24,7 +24,7 @@ function Group({ title, count, children }: { title: string; count: number; child
   if (count === 0) return null
   return (
     <div>
-      <h3 className="flex items-center justify-between bg-[#F1EEE0] px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-[#6F6A60]">
+      <h3 className="flex items-center justify-between bg-paper px-3 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-ink-muted">
         {title}<span className="tabular-nums">{count}</span>
       </h3>
       <ul>{children(all ? count : SHOW)}</ul>
@@ -32,7 +32,7 @@ function Group({ title, count, children }: { title: string; count: number; child
         <button
           type="button"
           onClick={() => setAll((v) => !v)}
-          className="w-full px-3 py-1 text-left font-mono text-[10px] text-[#6F6A60] hover:text-[#1C1B17]"
+          className="w-full px-3 py-1 text-left font-mono text-[10px] text-ink-muted hover:text-ink"
         >
           {all ? 'Show fewer' : `+${count - SHOW} more`}
         </button>
@@ -66,7 +66,7 @@ export default function NeedsYouPanel({
             {(limit) => needs.requests.slice(0, limit).map((row) => (
               <EntryLine
                 key={row.event_id} row={row} now={now} onOpen={onOpen}
-                glyph={<span className="text-[#D06030]">?</span>}
+                glyph={<span className="text-chart-orange">?</span>}
                 detail={row.review_note ? `“${row.review_note}”` : 'Asked for your view'}
                 cta="Reply"
               />
@@ -77,7 +77,7 @@ export default function NeedsYouPanel({
             {(limit) => waitingOnPm.slice(0, limit).map((row) => (
               <EntryLine
                 key={row.event_id} row={row} now={now} onOpen={onOpen}
-                glyph={<span className="text-[#D06030]">…</span>}
+                glyph={<span className="text-chart-orange">…</span>}
                 detail={row.review_note ? `You asked: “${row.review_note}”` : 'Pushed, no reply yet'}
               />
             ))}
@@ -85,20 +85,20 @@ export default function NeedsYouPanel({
 
           <Group title={`No primary research > ${staleDays}d`} count={needs.stale.length}>
             {(limit) => needs.stale.slice(0, limit).map(({ coverage, days }) => (
-              <li key={coverage.id} className="border-b border-[#E3DDCF] last:border-b-0">
+              <li key={coverage.id} className="border-b border-gridline last:border-b-0">
                 <Link
                   to={`/command-center/stock/${encodeURIComponent(coverage.ticker)}`}
                   className="flex items-baseline gap-2 px-3 py-2 hover:bg-[rgba(28,27,23,0.04)]"
                 >
-                  <span className="w-3 shrink-0 text-center font-mono text-xs text-[#B23B2A]">!</span>
-                  <span className="shrink-0 font-mono text-xs font-semibold text-[#1C1B17]">{coverage.ticker}</span>
-                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#6F6A60]">
+                  <span className="w-3 shrink-0 text-center font-mono text-xs text-negative">!</span>
+                  <span className="shrink-0 font-mono text-xs font-semibold text-ink">{coverage.ticker}</span>
+                  <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-ink-muted">
                     {days === null
                       ? 'No meeting, concall or AGM ever logged'
                       : `No meeting, concall or AGM in ${days}d`}
                     {coverage.lead_analyst_username ? ` · ${coverage.lead_analyst_username}` : ' · no lead analyst'}
                   </span>
-                  <span className="shrink-0 font-mono text-[10px] text-[#1C1B17]">→ Open</span>
+                  <span className="shrink-0 font-mono text-[10px] text-ink">→ Open</span>
                 </Link>
               </li>
             ))}

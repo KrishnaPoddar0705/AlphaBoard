@@ -17,8 +17,8 @@ export default function EventKindBadge({ kind, subtype, scheduled, showLabel = t
       className={[
         'inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 font-mono text-[11px] whitespace-nowrap',
         scheduled
-          ? 'border-dashed border-[#8B857A] text-[#6F6A60]'
-          : 'border-[#D7D0C2] bg-[#F1EEE0] text-[#1C1B17]',
+          ? 'border-dashed border-ink-faint text-ink-muted'
+          : 'border-border-editorial bg-paper text-ink',
       ].join(' ')}
     >
       <Icon className="h-3 w-3" />

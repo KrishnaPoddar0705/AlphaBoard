@@ -34,8 +34,8 @@ export function IncomeStatementSection({ incomeData, loading, ticker = 'AAPL' }:
 
   if (loading) {
     return (
-      <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5">
-        <p className="text-sm font-mono text-[#6F6A60]">Loading financial data...</p>
+      <div className="bg-paper-light border border-border-editorial p-5">
+        <p className="text-sm font-mono text-ink-muted">Loading financial data...</p>
       </div>
     )
   }
@@ -45,18 +45,18 @@ export function IncomeStatementSection({ incomeData, loading, ticker = 'AAPL' }:
   }
 
   return (
-    <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5">
+    <div className="bg-paper-light border border-border-editorial p-5">
       {/* Header with toggle */}
-      <div className="flex items-center justify-between mb-5 pb-4 border-b border-[#D7D0C2]">
-        <h2 className="text-base font-mono font-bold text-[#1C1B17]">Income Statement</h2>
+      <div className="flex items-center justify-between mb-5 pb-4 border-b border-border-editorial">
+        <h2 className="text-base font-mono font-bold text-ink">Income Statement</h2>
         <div className="flex gap-2">
           <Button
             variant={period === 'quarterly' ? 'default' : 'outline'}
             onClick={() => setPeriod('quarterly')}
             className={`font-mono text-xs px-3 py-1.5 h-auto ${
               period === 'quarterly'
-                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]'
-                : 'bg-transparent border-[#D7D0C2] text-[#1C1B17]'
+                ? 'bg-ink text-paper-light border-ink'
+                : 'bg-transparent border-border-editorial text-ink'
             }`}
           >
             Quarterly
@@ -66,8 +66,8 @@ export function IncomeStatementSection({ incomeData, loading, ticker = 'AAPL' }:
             onClick={() => setPeriod('annually')}
             className={`font-mono text-xs px-3 py-1.5 h-auto ${
               period === 'annually'
-                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]'
-                : 'bg-transparent border-[#D7D0C2] text-[#1C1B17]'
+                ? 'bg-ink text-paper-light border-ink'
+                : 'bg-transparent border-border-editorial text-ink'
             }`}
           >
             Annually
@@ -79,26 +79,26 @@ export function IncomeStatementSection({ incomeData, loading, ticker = 'AAPL' }:
       <div className="overflow-x-auto mb-6">
         <table className="w-full text-xs font-mono">
           <thead>
-            <tr className="border-b border-[#D7D0C2]">
-              <th className="text-left py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+            <tr className="border-b border-border-editorial">
+              <th className="text-left py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                 Period
               </th>
-              <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+              <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                 Revenue
               </th>
-              <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+              <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                 Operating Expense
               </th>
-              <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+              <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                 Net Income
               </th>
-              <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+              <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                 Net Profit Mar.
               </th>
-              <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+              <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                 Earnings P...
               </th>
-              <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+              <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                 EBITDA
               </th>
             </tr>
@@ -114,24 +114,24 @@ export function IncomeStatementSection({ incomeData, loading, ticker = 'AAPL' }:
                             const ebitda = row.ebitda || row.ebitdaValue || row.operatingIncome || row.operating_profit || 0
                             
                             return (
-                              <tr key={idx} className="border-b border-[#E3DDCF]">
-                                <td className="py-2 px-3 text-[#1C1B17]">{row.period || row.year || row.date || 'N/A'}</td>
-                                <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                              <tr key={idx} className="border-b border-gridline">
+                                <td className="py-2 px-3 text-ink">{row.period || row.year || row.date || 'N/A'}</td>
+                                <td className="py-2 px-3 text-right tabular-nums text-ink">
                                   {revenue > 0 ? `$${(revenue / 1e6).toFixed(2)}M` : 'N/A'}
                                 </td>
-                                <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                                <td className="py-2 px-3 text-right tabular-nums text-ink">
                                   {operatingExpense > 0 ? `$${(operatingExpense / 1e6).toFixed(2)}M` : 'N/A'}
                                 </td>
-                                <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                                <td className="py-2 px-3 text-right tabular-nums text-ink">
                                   {netIncome !== 0 ? `$${(netIncome / 1e6).toFixed(2)}M` : 'N/A'}
                                 </td>
-                                <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                                <td className="py-2 px-3 text-right tabular-nums text-ink">
                                   {netProfitMargin !== 0 ? `${netProfitMargin.toFixed(2)}%` : 'N/A'}
                                 </td>
-                                <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                                <td className="py-2 px-3 text-right tabular-nums text-ink">
                                   {eps !== 0 ? `$${eps.toFixed(2)}` : 'N/A'}
                                 </td>
-                                <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                                <td className="py-2 px-3 text-right tabular-nums text-ink">
                                   {ebitda !== 0 ? `$${(ebitda / 1e6).toFixed(2)}M` : 'N/A'}
                                 </td>
                               </tr>
@@ -149,25 +149,25 @@ export function IncomeStatementSection({ incomeData, loading, ticker = 'AAPL' }:
             variant="outline"
             onClick={handleExplain}
             disabled={loadingExplanation}
-            className="mt-4 font-mono text-xs bg-transparent border-[#D7D0C2] text-[#1C1B17] hover:bg-[#FBF7ED]"
+            className="mt-4 font-mono text-xs bg-transparent border-border-editorial text-ink hover:bg-paper-alt"
             size="sm"
           >
             {loadingExplanation ? 'Generating...' : 'Explain These Numbers'}
           </Button>
           
           <Dialog open={showExplanation} onOpenChange={setShowExplanation}>
-            <DialogContent className="bg-[#F7F2E6] border-[#D7D0C2] max-w-2xl">
+            <DialogContent className="bg-paper-light border-border-editorial max-w-2xl">
               <DialogHeader>
-                <DialogTitle className="font-mono text-[#1C1B17]">Income Statement Analysis</DialogTitle>
-                <DialogDescription className="font-mono text-[#6F6A60]">
+                <DialogTitle className="font-mono text-ink">Income Statement Analysis</DialogTitle>
+                <DialogDescription className="font-mono text-ink-muted">
                   AI-powered explanation of financial trends
                 </DialogDescription>
               </DialogHeader>
               <div className="mt-4">
                 {loadingExplanation ? (
-                  <p className="font-mono text-sm text-[#6F6A60]">Generating explanation...</p>
+                  <p className="font-mono text-sm text-ink-muted">Generating explanation...</p>
                 ) : (
-                  <p className="font-mono text-sm text-[#1C1B17] leading-relaxed whitespace-pre-wrap">
+                  <p className="font-mono text-sm text-ink leading-relaxed whitespace-pre-wrap">
                     {explanation || 'No explanation available.'}
                   </p>
                 )}

@@ -6,7 +6,7 @@ import { useSaveContact } from '@/hooks/commandCenter/useContacts'
 import type { ContactDesignation, ContactWithRecency } from '@/lib/commandCenter/types'
 
 const inputClass =
-  'w-full rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2.5 py-1.5 font-mono text-sm text-[#1C1B17] focus:border-[#8B857A] focus:outline-none'
+  'w-full rounded-lg border border-border-editorial bg-paper-alt px-2.5 py-1.5 font-mono text-sm text-ink focus:border-ink-faint focus:outline-none'
 
 interface Props {
   open: boolean
@@ -52,13 +52,13 @@ export default function ContactDialog({ open, onClose, coverageId, existing }: P
 
         <form onSubmit={submit} className="flex flex-col gap-3">
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Name</span>
+            <span className="font-mono text-[11px] text-ink-muted">Name</span>
             <input autoFocus required value={name} onChange={(e) => setName(e.target.value)}
                    className={inputClass} />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Role</span>
+            <span className="font-mono text-[11px] text-ink-muted">Role</span>
             <select value={designation} className={inputClass}
                     onChange={(e) => setDesignation(e.target.value as ContactDesignation)}>
               {CONTACT_DESIGNATIONS.map((d) => <option key={d} value={d}>{d}</option>)}
@@ -67,24 +67,24 @@ export default function ContactDialog({ open, onClose, coverageId, existing }: P
 
           {designation === 'Other' && (
             <label className="flex flex-col gap-1">
-              <span className="font-mono text-[11px] text-[#6F6A60]">Role title</span>
+              <span className="font-mono text-[11px] text-ink-muted">Role title</span>
               <input value={designationOther} onChange={(e) => setDesignationOther(e.target.value)}
                      className={inputClass} />
             </label>
           )}
 
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Email</span>
+            <span className="font-mono text-[11px] text-ink-muted">Email</span>
             <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                    className={inputClass} />
           </label>
 
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[11px] text-[#6F6A60]">Phone</span>
+            <span className="font-mono text-[11px] text-ink-muted">Phone</span>
             <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
           </label>
 
-          <p className="font-mono text-[10px] text-[#8B857A]">
+          <p className="font-mono text-[10px] text-ink-faint">
             There is no "date met" field on purpose -- it comes from the interactions you
             tag this person on, so it can never go stale.
           </p>

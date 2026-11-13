@@ -127,7 +127,7 @@ export default function HomeView() {
       />
 
       {windowQuery.isError && (
-        <p className="rounded-md border border-[#B23B2A] px-3 py-2 font-mono text-xs text-[#B23B2A]">
+        <p className="rounded-md border border-negative px-3 py-2 font-mono text-xs text-negative">
           {windowQuery.error.message}
         </p>
       )}

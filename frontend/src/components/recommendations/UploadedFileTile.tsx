@@ -44,18 +44,18 @@ export default function UploadedFileTile({ url, index }: UploadedFileTileProps) 
       target="_blank"
       rel="noopener noreferrer"
       title={label}
-      className="relative group block rounded focus:outline-none focus:ring-2 focus:ring-[#6F6A60]"
+      className="relative group block rounded focus:outline-none focus:ring-2 focus:ring-ink-muted"
     >
       {showDocumentTile ? (
-        <div className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded border border-[#D7D0C2] bg-[#FBF7ED] px-2">
-          <FileText className="h-6 w-6 shrink-0 text-[#6F6A60]" />
-          <span className="max-w-full truncate font-mono text-xs text-[#6F6A60]">{label}</span>
+        <div className="flex h-32 w-full flex-col items-center justify-center gap-2 rounded border border-border-editorial bg-paper-alt px-2">
+          <FileText className="h-6 w-6 shrink-0 text-ink-muted" />
+          <span className="max-w-full truncate font-mono text-xs text-ink-muted">{label}</span>
         </div>
       ) : (
         <img
           src={url}
           alt={`Upload ${index + 1}`}
-          className="h-32 w-full rounded border border-[#D7D0C2] object-cover"
+          className="h-32 w-full rounded border border-border-editorial object-cover"
           onError={() => setImageFailed(true)}
         />
       )}

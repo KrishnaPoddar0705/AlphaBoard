@@ -11,10 +11,10 @@ interface Props {
 export default function SectionCard({ title, action, children, className = '' }: Props) {
   return (
     <section
-      className={`rounded-xl border border-[#D7D0C2] bg-[#F7F2E6] ${className}`}
+      className={`rounded-xl border border-border-editorial bg-paper-light ${className}`}
     >
-      <header className="flex items-center justify-between gap-2 border-b border-[#E3DDCF] px-4 py-2.5">
-        <h2 className="font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]">
+      <header className="flex items-center justify-between gap-2 border-b border-gridline px-4 py-2.5">
+        <h2 className="font-mono text-[11px] uppercase tracking-wider text-ink-muted">
           {title}
         </h2>
         {action}

@@ -18,13 +18,13 @@ interface Props {
 }
 
 const seg = (on: boolean) => [
-  'px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors',
-  on ? 'bg-[#1C1B17] text-[#F1EEE0]' : 'bg-[#FBF7ED] text-[#1C1B17] hover:bg-[#F1EEE0]',
+  'px-2.5 py-1 font-mono text-[11px] uppercase tracking-[0.08em] transition-colors board:rounded-md board:border-0 board:px-3 board:text-sm',
+  on ? 'bg-ink text-paper board:bg-none board:bg-paper-light board:font-medium board:text-ink board:shadow-card' : 'bg-paper-alt text-ink hover:bg-paper board:bg-transparent board:text-ink-muted board:hover:text-ink',
 ].join(' ')
 
 const select = (on: boolean) => [
-  'min-w-0 flex-1 basis-[calc(50%-0.25rem)] rounded-md border bg-[#FBF7ED] px-2 py-1 font-mono text-[11px] text-[#1C1B17] focus:outline-none sm:max-w-[12rem] sm:flex-none sm:basis-auto',
-  on ? 'border-[#1C1B17]' : 'border-[#D7D0C2]',
+  'min-w-0 flex-1 basis-[calc(50%-0.25rem)] rounded-md border bg-paper-alt px-2 py-1 font-mono text-[11px] text-ink focus:outline-none sm:max-w-[12rem] sm:flex-none sm:basis-auto board:h-8 board:rounded-lg board:bg-paper-light board:px-2.5 board:text-sm board:shadow-card board:transition-colors board:hover:border-border-strong board:focus-visible:ring-2 board:focus-visible:ring-brand-500/30',
+  on ? 'border-ink' : 'border-border-editorial',
 ].join(' ')
 
 /**
@@ -40,11 +40,11 @@ export default function LensBar({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {canToggleLens && (
-        <div className="inline-flex overflow-hidden rounded-md border border-[#1C1B17]" role="group" aria-label="View by">
+        <div className="inline-flex overflow-hidden rounded-md border border-ink board:gap-0.5 board:rounded-2lg board:border-0 board:bg-[var(--board-segment-track)] board:p-1" role="group" aria-label="View by">
           <button type="button" className={seg(lens === 'stock')} onClick={() => onLens('stock')} aria-pressed={lens === 'stock'}>
             By stock
           </button>
-          <button type="button" className={`${seg(lens === 'analyst')} border-l border-[#1C1B17]`} onClick={() => onLens('analyst')} aria-pressed={lens === 'analyst'}>
+          <button type="button" className={`${seg(lens === 'analyst')} border-l border-ink board:border-l-0`} onClick={() => onLens('analyst')} aria-pressed={lens === 'analyst'}>
             By analyst
           </button>
         </div>
@@ -89,7 +89,7 @@ export default function LensBar({
           <button
             type="button"
             onClick={() => onFilters({ analystId: null, sector: null, coverageId: null, typeId: null })}
-            className="font-mono text-[11px] text-[#6F6A60] underline-offset-2 hover:underline"
+            className="font-mono text-[11px] text-ink-muted underline-offset-2 hover:underline"
           >
             Clear
           </button>

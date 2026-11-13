@@ -26,14 +26,14 @@ interface Props {
   loading?: boolean
 }
 
-const labelClass = 'font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]'
+const labelClass = 'font-mono text-[11px] uppercase tracking-wider text-ink-muted'
 const inputClass =
-  'w-full min-w-0 rounded-lg border border-[#D7D0C2] bg-[#FBF7ED] px-2.5 py-1.5 font-mono text-xs text-[#1C1B17] focus:border-[#8B857A] focus:outline-none'
+  'w-full min-w-0 rounded-lg border border-border-editorial bg-paper-alt px-2.5 py-1.5 font-mono text-xs text-ink focus:border-ink-faint focus:outline-none'
 const chip = (on: boolean) => [
   'inline-flex items-center gap-1 rounded-lg border px-2 py-1 font-mono text-[11px] transition-colors',
   on
-    ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6]'
-    : 'border-[#D7D0C2] bg-[#F7F2E6] text-[#1C1B17] hover:bg-[rgba(28,27,23,0.04)]',
+    ? 'border-ink bg-ink text-paper-light'
+    : 'border-border-editorial bg-paper-light text-ink hover:bg-[rgba(28,27,23,0.04)]',
 ].join(' ')
 
 const EMPTY = { name: '', designation: 'IR' as ContactDesignation, other: '', email: '', phone: '' }
@@ -83,7 +83,7 @@ export default function EventContactsField({
     return (
       <div className="flex flex-col gap-1.5">
         <span className={labelClass}>Who was there</span>
-        <p className="font-mono text-[11px] text-[#8B857A]">Pick a stock first.</p>
+        <p className="font-mono text-[11px] text-ink-faint">Pick a stock first.</p>
       </div>
     )
   }
@@ -104,7 +104,7 @@ export default function EventContactsField({
         {drafts.map((d) => (
           <span key={d.draftId} className={chip(true)}>
             {d.name} · {d.designation === 'Other' ? d.designation_other ?? 'Other' : d.designation}
-            <span className="rounded bg-[#D06030] px-1 text-[9px] uppercase text-[#1C1B17]">new</span>
+            <span className="rounded bg-chart-orange px-1 text-[9px] uppercase text-ink">new</span>
             <button
               type="button"
               onClick={() => onDrafts(drafts.filter((x) => x.draftId !== d.draftId))}
@@ -119,7 +119,7 @@ export default function EventContactsField({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="inline-flex items-center gap-1 rounded-lg border border-dashed border-[#8B857A] px-2 py-1 font-mono text-[11px] text-[#6F6A60] hover:border-[#1C1B17] hover:text-[#1C1B17]"
+            className="inline-flex items-center gap-1 rounded-lg border border-dashed border-ink-faint px-2 py-1 font-mono text-[11px] text-ink-muted hover:border-ink hover:text-ink"
           >
             <Plus className="h-3 w-3" /> New contact
           </button>
@@ -128,7 +128,7 @@ export default function EventContactsField({
 
       {adding && (
         <div
-          className="grid grid-cols-2 gap-2 rounded-lg border border-[#E3DDCF] bg-[#FBF7ED] p-2.5 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)]"
+          className="grid grid-cols-2 gap-2 rounded-lg border border-gridline bg-paper-alt p-2.5 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.8fr)_minmax(0,1fr)_minmax(0,1fr)]"
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); add() } }}
         >
           <input
@@ -170,7 +170,7 @@ export default function EventContactsField({
             <button
               type="button"
               onClick={() => { setAdding(false); setForm(EMPTY) }}
-              className="rounded-lg border border-[#D7D0C2] px-2.5 py-1 font-mono text-[11px] text-[#1C1B17]"
+              className="rounded-lg border border-border-editorial px-2.5 py-1 font-mono text-[11px] text-ink"
             >
               Cancel
             </button>
@@ -178,7 +178,7 @@ export default function EventContactsField({
               type="button"
               onClick={add}
               disabled={!form.name.trim()}
-              className="rounded-lg border border-[#1C1B17] bg-[#1C1B17] px-2.5 py-1 font-mono text-[11px] text-[#F7F2E6] disabled:opacity-40"
+              className="rounded-lg border border-ink bg-ink px-2.5 py-1 font-mono text-[11px] text-paper-light disabled:opacity-40"
             >
               Add
             </button>
@@ -186,7 +186,7 @@ export default function EventContactsField({
         </div>
       )}
 
-      <p className="font-mono text-[10px] text-[#8B857A]">
+      <p className="font-mono text-[10px] text-ink-faint">
         {notice ?? (!loading && contacts.length === 0 && drafts.length === 0
           ? 'No contacts on this stock yet. Anyone you add is saved to it.'
           : 'Tagging someone updates their "last met" date. New people are saved to the stock.')}

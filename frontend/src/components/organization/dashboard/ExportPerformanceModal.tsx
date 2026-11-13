@@ -268,7 +268,7 @@ export default function ExportPerformanceModal({
               onChange={(e) => setBaseDate(e.target.value)}
               max={new Date().toISOString().split('T')[0]}
             />
-            <p className="text-xs text-[#6F6A60]">
+            <p className="text-xs text-ink-muted">
               Select the date to use as the base price reference point
             </p>
           </div>

@@ -36,8 +36,8 @@ export default function EventTypePicker({ value, onChange }: Props) {
               className={[
                 'flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 transition-colors',
                 active
-                  ? 'border-[#1C1B17] bg-[#1C1B17] text-[#F7F2E6]'
-                  : 'border-[#D7D0C2] bg-[#FBF7ED] text-[#1C1B17] hover:border-[#8B857A] hover:bg-[rgba(28,27,23,0.04)]',
+                  ? 'border-ink bg-ink text-paper-light'
+                  : 'border-border-editorial bg-paper-alt text-ink hover:border-ink-faint hover:bg-[rgba(28,27,23,0.04)]',
               ].join(' ')}
             >
               <Icon className="h-5 w-5" />
@@ -51,7 +51,7 @@ export default function EventTypePicker({ value, onChange }: Props) {
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="inline-flex items-center gap-1 self-start font-mono text-[11px] text-[#6F6A60] hover:text-[#1C1B17]"
+          className="inline-flex items-center gap-1 self-start font-mono text-[11px] text-ink-muted hover:text-ink"
         >
           <ChevronDown className="h-3 w-3" /> More types
         </button>

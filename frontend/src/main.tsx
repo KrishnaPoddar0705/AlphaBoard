@@ -5,6 +5,7 @@ import App from './App.tsx'
 import { ClerkProvider } from '@clerk/clerk-react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from './contexts/ThemeContext'
+import { SkinProvider } from './contexts/SkinContext'
 import { SearchProvider } from './contexts/SearchContext'
 import { validateCurrentOrigin } from './config/allowedOrigins'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -107,9 +108,11 @@ if (!checkFor404()) {
           >
             <AnalyticsIdentity />
             <ThemeProvider>
-              <SearchProvider>
-                <App />
-              </SearchProvider>
+              <SkinProvider>
+                <SearchProvider>
+                  <App />
+                </SearchProvider>
+              </SkinProvider>
             </ThemeProvider>
           </ClerkProvider>
         </QueryClientProvider>

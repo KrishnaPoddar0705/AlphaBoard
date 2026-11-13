@@ -490,9 +490,9 @@ export default function StockDetail() {
         position: 'top-right',
         icon: '✅',
         style: {
-          background: '#F7F2E6',
-          color: '#1C1B17',
-          border: '1px solid #2F8F5B',
+          background: 'var(--color-paper-light)',
+          color: 'var(--color-ink)',
+          border: '1px solid var(--color-positive)',
         },
       })
     } catch (error) {
@@ -502,9 +502,9 @@ export default function StockDetail() {
         position: 'top-right',
         icon: '❌',
         style: {
-          background: '#F7F2E6',
-          color: '#B23B2A',
-          border: '1px solid #B23B2A',
+          background: 'var(--color-paper-light)',
+          color: 'var(--color-negative)',
+          border: '1px solid var(--color-negative)',
         },
       })
     } finally {
@@ -514,16 +514,16 @@ export default function StockDetail() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Loading...</div>
+      <div className="flex items-center justify-center h-full bg-paper">
+        <div className="text-ink-muted font-mono">Loading...</div>
       </div>
     )
   }
 
   if (!stockData) {
     return (
-      <div className="flex items-center justify-center h-full bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Stock not found</div>
+      <div className="flex items-center justify-center h-full bg-paper">
+        <div className="text-ink-muted font-mono">Stock not found</div>
       </div>
     )
   }
@@ -532,7 +532,7 @@ export default function StockDetail() {
   const change = stockData.change || 0
 
   return (
-    <div className="h-full overflow-y-auto bg-[#F1EEE0] font-mono" style={{ fontFamily: 'ui-monospace, "IBM Plex Mono", "Space Mono", monospace' }}>
+    <div className="h-full overflow-y-auto bg-paper font-mono" style={{ fontFamily: 'ui-monospace, "IBM Plex Mono", "Space Mono", monospace' }}>
       {/* Top Header Bar */}
       <StockHeaderBar
         ticker={stockData.ticker}
@@ -556,7 +556,7 @@ export default function StockDetail() {
       {/* Main Content */}
       <div className="max-w-[1600px] mx-auto px-6 py-8">
         {/* Tabs */}
-        <div className="flex items-center gap-2 mb-6 pb-4 border-b border-[#D7D0C2]">
+        <div className="flex items-center gap-2 mb-6 pb-4 border-b border-border-editorial">
           <button
             onClick={() => {
               setActiveTab('overview')
@@ -565,8 +565,8 @@ export default function StockDetail() {
             className={`
               px-4 py-2 text-sm font-mono rounded border transition-colors
               ${activeTab === 'overview'
-                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]'
-                : 'bg-transparent text-[#1C1B17] border-[#D7D0C2] hover:bg-[#FBF7ED]'
+                ? 'bg-ink text-paper-light border-ink'
+                : 'bg-transparent text-ink border-border-editorial hover:bg-paper-alt'
               }
             `}
           >
@@ -580,8 +580,8 @@ export default function StockDetail() {
             className={`
               px-4 py-2 text-sm font-mono rounded border transition-colors
               ${activeTab === 'financials'
-                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]'
-                : 'bg-transparent text-[#1C1B17] border-[#D7D0C2] hover:bg-[#FBF7ED]'
+                ? 'bg-ink text-paper-light border-ink'
+                : 'bg-transparent text-ink border-border-editorial hover:bg-paper-alt'
               }
             `}
           >
@@ -595,8 +595,8 @@ export default function StockDetail() {
             className={`
               px-4 py-2 text-sm font-mono rounded border transition-colors
               ${activeTab === 'community'
-                ? 'bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]'
-                : 'bg-transparent text-[#1C1B17] border-[#D7D0C2] hover:bg-[#FBF7ED]'
+                ? 'bg-ink text-paper-light border-ink'
+                : 'bg-transparent text-ink border-border-editorial hover:bg-paper-alt'
               }
             `}
           >
@@ -646,40 +646,40 @@ export default function StockDetail() {
 
         {/* Trading Activity Section - Only show if user has trades */}
         {user && tradingActivity && (tradingActivity.trades.length > 0 || tradingActivity.position) && (
-          <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5 mb-8">
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#D7D0C2]">
-              <h2 className="text-base font-mono font-bold text-[#1C1B17] flex items-center gap-2">
+          <div className="bg-paper-light border border-border-editorial p-5 mb-8">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-editorial">
+              <h2 className="text-base font-mono font-bold text-ink flex items-center gap-2">
                 <span>📊</span> Your Trading Activity
               </h2>
             </div>
 
             {/* Position Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-              <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-4 rounded">
-                <p className="font-mono text-xs text-[#6F6A60] mb-1">Shares Held</p>
-                <p className="font-mono text-xl font-bold text-[#1C1B17]">
+              <div className="bg-paper-alt border border-gridline p-4 rounded">
+                <p className="font-mono text-xs text-ink-muted mb-1">Shares Held</p>
+                <p className="font-mono text-xl font-bold text-ink">
                   {tradingActivity.total_shares.toLocaleString()}
                 </p>
               </div>
-              <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-4 rounded">
-                <p className="font-mono text-xs text-[#6F6A60] mb-1">Avg Cost</p>
-                <p className="font-mono text-xl font-bold text-[#1C1B17]">
+              <div className="bg-paper-alt border border-gridline p-4 rounded">
+                <p className="font-mono text-xs text-ink-muted mb-1">Avg Cost</p>
+                <p className="font-mono text-xl font-bold text-ink">
                   {tradingActivity.position?.avg_cost
                     ? `${stockData.ticker?.includes('.NS') || stockData.ticker?.includes('.BO') ? '₹' : '$'}${tradingActivity.position.avg_cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
                     : '-'}
                 </p>
               </div>
-              <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-4 rounded">
-                <p className="font-mono text-xs text-[#6F6A60] mb-1">Unrealized P&L</p>
-                <p className={`font-mono text-xl font-bold ${tradingActivity.unrealized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+              <div className="bg-paper-alt border border-gridline p-4 rounded">
+                <p className="font-mono text-xs text-ink-muted mb-1">Unrealized P&L</p>
+                <p className={`font-mono text-xl font-bold ${tradingActivity.unrealized_pnl >= 0 ? 'text-positive' : 'text-negative'}`}>
                   {tradingActivity.unrealized_pnl >= 0 ? '+' : ''}
                   {stockData.ticker?.includes('.NS') || stockData.ticker?.includes('.BO') ? '₹' : '$'}
                   {Math.abs(tradingActivity.unrealized_pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </p>
               </div>
-              <div className="bg-[#FBF7ED] border border-[#E3DDCF] p-4 rounded">
-                <p className="font-mono text-xs text-[#6F6A60] mb-1">Realized P&L</p>
-                <p className={`font-mono text-xl font-bold ${tradingActivity.realized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+              <div className="bg-paper-alt border border-gridline p-4 rounded">
+                <p className="font-mono text-xs text-ink-muted mb-1">Realized P&L</p>
+                <p className={`font-mono text-xl font-bold ${tradingActivity.realized_pnl >= 0 ? 'text-positive' : 'text-negative'}`}>
                   {tradingActivity.realized_pnl >= 0 ? '+' : ''}
                   {stockData.ticker?.includes('.NS') || stockData.ticker?.includes('.BO') ? '₹' : '$'}
                   {Math.abs(tradingActivity.realized_pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -690,37 +690,37 @@ export default function StockDetail() {
             {/* Trade History */}
             {tradingActivity.trades.length > 0 && (
               <div>
-                <h3 className="font-mono text-sm font-semibold text-[#6F6A60] mb-3">Recent Activity</h3>
+                <h3 className="font-mono text-sm font-semibold text-ink-muted mb-3">Recent Activity</h3>
                 <div className="space-y-2">
                   {tradingActivity.trades.slice(0, 10).map((trade) => {
                     const currencySymbol = stockData.ticker?.includes('.NS') || stockData.ticker?.includes('.BO') ? '₹' : '$'
                     return (
                       <div
                         key={trade.id}
-                        className="flex items-center justify-between py-3 border-b border-[#E3DDCF] last:border-b-0"
+                        className="flex items-center justify-between py-3 border-b border-gridline last:border-b-0"
                       >
                         <div className="flex items-center gap-3">
                           <span
                             className={`px-2 py-0.5 rounded text-xs font-mono font-semibold ${
                               trade.side === 'BUY'
-                                ? 'bg-[#E6F4ED] text-[#2F8F5B]'
-                                : 'bg-[#FDECEA] text-[#B23B2A]'
+                                ? 'bg-[#E6F4ED] text-positive'
+                                : 'bg-[#FDECEA] text-negative'
                             }`}
                           >
                             {trade.side}
                           </span>
-                          <span className="font-mono text-sm text-[#1C1B17]">
+                          <span className="font-mono text-sm text-ink">
                             {trade.quantity.toLocaleString()} shares
                           </span>
-                          <span className="font-mono text-xs text-[#6F6A60]">
+                          <span className="font-mono text-xs text-ink-muted">
                             @ {currencySymbol}{trade.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </span>
                         </div>
                         <div className="text-right">
-                          <p className="font-mono text-sm font-semibold text-[#1C1B17] tabular-nums">
+                          <p className="font-mono text-sm font-semibold text-ink tabular-nums">
                             {currencySymbol}{trade.notional.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
-                          <p className="font-mono text-xs text-[#6F6A60]">
+                          <p className="font-mono text-xs text-ink-muted">
                             {new Date(trade.executed_at).toLocaleDateString('en-GB', {
                               day: '2-digit',
                               month: '2-digit',
@@ -728,7 +728,7 @@ export default function StockDetail() {
                             })}
                           </p>
                           {trade.realized_pnl !== null && trade.realized_pnl !== 0 && (
-                            <p className={`font-mono text-xs ${trade.realized_pnl >= 0 ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'}`}>
+                            <p className={`font-mono text-xs ${trade.realized_pnl >= 0 ? 'text-positive' : 'text-negative'}`}>
                               P&L: {trade.realized_pnl >= 0 ? '+' : ''}{currencySymbol}{Math.abs(trade.realized_pnl).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                           )}
@@ -741,7 +741,7 @@ export default function StockDetail() {
             )}
 
             {loadingTradingActivity && (
-              <div className="text-center py-4 text-[#6F6A60] font-mono text-sm">
+              <div className="text-center py-4 text-ink-muted font-mono text-sm">
                 Loading trading activity...
               </div>
             )}
@@ -749,7 +749,7 @@ export default function StockDetail() {
         )}
 
         {/* Divider */}
-        <div className="border-b border-[#D7D0C2] my-8" />
+        <div className="border-b border-border-editorial my-8" />
 
         {/* Income Statement Section with Right Sidebar */}
         <div className="grid grid-cols-12 gap-6 mb-8">
@@ -791,20 +791,20 @@ export default function StockDetail() {
         {/* Balance Statement & Cash Flow Sections */}
         <div className="space-y-6 mb-8">
           {/* Balance Statement */}
-          <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5">
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#D7D0C2]">
-              <h2 className="text-base font-mono font-bold text-[#1C1B17]">Balance Statement</h2>
+          <div className="bg-paper-light border border-border-editorial p-5">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-editorial">
+              <h2 className="text-base font-mono font-bold text-ink">Balance Statement</h2>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="font-mono text-xs px-3 py-1.5 h-auto bg-transparent border-[#D7D0C2] text-[#1C1B17]"
+                  className="font-mono text-xs px-3 py-1.5 h-auto bg-transparent border-border-editorial text-ink"
                   size="sm"
                 >
                   Quarterly
                 </Button>
                 <Button
                   variant="outline"
-                  className="font-mono text-xs px-3 py-1.5 h-auto bg-transparent border-[#D7D0C2] text-[#1C1B17]"
+                  className="font-mono text-xs px-3 py-1.5 h-auto bg-transparent border-border-editorial text-ink"
                   size="sm"
                 >
                   Annually
@@ -815,41 +815,41 @@ export default function StockDetail() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs font-mono">
                   <thead>
-                    <tr className="border-b border-[#D7D0C2]">
-                      <th className="text-left py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+                    <tr className="border-b border-border-editorial">
+                      <th className="text-left py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                         Period
                       </th>
-                      <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+                      <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                         Cash & ST Investments
                       </th>
-                      <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+                      <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                         Total Assets
                       </th>
-                      <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+                      <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                         Total Liabilities
                       </th>
-                      <th className="text-right py-2 px-3 text-[#6F6A60] font-medium uppercase tracking-wider text-[0.7rem]">
+                      <th className="text-right py-2 px-3 text-ink-muted font-medium uppercase tracking-wider text-[0.7rem]">
                         Total Equity
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {financials.balance.slice(0, 5).map((row: any, idx: number) => (
-                      <tr key={idx} className="border-b border-[#E3DDCF]">
-                        <td className="py-2 px-3 text-[#1C1B17]">{row.period || row.year || row.date || "N/A"}</td>
-                        <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                      <tr key={idx} className="border-b border-gridline">
+                        <td className="py-2 px-3 text-ink">{row.period || row.year || row.date || "N/A"}</td>
+                        <td className="py-2 px-3 text-right tabular-nums text-ink">
                           {(row.cash || row.cashAndShortTerm || row.cashAndCashEquivalents) ? 
                             `$${((row.cash || row.cashAndShortTerm || row.cashAndCashEquivalents) / 1e6).toFixed(2)}M` : "N/A"}
                         </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                        <td className="py-2 px-3 text-right tabular-nums text-ink">
                           {(row.totalAssets || row.assets) ? 
                             `$${((row.totalAssets || row.assets) / 1e6).toFixed(2)}M` : "N/A"}
                         </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                        <td className="py-2 px-3 text-right tabular-nums text-ink">
                           {(row.totalLiabilities || row.liabilities) ? 
                             `$${((row.totalLiabilities || row.liabilities) / 1e6).toFixed(2)}M` : "N/A"}
                         </td>
-                        <td className="py-2 px-3 text-right tabular-nums text-[#1C1B17]">
+                        <td className="py-2 px-3 text-right tabular-nums text-ink">
                           {(row.totalEquity || row.equity) ? 
                             `$${((row.totalEquity || row.equity) / 1e6).toFixed(2)}M` : "N/A"}
                         </td>
@@ -859,54 +859,54 @@ export default function StockDetail() {
                 </table>
               </div>
             ) : (
-              <p className="text-xs font-mono text-[#6F6A60]">No balance sheet data available</p>
+              <p className="text-xs font-mono text-ink-muted">No balance sheet data available</p>
             )}
           </div>
 
           {/* Cash Flow */}
-          <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5">
-            <div className="flex items-center justify-between mb-4 pb-4 border-b border-[#D7D0C2]">
-              <h2 className="text-base font-mono font-bold text-[#1C1B17]">Cash Flow Statement</h2>
+          <div className="bg-paper-light border border-border-editorial p-5">
+            <div className="flex items-center justify-between mb-4 pb-4 border-b border-border-editorial">
+              <h2 className="text-base font-mono font-bold text-ink">Cash Flow Statement</h2>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="font-mono text-xs px-3 py-1.5 h-auto bg-transparent border-[#D7D0C2] text-[#1C1B17]"
+                  className="font-mono text-xs px-3 py-1.5 h-auto bg-transparent border-border-editorial text-ink"
                   size="sm"
                 >
                   Quarterly
                 </Button>
                 <Button
                   variant="outline"
-                  className="font-mono text-xs px-3 py-1.5 h-auto bg-transparent border-[#D7D0C2] text-[#1C1B17]"
+                  className="font-mono text-xs px-3 py-1.5 h-auto bg-transparent border-border-editorial text-ink"
                   size="sm"
                 >
                   Annually
                 </Button>
               </div>
             </div>
-            <p className="text-xs font-mono text-[#6F6A60]">Cash flow data will be displayed here</p>
+            <p className="text-xs font-mono text-ink-muted">Cash flow data will be displayed here</p>
           </div>
         </div>
 
         {/* Comments Section */}
-        <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5">
-          <h2 className="text-base font-mono font-bold text-[#1C1B17] mb-4">
+        <div className="bg-paper-light border border-border-editorial p-5">
+          <h2 className="text-base font-mono font-bold text-ink mb-4">
             Comments ({comments.length})
           </h2>
 
           {/* Comment Input */}
-          <div className="mb-6 pb-6 border-b border-[#D7D0C2]">
+          <div className="mb-6 pb-6 border-b border-border-editorial">
             <Textarea
               placeholder="Share your thoughts about this stock..."
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               rows={4}
-              className="bg-[#FBF7ED] border-[#D7D0C2] text-[#1C1B17] placeholder:text-[#6F6A60] font-mono text-sm mb-3"
+              className="bg-paper-alt border-border-editorial text-ink placeholder:text-ink-muted font-mono text-sm mb-3"
             />
             <Button
               onClick={handleCommentSubmit}
               disabled={!newComment.trim()}
-              className="font-mono text-xs bg-[#1C1B17] text-[#F7F2E6] hover:bg-[#1C1B17]/90"
+              className="font-mono text-xs bg-ink text-paper-light hover:bg-ink/90"
               size="sm"
             >
               Post Comment
@@ -915,14 +915,14 @@ export default function StockDetail() {
 
           {/* Comment Sort */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-mono text-[#6F6A60]">Sort by:</span>
+            <span className="text-xs font-mono text-ink-muted">Sort by:</span>
             <Button
               variant={commentSort === "latest" ? "default" : "outline"}
               onClick={() => setCommentSort("latest")}
               className={`font-mono text-xs px-3 py-1.5 h-auto ${
                 commentSort === "latest"
-                  ? "bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]"
-                  : "bg-transparent border-[#D7D0C2] text-[#1C1B17]"
+                  ? "bg-ink text-paper-light border-ink"
+                  : "bg-transparent border-border-editorial text-ink"
               }`}
               size="sm"
             >
@@ -933,8 +933,8 @@ export default function StockDetail() {
               onClick={() => setCommentSort("top")}
               className={`font-mono text-xs px-3 py-1.5 h-auto ${
                 commentSort === "top"
-                  ? "bg-[#1C1B17] text-[#F7F2E6] border-[#1C1B17]"
-                  : "bg-transparent border-[#D7D0C2] text-[#1C1B17]"
+                  ? "bg-ink text-paper-light border-ink"
+                  : "bg-transparent border-border-editorial text-ink"
               }`}
               size="sm"
             >
@@ -945,23 +945,23 @@ export default function StockDetail() {
           {/* Comments List */}
           <div className="space-y-4">
             {comments.length === 0 ? (
-              <p className="text-xs font-mono text-[#6F6A60] text-center py-8">
+              <p className="text-xs font-mono text-ink-muted text-center py-8">
                 No comments yet. Be the first to comment!
               </p>
             ) : (
               comments.map((comment) => (
-                <div key={comment.id} className="bg-[#FBF7ED] border border-[#D7D0C2] p-4">
+                <div key={comment.id} className="bg-paper-alt border border-border-editorial p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div>
-                      <p className="text-xs font-mono font-semibold text-[#1C1B17]">
+                      <p className="text-xs font-mono font-semibold text-ink">
                         {comment.user_id ? `User ${comment.user_id.slice(0, 8)}` : "Anonymous"}
                       </p>
-                      <p className="text-xs font-mono text-[#6F6A60]">
+                      <p className="text-xs font-mono text-ink-muted">
                         {new Date(comment.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                  <p className="mb-3 text-sm font-mono text-[#1C1B17] leading-relaxed">
+                  <p className="mb-3 text-sm font-mono text-ink leading-relaxed">
                     {comment.content}
                   </p>
                   <div className="flex items-center gap-2">
@@ -969,7 +969,7 @@ export default function StockDetail() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleCommentVote(comment.id, "upvote")}
-                      className="gap-1 font-mono text-xs h-auto py-1 px-2 text-[#1C1B17] hover:bg-[#F7F2E6]"
+                      className="gap-1 font-mono text-xs h-auto py-1 px-2 text-ink hover:bg-paper-light"
                     >
                       <ArrowUp className="h-3 w-3" />
                       <span className="tabular-nums">{comment.upvotes}</span>
@@ -978,7 +978,7 @@ export default function StockDetail() {
                       variant="ghost"
                       size="sm"
                       onClick={() => handleCommentVote(comment.id, "downvote")}
-                      className="gap-1 font-mono text-xs h-auto py-1 px-2 text-[#1C1B17] hover:bg-[#F7F2E6]"
+                      className="gap-1 font-mono text-xs h-auto py-1 px-2 text-ink hover:bg-paper-light"
                     >
                       <ArrowDown className="h-3 w-3" />
                       <span className="tabular-nums">{comment.downvotes}</span>

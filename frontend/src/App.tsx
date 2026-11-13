@@ -44,8 +44,8 @@ function PaperPortfolioRoute({ children }: { children: React.ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Loading...</div>
+      <div className="flex-1 flex items-center justify-center bg-paper">
+        <div className="text-ink-muted font-mono">Loading...</div>
       </div>
     );
   }
@@ -73,8 +73,8 @@ function OrgRoleRoute({ allow, children }: { allow: OrgRole[]; children: React.R
 
   if (loading) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Loading...</div>
+      <div className="flex-1 flex items-center justify-center bg-paper">
+        <div className="text-ink-muted font-mono">Loading...</div>
       </div>
     );
   }
@@ -91,8 +91,8 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
   if (!isLoaded) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#F1EEE0]">
-        <div className="text-[#6F6A60] font-mono">Loading...</div>
+      <div className="flex-1 flex items-center justify-center bg-paper">
+        <div className="text-ink-muted font-mono">Loading...</div>
       </div>
     );
   }
@@ -125,7 +125,7 @@ function App() {
         position="bottom-right"
         toastOptions={{
           className: 'font-mono text-sm',
-          style: { background: '#FBF7ED', color: '#1C1B17', border: '1px solid #D7D0C2' },
+          style: { background: 'var(--color-paper-alt)', color: 'var(--color-ink)', border: '1px solid var(--color-border-editorial)' },
         }}
       />
       <Routes>

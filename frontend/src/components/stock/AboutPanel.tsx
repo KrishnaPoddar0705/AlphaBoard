@@ -25,8 +25,8 @@ export function AboutPanel({ companyName, description, website }: AboutPanelProp
   const displayText = description || 'No description available'
 
   return (
-    <div className="bg-[#F7F2E6] border border-[#D7D0C2] p-5 h-full flex flex-col">
-      <h2 className="text-base font-mono font-bold text-[#1C1B17] mb-3">
+    <div className="bg-paper-light border border-border-editorial p-5 h-full flex flex-col">
+      <h2 className="text-base font-mono font-bold text-ink mb-3">
         About {companyName || 'Company'}
       </h2>
       {website && (
@@ -34,7 +34,7 @@ export function AboutPanel({ companyName, description, website }: AboutPanelProp
           href={website}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-sm font-mono text-[#2F8F5B] hover:underline block mb-3"
+          className="text-sm font-mono text-positive hover:underline block mb-3"
         >
           {website}
         </a>
@@ -42,7 +42,7 @@ export function AboutPanel({ companyName, description, website }: AboutPanelProp
       <div className="flex-1 overflow-hidden">
         <p
           ref={textRef}
-          className={`text-sm font-mono text-[#6F6A60] leading-relaxed ${
+          className={`text-sm font-mono text-ink-muted leading-relaxed ${
             !isExpanded && needsExpansion ? 'line-clamp-4' : ''
           }`}
           style={{
@@ -56,7 +56,7 @@ export function AboutPanel({ companyName, description, website }: AboutPanelProp
           <Button
             variant="ghost"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="mt-2 font-mono text-xs text-[#6F6A60] hover:text-[#1C1B17] p-0 h-auto"
+            className="mt-2 font-mono text-xs text-ink-muted hover:text-ink p-0 h-auto"
             size="sm"
           >
             {isExpanded ? (

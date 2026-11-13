@@ -38,10 +38,10 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
   }
 
   return (
-    <div className="w-full max-w-full min-w-0 bg-[#F7F2E6] overflow-x-hidden border-b border-[#D7D0C2] md:border-b-0 md:border-r md:h-full md:overflow-y-auto">
+    <div className="w-full max-w-full min-w-0 bg-paper-light overflow-x-hidden border-b border-border-editorial md:border-b-0 md:border-r md:h-full md:overflow-y-auto">
       <div className="p-3 sm:p-4 space-y-2 min-w-0">
         {recommendations.length === 0 ? (
-          <div className="text-center py-8 text-[#6F6A60] font-mono text-sm">
+          <div className="text-center py-8 text-ink-muted font-mono text-sm">
             No open recommendations
           </div>
         ) : (
@@ -58,15 +58,15 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
                 onClick={() => onSelect(rec.id)}
                 className={`w-full max-w-full min-w-0 cursor-pointer transition-all ${
                   isSelected
-                    ? 'bg-[#FBF7ED] border-[#1C1B17] border-2'
-                    : 'bg-[#F7F2E6] border-[#D7D0C2] hover:border-[#1C1B17]'
+                    ? 'bg-paper-alt border-ink border-2'
+                    : 'bg-paper-light border-border-editorial hover:border-ink'
                 }`}
               >
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <h3 className="font-mono font-bold text-[#1C1B17] text-base">{rec.ticker}</h3>
+                        <h3 className="font-mono font-bold text-ink text-base">{rec.ticker}</h3>
                         {rec.action && rec.action !== 'WATCH' && (
                           <Badge
                             variant={rec.action === 'BUY' ? 'default' : 'destructive'}
@@ -76,7 +76,7 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
                           </Badge>
                         )}
                       </div>
-                      <p className="font-mono text-xs text-[#6F6A60] mt-1">
+                      <p className="font-mono text-xs text-ink-muted mt-1">
                         {new Date(rec.entry_date).toLocaleDateString('en-US', {
                           month: 'short',
                           day: 'numeric',
@@ -93,32 +93,32 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
                   </div>
                   <div className="space-y-1">
                     <div className="flex justify-between items-center">
-                      <span className="font-mono text-xs text-[#6F6A60]">Current</span>
-                      <span className="font-mono font-semibold text-[#1C1B17] tabular-nums">
+                      <span className="font-mono text-xs text-ink-muted">Current</span>
+                      <span className="font-mono font-semibold text-ink tabular-nums">
                         {formatCurrency(rec.current_price, rec.ticker)}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="font-mono text-xs text-[#6F6A60]">Entry</span>
-                      <span className="font-mono text-sm text-[#1C1B17] tabular-nums">
+                      <span className="font-mono text-xs text-ink-muted">Entry</span>
+                      <span className="font-mono text-sm text-ink tabular-nums">
                         {formatCurrency(rec.entry_price, rec.ticker)}
                       </span>
                     </div>
                     {/* Show Quantity if available */}
                     {paperPortfolioEnabled && rec.position_size && rec.position_size > 0 && (
                       <div className="flex justify-between items-center">
-                        <span className="font-mono text-xs text-[#6F6A60]">Qty</span>
-                        <span className="font-mono text-sm text-[#1C1B17] tabular-nums">
+                        <span className="font-mono text-xs text-ink-muted">Qty</span>
+                        <span className="font-mono text-sm text-ink tabular-nums">
                           {rec.position_size.toLocaleString()}
                         </span>
                       </div>
                     )}
                     {returnPct !== null && (
-                      <div className="flex justify-between items-center pt-1 border-t border-[#E3DDCF]">
-                        <span className="font-mono text-xs text-[#6F6A60]">Return</span>
+                      <div className="flex justify-between items-center pt-1 border-t border-gridline">
+                        <span className="font-mono text-xs text-ink-muted">Return</span>
                         <span
                           className={`font-mono font-semibold tabular-nums ${
-                            isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                            isPositive ? 'text-positive' : 'text-negative'
                           }`}
                         >
                           {isPositive ? '+' : ''}
@@ -129,10 +129,10 @@ export function RecommendationSidebar({ recommendations, selectedId, onSelect }:
                     {/* Show Unrealized P&L if quantity is available */}
                     {unrealizedPnL !== null && (
                       <div className="flex justify-between items-center">
-                        <span className="font-mono text-xs text-[#6F6A60]">P&L</span>
+                        <span className="font-mono text-xs text-ink-muted">P&L</span>
                         <span
                           className={`font-mono font-semibold tabular-nums ${
-                            isPositive ? 'text-[#2F8F5B]' : 'text-[#B23B2A]'
+                            isPositive ? 'text-positive' : 'text-negative'
                           }`}
                         >
                           {isPositive ? '+' : ''}{currencySymbol}
