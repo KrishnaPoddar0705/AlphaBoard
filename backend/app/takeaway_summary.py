@@ -30,7 +30,7 @@ from typing import Optional
 import httpx
 from fastapi import HTTPException
 
-from .db import supabase, key as _RAW_KEY, url as _RAW_URL
+from .db import key as _RAW_KEY, url as _RAW_URL
 
 # Fly secrets can carry a trailing newline. supabase-py tolerates it; httpx refuses to
 # send it in a header (LocalProtocolError), which made every summary a 502 in prod.
@@ -83,8 +83,12 @@ def _describe_key(k: str) -> str:
     return f"unrecognised format ({len(k)} chars)"
 
 
+# The summaries cache has its own credential (see _cache_headers). Unset: summaries still
+# generate, but every open makes a new one.
+CACHE_KEY = os.getenv("SUMMARY_CACHE_KEY", "").strip()
+
 # One line at startup, so a wrong key (an anon key in the service slot) shows in the logs.
-print(f"[kta_summary] service key: {_describe_key(SERVICE_KEY)}")
+print(f"[kta_summary] apikey: {_describe_key(SERVICE_KEY)}; cache key: {_describe_key(CACHE_KEY)}")
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="kta-summary")
 _llm = None
 
@@ -143,30 +147,50 @@ def _read_visible_entry(event_id: str, access_token: str) -> dict:
     return rows[0]
 
 
-def _cached_row(event_id: str) -> Optional[dict]:
-    try:
-        res = (
-            supabase.table("cc_event_summaries")
-            .select("bullets,source_hash")
-            .eq("event_id", event_id)
-            .limit(1)
-            .execute()
-        )
-    except Exception as exc:  # table missing (migration not applied) -> just regenerate
-        print(f"[kta_summary] cache read failed: {exc}")
+def _cache_headers() -> Optional[dict]:
+    """Headers for the summaries cache, or None when SUMMARY_CACHE_KEY is not set.
+
+    A credential of its own, used for cc_event_summaries and nothing else. The shared
+    client (db.py) keeps whatever key the deploy gives it, so adding this cannot change
+    any other route or scheduled job."""
+    if not CACHE_KEY:
         return None
-    return res.data[0] if res.data else None
+    return {"apikey": CACHE_KEY, "Authorization": f"Bearer {CACHE_KEY}"}
+
+
+def _cached_row(event_id: str) -> Optional[dict]:
+    headers = _cache_headers()
+    if headers is None:
+        return None
+    try:
+        res = _http.get(
+            f"{SUPABASE_URL}/rest/v1/cc_event_summaries",
+            params={"event_id": f"eq.{event_id}", "select": "bullets,source_hash", "limit": "1"},
+            headers=headers,
+        )
+        res.raise_for_status()
+        rows = res.json()
+    except Exception as exc:  # cache trouble must never fail the request -- just regenerate
+        print(f"[kta_summary] cache read failed: {type(exc).__name__}")
+        return None
+    return rows[0] if rows else None
 
 
 def _store(event_id: str, digest: str, bullets: list) -> None:
+    headers = _cache_headers()
+    if headers is None:
+        return
     try:
-        supabase.table("cc_event_summaries").upsert(
-            {"event_id": event_id, "source_hash": digest, "bullets": bullets, "model": MODEL,
-             "created_at": datetime.now(timezone.utc).isoformat()},
-            on_conflict="event_id",
-        ).execute()
+        res = _http.post(
+            f"{SUPABASE_URL}/rest/v1/cc_event_summaries",
+            params={"on_conflict": "event_id"},
+            headers={**headers, "Prefer": "resolution=merge-duplicates,return=minimal"},
+            json={"event_id": event_id, "source_hash": digest, "bullets": bullets, "model": MODEL,
+                  "created_at": datetime.now(timezone.utc).isoformat()},
+        )
+        res.raise_for_status()
     except Exception as exc:  # a failed cache write must not fail the response
-        print(f"[kta_summary] cache write failed: {exc}")
+        print(f"[kta_summary] cache write failed: {type(exc).__name__}")
 
 
 def _parse_json(text: str) -> dict:
