@@ -98,7 +98,7 @@ describe('needsYou', () => {
     const out = needsYou({
       rows: [pushed, unpushed, mine, answered],
       replies: [{ event_id: answered.event_id, author_id: 'pm' }],
-      board: [], viewerId: 'pm', viewerRole: 'portfolio_manager', now: NOW,
+      viewerId: 'pm', viewerRole: 'portfolio_manager'
     })
     expect(out.requests.map((r) => r.event_id)).toEqual([pushed.event_id])
   })
@@ -108,7 +108,7 @@ describe('needsYou', () => {
     const out = needsYou({
       rows: [pushed],
       replies: [{ event_id: pushed.event_id, author_id: 'aditi' }],
-      board: [], viewerId: 'pm', viewerRole: 'portfolio_manager', now: NOW,
+      viewerId: 'pm', viewerRole: 'portfolio_manager'
     })
     expect(out.requests.map((r) => r.event_id)).toEqual([pushed.event_id])
   })
@@ -116,8 +116,8 @@ describe('needsYou', () => {
   it('never queues an entry nobody pushed, however recent', () => {
     const out = needsYou({
       rows: [row({ analyst_id: 'aditi', created_by: 'aditi', created_at: hoursAgo(1) })],
-      replies: [], board: [], viewerId: 'pm',
-      viewerRole: 'portfolio_manager', now: NOW,
+      replies: [], viewerId: 'pm',
+      viewerRole: 'portfolio_manager',
     })
     expect(out.requests).toEqual([])
     expect(out.total).toBe(0)
@@ -131,7 +131,7 @@ describe('needsYou', () => {
     })
     const args = {
       rows: [toPm, toAdmin, toBoth],
-      replies: [], board: [], viewerId: 'viewer', now: NOW,
+      replies: [], viewerId: 'viewer',
     }
     const pm = needsYou({ ...args, viewerRole: 'portfolio_manager' })
     const admin = needsYou({ ...args, viewerRole: 'admin' })
@@ -145,8 +145,8 @@ describe('needsYou', () => {
   it('reads a missing push column as not pushed, so a pre-migration database is quiet', () => {
     const out = needsYou({
       rows: [row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: undefined })],
-      replies: [], board: [], viewerId: 'pm',
-      viewerRole: 'portfolio_manager', now: NOW,
+      replies: [], viewerId: 'pm',
+      viewerRole: 'portfolio_manager',
     })
     expect(out.requests).toEqual([])
   })
@@ -154,39 +154,10 @@ describe('needsYou', () => {
   it('shows analysts no pushed queue', () => {
     const out = needsYou({
       rows: [row({ analyst_id: 'aditi', created_by: 'aditi', push_to_pm: true })],
-      replies: [], board: [], viewerId: 'krishna',
-      viewerRole: 'analyst', now: NOW,
+      replies: [], viewerId: 'krishna',
+      viewerRole: 'analyst',
     })
     expect(out.requests).toEqual([])
-  })
-
-  it('flags coverage with no primary research past the threshold, most stale first', () => {
-    const board = [
-      coverage({ id: 'fresh', last_primary_research_on: '2026-09-10' }),
-      coverage({ id: 'old', last_primary_research_on: '2026-08-07' }),     // 41 days
-      coverage({ id: 'never', last_primary_research_on: null }),
-    ]
-    const out = needsYou({ rows: [], replies: [], board, viewerId: 'pm', viewerRole: 'portfolio_manager', now: NOW })
-    expect(out.stale.map((s) => [s.coverage.id, s.days])).toEqual([['never', null], ['old', 41]])
-  })
-
-  it('makes no staleness claim before the migration adds the column', () => {
-    const board = [coverage({ last_primary_research_on: undefined })]
-    const out = needsYou({ rows: [], replies: [], board, viewerId: 'pm', viewerRole: 'portfolio_manager', now: NOW })
-    expect(out.stale).toEqual([])
-  })
-
-  it('limits stale coverage to names led by the team in a team scope', () => {
-    const board = [
-      coverage({ id: 'ours', lead_analyst_id: 'aditi' }),
-      coverage({ id: 'theirs', lead_analyst_id: 'neha' }),
-      coverage({ id: 'unowned', lead_analyst_id: null }),
-    ]
-    const out = needsYou({
-      rows: [], replies: [], board, viewerId: 'pm',
-      viewerRole: 'portfolio_manager', scopeUserIds: ['aditi'], now: NOW,
-    })
-    expect(out.stale.map((s) => s.coverage.id)).toEqual(['ours'])
   })
 })
 

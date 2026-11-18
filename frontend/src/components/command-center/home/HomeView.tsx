@@ -25,8 +25,6 @@ import HomeSkeleton from './HomeSkeleton'
 import { EventContactsContext } from '@/hooks/commandCenter/eventContactsContext'
 import { useEventContacts } from '@/hooks/commandCenter/useCommandCenterEvents'
 
-const STALE_DAYS = 30
-
 /**
  * "What matters right now?" -- the desk's home screen.
  *
@@ -73,10 +71,7 @@ export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLog
     ?? (role === 'admin' ? null : scope.roster?.map((m) => m.user_id) ?? null)
 
   const derived = useMemo(() => {
-    const needs = needsYou({
-      rows, replies, board, viewerId: userId,
-      viewerRole: role, scopeUserIds, staleDays: STALE_DAYS, now,
-    })
+    const needs = needsYou({ rows, replies, viewerId: userId, viewerRole: role })
     const waitingOnPm = awaitingReply(rows, replies, userId)
     // The table reads the filtered entries; everything else keeps the whole scope.
     const shown = filterEntries(rows, filters)
@@ -152,10 +147,8 @@ export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLog
           needs={derived.needs}
           waitingOnPm={derived.waitingOnPm}
           isManager={isManager}
-          staleDays={STALE_DAYS}
           now={now}
           onOpen={openEntry}
-          onOpenStock={openStock}
         />
         <WhatChangedPanel className="lg:col-span-7 lg:max-h-[440px]" items={derived.changes} now={now} onOpen={openEntry} />
 

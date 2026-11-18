@@ -99,17 +99,9 @@ export function whatChanged(rows: ActivityFeedRow[], now: Date = new Date(), day
 // Needs you
 // ---------------------------------------------------------------------------
 
-export interface StaleItem {
-  coverage: CoverageBoardRow
-  /** Days since the last meeting / concall / AGM; null when there has never been one. */
-  days: number | null
-}
-
 export interface NeedsYou {
   /** Entries the analyst explicitly pushed to the viewer's role, not yet answered by them. */
   requests: ActivityFeedRow[]
-  /** Covered names nobody has spoken to the company about in `staleDays`. */
-  stale: StaleItem[]
   total: number
 }
 
@@ -117,7 +109,6 @@ export interface NeedsYouInput {
   rows: ActivityFeedRow[]
   /** Comment authors on the pushed entries: a reply is what answers a push. */
   replies: CommentAuthor[]
-  board: CoverageBoardRow[]
   viewerId: string | null
   /**
    * Which push target the viewer answers to: a PM sees "Push to PM" entries, an admin
@@ -125,10 +116,6 @@ export interface NeedsYouInput {
    * the PM never reaches an admin's queue.
    */
   viewerRole: OrgRole | null
-  /** When set, stale coverage is limited to names led by these people. */
-  scopeUserIds?: string[] | null
-  staleDays?: number
-  now?: Date
 }
 
 /**
@@ -140,11 +127,12 @@ export interface NeedsYouInput {
  *
  * A push is a question, and it is answered in the entry's comments: once the viewer has
  * commented, the entry leaves their queue.
+ *
+ * Stale coverage ("no primary research in 30 days") used to be counted here too. It was
+ * most of the number and not something anyone was asked to answer, so it was dropped;
+ * Coverage and the By Stock lens's Primary column still show how stale each name is.
  */
-export function needsYou({
-  rows, replies, board, viewerId, viewerRole, scopeUserIds,
-  staleDays = 30, now = new Date(),
-}: NeedsYouInput): NeedsYou {
+export function needsYou({ rows, replies, viewerId, viewerRole }: NeedsYouInput): NeedsYou {
   const answeredByMe = new Set(
     replies.filter((c) => c.author_id === viewerId).map((c) => c.event_id)
   )
@@ -161,18 +149,7 @@ export function needsYou({
 
   const requests = rows.filter((r) => unanswered(r) && pushedToMe(r)).sort(byEnteredDesc)
 
-  const stale: StaleItem[] = board
-    // Undefined means the home migration is not applied -- no signal, so no claim.
-    .filter((c) => c.is_active && c.last_primary_research_on !== undefined)
-    .filter((c) => !scopeUserIds || (c.lead_analyst_id && scopeUserIds.includes(c.lead_analyst_id)))
-    .map((c) => ({
-      coverage: c,
-      days: c.last_primary_research_on ? daysBetween(c.last_primary_research_on, now) : null,
-    }))
-    .filter((s) => s.days === null || s.days > staleDays)
-    .sort((a, b) => (b.days ?? Infinity) - (a.days ?? Infinity))
-
-  return { requests, stale, total: requests.length + stale.length }
+  return { requests, total: requests.length }
 }
 
 /**
