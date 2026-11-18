@@ -1,5 +1,6 @@
 import { SVAN_RATINGS, svanRatingOf } from '@/lib/commandCenter/constants'
 import type { SvanRating } from '@/lib/commandCenter/types'
+import { useViewLabel } from '@/hooks/commandCenter/useViewLabel'
 
 export interface SvanValues {
   rating: SvanRating | null
@@ -18,11 +19,12 @@ interface Props {
  */
 export default function SvanViewField({ values, onChange }: Props) {
   const color = svanRatingOf(values.rating)?.color
+  const label = useViewLabel()
 
   return (
     <div className="flex flex-col gap-1.5">
-      <span className="font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]">Svan View</span>
-      <div className="grid grid-cols-5 overflow-hidden rounded-lg border border-[#D7D0C2]" role="group" aria-label="Svan rating">
+      <span className="font-mono text-[11px] uppercase tracking-wider text-[#6F6A60]">{label}</span>
+      <div className="grid grid-cols-5 overflow-hidden rounded-lg border border-[#D7D0C2]" role="group" aria-label={`${label} rating`}>
         {SVAN_RATINGS.map((r, i) => {
           const on = values.rating === r.value
           return (

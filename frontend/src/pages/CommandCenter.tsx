@@ -24,7 +24,7 @@ const ThinkingBoardView = lazy(() => import('@/components/command-center/thinkin
  * "?view=activity" is shareable.
  */
 export default function CommandCenter() {
-  const [params, setParams] = useSearchParams()
+  const [params] = useSearchParams()
   const view = (params.get('view') as View) || 'home'
   const [addOpen, setAddOpen] = useState(false)
   const [logOpen, setLogOpen] = useState(false)
@@ -32,36 +32,29 @@ export default function CommandCenter() {
   // id, instead of clearing a dozen fields in an effect.
   const [logSession, setLogSession] = useState(0)
 
-  const openLog = () => { setLogSession((n) => n + 1); setLogOpen(true) }
+  // The stock to pre-select, when logging from a stock's view (the home modal).
+  const [logCoverage, setLogCoverage] = useState<string | undefined>()
 
-  const setView = (next: View) => {
-    const p = new URLSearchParams(params)
-    // Home-screen scope and matrix tab params mean nothing on the other views.
-    for (const k of ['scope', 'lens', 'person', 'group', 'pick']) p.delete(k)
-    if (next !== 'thinking') p.delete('note')
-    if (next === 'home') p.delete('view')
-    else p.set('view', next)
-    setParams(p, { replace: true })
-  }
+  const openLog = () => { setLogCoverage(undefined); setLogSession((n) => n + 1); setLogOpen(true) }
+  const openLogFor = (coverageId: string) => { setLogCoverage(coverageId); setLogSession((n) => n + 1); setLogOpen(true) }
 
   return (
-    // Coverage carries a 260px rail beside the content and the Matrix is a wide grid,
-    // so both get more room. The Thinking Board is a canvas and takes the whole width.
+    // Today is a dashboard of side-by-side panels, Coverage carries a 260px rail and the
+    // Matrix is a wide grid, so all three get more room. The Thinking Board is a canvas and takes the whole width.
     <div className={[
       'mx-auto w-full px-3 py-4 sm:px-5 sm:py-6',
       view === 'thinking' ? 'max-w-none'
-        : view === 'board' || view === 'matrix' ? 'max-w-[1600px]' : 'max-w-7xl',
+        : view === 'home' || view === 'board' || view === 'matrix' ? 'max-w-[1600px]' : 'max-w-7xl',
     ].join(' ')}>
       <CommandCenterChrome
         view={view}
         onLog={openLog}
         onAdd={view === 'board' ? () => setAddOpen(true) : undefined}
-        onView={setView}
       />
 
       <SessionNotice />
 
-      {view === 'home' && <HomeView />}
+      {view === 'home' && <HomeView onLog={openLog} onLogFor={openLogFor} />}
       {view === 'board' && <CoverageBoard onAdd={() => setAddOpen(true)} />}
       {view === 'matrix' && <MatrixView onAdd={() => setAddOpen(true)} />}
       {view === 'thinking' && (
@@ -86,7 +79,7 @@ export default function CommandCenter() {
       </button>}
 
       <AddCoverageDialog open={addOpen} onClose={() => setAddOpen(false)} />
-      <LogEventSheet key={logSession} open={logOpen} onClose={() => setLogOpen(false)} />
+      <LogEventSheet key={logSession} open={logOpen} onClose={() => setLogOpen(false)} coverageId={logCoverage} />
     </div>
   )
 }

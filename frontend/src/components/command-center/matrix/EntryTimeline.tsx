@@ -7,6 +7,7 @@ import { formatDay, formatDayShort } from '@/lib/commandCenter/format'
 import { ownerName } from '@/lib/commandCenter/home'
 import { excerpt } from '@/lib/commandCenter/matrix'
 import type { ActivityFeedRow } from '@/lib/commandCenter/types'
+import { useViewLabel } from '@/hooks/commandCenter/useViewLabel'
 import { type } from './styles'
 
 interface Props {
@@ -27,6 +28,7 @@ interface Props {
  * tooltip -- and in the excerpt line when expanded -- rather than repeated as chips.
  */
 export default function EntryTimeline({ logged, detailed, showTicker, onOpenEntry }: Props) {
+  const viewLabel = useViewLabel()
   return (
     <Timeline value={logged.length} className="w-full">
       {logged.map((e, i) => {
@@ -35,7 +37,7 @@ export default function EntryTimeline({ logged, detailed, showTicker, onOpenEntr
         const tip = [
           `${formatDay(e.event_date)} · ${e.title}`,
           ownerName(e),
-          rating && `Svan View: ${rating.label}`,
+          rating && `${viewLabel}: ${rating.label}`,
           e.attachment_count > 0 && `${e.attachment_count} file${e.attachment_count === 1 ? '' : 's'}`,
         ].filter(Boolean).join('\n')
         const note = detailed ? excerpt(e.kta ?? e.svan_view, 120) : ''

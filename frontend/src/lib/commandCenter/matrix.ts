@@ -27,6 +27,14 @@ export const CELL_LIMIT: Record<MatrixDensity, number> = { compact: 0, default: 
 /** The two surface directions; graphite is a preview of the institutional dark look. */
 export type MatrixTheme = 'warm' | 'graphite'
 
+export const MATRIX_THEME_KEY = 'cc_matrix_theme'
+
+/** The viewer's chosen Matrix theme; anything opening Matrix views (the home screen too) reads it. */
+export function readMatrixTheme(): MatrixTheme {
+  try { return localStorage.getItem(MATRIX_THEME_KEY) === 'graphite' ? 'graphite' : 'warm' }
+  catch { return 'warm' }
+}
+
 /**
  * A one-line plain-text excerpt of markdown takeaways for a dense cell: no table pipes,
  * heading hashes or emphasis marks, whitespace collapsed. The pop view renders the real

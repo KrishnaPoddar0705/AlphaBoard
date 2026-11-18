@@ -34,14 +34,18 @@ if POSTHOG_API_KEY:
         _posthog = None
 
 
-def make_openai_client(api_key: str | None = None) -> OpenAI:
-    """An OpenAI client, traced to PostHog when configured."""
+def make_openai_client(api_key: str | None = None, base_url: str | None = None, **kwargs) -> OpenAI:
+    """An OpenAI-compatible client, traced to PostHog when configured.
+
+    `base_url` points it at another OpenAI-compatible API (e.g. OpenRouter); extra
+    kwargs such as default_headers pass straight through to the client.
+    """
     api_key = api_key or os.getenv("OPENAI_API_KEY")
     if _posthog is not None:
         from posthog.ai.openai import OpenAI as TracedOpenAI
 
-        return TracedOpenAI(api_key=api_key, posthog_client=_posthog)
-    return OpenAI(api_key=api_key)
+        return TracedOpenAI(api_key=api_key, base_url=base_url, posthog_client=_posthog, **kwargs)
+    return OpenAI(api_key=api_key, base_url=base_url, **kwargs)
 
 
 def trace(feature: str, **properties) -> dict:

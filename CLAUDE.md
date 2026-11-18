@@ -102,6 +102,10 @@ Frontend (in `frontend/.env`): `VITE_CLERK_PUBLISHABLE_KEY`, `VITE_SUPABASE_URL`
 
 Backend (in `backend/.env`): `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `OPENAI_API_KEY`
 
+Optional: `OPENROUTER_API_KEY` (Fly secret). Powers the Command Center's AI takeaway
+summaries (`backend/app/takeaway_summary.py`, Claude Haiku via OpenRouter; override the
+model with `SUMMARY_MODEL`). Without it the summary panel says summaries are not configured.
+
 Optional: `DRISHTI_API_KEY` (Fly secret). Feeds the Thinking Board's concall, announcements,
 news and results connectors (`backend/app/research_sources.py`). Without it those fall back to
 Screener.in / Yahoo. `/api/board/sources/*` is the one FastAPI route that verifies the caller's

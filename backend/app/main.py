@@ -3247,3 +3247,22 @@ def board_source(
         return _board_get_source(connector, ticker, quarter)
     except NoSourceData as e:
         raise HTTPException(status_code=404, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Command Center: AI bullet summary of an entry's key takeaways. Same auth as the board
+# connectors (each miss is an OpenAI call); visibility is checked under the caller's own
+# RLS inside summarize_entry, and results are cached per entry in cc_event_summaries.
+# ---------------------------------------------------------------------------
+from uuid import UUID as _UUID
+from .takeaway_summary import summarize_entry as _summarize_entry, SummaryUnavailable
+
+
+@app.get("/api/command-center/events/{event_id}/summary")
+def cc_event_summary(event_id: _UUID, request: Request, user_id: str = Depends(require_supabase_user)):
+    enforce_rate_limit(user_id)
+    token = (request.headers.get("authorization") or "").partition(" ")[2]
+    try:
+        return _summarize_entry(str(event_id), token)
+    except SummaryUnavailable as e:
+        raise HTTPException(status_code=503, detail=str(e))

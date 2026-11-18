@@ -20,6 +20,7 @@ import StockLens from './StockLens'
 import AnalystLens from './AnalystLens'
 import AnalyticsPanel from './AnalyticsPanel'
 import EntryDrawer from './EntryDrawer'
+import CompanyLogsView, { type CompanyTarget } from './CompanyLogsView'
 import HomeSkeleton from './HomeSkeleton'
 import { EventContactsContext } from '@/hooks/commandCenter/eventContactsContext'
 import { useEventContacts } from '@/hooks/commandCenter/useCommandCenterEvents'
@@ -34,13 +35,21 @@ const STALE_DAYS = 30
  * lib/commandCenter/home.ts. Panels are in priority order in the DOM, so a phone reads
  * exceptions first; the desktop grid rearranges nothing.
  */
-export default function HomeView() {
+export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLogFor: (coverageId: string) => void }) {
   const { userId, role } = useCommandCenterSession()
   const scope = useHomeScope()
   const { filters, setFilters } = useLensFilters()
   const { data: board = [], isPending: boardPending } = useCoverageBoard()
   const windowQuery = useHomeWindow(scope.userIds, scope.ready)
   const rows = useMemo(() => windowQuery.data ?? [], [windowQuery.data])
+  // An entry opens centred with the rest of its company's logs (as in the Matrix); the
+  // drawer is the second step, for comments, contacts and push.
+  const [opened, setOpened] = useState<CompanyTarget | null>(null)
+  const openEntry = (row: ActivityFeedRow) =>
+    setOpened({ coverageId: row.coverage_id, ticker: row.ticker, companyName: row.company_name, entry: row })
+  // A stock row or a stale name: the company's logs, newest first, with none pre-picked.
+  const openStock = (coverageId: string, ticker: string, companyName: string | null) =>
+    setOpened({ coverageId, ticker, companyName })
   const [drawer, setDrawer] = useState<ActivityFeedRow | null>(null)
   const met = useEventContacts(rows)
 
@@ -106,8 +115,9 @@ export default function HomeView() {
 
   return (
     <EventContactsContext.Provider value={met}>
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 md:px-[5%] md:[zoom:1.2]">
       <HomeHeader
+        onLog={onLog}
         now={now}
         name={scope.viewerName}
         subject={scope.subject}
@@ -132,9 +142,11 @@ export default function HomeView() {
         </p>
       )}
 
-      <TickerTape rows={derived.tape} now={now} onOpen={setDrawer} />
+      <TickerTape rows={derived.tape} now={now} onOpen={openEntry} />
 
-      <div className="grid gap-3 lg:grid-cols-12">
+      {/* items-start: each panel is as tall as its content, so a short "What changed"
+          does not stretch into an empty box beside a long "Needs you". */}
+      <div className="grid items-start gap-3 lg:grid-cols-12">
         <NeedsYouPanel
           className="lg:col-span-5 lg:max-h-[440px]"
           needs={derived.needs}
@@ -142,9 +154,10 @@ export default function HomeView() {
           isManager={isManager}
           staleDays={STALE_DAYS}
           now={now}
-          onOpen={setDrawer}
+          onOpen={openEntry}
+          onOpenStock={openStock}
         />
-        <WhatChangedPanel className="lg:col-span-7 lg:max-h-[440px]" items={derived.changes} now={now} onOpen={setDrawer} />
+        <WhatChangedPanel className="lg:col-span-7 lg:max-h-[440px]" items={derived.changes} now={now} onOpen={openEntry} />
 
         <div className="flex min-w-0 flex-col gap-2 lg:col-span-12">
           <LensBar
@@ -163,7 +176,7 @@ export default function HomeView() {
               rows={derived.lensAnalysts}
               entries={derived.shown}
               now={now}
-              onOpen={setDrawer}
+              onOpen={openEntry}
               onFocusPerson={scope.setPerson}
             />
           ) : (
@@ -172,7 +185,8 @@ export default function HomeView() {
               rows={derived.stocks}
               entries={derived.shown}
               now={now}
-              onOpen={setDrawer}
+              onOpen={openEntry}
+              onOpenStock={openStock}
             />
           )}
         </div>
@@ -189,6 +203,7 @@ export default function HomeView() {
         )}
       </div>
 
+      <CompanyLogsView target={opened} board={board} onClose={() => setOpened(null)} onOpenDetails={setDrawer} onLog={onLogFor} />
       <EntryDrawer entry={drawer} onClose={() => setDrawer(null)} />
     </div>
     </EventContactsContext.Provider>

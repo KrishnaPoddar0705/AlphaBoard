@@ -1,5 +1,4 @@
 import { useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import TerminalPanel, { PanelEmpty } from './TerminalPanel'
 import EntryLine from './EntryLine'
 import type { NeedsYou } from '@/lib/commandCenter/home'
@@ -14,6 +13,8 @@ interface Props {
   staleDays: number
   now: Date
   onOpen: (row: ActivityFeedRow) => void
+  /** A stale name opens the company's logs in a modal, rather than leaving for Coverage. */
+  onOpenStock: (coverageId: string, ticker: string, companyName: string | null) => void
   className?: string
 }
 
@@ -48,7 +49,7 @@ function Group({ title, count, children }: { title: string; count: number; child
  * A pushed entry is answered by replying in its comments, which also clears it.
  */
 export default function NeedsYouPanel({
-  needs, waitingOnPm, isManager, staleDays, now, onOpen, className,
+  needs, waitingOnPm, isManager, staleDays, now, onOpen, onOpenStock, className,
 }: Props) {
   const total = needs.total + waitingOnPm.length
 
@@ -86,9 +87,10 @@ export default function NeedsYouPanel({
           <Group title={`No primary research > ${staleDays}d`} count={needs.stale.length}>
             {(limit) => needs.stale.slice(0, limit).map(({ coverage, days }) => (
               <li key={coverage.id} className="border-b border-[#E3DDCF] last:border-b-0">
-                <Link
-                  to={`/command-center/stock/${encodeURIComponent(coverage.ticker)}`}
-                  className="flex items-baseline gap-2 px-3 py-2 hover:bg-[rgba(28,27,23,0.04)]"
+                <button
+                  type="button"
+                  onClick={() => onOpenStock(coverage.id, coverage.ticker, coverage.company_name)}
+                  className="flex w-full items-baseline gap-2 px-3 py-2 text-left hover:bg-[rgba(28,27,23,0.04)]"
                 >
                   <span className="w-3 shrink-0 text-center font-mono text-xs text-[#B23B2A]">!</span>
                   <span className="shrink-0 font-mono text-xs font-semibold text-[#1C1B17]">{coverage.ticker}</span>
@@ -99,7 +101,7 @@ export default function NeedsYouPanel({
                     {coverage.lead_analyst_username ? ` · ${coverage.lead_analyst_username}` : ' · no lead analyst'}
                   </span>
                   <span className="shrink-0 font-mono text-[10px] text-[#1C1B17]">→ Open</span>
-                </Link>
+                </button>
               </li>
             ))}
           </Group>

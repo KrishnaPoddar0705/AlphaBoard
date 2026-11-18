@@ -24,7 +24,7 @@ export default function WhatChangedPanel({ items, now, onOpen, className }: Prop
     <TerminalPanel code="CHG" title="What changed · 7d" count={items.length} className={className}>
       {items.length === 0 ? (
         <PanelEmpty>
-          No entries with a Svan rating or a thesis move in the last 7 days.
+          No entries with a rating or a thesis move in the last 7 days.
         </PanelEmpty>
       ) : (
         <ul>

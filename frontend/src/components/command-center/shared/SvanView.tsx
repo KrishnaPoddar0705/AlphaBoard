@@ -1,5 +1,6 @@
 import { svanRatingOf } from '@/lib/commandCenter/constants'
 import type { ActivityFeedRow } from '@/lib/commandCenter/types'
+import { useViewLabel } from '@/hooks/commandCenter/useViewLabel'
 
 interface Props {
   event: Pick<ActivityFeedRow, 'svan_view' | 'svan_rating'>
@@ -13,6 +14,7 @@ interface Props {
  */
 export default function SvanView({ event, className = '' }: Props) {
   const rating = svanRatingOf(event.svan_rating)
+  const label = useViewLabel()
   if (!event.svan_view && !rating) return null
   const color = rating?.color ?? '#8B857A'
 
@@ -22,7 +24,7 @@ export default function SvanView({ event, className = '' }: Props) {
       style={{ borderColor: color, backgroundColor: `${color}14` }}
     >
       <p className="flex flex-wrap items-center gap-2 font-mono text-[10px] uppercase tracking-[0.12em]" style={{ color }}>
-        Svan View
+        {label}
         {rating && (
           <span className="rounded px-1.5 py-0.5 text-[#F7F2E6]" style={{ backgroundColor: color }}>
             {rating.label}

@@ -17,7 +17,9 @@ interface Props {
 }
 
 const th = 'px-2 py-1 font-mono text-[10px] font-normal uppercase tracking-[0.12em] text-[#6F6A60] whitespace-nowrap'
-const num = 'px-2 py-1.5 text-right font-mono text-xs tabular-nums align-top'
+const num = 'w-px whitespace-nowrap px-2.5 py-1.5 text-right font-mono text-xs tabular-nums align-middle'
+/** Sized to its content; the Last entry column takes whatever width is left. */
+const fit = 'w-px whitespace-nowrap'
 
 /** Each person in scope: output, breadth, and -- on opening -- their work and bookings. */
 export default function AnalystLens({ rows, entries, now, onOpen, onFocusPerson, className }: Props) {
@@ -32,10 +34,10 @@ export default function AnalystLens({ rows, entries, now, onOpen, onFocusPerson,
           <table className="w-full min-w-[480px] border-collapse">
             <thead className="sticky top-0 z-10 bg-[#F1EEE0]">
               <tr>
-                <th className={`${th} text-left`}>Analyst</th>
-                <th className={`${th} text-right`}>7d</th>
-                <th className={`${th} text-right`}>30d</th>
-                <th className={`${th} text-right`}>Stocks</th>
+                <th className={`${th} ${fit} text-left`}>Analyst</th>
+                <th className={`${th} ${fit} text-right`}>7d</th>
+                <th className={`${th} ${fit} text-right`}>30d</th>
+                <th className={`${th} ${fit} text-right`}>Stocks</th>
                 <th className={`${th} text-left`}>Last entry</th>
               </tr>
             </thead>
@@ -51,7 +53,7 @@ export default function AnalystLens({ rows, entries, now, onOpen, onFocusPerson,
                       onClick={() => setOpen(isOpen ? null : a.userId)}
                       className={`cursor-pointer border-t border-[#E3DDCF] ${isOpen ? 'bg-[#F1EEE0]' : 'hover:bg-[rgba(28,27,23,0.04)]'}`}
                     >
-                      <td className="px-2 py-1.5 align-top font-mono text-xs text-[#1C1B17]">
+                      <td className="w-px whitespace-nowrap px-2.5 py-1.5 align-middle font-mono text-xs text-[#1C1B17]">
                         <span className="inline-flex items-center gap-1">
                           {isOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                           <span className="font-semibold">{a.name}</span>
@@ -62,14 +64,13 @@ export default function AnalystLens({ rows, entries, now, onOpen, onFocusPerson,
                       <td className={`${num} ${a.entries7d ? 'font-semibold text-[#1C1B17]' : 'text-[#8B857A]'}`}>{a.entries7d}</td>
                       <td className={num}>{a.entries30d}</td>
                       <td className={num}>{a.stocks30d}</td>
-                      <td className="max-w-[220px] px-2 py-1.5 align-top font-mono text-[11px]">
+                      {/* max-w-0 + truncate: fills the leftover width and clips on one line. */}
+                      <td className="max-w-0 px-2.5 py-1.5 align-middle font-mono text-[11px]">
                         {a.lastEntry ? (
-                          <>
-                            <span className="block truncate text-[#1C1B17]">
-                              <span className="font-semibold">{a.lastEntry.ticker}</span> {eventTypeOf(a.lastEntry.kind, a.lastEntry.subtype).label}
-                            </span>
-                            <span className="text-[10px] text-[#8B857A]">{relativeTime(a.lastEntry.created_at, now)}</span>
-                          </>
+                          <span className="block truncate text-[#1C1B17]">
+                            <span className="font-semibold">{a.lastEntry.ticker}</span> {eventTypeOf(a.lastEntry.kind, a.lastEntry.subtype).label}
+                            <span className="text-[#8B857A]"> · {a.lastEntry.title} · {relativeTime(a.lastEntry.created_at, now)}</span>
+                          </span>
                         ) : <span className="text-[#8B857A]">Nothing logged</span>}
                       </td>
                     </tr>

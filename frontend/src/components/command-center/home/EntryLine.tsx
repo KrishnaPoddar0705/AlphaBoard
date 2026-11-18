@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { MessageSquare, Paperclip } from 'lucide-react'
-import { SIGNAL, eventTypeOf } from '@/lib/commandCenter/constants'
+import { SIGNAL, eventTypeOf, svanRatingOf } from '@/lib/commandCenter/constants'
 import { ownerName, relativeTime } from '@/lib/commandCenter/home'
 import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 import MetWith from '../shared/MetWith'
@@ -20,11 +20,16 @@ interface Props {
 /**
  * One entry as a dense terminal line: signal, ticker, what happened, who, when.
  * Clicking anywhere on it opens the full entry.
+ *
+ * A Svan-rated entry is colour-coded the way "What changed" is: a left edge and a faint
+ * wash in the rating's colour (red for strong sell through green for strong buy) and the
+ * rating as a tag on the right. Unrated entries keep a plain line.
  */
 export default function EntryLine({ row, now, onOpen, glyph, detail, cta }: Props) {
   const signal = row.thesis_impact ? SIGNAL[row.thesis_impact] : null
   const met = useMetWith(row.event_id)
   const type = eventTypeOf(row.kind, row.subtype)
+  const rating = svanRatingOf(row.svan_rating)
 
   return (
     <li className="border-b border-[#E3DDCF] last:border-b-0">
@@ -33,7 +38,11 @@ export default function EntryLine({ row, now, onOpen, glyph, detail, cta }: Prop
         tabIndex={0}
         onClick={() => onOpen(row)}
         onKeyDown={(e) => { if (e.key === 'Enter') onOpen(row) }}
-        className="flex cursor-pointer gap-2 px-3 py-2 transition-colors hover:bg-[rgba(28,27,23,0.04)] focus:bg-[rgba(28,27,23,0.06)] focus:outline-none"
+        className={[
+          'flex cursor-pointer gap-2 border-l-4 px-3 py-2 transition-[background-color,filter] focus:outline-none',
+          rating ? 'hover:brightness-95 focus-visible:brightness-95' : 'border-transparent hover:bg-[rgba(28,27,23,0.04)] focus:bg-[rgba(28,27,23,0.06)]',
+        ].join(' ')}
+        style={rating ? { borderColor: rating.color, backgroundColor: `${rating.color}14` } : undefined}
       >
         <span className="w-3 shrink-0 pt-0.5 text-center font-mono text-xs" style={{ color: signal?.color ?? '#8B857A' }}>
           {glyph ?? signal?.glyph ?? '·'}
@@ -58,6 +67,14 @@ export default function EntryLine({ row, now, onOpen, glyph, detail, cta }: Prop
             {cta && <span className="text-[#1C1B17] underline-offset-2 hover:underline">→ {cta}</span>}
           </div>
         </div>
+        {rating && (
+          <span
+            className="h-fit shrink-0 self-start rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[#F7F2E6]"
+            style={{ backgroundColor: rating.color }}
+          >
+            {rating.label}
+          </span>
+        )}
       </div>
     </li>
   )

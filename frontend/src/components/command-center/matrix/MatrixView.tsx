@@ -14,20 +14,14 @@ import LogEventSheet from '../entry/LogEventSheet'
 import { useCoverageBoard } from '@/hooks/commandCenter/useCoverage'
 import { useMatrixWindow, useMyTeams, useRoster } from '@/hooks/commandCenter/useHome'
 import {
-  MATRIX_COLUMNS, analystSubjects, bucketEvents, documentEntries, groupBySector, groupByTeam,
-  matchesSearch, ownerId, stockSubjects, type MatrixDensity, type MatrixGrouping, type MatrixTheme,
+  MATRIX_COLUMNS, MATRIX_THEME_KEY, analystSubjects, bucketEvents, documentEntries, groupBySector, groupByTeam,
+  matchesSearch, ownerId, readMatrixTheme, stockSubjects, type MatrixDensity, type MatrixGrouping, type MatrixTheme,
 } from '@/lib/commandCenter/matrix'
 import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 import { track } from '@/lib/analytics'
 
 const HIDDEN_KEY = 'cc_matrix_hidden_columns'
 const DENSITY_KEY = 'cc_matrix_density'
-const THEME_KEY = 'cc_matrix_theme'
-
-function readTheme(): MatrixTheme {
-  try { return localStorage.getItem(THEME_KEY) === 'graphite' ? 'graphite' : 'warm' }
-  catch { return 'warm' }
-}
 
 function readDensity(): MatrixDensity {
   try {
@@ -63,7 +57,7 @@ export default function MatrixView({ onAdd }: { onAdd: () => void }) {
   const [query, setQuery] = useState('')
   const [hidden, setHidden] = useState<Set<string>>(readHidden)
   const [density, setDensityState] = useState<MatrixDensity>(readDensity)
-  const [theme, setThemeState] = useState<MatrixTheme>(readTheme)
+  const [theme, setThemeState] = useState<MatrixTheme>(readMatrixTheme)
   const [selection, setSelection] = useState<MatrixSelection | null>(null)
   const [entry, setEntry] = useState<ActivityFeedRow | null>(null)
   const [log, setLog] = useState<{ session: number; coverageId?: string; typeId?: string; open: boolean }>(
@@ -122,7 +116,7 @@ export default function MatrixView({ onAdd }: { onAdd: () => void }) {
 
   const setTheme = (t: MatrixTheme) => {
     setThemeState(t)
-    try { localStorage.setItem(THEME_KEY, t) } catch { /* private mode */ }
+    try { localStorage.setItem(MATRIX_THEME_KEY, t) } catch { /* private mode */ }
   }
 
   const open = useCallback((sel: MatrixSelection) => {
@@ -130,7 +124,7 @@ export default function MatrixView({ onAdd }: { onAdd: () => void }) {
     track('cc_matrix_cell_opened', { column: sel.column })
   }, [])
 
-  const openLog = useCallback((coverageId: string | undefined, typeId: string) => {
+  const openLog = useCallback((coverageId: string | undefined, typeId?: string) => {
     setLog((l) => ({ session: l.session + 1, coverageId, typeId, open: true }))
   }, [])
 

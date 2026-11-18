@@ -8,17 +8,13 @@ import { useOrganization, type OrgRole } from "@/hooks/useOrganization"
 import {
   Users,
   TrendingUp,
-  Clock,
-  Target,
   Building2,
   Settings,
   User,
   // Play, // Unused
   // Music, // Unused
   History,
-  BarChart3,
   FileText,
-  Radar,
   ChevronDown,
   LogOut,
   LogIn,
@@ -39,6 +35,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { CommandCenterNav, PerformanceNav } from "./AppSidebarNav"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 // import { Button } from "@/components/ui/button" // Unused
 import { SignedOut, SignInButton, SignUpButton } from "@clerk/clerk-react"
@@ -53,47 +50,14 @@ type NavItem = {
 }
 
 const navItems = {
+  // Community, Leaderboard, Recommendations, Watchlist and My Performance live under
+  // the collapsible "Performance" item (AppSidebarNav); the Command Center views are
+  // their own group there too.
   discover: [
-    {
-      title: "Command Center",
-      url: "/command-center",
-      icon: Radar,
-      isActive: false,
-    },
-    {
-      title: "Community",
-      url: "/community",
-      icon: Users,
-      isActive: false,
-    },
-    {
-      title: "Leaderboard",
-      url: "/leaderboard",
-      icon: BarChart3,
-      isActive: false,
-    },
-    {
-      title: "Recommendations",
-      url: "/recommendations",
-      icon: TrendingUp,
-      isActive: false,
-    },
-    {
-      title: "Watchlist",
-      url: "/watchlist",
-      icon: Clock,
-      isActive: false,
-    },
     {
       title: "History",
       url: "/history",
       icon: History,
-      isActive: false,
-    },
-    {
-      title: "My Performance",
-      url: "/performance",
-      icon: Target,
       isActive: false,
     },
     {
@@ -218,10 +182,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </div>
       </SidebarHeader>
       <SidebarContent>
+        <CommandCenterNav />
+
         <SidebarGroup>
           <SidebarGroupLabel>Discover</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
+              <PerformanceNav />
               {discoverItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={item.isActive}>

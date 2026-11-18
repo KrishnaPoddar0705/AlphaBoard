@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Button } from '@/components/ui/button'
 import { eventTypeOf } from '@/lib/commandCenter/constants'
 import { ownerName, relativeTime, type HomeSummary } from '@/lib/commandCenter/home'
 
@@ -11,6 +12,7 @@ interface Props {
   needsYou: number
   updatedAt: number
   scopeControls: ReactNode
+  onLog: () => void
 }
 
 function greeting(now: Date): string {
@@ -22,7 +24,7 @@ function greeting(now: Date): string {
  * The first three seconds: date, how much the desk logged since yesterday, and four
  * numbers. Every number is a count of entries people made; none is a score.
  */
-export default function HomeHeader({ now, name, subject, summary, needsYou, updatedAt, scopeControls }: Props) {
+export default function HomeHeader({ now, name, subject, summary, needsYou, updatedAt, scopeControls, onLog }: Props) {
   const { entries24h, companies24h, thesisChanges7d, lastEntry } = summary
   const verb = subject === 'You' ? 'have' : 'has'
 
@@ -54,9 +56,13 @@ export default function HomeHeader({ now, name, subject, summary, needsYou, upda
             </span>
           )}
         </div>
-        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#1C1B17]">
-          {now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[#1C1B17]">
+            {now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
+          </span>
+          {/* Desktop only: mobile gets the floating action button, reachable with a thumb. */}
+          <Button size="sm" className="hidden h-7 sm:inline-flex" onClick={onLog}>Log</Button>
+        </div>
       </div>
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">

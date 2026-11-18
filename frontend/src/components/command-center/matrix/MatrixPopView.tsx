@@ -1,23 +1,24 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowUpRight, FileText, MessageSquare, Plus } from 'lucide-react'
+import { ArrowUpRight, FileText, Layers, Plus } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
-import ThesisMarkdown from '@/components/thesis/ThesisMarkdown'
-import { Bone } from '../shared/Skeleton'
-import AttachmentPreview from './AttachmentPreview'
-import BoardLink from '../shared/BoardLink'
-import { useEventAttachments } from '@/hooks/commandCenter/useCommandCenterEvents'
+import EntryDocument from './EntryDocument'
+import { usePrefetchSummaries } from '@/hooks/commandCenter/useEntrySummary'
 import { EVENT_TYPES, eventTypeOf, svanRatingOf } from '@/lib/commandCenter/constants'
-import { formatDay, formatDayShort, relativeDays } from '@/lib/commandCenter/format'
-import { ownerName } from '@/lib/commandCenter/home'
+import { formatDayShort } from '@/lib/commandCenter/format'
 import type { MatrixSubject, MatrixTheme } from '@/lib/commandCenter/matrix'
 import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 import { control, type } from './styles'
+// Imported here as well as by MatrixView: the home screen opens this view too.
+import './matrix.css'
 
-/** Which cell is open: an activity column by its type id, or Source Documents; optionally one entry in it. */
+/**
+ * Which cell is open: an activity column by its type id, Source Documents, or 'all' --
+ * every log for the subject (the home screen opening a company); optionally one entry in it.
+ */
 export interface MatrixSelection {
   subject: MatrixSubject
-  column: string | 'docs'
+  column: string | 'docs' | 'all'
   eventId?: string
 }
 
@@ -28,7 +29,8 @@ interface Props {
   theme: MatrixTheme
   onClose: () => void
   onOpenEntry: (row: ActivityFeedRow) => void
-  onLog: (coverageId: string | undefined, typeId: string) => void
+  /** typeId is absent when logging from 'all' (no column to pre-select). */
+  onLog: (coverageId: string | undefined, typeId?: string) => void
 }
 
 /**
@@ -41,7 +43,10 @@ export default function MatrixPopView({ selection, entries, theme, onClose, onOp
   const subject = selection?.subject
   const stock = subject?.kind === 'stock' ? subject.stock : null
   const column = EVENT_TYPES.find((t) => t.id === selection?.column)
-  const ColumnIcon = column?.icon ?? FileText
+  const all = selection?.column === 'all'
+  const ColumnIcon = column?.icon ?? (all ? Layers : FileText)
+  // One query for every listed entry's cached AI summary, so switching entries is instant.
+  usePrefetchSummaries(selection ? entries : [])
   const current = entries.find((e) => e.event_id === (picked ?? selection?.eventId)) ?? entries[0] ?? null
 
   return (
@@ -52,7 +57,7 @@ export default function MatrixPopView({ selection, entries, theme, onClose, onOp
           <>
             <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-(--mx-line) px-5 py-3.5 pr-14">
               <span className="inline-flex items-center gap-1.5 text-[12px] text-(--mx-text-2)">
-                <ColumnIcon className="size-3.5" />{column?.label ?? 'Source documents'}
+                <ColumnIcon className="size-3.5" />{column?.label ?? (all ? 'All logs' : 'Source documents')}
               </span>
               <span aria-hidden className="h-3.5 w-px bg-(--mx-line-strong)" />
               <DialogTitle className={type.pageTitle}>
@@ -65,11 +70,15 @@ export default function MatrixPopView({ selection, entries, theme, onClose, onOp
               <DialogDescription className={type.help}>
                 {stock && <span className="font-mono">{stock.ticker} · </span>}
                 {!stock && 'Across companies · '}
-                {entries.length} entr{entries.length === 1 ? 'y' : 'ies'} · last 12 months
+                {entries.length} entr{entries.length === 1 ? 'y' : 'ies'}{!all && ' · last 12 months'}
               </DialogDescription>
-              {column && (
+              {column ? (
                 <button type="button" className={`${control.base} ${control.outline} ml-auto`} onClick={() => onLog(stock?.id, column.id)}>
                   <Plus className="size-3.5" /> Log {column.label}
+                </button>
+              ) : all && stock && (
+                <button type="button" className={`${control.base} ${control.outline} ml-auto`} onClick={() => onLog(stock.id)}>
+                  <Plus className="size-3.5" /> Log entry
                 </button>
               )}
             </header>
@@ -93,6 +102,7 @@ export default function MatrixPopView({ selection, entries, theme, onClose, onOp
                           {stock ? (e.period_label ?? e.title) : `${e.ticker.split('.')[0]} · ${e.period_label ?? e.title}`}
                         </span>
                         <span className={type.monoFaint}>
+                          {all && <span className="font-sans">{eventTypeOf(e.kind, e.subtype).label} · </span>}
                           {formatDayShort(e.event_date)}{e.is_scheduled && <span className="text-(--mx-accent)"> · next</span>}
                         </span>
                       </span>
@@ -103,74 +113,17 @@ export default function MatrixPopView({ selection, entries, theme, onClose, onOp
               </nav>
 
               <article className="mx-scroll min-h-0 flex-1 overflow-y-auto px-6 py-5 md:px-8">
-                {current && <EntryDocument entry={current} onOpenEntry={onOpenEntry} />}
+                {current ? <EntryDocument entry={current} onOpenEntry={onOpenEntry} /> : (
+                  <div className="flex h-full flex-col items-center justify-center gap-1.5 text-center">
+                    <p className="text-[13px] font-medium text-(--mx-text)">Nothing logged{stock ? ` for ${stock.ticker}` : ''} yet</p>
+                    <p className={type.help}>Concalls, meetings and reports logged against it will show up here.</p>
+                  </div>
+                )}
               </article>
             </div>
           </>
         )}
       </DialogContent>
     </Dialog>
-  )
-}
-
-function EntryDocument({ entry, onOpenEntry }: { entry: ActivityFeedRow; onOpenEntry: (row: ActivityFeedRow) => void }) {
-  const { data: files = [], isPending } = useEventAttachments(entry.attachment_count > 0 ? [entry.event_id] : [])
-  const kind = eventTypeOf(entry.kind, entry.subtype)
-  const rating = svanRatingOf(entry.svan_rating)
-
-  return (
-    <div className="mx-auto max-w-[680px] space-y-6">
-      <div className="space-y-1.5">
-        <p className={type.label}>
-          {kind.label}{entry.is_scheduled && ' · scheduled'} · <span className="font-mono normal-case tracking-normal">{formatDay(entry.event_date)}</span> · {relativeDays(entry.event_date)}
-        </p>
-        <h2 className="text-[19px] font-semibold leading-snug tracking-[-0.01em] text-(--mx-text)">{entry.title}</h2>
-        <p className={type.meta}>
-          <span className="font-mono">{entry.ticker}</span> · {entry.is_scheduled ? 'Scheduled' : ownerName(entry)}
-          {entry.period_label && <> · {entry.period_label}</>}
-          {entry.broker_name && <> · {entry.broker_name}</>}
-        </p>
-      </div>
-
-      {(entry.svan_view || rating) && (
-        <section className="border-l-2 pl-4" style={{ borderColor: rating?.color ?? 'var(--mx-line-strong)' }}>
-          <p className={`${type.label} flex items-center gap-2`}>
-            Svan View
-            {rating && <span className="normal-case tracking-normal" style={{ color: rating.color }}>● {rating.label}</span>}
-          </p>
-          {entry.svan_view && <p className={`${type.body} mt-1.5 whitespace-pre-wrap text-[13px] leading-relaxed`}>{entry.svan_view}</p>}
-        </section>
-      )}
-
-      <section>
-        <h3 className={type.label}>Key takeaways</h3>
-        <BoardLink eventId={entry.event_id} className="mt-2" />
-        <div className="mt-2 text-[13px] leading-relaxed text-(--mx-text)">
-          {entry.kta ? <ThesisMarkdown content={entry.kta} /> : <p className="text-(--mx-text-3)">None written.</p>}
-        </div>
-      </section>
-
-      {entry.open_questions && (
-        <section>
-          <h3 className={type.label}>Open questions</h3>
-          <div className="mt-2 text-[13px] leading-relaxed text-(--mx-text)"><ThesisMarkdown content={entry.open_questions} /></div>
-        </section>
-      )}
-
-      {entry.attachment_count > 0 && (
-        <section>
-          <h3 className={type.label}>Source documents <span className="font-mono">{entry.attachment_count}</span></h3>
-          <div className="mt-2">
-            {isPending ? <Bone className="h-10 w-full" /> : <AttachmentPreview key={entry.event_id} items={files} />}
-          </div>
-        </section>
-      )}
-
-      <div className="border-t border-(--mx-line) pt-4">
-        <button type="button" onClick={() => onOpenEntry(entry)} className={`${control.base} ${control.ghost} -ml-2.5`}>
-          <MessageSquare className="size-3.5" /> Comments, contacts and push
-        </button>
-      </div>
-    </div>
   )
 }
