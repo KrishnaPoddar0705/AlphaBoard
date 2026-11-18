@@ -1,0 +1,49 @@
+# Deploys the FastAPI backend to Fly (app alphaboard-backend) from GitHub's runners.
+#
+# Why CI and not a laptop: the frontend ships on every push to main (Cloudflare Pages),
+# but the backend was a manual `fly deploy`, so the two drifted -- and corporate network
+# agents can block Fly's builders from a developer machine entirely.
+#
+# Needs one repo secret, FLY_API_TOKEN: a deploy token scoped to this app
+#   fly tokens create deploy -a alphaboard-backend | gh secret set FLY_API_TOKEN
+#
+# The backend MUST stay one always-on machine (CLAUDE.md, FLY_DEPLOYMENT.md): it runs an
+# in-process APScheduler. Hence --ha=false (never create a second machine) and a
+# concurrency group (never two deploys at once). Do not add `fly scale count` here.
+name: Deploy backend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy-backend.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: superfly/flyctl-actions/setup-flyctl@1.5
+
+      - name: fly deploy
+        working-directory: backend
+        run: flyctl deploy --config fly.toml --remote-only --ha=false
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Health check
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS https://alphaboard-backend.fly.dev/health; then exit 0; fi
+            sleep 10
+          done
+          echo "Backend did not report healthy after deploy" >&2
+          exit 1
