@@ -1,0 +1,33 @@
+/* The pieces of PDF.js's text layer the viewer needs: invisible, selectable text placed over
+   the canvas (positions use --scale-factor, set per page), and our search-word highlight. */
+.ab-pdf-text {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  line-height: 1;
+  text-align: initial;
+  transform-origin: 0 0;
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  z-index: 1;
+}
+.ab-pdf-text :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.ab-pdf-text span.markedContent {
+  top: 0;
+  height: 0;
+}
+.ab-pdf-text ::selection {
+  background: rgba(29, 78, 216, 0.25);
+}
+.ab-pdf-text .ab-pdf-hit {
+  background: rgba(253, 224, 71, 0.55);
+  border-radius: 2px;
+  mix-blend-mode: multiply;
+}

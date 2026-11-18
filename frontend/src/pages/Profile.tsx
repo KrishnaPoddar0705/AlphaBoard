@@ -22,7 +22,7 @@ interface ProfileData {
 }
 
 export default function Profile() {
-  const { session } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const { user: clerkUser } = useUser();
   const { organization } = useOrganization();
   // Get only teams user is a member of (not all org teams)
@@ -69,8 +69,11 @@ export default function Profile() {
   useEffect(() => {
     if (session?.user?.id) {
       fetchProfile();
+    } else if (!authLoading) {
+      setError('No Supabase session. The Clerk-to-Supabase sync did not complete.');
+      setLoading(false);
     }
-  }, [session?.user?.id]);
+  }, [session?.user?.id, authLoading]);
 
   useEffect(() => {
     if (organization?.id && session?.user?.id) {
@@ -323,7 +326,10 @@ export default function Profile() {
   if (!profile) {
     return (
       <div className="min-h-screen bg-[var(--bg-primary)] flex items-center justify-center">
-        <div className="text-red-400">Failed to load profile</div>
+        <div className="text-red-400 text-center space-y-1">
+          <div>Failed to load profile</div>
+          {error && <div className="text-sm">{error}</div>}
+        </div>
       </div>
     );
   }

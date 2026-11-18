@@ -1,10 +1,12 @@
 // Query Rewrite Module
 // Rewrites user questions into structured query plans optimized for financial research reports
 
-import type { QueryRewrite } from './types.ts';
+import type { QueryRewrite, ChatTurn } from './types.ts';
+
+const MAX_SUBQUERIES = 3;
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
-const GEMINI_MODEL = 'gemini-2.0-flash-exp'; // Fast model for query rewriting
+const GEMINI_MODEL = 'gemini-3.1-flash-lite'; // Fast model for query rewriting
 
 /**
  * Rewrite a user question into a structured query plan
@@ -16,7 +18,8 @@ export async function rewriteQuery(
     tickers?: string[];
     date_from?: string;
     date_to?: string;
-  }
+  },
+  history: ChatTurn[] = []
 ): Promise<QueryRewrite> {
   try {
     console.log(`[Query Rewrite] Rewriting query: "${question}"`);
@@ -39,10 +42,19 @@ export async function rewriteQuery(
       contextString += `Time range: ${from} to ${to}. `;
     }
 
-    const prompt = `${contextString}
-You are a financial research query analyzer. Rewrite the user's question into a structured query plan optimized for retrieving information from financial research reports.
+    const historyBlock = history.length > 0
+      ? `CONVERSATION SO FAR (oldest first):
+${history.map((t) => `${t.role === 'user' ? 'User' : 'Assistant'}: ${t.content}`).join('\n')}
 
-USER QUESTION: ${question}
+The user's latest message may be a follow-up that relies on this conversation ("and its margins?", "why?", "compare with the other one"). Resolve pronouns and omissions using the conversation so the question stands alone.
+
+`
+      : '';
+
+    const prompt = `${contextString}
+${historyBlock}You are a financial research query analyzer. Rewrite the user's question into a structured query plan optimized for retrieving information from financial research reports.
+
+USER QUESTION: ${history.length > 0 ? 'LATEST MESSAGE: ' : ''}${question}
 
 CONTEXT: Financial research reports contain:
 - Regulatory changes (GST, BEE norms, policy updates, compliance requirements)
@@ -57,12 +69,14 @@ CONTEXT: Financial research reports contain:
 TASK: Generate a structured query plan that will:
 1. Extract key entities (companies, sectors, regulations, metrics, timeframes)
 2. Identify synonyms and related terms used in finance reports
-3. Break the question into 4-8 focused subqueries for multi-query retrieval
-4. Specify required output sections based on question intent
+3. Break the question into exactly 3 focused, non-overlapping subqueries for multi-query retrieval
+4. Write standalone_question: the question rewritten so it is fully self-contained and makes sense without the conversation (identical to the user's question if it already is)
+5. Specify required output sections based on question intent
 
 OUTPUT JSON SCHEMA:
 {
   "intent": "string (one word: regulatory_changes|financial_metrics|risk_analysis|company_comparison|sector_outlook|forecast_analysis)",
+  "standalone_question": "string (self-contained version of the user's question)",
   "entities": ["string"],
   "constraints": {
     "time_range": {"from": "YYYY-MM", "to": "YYYY-MM"},
@@ -90,15 +104,14 @@ EXAMPLES:
 Question: "What are the regulatory changes affecting consumer durables?"
 {
   "intent": "regulatory_changes",
+  "standalone_question": "What are the regulatory changes affecting consumer durables?",
   "entities": ["regulatory changes", "consumer durables"],
   "constraints": {"sectors": ["Consumer Discretionary"]},
   "synonyms": ["regulations", "policy", "compliance", "BEE", "GST"],
   "subqueries": [
     "regulatory changes consumer durables sector",
-    "BEE norms consumer durables implementation",
-    "GST rate changes consumer durables impact",
-    "compliance requirements consumer durables 2024",
-    "policy updates affecting consumer durables industry"
+    "BEE norms consumer durables implementation and price impact",
+    "GST rate changes and compliance requirements consumer durables"
   ],
   "required_sections": ["Direct Answer", "Regulatory Changes", "Implementation Details", "Price Impact", "Timeline"],
   "expected_output": "detailed_breakdown"
@@ -161,6 +174,11 @@ Return ONLY valid JSON, no markdown code blocks, no explanatory text.`;
     // Validate structure
     if (!queryObject.intent || !queryObject.subqueries || queryObject.subqueries.length === 0) {
       throw new Error('Invalid query rewrite structure');
+    }
+
+    queryObject.subqueries = queryObject.subqueries.slice(0, MAX_SUBQUERIES);
+    if (!queryObject.standalone_question || typeof queryObject.standalone_question !== 'string') {
+      queryObject.standalone_question = question;
     }
 
     console.log(`[Query Rewrite] Success: intent=${queryObject.intent}, subqueries=${queryObject.subqueries.length}`);

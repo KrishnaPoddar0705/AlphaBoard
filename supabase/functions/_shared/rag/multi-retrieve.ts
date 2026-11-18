@@ -5,7 +5,7 @@ import type { RetrievedChunk } from './types.ts';
 import { extractGroundingChunks, dedupeChunks, applyHeuristicBoosts } from './utils.ts';
 
 const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || '';
-const GEMINI_MODEL = 'gemini-flash-latest';
+const GEMINI_MODEL = 'gemini-3.1-flash-lite';
 
 /**
  * Execute multiple subqueries in parallel and retrieve chunks

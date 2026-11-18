@@ -137,6 +137,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['d3-format', 'd3-scale', 'd3-time-format'],
+    // pdfjs-dist is only reached through a lazy import; pre-bundling it at startup stops Vite
+    // re-optimizing mid-session, which made that import fail and crash the research page.
+    include: ['d3-format', 'd3-scale', 'd3-time-format', 'pdfjs-dist'],
   },
 }))

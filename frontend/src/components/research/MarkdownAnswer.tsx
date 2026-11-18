@@ -1,5 +1,7 @@
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { ArrowUpRight } from 'lucide-react';
+import { isScreenerLink, linkifyTickers } from '../../lib/tickerLinks';
 
 interface MarkdownAnswerProps {
   content: string;
@@ -10,13 +12,16 @@ interface MarkdownAnswerProps {
     report_id?: string;
     title?: string;
   }>;
-  onCitationClick?: (reportId: string) => void;
+  onCitationClick?: (reportId: string, page?: number) => void;
+  /** Prefix for the `citation-ref-N` ids this links to; set it when several answers share a page. */
+  idPrefix?: string;
 }
 
 export default function MarkdownAnswer({ 
   content, 
   citations = [],
-  onCitationClick 
+  onCitationClick,
+  idPrefix = ''
 }: MarkdownAnswerProps) {
   // Clean content - remove any accidental JSON code blocks
   const cleanContent = (text: string): string => {
@@ -54,7 +59,7 @@ export default function MarkdownAnswer({
   };
 
   const cleanedContent = cleanContent(content);
-  const processedContent = processCitations(cleanedContent);
+  const processedContent = linkifyTickers(processCitations(cleanedContent));
 
   return (
     <div className="markdown-content">
@@ -147,7 +152,7 @@ export default function MarkdownAnswer({
                     onClick={(e) => {
                       e.preventDefault();
                       // Scroll to citation section
-                      const citationElement = document.getElementById(`citation-ref-${citationNum}`);
+                      const citationElement = document.getElementById(`${idPrefix}citation-ref-${citationNum}`);
                       if (citationElement) {
                         citationElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
                         // Highlight briefly
@@ -158,10 +163,10 @@ export default function MarkdownAnswer({
                       }
                       // Also navigate to report if available
                       if (citation.report_id && onCitationClick) {
-                        onCitationClick(citation.report_id);
+                        onCitationClick(citation.report_id, citation.page);
                       }
                     }}
-                    className="inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-indigo-400 bg-indigo-500/20 hover:bg-indigo-500/30 rounded-full transition-all hover:scale-110 ml-1 align-super"
+                    className="inline-flex items-center justify-center w-5 h-5 text-xs font-semibold text-[#1D4ED8] bg-[#1D4ED8]/10 hover:bg-[#1D4ED8]/20 rounded-full transition-all hover:scale-110 ml-1 align-super"
                     title={`Citation ${citationNum}: Page ${citation.page || 'N/A'}${citation.title ? ` - ${citation.title}` : ''}`}
                   >
                     {citationNum}
@@ -170,6 +175,22 @@ export default function MarkdownAnswer({
               }
             }
             
+            // Company tickers link to the company's screener.in page
+            if (isScreenerLink(href)) {
+              return (
+                <a
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="Open on screener.in"
+                  className="inline-flex items-center gap-0.5 font-semibold text-[#1D4ED8] hover:underline"
+                >
+                  {props.children}
+                  <ArrowUpRight className="w-3 h-3" />
+                </a>
+              );
+            }
+
             // Regular external links
             return (
               <a
