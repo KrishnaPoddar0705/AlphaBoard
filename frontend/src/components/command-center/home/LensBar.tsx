@@ -1,3 +1,4 @@
+import { Search, X } from 'lucide-react'
 import { EVENT_TYPES } from '@/lib/commandCenter/constants'
 import type { LensFilters } from '@/lib/commandCenter/home'
 
@@ -15,6 +16,9 @@ interface Props {
   analysts: Option[]
   sectors: string[]
   stocks: Option[]
+  /** The table's search box: stock / company / lead / sector by stock, name by analyst. */
+  query: string
+  onQuery: (q: string) => void
 }
 
 const seg = (on: boolean) => [
@@ -33,9 +37,9 @@ const select = (on: boolean) => [
  * The filters apply to the table only -- the panels above it keep the whole scope.
  */
 export default function LensBar({
-  canToggleLens, lens, onLens, filters, onFilters, analysts, sectors, stocks,
+  canToggleLens, lens, onLens, filters, onFilters, analysts, sectors, stocks, query, onQuery,
 }: Props) {
-  const active = !!(filters.analystId || filters.sector || filters.coverageId || filters.typeId)
+  const active = !!(filters.analystId || filters.sector || filters.coverageId || filters.typeId || query.trim())
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -51,6 +55,23 @@ export default function LensBar({
       )}
 
       <div className="flex min-w-0 flex-1 basis-full flex-wrap items-center gap-2 sm:basis-auto">
+        <label className={`relative flex min-w-0 basis-full items-center sm:w-56 sm:flex-none sm:basis-auto`}>
+          <Search className="pointer-events-none absolute left-2 h-3.5 w-3.5 text-[#8B857A]" aria-hidden />
+          <input
+            type="search" value={query} onChange={(e) => onQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') onQuery('') }}
+            placeholder={lens === 'analyst' ? 'Search analyst…' : 'Search stock or analyst…'}
+            aria-label={lens === 'analyst' ? 'Search analysts' : 'Search stocks by ticker, company, lead analyst or sector'}
+            className={`w-full rounded-md border bg-[#FBF7ED] py-1 pl-7 pr-7 font-mono text-[11px] text-[#1C1B17] placeholder:text-[#8B857A] focus:outline-none [&::-webkit-search-cancel-button]:hidden ${query.trim() ? 'border-[#1C1B17]' : 'border-[#D7D0C2]'}`}
+          />
+          {query && (
+            <button type="button" onClick={() => onQuery('')} aria-label="Clear search"
+              className="absolute right-1.5 rounded p-0.5 text-[#8B857A] hover:text-[#1C1B17]">
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </label>
+
         <select
           aria-label="Analyst" className={select(!!filters.analystId)}
           value={filters.analystId ?? ''} onChange={(e) => onFilters({ analystId: e.target.value || null })}
@@ -88,7 +109,7 @@ export default function LensBar({
         {active && (
           <button
             type="button"
-            onClick={() => onFilters({ analystId: null, sector: null, coverageId: null, typeId: null })}
+            onClick={() => { onFilters({ analystId: null, sector: null, coverageId: null, typeId: null }); onQuery('') }}
             className="font-mono text-[11px] text-[#6F6A60] underline-offset-2 hover:underline"
           >
             Clear

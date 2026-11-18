@@ -5,7 +5,8 @@ import { useCommentAuthors, useHomeWindow } from '@/hooks/commandCenter/useHome'
 import { useHomeScope } from '@/hooks/commandCenter/useHomeScope'
 import { useLensFilters } from '@/hooks/commandCenter/useLensFilters'
 import {
-  analystLens, awaitingReply, filterEntries, filterStocks, needsYou, stockLens, summarize,
+  analystLens, awaitingReply, filterEntries, filterStocks, needsYou, searchAnalysts, searchStocks,
+  stockLens, summarize,
   whatChanged,
 } from '@/lib/commandCenter/home'
 import { sectorOptions } from '@/lib/commandCenter/sectors'
@@ -49,6 +50,8 @@ export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLog
   const openStock = (coverageId: string, ticker: string, companyName: string | null) =>
     setOpened({ coverageId, ticker, companyName })
   const [drawer, setDrawer] = useState<ActivityFeedRow | null>(null)
+  // The table's search box. Page state, not a URL filter: it changes on every keystroke.
+  const [query, setQuery] = useState('')
   const met = useEventContacts(rows)
 
   // "Now" is when the data was read, so every relative time on screen agrees with it.
@@ -162,11 +165,13 @@ export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLog
             analysts={derived.analysts.map((a) => ({ value: a.userId, label: a.name }))}
             sectors={derived.sectors}
             stocks={derived.stockOptions}
+            query={query}
+            onQuery={setQuery}
           />
           {lens === 'analyst' ? (
             <AnalystLens
               className="lg:max-h-[560px]"
-              rows={derived.lensAnalysts}
+              rows={searchAnalysts(derived.lensAnalysts, query)}
               entries={derived.shown}
               now={now}
               onOpen={openEntry}
@@ -175,7 +180,7 @@ export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLog
           ) : (
             <StockLens
               className="lg:max-h-[560px]"
-              rows={derived.stocks}
+              rows={searchStocks(derived.stocks, query)}
               entries={derived.shown}
               now={now}
               onOpen={openEntry}

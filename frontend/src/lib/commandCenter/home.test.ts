@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   summarize, whatChanged, needsYou, awaitingReply, whenLabel, stockLens, analystLens,
   weeklyCounts, relativeTime, filterEntries, filterStocks, type LensFilters,
+  searchStocks, searchAnalysts, type StockLensRow,
 } from './home'
 import type { ActivityFeedRow, CoverageBoardRow } from './types'
 
@@ -266,5 +267,37 @@ describe('weeklyCounts', () => {
       { week: '2026-09-07', broker_report: 1 },
       { week: '2026-09-14', concall: 2 },
     ])
+  })
+})
+
+describe('table search', () => {
+  const stock = (over: Partial<StockLensRow>): StockLensRow => ({
+    coverageId: over.ticker ?? 'x', ticker: 'X', companyName: null, sector: null,
+    leadAnalystId: null, leadAnalyst: null, new7d: 0, lastEntry: null, daysSincePrimary: null, ...over,
+  })
+  const stocks = [
+    stock({ ticker: 'TMCV.NS', companyName: 'Tata Motors CV', sector: 'Automotive', leadAnalyst: 'ishital' }),
+    stock({ ticker: 'MANKIND.NS', companyName: 'Mankind Pharma', sector: 'Pharmaceutical', leadAnalyst: 'lisaf' }),
+    stock({ ticker: 'SAIL', sector: 'Metals', leadAnalyst: 'shlokb' }),
+  ]
+  const tickers = (q: string) => searchStocks(stocks, q).map((s) => s.ticker)
+
+  it('matches ticker, company, lead analyst and sector, ignoring case', () => {
+    expect(tickers('sail')).toEqual(['SAIL'])
+    expect(tickers('tata')).toEqual(['TMCV.NS'])
+    expect(tickers('LISAF')).toEqual(['MANKIND.NS'])
+    expect(tickers('metal')).toEqual(['SAIL'])
+  })
+
+  it('needs every word to match, and blank matches everything', () => {
+    expect(tickers('pharma lisaf')).toEqual(['MANKIND.NS'])
+    expect(tickers('pharma shlokb')).toEqual([])
+    expect(tickers('   ')).toHaveLength(3)
+  })
+
+  it('finds analysts by name', () => {
+    const people = [{ name: 'ishital' }, { name: 'jatind' }, { name: 'jainamg' }]
+    expect(searchAnalysts(people, 'ja').map((p) => p.name)).toEqual(['jatind', 'jainamg'])
+    expect(searchAnalysts(people, '')).toHaveLength(3)
   })
 })

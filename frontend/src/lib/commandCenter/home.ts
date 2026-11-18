@@ -226,6 +226,27 @@ export function filterStocks(stocks: StockLensRow[], f: LensFilters): StockLensR
     && (!f.typeId || !!s.lastEntry))
 }
 
+/**
+ * The table's search box. By stock it matches ticker, company, lead analyst or sector;
+ * by analyst, the name. Case-insensitive, substring, every word must match -- so
+ * "tata motors" finds TMCV.NS by its company name and "pharma lisaf" narrows to one
+ * analyst's pharma names. Blank matches everything.
+ */
+export function searchStocks(stocks: StockLensRow[], query: string): StockLensRow[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return stocks
+  return stocks.filter((s) => {
+    const hay = [s.ticker, s.companyName, s.leadAnalyst, s.sector].filter(Boolean).join(' ').toLowerCase()
+    return words.every((w) => hay.includes(w))
+  })
+}
+
+export function searchAnalysts<T extends { name: string }>(rows: T[], query: string): T[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (!words.length) return rows
+  return rows.filter((a) => words.every((w) => a.name.toLowerCase().includes(w)))
+}
+
 export interface StockLensRow {
   coverageId: string
   ticker: string
