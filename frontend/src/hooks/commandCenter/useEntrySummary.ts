@@ -56,6 +56,12 @@ async function generate(eventId: string): Promise<EntrySummary> {
   } catch (err) {
     const e = err as { response?: { status?: number; data?: { detail?: string } } }
     if (e.response?.status === 429) throw new Error('Too many requests. Give it a moment.')
+    // FastAPI's own 404 for a route it does not have: the backend is older than the
+    // frontend (deployed separately, on Fly), not a missing entry.
+    if (e.response?.status === 404 && e.response.data?.detail === 'Not Found') {
+      throw new Error('AI summaries are not live on the server yet.')
+    }
+    if (!e.response) throw new Error('Could not reach the AlphaBoard server.')
     throw new Error(e.response?.data?.detail || 'The summary could not be generated.')
   }
 }
