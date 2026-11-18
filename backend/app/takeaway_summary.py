@@ -57,6 +57,29 @@ Rules:
 # Pooled connections: a fresh TLS handshake to Supabase or OpenRouter per request is a
 # few hundred ms each on its own.
 _http = httpx.Client(timeout=10)
+
+
+def _describe_key(k: str) -> str:
+    """What kind of Supabase key this is -- never the key itself."""
+    if not k:
+        return "missing"
+    if k.startswith("sb_secret_"):
+        return "new-format secret key (sb_secret_)"
+    if k.startswith("sb_publishable_"):
+        return "new-format PUBLISHABLE key (sb_publishable_) -- not a service key"
+    if k.count(".") == 2:
+        import base64
+        try:
+            body = k.split(".")[1]
+            claims = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+            return f"legacy JWT, role={claims.get('role')!r}"
+        except Exception:
+            return "JWT-shaped, unreadable claims"
+    return f"unrecognised format ({len(k)} chars)"
+
+
+# One line at startup, so a wrong key (an anon key in the service slot) shows in the logs.
+print(f"[kta_summary] service key: {_describe_key(SERVICE_KEY)}")
 _pool = ThreadPoolExecutor(max_workers=8, thread_name_prefix="kta-summary")
 _llm = None
 
@@ -99,11 +122,13 @@ def _read_visible_entry(event_id: str, access_token: str) -> dict:
             params={"event_id": f"eq.{event_id}", "select": "event_id,ticker,company_name,kind,title,kta"},
             headers={"apikey": SERVICE_KEY, "Authorization": f"Bearer {access_token}"},
         )
-    except httpx.HTTPError:
+    except httpx.HTTPError as exc:
+        print(f"[kta_summary] visibility check failed: {type(exc).__name__}: {exc}")
         raise HTTPException(status_code=502, detail="Could not reach the database.")
     if res.status_code == 401:
         raise HTTPException(status_code=401, detail="Your session has expired. Reload and try again.")
     if res.status_code >= 400:
+        print(f"[kta_summary] visibility check HTTP {res.status_code}: {res.text[:200]}")
         raise HTTPException(status_code=502, detail="Could not read that entry.")
     rows = res.json()
     if not rows:
