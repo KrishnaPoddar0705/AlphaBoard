@@ -67,6 +67,17 @@ async function generate(eventId: string): Promise<EntrySummary> {
 }
 
 /**
+ * Generates and saves an entry's summary in the background, right after it is saved, so
+ * the summary is made once -- at write time -- and every later view only reads it.
+ * Fire-and-forget: a failure here costs nothing, since opening the entry still
+ * generates as a fallback. Skips takeaways too short to summarise.
+ */
+export function generateSummaryInBackground(eventId: string, kta: string | null | undefined): void {
+  if ((kta?.trim().length ?? 0) < SUMMARY_MIN_CHARS) return
+  void generate(eventId).catch(() => { /* the open-time fallback covers it */ })
+}
+
+/**
  * Seeds the cached summary of every listed entry in one query, so moving between
  * entries in an open list shows each summary at once instead of a request per click.
  */

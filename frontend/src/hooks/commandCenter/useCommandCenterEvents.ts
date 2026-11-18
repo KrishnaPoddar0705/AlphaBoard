@@ -12,6 +12,7 @@ import type {
 import { useCommandCenterSession } from './useCommandCenterSession'
 import { ccKeys, NO_SESSION_MESSAGE } from './useCoverage'
 import { track } from '@/lib/analytics'
+import { generateSummaryInBackground } from './useEntrySummary'
 
 export function useCoverageEvents(coverageId: string | undefined) {
   const { ready } = useCommandCenterSession()
@@ -74,10 +75,12 @@ export function useCreateEvent() {
       if (!authenticated) throw new Error(NO_SESSION_MESSAGE)
       return createEvent(input)
     },
-    onSuccess: (_row, input) => {
+    onSuccess: (row, input) => {
       // Prefix invalidation: the board's health numbers, the stock timeline, the
       // calendar and the org activity feed all move when one entry lands.
       qc.invalidateQueries({ queryKey: ccKeys.all })
+      // The AI summary is made once, now, and stored; opening the entry only reads it.
+      generateSummaryInBackground(row.id, row.kta)
       track('cc_entry_logged', {
         kind: input.kind,
         subtype: input.subtype ?? null,
@@ -112,8 +115,11 @@ export function useUpdateEvent() {
       if (contactIds) await setEventContacts(id, contactIds)
       return row
     },
-    onSuccess: (_row, { patch }) => {
+    onSuccess: (row, { patch }) => {
       qc.invalidateQueries({ queryKey: ccKeys.all })
+      // Only an edit to the takeaways changes the summary (the backend regenerates when
+      // their hash changes); push flags and the like never trigger one.
+      if (patch.kta !== undefined) generateSummaryInBackground(row.id, row.kta)
       if (patch.push_to_pm !== undefined || patch.push_to_admin !== undefined) {
         track('cc_entry_pushed', { to_pm: !!patch.push_to_pm, to_admin: !!patch.push_to_admin })
       }
