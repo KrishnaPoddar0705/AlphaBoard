@@ -9,16 +9,18 @@ interface Props {
   onQuarter: (q: string) => void
   disabled?: boolean
   orientation: 'vertical' | 'horizontal'
+  /** The desktop bar floating over the canvas: labelled and lifted with a shadow. */
+  floating?: boolean
 }
 
 const QUARTERS = recentQuarters()
 
 /**
  * The data side of the board. Each button pulls one kind of verified data for the
- * note's stock into a card on the canvas. Vertical beside the canvas on desktop; a
- * scrolling dock along the bottom edge on a phone.
+ * note's stock into a card on the canvas. A floating bar over the bottom of the canvas
+ * on desktop; a scrolling dock along the bottom edge on a phone.
  */
-export default function ConnectorRail({ onPull, busy, quarter, onQuarter, disabled, orientation }: Props) {
+export default function ConnectorRail({ onPull, busy, quarter, onQuarter, disabled, orientation, floating = false }: Props) {
   const vertical = orientation === 'vertical'
   const fire = (id: ConnectorId, el: HTMLElement) => {
     const r = el.getBoundingClientRect()
@@ -41,8 +43,11 @@ export default function ConnectorRail({ onPull, busy, quarter, onQuarter, disabl
     <nav aria-label="Pull data"
       className={vertical
         ? 'tb-card flex max-h-full min-h-0 w-[86px] flex-col items-stretch gap-0.5 overflow-y-auto overscroll-contain px-1.5 py-2.5 [scrollbar-width:thin]'
-        : 'tb-card flex items-center gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none]'}>
+        : `tb-card flex items-center gap-1 overflow-x-auto px-2 py-1.5 [scrollbar-width:none] ${floating ? 'tb-dock-glow rounded-2xl' : ''}`}>
       {vertical && <p className="tb-data px-1 pb-1.5 text-center text-[9.5px] text-[#8B857A]">Pull data</p>}
+      {floating && (
+        <p className="tb-data flex-none border-r border-[#E3DDCF] pl-1 pr-3 text-[9.5px] uppercase tracking-[0.12em] text-[#8B857A]">Pull data</p>
+      )}
       {quarterPicker}
       {CONNECTORS.map((c) => {
         const Icon = c.icon

@@ -19,18 +19,20 @@ interface Props {
   /** A card being pointed at because it was asked for again. */
   flashId: string | null
   onCardRefresh: (card: BoardCard) => void
+  /** Room at the bottom for the floating Pull data bar, so nothing scrolls under it. */
+  bottomInset?: boolean
   /** The document sheet. */
   children: ReactNode
 }
 
 /**
- * The desk: a dotted paper canvas with the page locked in the centre and pulled data
- * floating in the gutters. The page never moves; cards come and go around it. Narrow
- * canvases trade the gutters for a swipeable strip of cards above the page.
+ * The desk: a dotted paper canvas with the page as the main panel and pulled data in a
+ * column on its right. The page never moves; cards come and go beside it. Narrow
+ * canvases trade the column for a swipeable strip of cards above the page.
  */
 const BoardCanvas = forwardRef<HTMLDivElement, Props>(function BoardCanvas(
   { layout, cards, pending, onCardChange, onCardRemove, onCardInsert, onItemInsert, onRetry, onDismiss,
-    flashId, onCardRefresh, children },
+    flashId, onCardRefresh, bottomInset = false, children },
   ref,
 ) {
   const renderPending = (p: PendingPull) => (
@@ -46,13 +48,13 @@ const BoardCanvas = forwardRef<HTMLDivElement, Props>(function BoardCanvas(
 
   const column = (list: BoardCard[], withPending: boolean, hint: boolean) => (
     <aside style={{ width: CARD_WIDTH }}
-      className="sticky top-0 flex max-h-[calc(100dvh-15rem)] flex-none flex-col gap-3 self-start overflow-y-auto pb-6 [scrollbar-width:thin]">
+      className={`sticky top-0 flex max-h-[calc(100dvh-15rem)] flex-none flex-col gap-3 self-start overflow-y-auto [scrollbar-width:thin] ${bottomInset ? 'pb-28' : 'pb-6'}`}>
       {withPending && pending.filter((p) => !p.replaceId).map(renderPending)}
       <AnimatePresence initial={false}>{list.map(renderCard)}</AnimatePresence>
       {hint && !list.length && !(withPending && pending.some((p) => !p.replaceId)) && (
         <div className="tb-data mt-10 flex flex-col items-center gap-2 px-6 text-center text-[11px] leading-relaxed text-[#8B857A]">
           <MousePointerClick className="h-4 w-4" />
-          Pull financials, concalls or filings from the rail. They land here, ready to drop into the note.
+          Pull financials, concalls or filings from the bar below. They land here, ready to drop into the note.
         </div>
       )}
     </aside>
@@ -64,7 +66,7 @@ const BoardCanvas = forwardRef<HTMLDivElement, Props>(function BoardCanvas(
   return (
     <div ref={ref} className="tb-canvas relative h-full min-w-0 flex-1 overflow-y-auto">
       {layout === 'stack' ? (
-        <div className="flex flex-col gap-4 px-3 py-4 sm:px-6">
+        <div className={`flex flex-col gap-4 px-3 py-4 sm:px-6 ${bottomInset ? 'pb-32' : ''}`}>
           {(pending.some((p) => !p.replaceId) || cards.length > 0) && (
             <div className="-mx-3 flex snap-x items-start gap-3 overflow-x-auto px-3 pb-1 sm:-mx-6 sm:px-6">
               {[...pending.filter((p) => !p.replaceId).map(renderPending), ...cards.map(renderCard)].map((el, i) => (
@@ -75,7 +77,7 @@ const BoardCanvas = forwardRef<HTMLDivElement, Props>(function BoardCanvas(
           <div className="mx-auto w-full" style={{ maxWidth: PAGE_WIDTH }}>{children}</div>
         </div>
       ) : (
-        <div className="flex min-h-full justify-center gap-10 px-6 py-6">
+        <div className={`flex min-h-full justify-center gap-10 px-6 py-6 ${bottomInset ? 'pb-32' : ''}`}>
           {layout === 'double' && column(left, false, false)}
           <div className="w-full min-w-0" style={{ maxWidth: PAGE_WIDTH }}>{children}</div>
           {column(layout === 'double' ? right : cards, true, true)}

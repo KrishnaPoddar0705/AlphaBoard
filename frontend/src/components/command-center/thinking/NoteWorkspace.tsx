@@ -196,23 +196,27 @@ function LoadedNote({ board, coverage, folderName, compact, onOpenTree }: Props 
         }}
         onRetrySave={() => void flush()} onOpenTree={onOpenTree} />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <BoardCanvas ref={canvasRef} layout={layout} cards={cards} pending={pending}
           onCardChange={(c) => updateCards((prev) => prev.map((x) => (x.id === c.id ? c : x)))}
           onCardRemove={(id) => updateCards((prev) => prev.filter((x) => x.id !== id))}
           onCardInsert={(c) => { insertBlock(c); toast.success('Added to the note') }}
           onItemInsert={citeItem} onRetry={retry} onDismiss={dismiss}
-          flashId={flashId} onCardRefresh={refreshCard}>
+          flashId={flashId} onCardRefresh={refreshCard} bottomInset={!compact}>
           <div ref={sheetRef} className="tb-sheet">
             <DocEditor initialDoc={initial.doc} onChange={onDocChange} onPull={onSlashPull}
               onReady={setEditor} title={titleField} />
           </div>
         </BoardCanvas>
 
+        {/* Desktop: Pull data floats over the bottom of the canvas, so the document and its
+            card column keep the full width. Phones keep the docked strip below. */}
         {!compact && (
-          <div className="tb-canvas flex min-h-0 flex-none flex-col border-l border-[#E3DDCF] py-3 pr-3">
-            <ConnectorRail orientation="vertical" onPull={(id, o) => onPull(id, o)} busy={busy}
-              quarter={quarter} onQuarter={setQuarter} disabled={!ticker} />
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 z-20 flex justify-center px-4">
+            <div className="pointer-events-auto max-w-full">
+              <ConnectorRail orientation="horizontal" floating onPull={(id, o) => onPull(id, o)} busy={busy}
+                quarter={quarter} onQuarter={setQuarter} disabled={!ticker} />
+            </div>
           </div>
         )}
       </div>
