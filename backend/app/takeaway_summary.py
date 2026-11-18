@@ -30,7 +30,12 @@ from typing import Optional
 import httpx
 from fastapi import HTTPException
 
-from .db import supabase, key as SERVICE_KEY, url as SUPABASE_URL
+from .db import supabase, key as _RAW_KEY, url as _RAW_URL
+
+# Fly secrets can carry a trailing newline. supabase-py tolerates it; httpx refuses to
+# send it in a header (LocalProtocolError), which made every summary a 502 in prod.
+SERVICE_KEY = (_RAW_KEY or "").strip()
+SUPABASE_URL = (_RAW_URL or "").strip().rstrip("/")
 from .llm import make_openai_client, trace
 
 # Claude Haiku through OpenRouter (OpenAI-compatible API). Override with SUMMARY_MODEL.
@@ -120,10 +125,12 @@ def _read_visible_entry(event_id: str, access_token: str) -> dict:
         res = _http.get(
             f"{SUPABASE_URL}/rest/v1/cc_activity_feed",
             params={"event_id": f"eq.{event_id}", "select": "event_id,ticker,company_name,kind,title,kta"},
-            headers={"apikey": SERVICE_KEY, "Authorization": f"Bearer {access_token}"},
+            headers={"apikey": SERVICE_KEY, "Authorization": f"Bearer {access_token.strip()}"},
         )
     except httpx.HTTPError as exc:
-        print(f"[kta_summary] visibility check failed: {type(exc).__name__}: {exc}")
+        # Never the message of a protocol error: it quotes the offending header -- a key.
+        detail = "" if isinstance(exc, httpx.LocalProtocolError) else f": {exc}"
+        print(f"[kta_summary] visibility check failed: {type(exc).__name__}{detail}")
         raise HTTPException(status_code=502, detail="Could not reach the database.")
     if res.status_code == 401:
         raise HTTPException(status_code=401, detail="Your session has expired. Reload and try again.")
