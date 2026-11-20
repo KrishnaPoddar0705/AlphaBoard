@@ -3222,6 +3222,32 @@ scheduler.add_job(
 print("Scheduled daily price update at 10:00 AM GMT")
 print("Scheduled daily cumulative portfolio return update at 10:00 AM GMT")
 
+# Command Center briefs for org admins (app/briefs.py): daily at 08:00 IST, weekly on
+# Mondays at 08:00 IST. misfire_grace_time lets a run that was late by under an hour
+# still happen; catch_up covers a machine that was down at 08:00 entirely.
+from . import briefs as _briefs
+
+scheduler.add_job(
+    func=_briefs.run_daily,
+    trigger=CronTrigger(hour=_briefs.SLOT_HOUR, minute=0, timezone=_briefs.IST),
+    id='cc_daily_brief',
+    name='Command Center daily brief',
+    replace_existing=True,
+    misfire_grace_time=3600,
+    coalesce=True,
+)
+scheduler.add_job(
+    func=_briefs.run_weekly,
+    trigger=CronTrigger(day_of_week='mon', hour=_briefs.SLOT_HOUR, minute=0, timezone=_briefs.IST),
+    id='cc_weekly_brief',
+    name='Command Center weekly brief',
+    replace_existing=True,
+    misfire_grace_time=3600,
+    coalesce=True,
+)
+_briefs.catch_up()
+print("Scheduled Command Center briefs: daily 08:00 IST, weekly Mon 08:00 IST")
+
 
 # ---------------------------------------------------------------------------
 # Thinking Board connectors (Command Center). Authenticated with the caller's Supabase
@@ -3266,3 +3292,33 @@ def cc_event_summary(event_id: _UUID, request: Request, user_id: str = Depends(r
         return _summarize_entry(str(event_id), token)
     except SummaryUnavailable as e:
         raise HTTPException(status_code=503, detail=str(e))
+
+
+# ---------------------------------------------------------------------------
+# Command Center briefs: an org admin can (re)make their org's brief for the current
+# slot -- the first one after setup, or one that failed. Runs in the background; the
+# frontend polls cc_briefs. Rate limited hard: each run is an LLM call plus TTS.
+# ---------------------------------------------------------------------------
+import threading as _threading
+from pydantic import BaseModel as _BaseModel
+
+
+class _BriefRequest(_BaseModel):
+    kind: str = "daily"
+
+
+@app.post("/api/command-center/briefs/generate", status_code=202)
+def cc_generate_brief(body: _BriefRequest, user_id: str = Depends(require_supabase_user)):
+    if body.kind not in ("daily", "weekly"):
+        raise HTTPException(status_code=400, detail="kind must be 'daily' or 'weekly'.")
+    if not _briefs.SERVICE_KEY:
+        raise HTTPException(status_code=503, detail="Briefs are not configured on the server.")
+    enforce_rate_limit(f"brief:{user_id}", limit=3, window=600)
+    org_id = _briefs.admin_org_of(user_id)
+    if not org_id:
+        raise HTTPException(status_code=403, detail="Only organization admins can generate briefs.")
+    _threading.Thread(
+        target=lambda: print(f"[briefs] manual {body.kind}: {_briefs.run(body.kind, org_id=org_id, force=True)}"),
+        name="brief-manual", daemon=True,
+    ).start()
+    return {"status": "started", "kind": body.kind, "brief_date": _briefs.slot_end(body.kind).date().isoformat()}

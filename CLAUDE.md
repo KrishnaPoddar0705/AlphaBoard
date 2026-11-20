@@ -84,7 +84,8 @@ See `FLY_DEPLOYMENT.md` for the full runbook.
 - **Production URLs**: `alphaboard.theunicornlabs.com` (frontend), `alphaboard-backend.fly.dev` (backend), `alphaboard-whatsapp-bot.fly.dev` (bot)
 
 **The backend must stay a single always-on machine.** `app/main.py:53` runs an
-in-process APScheduler with two 10:00 UTC cron jobs. Auto-stop makes them
+in-process APScheduler: two 10:00 UTC cron jobs, plus the Command Center briefs
+(`app/briefs.py`, daily 08:00 IST and Mondays 08:00 IST). Auto-stop makes them
 silently skip; a second machine makes them run twice. Never set
 `auto_stop_machines` on, and never `fly scale count` above 1 — move the
 scheduler out of the web process first.
@@ -105,6 +106,12 @@ Backend (in `backend/.env`): `SUPABASE_URL`, `SUPABASE_SERVICE_KEY`, `OPENAI_API
 Optional: `OPENROUTER_API_KEY` (Fly secret). Powers the Command Center's AI takeaway
 summaries (`backend/app/takeaway_summary.py`, Claude Haiku via OpenRouter; override the
 model with `SUMMARY_MODEL`). Without it the summary panel says summaries are not configured.
+
+Briefs (`backend/app/briefs.py`) read every org's entries with `BRIEF_SERVICE_KEY`, falling
+back to `SUMMARY_CACHE_KEY` -- prod's `SUPABASE_SERVICE_KEY` is the anon key and sees nothing.
+Bullets, script and the two podcast voices all come from OpenRouter (`OPENROUTER_API_KEY`;
+Gemini Flash TTS, override with `BRIEF_TTS_MODEL`).
+A window with no new logs makes no brief and no AI call.
 
 Optional: `DRISHTI_API_KEY` (Fly secret). Feeds the Thinking Board's concall, announcements,
 news and results connectors (`backend/app/research_sources.py`). Without it those fall back to

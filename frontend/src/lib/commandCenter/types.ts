@@ -304,3 +304,39 @@ export interface RosterMember {
   role: string
   team_ids: string[]
 }
+
+/**
+ * A row of `cc_briefs` (database/migration_command_center_briefs.sql): an org's daily
+ * or weekly brief, written by the backend's 08:00 IST jobs. Admins only, under RLS.
+ * A slot with no new logs has no row at all.
+ */
+export interface BriefStats {
+  entries: number
+  companies: number
+  analysts: number
+  /** Log-type label -> count, largest first. */
+  by_type: Record<string, number>
+  by_analyst: Record<string, number>
+  by_rating: Partial<Record<SvanRating, number>>
+  by_impact: Partial<Record<ThesisImpact, number>>
+  top_tickers: string[]
+  /** The latest House View per stock in the window. */
+  views: { ticker: string; rating: SvanRating; analyst: string }[]
+}
+
+export interface Brief {
+  id: string
+  organization_id: string
+  kind: 'daily' | 'weekly'
+  /** The IST morning it was made for (YYYY-MM-DD). */
+  brief_date: string
+  period_start: string
+  period_end: string
+  headline: string | null
+  bullets: string[]
+  stats: BriefStats
+  script: { speaker: string; text: string }[] | null
+  audio_path: string | null
+  audio_seconds: number | null
+  created_at: string
+}

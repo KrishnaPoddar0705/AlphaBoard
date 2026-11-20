@@ -14,6 +14,7 @@ import type { ActivityFeedRow } from '@/lib/commandCenter/types'
 import HomeHeader from './HomeHeader'
 import ScopeBar from './ScopeBar'
 import TickerTape from './TickerTape'
+import BriefsPanel from './BriefsPanel'
 import NeedsYouPanel from './NeedsYouPanel'
 import WhatChangedPanel from './WhatChangedPanel'
 import LensBar from './LensBar'
@@ -141,6 +142,9 @@ export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLog
       )}
 
       <TickerTape rows={derived.tape} now={now} onOpen={openEntry} />
+
+      {/* Admins only (renders nothing otherwise): the morning brief comes first. */}
+      <BriefsPanel />
 
       {/* items-start: each panel is as tall as its content, so a short "What changed"
           does not stretch into an empty box beside a long "Needs you". */}
