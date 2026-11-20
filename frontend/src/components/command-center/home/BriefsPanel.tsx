@@ -6,7 +6,7 @@ import { useBriefs } from '@/hooks/commandCenter/useBriefs'
 import BriefsSkeleton, { BriefsBody } from './BriefsSkeleton'
 
 /**
- * Admins' morning read: the latest weekly brief and the last five dailies as a strip of
+ * Admins' morning read: the last five daily briefs then the latest weekly one as a strip of
  * cards, with the chosen one open underneath (podcast, bullets, counts). Briefs are made
  * by the backend at 08:00 IST (weekly on Mondays); a slot with no new logs has none.
  *
@@ -20,7 +20,8 @@ export default function BriefsPanel({ className = '' }: { className?: string }) 
   if (!roleKnown) return <BriefsSkeleton />
   if (!enabled) return null
 
-  const briefs = data ? [...(data.weekly ? [data.weekly] : []), ...data.daily] : []
+  // Dailies first (newest to oldest), then the weekly.
+  const briefs = data ? [...data.daily, ...(data.weekly ? [data.weekly] : [])] : []
   // Default to the newest daily: the one made this morning.
   const selected = briefs.find((b) => b.id === selectedId) ?? data?.daily[0] ?? briefs[0] ?? null
 

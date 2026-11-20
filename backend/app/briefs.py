@@ -107,12 +107,12 @@ headline: one line, at most 14 words, the single most important thing that happe
 
 bullets: {bullets} bullets, together covering:
 - the mix of activity (which log types, how many, by whom) -- use the counts given, never recount;
-- the key takeaways that matter for the investment case, grouped across stocks where a theme repeats;
+- the key takeaways that matter for the investment case, grouped across stocks where a theme repeats, each credited to the analyst who logged it;
 - the House View (the desk's BUY / SELL / NEUTRAL call) and Org View (the analyst's written opinion) on the stocks that carry one, and any stock where views disagree or turned;
 - what to look at next: open questions, negative thesis impact, or a stock with heavy activity.
-Each bullet is one or two sentences, at most 40 words, leads with the point, and names tickers.
+Each bullet is one or two sentences, at most 45 words, leads with the point, names tickers, and names the analyst behind every stock it mentions, as written after "by" in the entry (e.g. "BIOCON.NS (lisaf): ..."). Never drop the analyst from a takeaway.
 
-script: a two-host podcast between Asha and Dev, {words}. Alternate speakers. Open with a one-line hook, cover the biggest moves with tickers and House Views, close with a short sign-off. Written for the ear: short sentences, no bullet lists, no URLs, say "percent" not "%".
+script: a two-host podcast between Asha and Dev, {words}. Alternate speakers. Open with a one-line hook, cover the biggest moves with tickers, House Views and who logged each one ("lisaf flagged...", "from ankurp's concall notes..."), close with a short sign-off. Written for the ear: short sentences, no bullet lists, no URLs, say "percent" not "%".
 
 Rules:
 - Only state what the logs say. Keep numbers exactly as written. No outside facts, no advice, no predictions.
