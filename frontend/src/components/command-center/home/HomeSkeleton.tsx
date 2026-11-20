@@ -1,4 +1,5 @@
 import TerminalPanel from './TerminalPanel'
+import BriefsSkeleton from './BriefsSkeleton'
 import { Bone, Loading, RowsSkeleton } from '../shared/Skeleton'
 
 const KPI_LABELS = ['Entries · 24h', 'Companies · 24h', 'Thesis changes · 7d', 'Need you']
@@ -9,7 +10,7 @@ const KPI_LABELS = ['Entries · 24h', 'Companies · 24h', 'Thesis changes · 7d'
  * titles are real -- they do not depend on data -- so the layout reads immediately and
  * nothing moves when the data arrives.
  */
-export default function HomeSkeleton({ isManager }: { isManager: boolean }) {
+export default function HomeSkeleton({ isManager, isAdmin = false }: { isManager: boolean; isAdmin?: boolean }) {
   return (
     <Loading label="Loading the desk" className="flex flex-col gap-3">
       <header className="flex flex-col gap-3">
@@ -47,6 +48,8 @@ export default function HomeSkeleton({ isManager }: { isManager: boolean }) {
       </header>
 
       <div className="h-[30px] rounded-md bg-[#1C1B17]" />
+
+      {isAdmin && <BriefsSkeleton />}
 
       <div className="grid gap-3 lg:grid-cols-12">
         <TerminalPanel code="ATTN" title="Needs your attention" className="lg:col-span-5 lg:h-[440px]">

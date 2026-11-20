@@ -3,7 +3,7 @@ import TerminalPanel, { PanelEmpty } from './TerminalPanel'
 import BriefCard from './BriefCard'
 import BriefDetail from './BriefDetail'
 import { useBriefs } from '@/hooks/commandCenter/useBriefs'
-import { Bone } from '../shared/Skeleton'
+import BriefsSkeleton, { BriefsBody } from './BriefsSkeleton'
 
 /**
  * Admins' morning read: the latest weekly brief and the last five dailies as a strip of
@@ -13,8 +13,11 @@ import { Bone } from '../shared/Skeleton'
  * Renders nothing for anyone but an org admin.
  */
 export default function BriefsPanel({ className = '' }: { className?: string }) {
-  const { data, isPending, enabled, generate, polling } = useBriefs()
+  const { data, isPending, enabled, generate, polling, roleKnown } = useBriefs()
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Hold the space until we know who is looking: popping the panel in late shoves the
+  // whole page down.
+  if (!roleKnown) return <BriefsSkeleton />
   if (!enabled) return null
 
   const briefs = data ? [...(data.weekly ? [data.weekly] : []), ...data.daily] : []
@@ -24,9 +27,7 @@ export default function BriefsPanel({ className = '' }: { className?: string }) 
   return (
     <TerminalPanel code="BRF" title="Briefs" count={isPending ? undefined : briefs.length} className={className} id="cc-briefs">
       {isPending ? (
-        <div className="flex gap-2 overflow-hidden px-3 py-3">
-          {[0, 1, 2].map((i) => <Bone key={i} className="h-24 w-[220px] shrink-0 rounded-md" />)}
-        </div>
+        <BriefsBody />
       ) : briefs.length === 0 ? (
         <div className="flex flex-col gap-2 pb-3">
           <PanelEmpty>

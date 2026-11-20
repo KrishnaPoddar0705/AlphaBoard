@@ -3,6 +3,7 @@ import { useCommandCenterSession } from '@/hooks/commandCenter/useCommandCenterS
 import { useCoverageBoard } from '@/hooks/commandCenter/useCoverage'
 import { useCommentAuthors, useHomeWindow } from '@/hooks/commandCenter/useHome'
 import { useHomeScope } from '@/hooks/commandCenter/useHomeScope'
+import { useBriefs } from '@/hooks/commandCenter/useBriefs'
 import { useLensFilters } from '@/hooks/commandCenter/useLensFilters'
 import {
   analystLens, awaitingReply, filterEntries, filterStocks, needsYou, searchAnalysts, searchStocks,
@@ -41,6 +42,9 @@ export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLog
   const { filters, setFilters } = useLensFilters()
   const { data: board = [], isPending: boardPending } = useCoverageBoard()
   const windowQuery = useHomeWindow(scope.userIds, scope.ready)
+  // Started here, not when BriefsPanel mounts, so the briefs load in parallel with the
+  // window instead of after it. Same query key: the panel reads this cache.
+  useBriefs()
   const rows = useMemo(() => windowQuery.data ?? [], [windowQuery.data])
   // An entry opens centred with the rest of its company's logs (as in the Matrix); the
   // drawer is the second step, for comments, contacts and push.
@@ -107,7 +111,7 @@ export default function HomeView({ onLog, onLogFor }: { onLog: () => void; onLog
   // Every panel waits for everything it summarises. Rendering early would show "nothing
   // needs you" or "no stale names" and then change its mind a moment later.
   if (!scope.ready || windowQuery.isPending || !updatedAt || boardPending || repliesPending) {
-    return <HomeSkeleton isManager={isManager} />
+    return <HomeSkeleton isManager={isManager} isAdmin={role === 'admin'} />
   }
   const lens = isManager ? scope.lens : 'stock'
   const needsCount = derived.needs.total + derived.waitingOnPm.length

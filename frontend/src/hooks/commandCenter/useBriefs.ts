@@ -20,7 +20,7 @@ const COLUMNS =
  * query would only ever come back empty -- better not to make it.
  */
 export function useBriefs() {
-  const { ready, role, organizationId } = useCommandCenterSession()
+  const { ready, resolved, role, organizationId } = useCommandCenterSession()
   const [polling, setPolling] = useState(false)
   const enabled = ready && role === 'admin' && !!organizationId
 
@@ -62,7 +62,9 @@ export function useBriefs() {
     },
   })
 
-  return { ...query, enabled, generate, polling }
+  // Until the session resolves we cannot tell an admin from anyone else.
+  const roleKnown = resolved
+  return { ...query, enabled, roleKnown, generate, polling }
 }
 
 /** A short-lived signed URL for a brief's audio, made only when it is about to play. */
